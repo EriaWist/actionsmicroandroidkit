@@ -22,7 +22,8 @@ public class Falcon {
 		public String osVerion;
 		public String name;
 		public InetAddress ipAddress;
-		public int	portNumber;
+		public int wifiDisplayPortNumber;
+		public int remoteControlPortNumber;
 		public String passcode;
 		public final boolean hasNoPasscode() {
 			return passcode == null || passcode.length() == 0;
@@ -104,7 +105,8 @@ public class Falcon {
 						ProjectorInfo projectorInfo = new ProjectorInfo();
 						projectorInfo.name =  new String("Projector");
 						projectorInfo.ipAddress = recvPacket.getAddress();
-						projectorInfo.portNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
+						projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
+						projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
 						String [] receiveStrings = new String(recvBuf).split("\0");
 						//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
 //					    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
