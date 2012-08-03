@@ -143,7 +143,7 @@ public class Falcon {
 	
 	private static final int IPMSG_NOOPERATION 	= 0x0000;
 	private static final int IPMSG_BR_ENTRY		= 0x0001;
-//	private static final int IPMSG_BR_EXIT 		= 0x0002;
+	private static final int IPMSG_BR_EXIT 		= 0x0002;
 //	private static final int IPMSG_ANSENTRY 	= 0x0003;
 	
 	private static long s_commandSequenceNumber = 0;
@@ -154,6 +154,9 @@ public class Falcon {
 	}
 	private static final byte[] generateEntryCommand(String username, String hostname) {
 		return generateCommand(username, hostname, IPMSG_BR_ENTRY);
+	}
+	private static final byte[] generateExitCommand(String username, String hostname) {
+		return generateCommand(username, hostname, IPMSG_BR_EXIT);
 	}
 	private static final byte[] generateNoOperationCommand(String username, String hostname) {
 		return generateCommand(username, hostname, IPMSG_NOOPERATION);
@@ -182,6 +185,34 @@ public class Falcon {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		});
+		commandThread.start();
+	}
+	public void exit() {
+		sendExitCommand();
+	}
+	private void sendExitCommand() {
+		Thread commandThread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Log.d(TAG, "send lookup command");	
+					byte command[] = generateExitCommand("android", "android");
+					broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), EZ_WIFI_DISPLAY_PORT_NUMBER));
+				} catch (SocketTimeoutException e) {
+					Log.d(TAG, "Search timeout");					
+				} catch (SocketException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
