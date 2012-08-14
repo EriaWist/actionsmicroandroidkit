@@ -168,7 +168,7 @@ public class Falcon {
 			@Override
 			public void run() {
 				try {
-					Log.d(TAG, "send lookup command");	
+					Log.d(TAG, "send entry command");	
 					// copy the logic from CSocketEx for Windows.
 					byte[] command = generateNoOperationCommand("android", "android");
 					broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), 0x0979));
@@ -202,12 +202,15 @@ public class Falcon {
 		Thread commandThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
+				DatagramSocket broadcastSocket = null;
 				try {
-					Log.d(TAG, "send lookup command");	
+					Log.d(TAG, "send exit command");	
+					broadcastSocket = new DatagramSocket();
+					broadcastSocket.setBroadcast(true);
 					byte command[] = generateExitCommand("android", "android");
 					broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), EZ_WIFI_DISPLAY_PORT_NUMBER));
 				} catch (SocketTimeoutException e) {
-					Log.d(TAG, "Search timeout");					
+					Log.d(TAG, "Exit timeout");					
 				} catch (SocketException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -217,6 +220,8 @@ public class Falcon {
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
+				} finally {
+					broadcastSocket.close();
 				}
 			}
 			

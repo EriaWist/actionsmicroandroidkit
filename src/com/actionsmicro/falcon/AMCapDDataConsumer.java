@@ -113,6 +113,7 @@ public class AMCapDDataConsumer extends DataConsumer {
 						if (Configs.ENABLE_PERFORMACE_TRACE) {
 							Debug.stopMethodTracing();
 						}
+						new Falcon().exit();
 						if (getDataConsumerDidEndListener() != null) {
 							getDataConsumerDidEndListener().dataConsumerDidEnd(AMCapDDataConsumer.this);
 						}
