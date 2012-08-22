@@ -7,6 +7,8 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 import android.content.Context;
 import android.net.DhcpInfo;
@@ -29,6 +31,40 @@ public class Falcon {
 			return passcode == null || passcode.length() == 0;
 		}
 		
+	}
+	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
+	
+	public Falcon() {
+		mainThreadHandler = new Handler() {
+			@Override
+			public void handleMessage (Message msg) {
+				switch (msg.what) {
+				case MSG_SearchDidStart:
+					notifyListenerWillStart(); 
+					break;					
+				case MSG_SearchDidFind:
+					notifyListenerDidFind((ProjectorInfo) msg.obj);
+					break;
+				case MSG_SearchDidEnd:
+					notifyListenerSearchDidEnd();
+					searching = false;
+					break;
+				}
+			}
+		};
+		try {
+			broadcastSocket = new DatagramSocket();
+			broadcastSocket.setBroadcast(true);
+			waitFeedbackInBackground();
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+	}
+	public void addSearchResultListener(SearchReultListener listener) {
+		listeners.add(listener);
+	}
+	public void removeSearchResultListener(SearchReultListener listener) {
+		listeners.remove(listener);
 	}
 	static public final int EZ_REMOTE_CONTROL_PORT_NUMBER = 63630;
 	static public final int EZ_WIFI_DISPLAY_PORT_NUMBER = 2425;
@@ -55,86 +91,73 @@ public class Falcon {
 	private static final int MSG_SearchDidFind	= 1;
 	private static final int MSG_SearchDidEnd	= 2;
 	private DatagramSocket broadcastSocket;
-	
-	public void search(final SearchReultListener listener) {
-		if (!isSearching()) {
-			mainThreadHandler = new Handler() {
-				public void handleMessage (Message msg) {
-					switch (msg.what) {
-					case MSG_SearchDidStart:
-						listener.falconSearchWillStart(Falcon.this);
-						sendLookupCommand();
-						break;					
-					case MSG_SearchDidFind:
-						listener.falconSearchDidFindProjector(Falcon.this, (ProjectorInfo)msg.obj);
-						break;
-					case MSG_SearchDidEnd:
-						listener.falconSearchDidEnd(Falcon.this);
-						broadcastSocket.close();
-						broadcastSocket = null;
-						break;
-					}
+	private boolean searching;
+	public void search() {
+		if (broadcastSocket != null && 
+			!isSearching()) {
+			mainThreadHandler.obtainMessage(MSG_SearchDidStart).sendToTarget();
+			searching = true;
+			sendLookupCommand();	
+			mainThreadHandler.postDelayed(new Runnable() {
+				@Override
+				public void run() {
+					mainThreadHandler.obtainMessage(MSG_SearchDidEnd).sendToTarget();					
 				}
-			};
-			try {
-				broadcastSocket = new DatagramSocket();
-				broadcastSocket.setBroadcast(true);
-				waitFeedbackInBackground();				
-			} catch (SocketException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
+				
+			}, 3000);
 		}		
 	}
 	public boolean isSearching() {
-		return broadcastSocket != null;
+		return searching;
 	}
+	//TODO add stop method
+	//TODO add projector list
+	//TODO add remote control protocol
+	//TODO change to singleton
 	private void waitFeedbackInBackground() {
 		Thread receivingThread = new Thread(new Runnable() {
-
 			@Override
 			public void run() {
-				try {
-					byte[] recvBuf = new byte[64];
-					broadcastSocket.setSoTimeout(3000);
-					Log.d(TAG, "start receiveing");
-					mainThreadHandler.obtainMessage(MSG_SearchDidStart).sendToTarget();
-					while (true) {
-						DatagramPacket recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
-						broadcastSocket.receive(recvPacket);
-						ProjectorInfo projectorInfo = new ProjectorInfo();
-						projectorInfo.name =  new String("Projector");
-						projectorInfo.ipAddress = recvPacket.getAddress();
-						projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
-						projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
-						String [] receiveStrings = new String(recvBuf).split("\0");
-						//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
-//					    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
-						if (receiveStrings.length > 0) {
-							String [] parameters = receiveStrings[0].split(":");
-							for (int i = 0; i < parameters.length; i++) {
-								if (parameters[i].startsWith("model=")) {
-									projectorInfo.name = parameters[i].split("=")[1];
-								} else if (parameters[i].startsWith("passcode=")) {
-									projectorInfo.passcode = parameters[i].split("=")[1];
+				if (broadcastSocket != null) {
+					try {
+						byte[] recvBuf = new byte[64];
+						Log.d(TAG, "start receiveing");
+						while (true) {
+							DatagramPacket recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
+							broadcastSocket.receive(recvPacket);
+							ProjectorInfo projectorInfo = new ProjectorInfo();
+							projectorInfo.name =  new String("Projector");
+							projectorInfo.ipAddress = recvPacket.getAddress();
+							projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
+							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
+							String [] receiveStrings = new String(recvBuf).split("\0");
+							//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
+	//					    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
+							if (receiveStrings.length > 0) {
+								String [] parameters = receiveStrings[0].split(":");
+								for (int i = 0; i < parameters.length; i++) {
+									if (parameters[i].startsWith("model=")) {
+										projectorInfo.name = parameters[i].split("=")[1];
+									} else if (parameters[i].startsWith("passcode=")) {
+										projectorInfo.passcode = parameters[i].split("=")[1];
+									}
 								}
 							}
+							mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 						}
-						mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+					} catch (SocketTimeoutException e) {
+						Log.d(TAG, "Search timeout");					
+					} catch (SocketException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (UnknownHostException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} finally {
 					}
-				} catch (SocketTimeoutException e) {
-					Log.d(TAG, "Search timeout");					
-				} catch (SocketException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (UnknownHostException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} finally {
-					mainThreadHandler.obtainMessage(MSG_SearchDidEnd).sendToTarget();
 				}
 			}
 			
@@ -167,38 +190,37 @@ public class Falcon {
 		Thread commandThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-				try {
-					Log.d(TAG, "send entry command");	
-					// copy the logic from CSocketEx for Windows.
-					byte[] command = generateNoOperationCommand("android", "android");
-					broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), 0x0979));
-					Thread.sleep(1000);
-					command = generateEntryCommand("android", "android");
-					broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), EZ_WIFI_DISPLAY_PORT_NUMBER));
-				} catch (SocketTimeoutException e) {
-					Log.d(TAG, "Search timeout");					
-				} catch (SocketException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (UnknownHostException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				if (broadcastSocket != null) {
+					try {
+						Log.d(TAG, "send entry command");	
+						// copy the logic from CSocketEx for Windows.
+						byte[] command = generateNoOperationCommand("android", "android");
+						broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), 0x0979));
+						Thread.sleep(1000);
+						command = generateEntryCommand("android", "android");
+						broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), EZ_WIFI_DISPLAY_PORT_NUMBER));
+					} catch (SocketTimeoutException e) {
+						Log.d(TAG, "Search timeout");					
+					} catch (SocketException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (UnknownHostException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 			
 		});
 		commandThread.start();
 	}
-	public void exit() {
-		sendExitCommand();
-	}
-	private void sendExitCommand() {
+	public static void sendExitCommand() {
 		Thread commandThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -227,5 +249,26 @@ public class Falcon {
 			
 		});
 		commandThread.start();
+	}
+	private void notifyListenerWillStart() {
+		Iterator<SearchReultListener> iterator = listeners.listIterator();
+		while (iterator.hasNext()) {
+			SearchReultListener listener = iterator.next(); 
+			listener.falconSearchWillStart(Falcon.this);
+		}
+	}
+	private void notifyListenerDidFind(ProjectorInfo projector) {
+		Iterator<SearchReultListener> iterator = listeners.listIterator();
+		while (iterator.hasNext()) {
+			SearchReultListener listener = iterator.next(); 
+			listener.falconSearchDidFindProjector(Falcon.this, projector);						
+		}
+	}
+	private void notifyListenerSearchDidEnd() {
+		Iterator<SearchReultListener> iterator = listeners.listIterator();
+		while (iterator.hasNext()) {
+			SearchReultListener listener = iterator.next(); 
+			listener.falconSearchDidEnd(Falcon.this);					
+		}
 	}
 }
