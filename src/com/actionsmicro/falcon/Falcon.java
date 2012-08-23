@@ -33,6 +33,7 @@ public class Falcon {
 		
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
+	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
 	
 	public Falcon() {
 		mainThreadHandler = new Handler() {
@@ -59,6 +60,9 @@ public class Falcon {
 		} catch (SocketException e) {
 			e.printStackTrace();
 		}
+	}
+	public ArrayList<ProjectorInfo> getProjectors() {
+		return projectors;
 	}
 	public void addSearchResultListener(SearchReultListener listener) {
 		listeners.add(listener);
@@ -95,6 +99,7 @@ public class Falcon {
 	public void search() {
 		if (broadcastSocket != null && 
 			!isSearching()) {
+			projectors.clear();
 			mainThreadHandler.obtainMessage(MSG_SearchDidStart).sendToTarget();
 			searching = true;
 			sendLookupCommand();	
@@ -111,8 +116,6 @@ public class Falcon {
 		return searching;
 	}
 	//TODO add stop method
-	//TODO add projector list
-	//TODO add remote control protocol
 	//TODO change to singleton
 	private void waitFeedbackInBackground() {
 		Thread receivingThread = new Thread(new Runnable() {
@@ -123,27 +126,21 @@ public class Falcon {
 						byte[] recvBuf = new byte[64];
 						Log.d(TAG, "start receiveing");
 						while (true) {
-							DatagramPacket recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
+							final DatagramPacket recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
 							broadcastSocket.receive(recvPacket);
-							ProjectorInfo projectorInfo = new ProjectorInfo();
-							projectorInfo.name =  new String("Projector");
-							projectorInfo.ipAddress = recvPacket.getAddress();
-							projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
-							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
-							String [] receiveStrings = new String(recvBuf).split("\0");
-							//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
-	//					    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
-							if (receiveStrings.length > 0) {
-								String [] parameters = receiveStrings[0].split(":");
-								for (int i = 0; i < parameters.length; i++) {
-									if (parameters[i].startsWith("model=")) {
-										projectorInfo.name = parameters[i].split("=")[1];
-									} else if (parameters[i].startsWith("passcode=")) {
-										projectorInfo.passcode = parameters[i].split("=")[1];
-									}
-								}
+							ProjectorInfo projectorInfo = null;
+							if (recvPacket.getPort() == EZ_REMOTE_CONTROL_PORT_NUMBER) {
+								Log.d(TAG, "receive EZ Remote Response");
+								projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
+								projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
+								mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+							} else if (recvPacket.getPort() == EZ_WIFI_DISPLAY_PORT_NUMBER) {
+								Log.d(TAG, "receive EZ Wifi Response");
+								projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
+								projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
+								parseReponse(recvPacket, projectorInfo);
+								mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 							}
-							mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 						}
 					} catch (SocketTimeoutException e) {
 						Log.d(TAG, "Search timeout");					
@@ -160,9 +157,18 @@ public class Falcon {
 					}
 				}
 			}
-			
 		});
 		receivingThread.start();
+	}
+	private ProjectorInfo getProjectorInfoWithAddress(InetAddress address) {
+		Iterator<ProjectorInfo> iterator = projectors.listIterator();
+		while (iterator.hasNext()) {
+			ProjectorInfo projector = iterator.next(); 
+			if (projector.ipAddress.equals(address)) {
+				return projector;
+			}
+		}
+		return null;
 	}
 	private static final int IPMSG_VERSION = 0x001;
 	
@@ -192,13 +198,18 @@ public class Falcon {
 			public void run() {
 				if (broadcastSocket != null) {
 					try {
+						final InetAddress broadcastAddress = InetAddress.getByName("255.255.255.255");
+						byte[] command = {0,':',0};
+						// send EZ Remote Lookup
+						broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_REMOTE_CONTROL_PORT_NUMBER));
+						
 						Log.d(TAG, "send entry command");	
 						// copy the logic from CSocketEx for Windows.
-						byte[] command = generateNoOperationCommand("android", "android");
-						broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), 0x0979));
+						command = generateNoOperationCommand("android", "android");
+						broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
 						Thread.sleep(1000);
 						command = generateEntryCommand("android", "android");
-						broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), EZ_WIFI_DISPLAY_PORT_NUMBER));
+						broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
 					} catch (SocketTimeoutException e) {
 						Log.d(TAG, "Search timeout");					
 					} catch (SocketException e) {
@@ -269,6 +280,34 @@ public class Falcon {
 		while (iterator.hasNext()) {
 			SearchReultListener listener = iterator.next(); 
 			listener.falconSearchDidEnd(Falcon.this);					
+		}
+	}
+	private ProjectorInfo createProjectorWithAddressIfNeeded(
+			final InetAddress address) {
+		ProjectorInfo projectorInfo;
+		projectorInfo = getProjectorInfoWithAddress(address);
+		if (projectorInfo == null) {
+			projectorInfo = new ProjectorInfo();
+			projectorInfo.name =  new String("Projector");
+			projectorInfo.ipAddress = address;
+			projectors.add(projectorInfo);
+		}
+		return projectorInfo;
+	}
+	private void parseReponse(final DatagramPacket recvPacket,
+			ProjectorInfo projectorInfo) {
+		String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength()).split("\0");
+		//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
+//	    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
+		if (receiveStrings.length > 0) {
+			String [] parameters = receiveStrings[0].split(":");
+			for (int i = 0; i < parameters.length; i++) {
+				if (parameters[i].startsWith("model=")) {
+					projectorInfo.name = parameters[i].split("=")[1];
+				} else if (parameters[i].startsWith("passcode=")) {
+					projectorInfo.passcode = parameters[i].split("=")[1];
+				}
+			}
 		}
 	}
 }
