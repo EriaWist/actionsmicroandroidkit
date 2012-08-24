@@ -6,8 +6,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -16,6 +16,7 @@ import android.graphics.BitmapFactory;
 import android.util.Log;
 
 public class Client {
+	private static final int DEFAULT_SOCKET_TIMEOUT = 1000;
 	private static final String TAG = "pigeon.Client";
 	private final String serverAddress;
 	private final int portNumber;
@@ -42,21 +43,22 @@ public class Client {
 	 *	@param quality Hint to the compressor, 0-100. 0 meaning compress for small size, 100 meaning compress for max quality. Some formats, like PNG which is lossless, will ignore the quality setting
 	 *	@see <a href="http://developer.android.com/reference/android/graphics/Bitmap.html#compress(android.graphics.Bitmap.CompressFormat,%20int,%20java.io.OutputStream)">Bitmap.compress()</a>
 	 */
-	public void sentImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, UnknownHostException {
+	public void sentImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, IllegalArgumentException {
 		Log.i(TAG, "sentImageToServer Height=" + bitmap.getHeight()+",Width=" + bitmap.getWidth());
 		getCompressionBuffer().reset();
 		Log.d(TAG, "Start compress");
 		bitmap.compress(format, quailty, getCompressionBuffer());
 		Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
-		
-		Socket socketToServer = createSocketToServer();
+		Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
+		Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 		BufferedOutputStream socketStream = null;
 		try {
+			Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");	
 			socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
 			socketStream.write(createPacketHeaderForSendingImage(bitmap.getWidth(), bitmap.getHeight(), getCompressionBuffer().size()).array());
 			socketStream.write(getCompressionBuffer().toByteArray());
 			socketStream.flush();
-			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+")");	
+			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");	
 		} catch (IOException e) {
 			throw e;
 		} finally {
@@ -69,7 +71,7 @@ public class Client {
 		}
 		
 	}
-	public void sentImageFileToServer(String imageFile) throws IOException, UnknownHostException {
+	public void sentImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
 		Socket socketToServer = null;
 		BufferedOutputStream socketStream = null;
 		RandomAccessFile file = null;
@@ -85,7 +87,7 @@ public class Client {
 			
 			file = new RandomAccessFile(imageFile, "r");
 			Log.d(TAG, "sentImageFileToServer file size:" + file.length());
-			socketToServer = createSocketToServer();
+			socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 			socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
 			socketStream.write(createPacketHeaderForSendingImage(decodeOptions.outWidth, decodeOptions.outHeight, (int)file.length()).array());
 			
@@ -109,9 +111,10 @@ public class Client {
 			}
 		}
 	}
-	private Socket createSocketToServer()
-			throws UnknownHostException, IOException {
-		return new Socket(serverAddress, portNumber);		
+	private Socket createSocketToServer(int timeout) throws IOException, IllegalArgumentException {
+		Socket newSocket = new Socket();
+		newSocket.connect(new InetSocketAddress(serverAddress, portNumber), timeout);
+		return newSocket;
 	}	
 	private ByteBuffer createPacketHeaderForSendingImage(int width, int height, int size) {
 		ByteBuffer header = ByteBuffer.allocate(32);
