@@ -10,19 +10,83 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
 
 public class Client {
+	public interface OnExceptionListener {
+		public void onException(Client client, Exception e);
+	}
+	private OnExceptionListener onExceptionListener;
+	public interface BitmapManager {
+		public boolean onProcessBitmapBegin(Client client, Bitmap bitmap);
+		public void onProcessBitmapEnd(Client client, Bitmap bitmap);
+	}
+	private BitmapManager bitmapManager;
 	private static final int DEFAULT_SOCKET_TIMEOUT = 1000;
 	private static final String TAG = "pigeon.Client";
 	private final String serverAddress;
 	private final int portNumber;
+	private boolean shouldStop = false;
+	private class Job {
+		public Bitmap bitmap;
+		public Bitmap.CompressFormat format; 
+		public int quailty;
+		public Job(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) {
+			this.bitmap = bitmap;
+			this.format = format;
+			this.quailty = quailty;
+		}
+	}
+	private ArrayBlockingQueue<Job> pendingJobs = new ArrayBlockingQueue<Job>(1);
+	private final Thread backgroundThread = new Thread(new Runnable() {
+		@Override
+		public void run() {
+			Job job = null;
+			while (!shouldStop) {
+				Log.d(TAG, "waiting for job");
+				try {
+					job = pendingJobs.take();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+					shouldStop = true;
+				}
+				if (null != job) {
+					Log.d(TAG, "job comes in");
+					try {
+						boolean shouldProcess = true;
+						if (bitmapManager != null) {
+							shouldProcess = bitmapManager.onProcessBitmapBegin(Client.this, job.bitmap);
+						}
+						if (shouldProcess) {
+							sentImageToServer(job.bitmap, job.format, job.quailty);
+							if (bitmapManager != null) {
+								bitmapManager.onProcessBitmapEnd(Client.this, job.bitmap);
+							}
+						}
+					} catch (Exception e) {
+						if (null != onExceptionListener) {
+							onExceptionListener.onException(Client.this, e);
+						}
+					}
+				}
+			}
+		}
+	});
 	public Client(String serverAddress, int portNumber) {
 		this.serverAddress = serverAddress;
 		this.portNumber = portNumber;
+		
+		backgroundThread.start();
+	}
+	public void stop() {
+		shouldStop = true;
+		backgroundThread.stop();
+		
 	}
 	public String getServerAddress() {
 		return serverAddress;
@@ -70,6 +134,11 @@ public class Client {
 			}
 		}
 		
+	}
+	public void sentImageToServerAsync(Bitmap bitmap, Bitmap.CompressFormat format, int quality) {
+		final ArrayList<Job> expiredJobs = new ArrayList<Job>();
+		pendingJobs.drainTo(expiredJobs);
+		pendingJobs.add(new Job(bitmap, format, quality));
 	}
 	public void sentImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
 		Socket socketToServer = null;
@@ -131,5 +200,18 @@ public class Client {
 		header.putInt(height);
 		header.putInt(size);
 		return header;
+	}
+	public void setOnExceptionListener(OnExceptionListener onExceptionListener) {
+		this.onExceptionListener = onExceptionListener;
+	}
+
+	public OnExceptionListener getOnExceptionListener() {
+		return onExceptionListener;
+	}
+	public void setBitmapManager(BitmapManager bitmapManager) {
+		this.bitmapManager = bitmapManager;
+	}
+	public BitmapManager getBitmapManager() {
+		return bitmapManager;
 	}
 }
