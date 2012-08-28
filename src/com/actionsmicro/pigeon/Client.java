@@ -16,6 +16,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.YuvImage;
 import android.util.Log;
 
 public class Client {
@@ -93,10 +94,7 @@ public class Client {
 	}
 	public void stop() {
 		shouldStop = true;
-		cleanUp();		
-	}
-	public void cleanUp() {
-		cleanUp(true);
+		cleanUp(true);		
 	}
 	public void cleanUp(boolean stop) {
 		if (compressionBuffer != null) {
@@ -141,18 +139,35 @@ public class Client {
 	 *	@see <a href="http://developer.android.com/reference/android/graphics/Bitmap.html#compress(android.graphics.Bitmap.CompressFormat,%20int,%20java.io.OutputStream)">Bitmap.compress()</a>
 	 */
 	public void sentImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, IllegalArgumentException {
-		Log.i(TAG, "sentImageToServer Height=" + bitmap.getHeight()+",Width=" + bitmap.getWidth());
+		final int width = bitmap.getWidth();
+		final int height = bitmap.getHeight();
+		Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
 		getCompressionBuffer().reset();
 		Log.d(TAG, "Start compress");
 		bitmap.compress(format, quailty, getCompressionBuffer());
 		Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
+		sendCompressedBufferToServer(width, height);		
+	}
+	public void sentImageToServer(YuvImage yuvImage, int quailty) throws IOException, IllegalArgumentException {
+		final int width = yuvImage.getWidth();
+		final int height = yuvImage.getHeight();
+		Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
+		getCompressionBuffer().reset();
+		Log.d(TAG, "Start compress");
+		android.graphics.Rect rect = new android.graphics.Rect(0, 0, width, height); 
+		yuvImage.compressToJpeg(rect, quailty, getCompressionBuffer());
+		Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
+		sendCompressedBufferToServer(width, height);		
+	}
+	private void sendCompressedBufferToServer(final int width, final int height)
+			throws IOException, IllegalArgumentException {
 		Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
 		Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 		BufferedOutputStream socketStream = null;
 		try {
 			Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");	
 			socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-			socketStream.write(createPacketHeaderForSendingImage(bitmap.getWidth(), bitmap.getHeight(), getCompressionBuffer().size()).array());
+			socketStream.write(createPacketHeaderForSendingImage(width, height, getCompressionBuffer().size()).array());
 			socketStream.write(getCompressionBuffer().toByteArray());
 			socketStream.flush();
 			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");	
@@ -166,8 +181,8 @@ public class Client {
 				socketToServer.close();
 			}
 		}
-		
 	}
+	
 	public void sentImageToServerAsync(Bitmap bitmap, Bitmap.CompressFormat format, int quality) {
 		final ArrayList<Job> expiredJobs = new ArrayList<Job>();
 		pendingJobs.drainTo(expiredJobs);
