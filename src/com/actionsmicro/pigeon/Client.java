@@ -11,6 +11,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import android.graphics.Bitmap;
@@ -31,8 +32,11 @@ public class Client {
 	private static final String TAG = "pigeon.Client";
 	private final String serverAddress;
 	private final int portNumber;
+	public int getPortNumber() {
+		return portNumber;
+	}
 	private boolean shouldStop = false;
-	private class Job {
+	private static class Job {
 		public Bitmap bitmap;
 		public Bitmap.CompressFormat format; 
 		public int quailty;
@@ -41,6 +45,8 @@ public class Client {
 			this.format = format;
 			this.quailty = quailty;
 		}
+		private Job() {}
+		public final static Job nullJob = new Job();
 	}
 	private ArrayBlockingQueue<Job> pendingJobs = new ArrayBlockingQueue<Job>(1);
 	private final Thread backgroundThread = new Thread(new Runnable() {
@@ -55,7 +61,7 @@ public class Client {
 					e1.printStackTrace();
 					shouldStop = true;
 				}
-				if (null != job) {
+				if (null != job && null != job.bitmap) {
 					Log.d(TAG, "job comes in");
 					try {
 						boolean shouldProcess = true;
@@ -66,6 +72,8 @@ public class Client {
 							sentImageToServer(job.bitmap, job.format, job.quailty);
 							if (bitmapManager != null) {
 								bitmapManager.onProcessBitmapEnd(Client.this, job.bitmap);
+							} else {
+								job.bitmap.recycle();
 							}
 						}
 					} catch (Exception e) {
@@ -85,8 +93,33 @@ public class Client {
 	}
 	public void stop() {
 		shouldStop = true;
-		backgroundThread.stop();
-		
+		cleanUp();		
+	}
+	public void cleanUp() {
+		cleanUp(true);
+	}
+	public void cleanUp(boolean stop) {
+		if (compressionBuffer != null) {
+			try {
+				compressionBuffer.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} finally {
+				compressionBuffer = null;
+			}
+		}
+		final ArrayList<Job> expiredJobs = new ArrayList<Job>();
+		pendingJobs.drainTo(expiredJobs);
+		if (bitmapManager == null) {
+			Iterator<Job> iterator = pendingJobs.iterator();
+			while (iterator.hasNext()) {
+				iterator.next().bitmap.recycle();
+			}
+		}
+		if (stop) {
+			pendingJobs.add(Job.nullJob);			
+		}
 	}
 	public String getServerAddress() {
 		return serverAddress;
@@ -139,6 +172,12 @@ public class Client {
 		final ArrayList<Job> expiredJobs = new ArrayList<Job>();
 		pendingJobs.drainTo(expiredJobs);
 		pendingJobs.add(new Job(bitmap, format, quality));
+		if (bitmapManager == null) {
+			Iterator<Job> iterator = pendingJobs.iterator();
+			while (iterator.hasNext()) {
+				iterator.next().bitmap.recycle();
+			}
+		}
 	}
 	public void sentImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
 		Socket socketToServer = null;
