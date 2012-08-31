@@ -27,6 +27,7 @@ public class Falcon {
 		public int wifiDisplayPortNumber;
 		public int remoteControlPortNumber;
 		public String passcode;
+		public String model;
 		public final boolean hasNoPasscode() {
 			return passcode == null || passcode.length() == 0;
 		}
@@ -302,10 +303,12 @@ public class Falcon {
 		if (receiveStrings.length > 0) {
 			String [] parameters = receiveStrings[0].split(":");
 			for (int i = 0; i < parameters.length; i++) {
-				if (parameters[i].startsWith("model=")) {
+				if (parameters[i].startsWith("name=")) {
 					projectorInfo.name = parameters[i].split("=")[1];
 				} else if (parameters[i].startsWith("passcode=")) {
 					projectorInfo.passcode = parameters[i].split("=")[1];
+				} else if (parameters[i].startsWith("model=")) {
+					projectorInfo.model = parameters[i].split("=")[1];
 				}
 			}
 		}

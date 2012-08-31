@@ -125,7 +125,7 @@ public class Client {
 		shouldStop = true;
 		cleanUp(true);		
 	}
-	public void cleanUp(boolean stop) {
+	private void cleanUp(boolean stop) {
 		if (compressionBuffer != null) {
 			try {
 				compressionBuffer.close();
