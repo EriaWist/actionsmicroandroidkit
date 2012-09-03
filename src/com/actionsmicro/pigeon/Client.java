@@ -30,7 +30,7 @@ public class Client {
 		public void onProcessBitmapEnd(Client client, Bitmap bitmap);
 	}
 	private BitmapManager bitmapManager;
-	private static final int DEFAULT_SOCKET_TIMEOUT = 1000;
+	private static final int DEFAULT_SOCKET_TIMEOUT = 2000;
 	private static final String TAG = "pigeon.Client";
 	private final String serverAddress;
 	private final int portNumber;
@@ -291,7 +291,15 @@ public class Client {
 	private Socket createSocketToServer(int timeout) throws IOException, IllegalArgumentException {
 		if (socketToServer == null) {
 			socketToServer = new Socket();
-			socketToServer.connect(new InetSocketAddress(serverAddress, portNumber), timeout);
+			try {
+				socketToServer.connect(new InetSocketAddress(serverAddress, portNumber), timeout);
+			} catch (IOException e) {
+				socketToServer = null;
+				throw e;
+			} catch (RuntimeException e) {
+				socketToServer = null;
+				throw e;
+			}
 		}
 		return socketToServer;
 	}	
