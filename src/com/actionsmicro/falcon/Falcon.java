@@ -35,8 +35,14 @@ public class Falcon {
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
 	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
-	
-	public Falcon() {
+	private static Falcon singleton;
+	static public Falcon getInstance() {
+		if (singleton == null) {
+			singleton = new Falcon();
+		}
+		return singleton;
+	}
+	private Falcon() {
 		mainThreadHandler = new Handler() {
 			@Override
 			public void handleMessage (Message msg) {
