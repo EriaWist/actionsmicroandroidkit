@@ -257,7 +257,7 @@ public class AMCapDDataConsumer extends DataConsumer {
 				public void run() {
 					synchronized(bmpToWrite) {
 						try {
-							ezDisplayClient.sentImageToServer(bmpToWrite, Bitmap.CompressFormat.JPEG, Configs.COMPRESSOR_QUALITY);
+							ezDisplayClient.sendImageToServer(bmpToWrite, Bitmap.CompressFormat.JPEG, Configs.COMPRESSOR_QUALITY);
 						} catch (UnknownHostException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -269,7 +269,7 @@ public class AMCapDDataConsumer extends DataConsumer {
 				}
 			}).start();
 		} else {
-			ezDisplayClient.sentImageToServer(bmpToWrite, Bitmap.CompressFormat.JPEG, Configs.COMPRESSOR_QUALITY);
+			ezDisplayClient.sendImageToServer(bmpToWrite, Bitmap.CompressFormat.JPEG, Configs.COMPRESSOR_QUALITY);
 		}
 	}
 	private void updateFPSProbe(long startTime) {

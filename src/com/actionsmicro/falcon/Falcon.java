@@ -130,23 +130,28 @@ public class Falcon {
 			public void run() {
 				if (broadcastSocket != null) {
 					try {
-						byte[] recvBuf = new byte[64];
+						final byte[] recvBuf = new byte[64];
 						Log.d(TAG, "start receiveing");
 						while (true) {
 							final DatagramPacket recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
 							broadcastSocket.receive(recvPacket);
-							ProjectorInfo projectorInfo = null;
 							if (recvPacket.getPort() == EZ_REMOTE_CONTROL_PORT_NUMBER) {
 								Log.d(TAG, "receive EZ Remote Response");
-								projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
+								final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
 								projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
 								mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 							} else if (recvPacket.getPort() == EZ_WIFI_DISPLAY_PORT_NUMBER) {
-								Log.d(TAG, "receive EZ Wifi Response");
-								projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
-								projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
-								parseReponse(recvPacket, projectorInfo);
-								mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+								final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
+								if (parseReponse(recvPacket, projectorInfo)) {
+									Log.d(TAG, "receive EZ Wifi Response");
+									projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
+									mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+								} else {
+									projectors.remove(projectorInfo);
+								}
+							} else {
+								final String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength()).split("\0");
+								Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
 							}
 						}
 					} catch (SocketTimeoutException e) {
@@ -177,12 +182,12 @@ public class Falcon {
 		}
 		return null;
 	}
-	private static final int IPMSG_VERSION = 0x001;
+	private static final int IPMSG_VERSION = 0x002;
 	
 	private static final int IPMSG_NOOPERATION 	= 0x0000;
 	private static final int IPMSG_BR_ENTRY		= 0x0001;
 	private static final int IPMSG_BR_EXIT 		= 0x0002;
-//	private static final int IPMSG_ANSENTRY 	= 0x0003;
+	private static final int IPMSG_ANSENTRY 	= 0x0003;
 	
 	private static long s_commandSequenceNumber = 0;
 	private static final byte[] generateCommand(String username, String hostname, int command) {
@@ -301,22 +306,27 @@ public class Falcon {
 		}
 		return projectorInfo;
 	}
-	private void parseReponse(final DatagramPacket recvPacket,
+	private boolean parseReponse(final DatagramPacket recvPacket,
 			ProjectorInfo projectorInfo) {
-		String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength()).split("\0");
+		final String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength()).split("\0");
 		//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
 //	    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
 		if (receiveStrings.length > 0) {
-			String [] parameters = receiveStrings[0].split(":");
-			for (int i = 0; i < parameters.length; i++) {
-				if (parameters[i].startsWith("name=")) {
-					projectorInfo.name = parameters[i].split("=")[1];
-				} else if (parameters[i].startsWith("passcode=")) {
-					projectorInfo.passcode = parameters[i].split("=")[1];
-				} else if (parameters[i].startsWith("model=")) {
-					projectorInfo.model = parameters[i].split("=")[1];
+			final String [] parameters = receiveStrings[0].split(":");
+			if (parameters[4].equals(String.valueOf(IPMSG_ANSENTRY))) {
+				projectorInfo.osVerion = parameters[0];
+				for (final String parameter : parameters) {
+					if (parameter.startsWith("name=")) {
+						projectorInfo.name = parameter.split("=")[1];
+					} else if (parameter.startsWith("passcode=")) {
+						projectorInfo.passcode = parameter.split("=")[1];
+					} else if (parameter.startsWith("model=")) {
+						projectorInfo.model = parameter.split("=")[1];
+					}
 				}
+				return true;
 			}
 		}
+		return false;
 	}
 }

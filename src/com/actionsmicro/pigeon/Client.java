@@ -19,12 +19,30 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.YuvImage;
 import android.util.Log;
-
+/**
+ * Client is a gateway for client to send image data to EZ Wifi server.
+ * @author James Chen
+ *
+ */
 public class Client {
+	/**
+	 * OnExceptionListener defines interface for asynchronous mode clients to handle exception thrown in working thread.
+	 *
+	 * @see Client#sendImageToServerAsync
+	 * @see Client#setOnExceptionListener 
+	 * @see Client#getOnExceptionListener
+	 */
 	public interface OnExceptionListener {
 		public void onException(Client client, Exception e);
 	}
 	private OnExceptionListener onExceptionListener;
+	/**
+	 * BitmapManager defines interface for asynchronous mode clients to manage buffer life-cycle.
+	 *
+	 * @see Client#sendImageToServerAsync
+	 * @see Client#setBitmapManager 
+	 * @see Client#getBitmapManager
+	 */
 	public interface BitmapManager {
 		public boolean onProcessBitmapBegin(Client client, Bitmap bitmap);
 		public void onProcessBitmapEnd(Client client, Bitmap bitmap);
@@ -34,9 +52,21 @@ public class Client {
 	private static final String TAG = "pigeon.Client";
 	private final String serverAddress;
 	private final int portNumber;
+	/**
+	 * Retrieve the port number of the server this Client currently connects to.
+	 * @return The port number of the server this Client currently connects to.
+	 */
 	public int getPortNumber() {
 		return portNumber;
 	}
+	/**
+	 * Retrieve the IP address of the server this Client currently connects to.
+	 * @return The IP address of the server this Client currently connects to.
+	 */
+	public String getServerAddress() {
+		return serverAddress;
+	}
+	
 	private boolean shouldStop = false;
 	private static class Job {
 		public Bitmap bitmap;
@@ -71,7 +101,7 @@ public class Client {
 							shouldProcess = bitmapManager.onProcessBitmapBegin(Client.this, job.bitmap);
 						}
 						if (shouldProcess) {
-							sentImageToServer(job.bitmap, job.format, job.quailty);
+							sendImageToServer(job.bitmap, job.format, job.quailty);
 							if (bitmapManager != null) {
 								bitmapManager.onProcessBitmapEnd(Client.this, job.bitmap);
 							} else {
@@ -92,6 +122,11 @@ public class Client {
 			}
 		}
 	});
+	/**
+	 * Create a Client to connect to given IP address and port number.
+	 * @param serverAddress The IP address of the server.
+	 * @param portNumber The port number of the server.
+	 */
 	public Client(String serverAddress, int portNumber) {
 		this.serverAddress = serverAddress;
 		this.portNumber = portNumber;
@@ -121,6 +156,9 @@ public class Client {
 			}
 		}
 	}
+	/**
+	 * Stop and clean up this Client. You should not call any method of Client after {@link #stop()} is called.
+	 */
 	public void stop() {
 		shouldStop = true;
 		cleanUp(true);		
@@ -150,9 +188,6 @@ public class Client {
 			pendingJobs.add(Job.nullJob);			
 		}
 	}
-	public String getServerAddress() {
-		return serverAddress;
-	}
 	private ByteArrayOutputStream compressionBuffer;
 	private ByteArrayOutputStream getCompressionBuffer() {
 		// for performance reason we keep it as member
@@ -163,13 +198,15 @@ public class Client {
 	}
 	static private final int SOCKET_OUTPUT_STREAM_BUFFER_SIZE = 8192;
 	/**
-	 *	Send image to server by using specified format and quality
-	 *	@param bitmap the bitmap to be sent to server/device
-	 *	@param format specifies the known formats a bitmap can be compressed into
-	 *	@param quality Hint to the compressor, 0-100. 0 meaning compress for small size, 100 meaning compress for max quality. Some formats, like PNG which is lossless, will ignore the quality setting
-	 *	@see <a href="http://developer.android.com/reference/android/graphics/Bitmap.html#compress(android.graphics.Bitmap.CompressFormat,%20int,%20java.io.OutputStream)">Bitmap.compress()</a>
+	 * Send image to server by using specified format and quality synchronously.
+	 * @param bitmap The bitmap to be sent to the server/device.
+	 * @param format Specifies the known formats a bitmap can be compressed into.
+	 * @param quailty Hint to the compressor, 0-100. 0 meaning compress for small size, 100 meaning compress for max quality. Some formats, like PNG which is lossless, will ignore the quality setting.
+	 * @throws IOException
+	 * @throws IllegalArgumentException
+	 * @see <a href="http://developer.android.com/reference/android/graphics/Bitmap.html#compress(android.graphics.Bitmap.CompressFormat,%20int,%20java.io.OutputStream)">Bitmap.compress()</a>
 	 */
-	public void sentImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, IllegalArgumentException {
+	public void sendImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, IllegalArgumentException {
 		synchronized (this) {
 			final int width = bitmap.getWidth();
 			final int height = bitmap.getHeight();
@@ -181,7 +218,16 @@ public class Client {
 			sendCompressedBufferToServer(width, height);	
 		}
 	}
-	public void sentImageToServer(YuvImage yuvImage, int quailty) throws IOException, IllegalArgumentException {
+	/**
+	 * Send YUV image to server by using specified quality synchronously. YUV image is encoded as JPEG.
+	 * @param yuvImage The image to be sent to the server/device.
+	 * @param quailty Hint to the compressor, 0-100. 0 meaning compress for small size, 100 meaning compress for max quality.
+	 * @throws IOException
+	 * @throws IllegalArgumentException
+	 * @see <a href="http://developer.android.com/reference/android/graphics/YuvImage.html">YuvImage</a>
+	 * @see <a href="http://developer.android.com/reference/android/graphics/YuvImage.html#compressToJpeg(android.graphics.Rect,%20int,%20java.io.OutputStream)">compressToJpeg()</a>
+	 */
+	public void sendImageToServer(YuvImage yuvImage, int quailty) throws IOException, IllegalArgumentException {
 		synchronized (this) {
 			final int width = yuvImage.getWidth();
 			final int height = yuvImage.getHeight();
@@ -231,8 +277,16 @@ public class Client {
 			}
 		}
 	}
-	
-	public void sentImageToServerAsync(Bitmap bitmap, Bitmap.CompressFormat format, int quality) {
+	/**
+	 * Send image to server by using specified format and quality asynchronously. You can use {@link OnExceptionListener} and {@link BitmapManager} to handle exception and manage buffer life-cycles respectively.
+	 * @param bitmap The bitmap to be sent to the server/device.
+	 * @param format Specifies the known formats a bitmap can be compressed into.
+	 * @param quality Hint to the compressor, 0-100. 0 meaning compress for small size, 100 meaning compress for max quality. Some formats, like PNG which is lossless, will ignore the quality setting.
+	 * @see #setBitmapManager(BitmapManager)
+	 * @see #setOnExceptionListener(OnExceptionListener)
+	 * @see <a href="http://developer.android.com/reference/android/graphics/Bitmap.html#compress(android.graphics.Bitmap.CompressFormat,%20int,%20java.io.OutputStream)">Bitmap.compress()</a>
+	 */
+	public void sendImageToServerAsync(Bitmap bitmap, Bitmap.CompressFormat format, int quality) {
 		final ArrayList<Job> expiredJobs = new ArrayList<Job>();
 		pendingJobs.drainTo(expiredJobs);
 		pendingJobs.add(new Job(bitmap, format, quality));
@@ -243,7 +297,13 @@ public class Client {
 			}
 		}
 	}
-	public void sentImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
+	/**
+	 * Send image file to server synchronously. Image file will be re-encoded as JPEG unless it is a JPEG file.
+	 * @param imageFile The path to the image file to be sent.
+	 * @throws IOException 
+	 * @throws IllegalArgumentException
+	 */
+	public void sendImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
 		synchronized (this) {
 			Socket socketToServer = null;
 			BufferedOutputStream socketStream = null;
@@ -254,7 +314,7 @@ public class Client {
 				BitmapFactory.decodeFile(imageFile, decodeOptions);
 				Log.d(TAG, "width:" + decodeOptions.outWidth + " height:" + decodeOptions.outHeight  + " outMimeType: "+decodeOptions.outMimeType);
 				if (!decodeOptions.outMimeType.equals("image/jpeg")) {
-					sentImageToServer(BitmapFactory.decodeFile(imageFile, null), Bitmap.CompressFormat.JPEG, 100);
+					sendImageToServer(BitmapFactory.decodeFile(imageFile, null), Bitmap.CompressFormat.JPEG, 100);
 					return;
 				} else {
 					file = new RandomAccessFile(imageFile, "r");
@@ -335,16 +395,37 @@ public class Client {
 		header.putInt(0);
 		return header;
 	}
+	/**
+	 * Set the OnExceptionListener to the Client to handle exception for asynchronous mode methods, such as {@link #sendImageToServerAsync}.
+	 * @param onExceptionListener
+	 * @see OnExceptionListener
+	 * @see #sendImageToServerAsync
+	 * @see #getOnExceptionListener
+	 */
 	public void setOnExceptionListener(OnExceptionListener onExceptionListener) {
 		this.onExceptionListener = onExceptionListener;
 	}
-
+	/**
+	 * Get the OnExceptionListener.
+	 * @return The OnExceptionListener.
+	 */
 	public OnExceptionListener getOnExceptionListener() {
 		return onExceptionListener;
 	}
+	/**
+	 * Set the BitmapManager to the Client to manage buffer life-cycles for asynchronous mode methods, such as {@link #sendImageToServerAsync}.
+	 * @param bitmapManager
+	 * @see BitmapManager
+	 * @see #sendImageToServerAsync
+	 * @see #getBitmapManager
+	 */
 	public void setBitmapManager(BitmapManager bitmapManager) {
 		this.bitmapManager = bitmapManager;
 	}
+	/**
+	 * Get the BitmapManager.
+	 * @return The BitmapManager.
+	 */
 	public BitmapManager getBitmapManager() {
 		return bitmapManager;
 	}
