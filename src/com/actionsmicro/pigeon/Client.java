@@ -5,6 +5,7 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -25,6 +26,10 @@ import android.util.Log;
  *
  */
 public class Client {
+	protected static final int EZ_DISPLAY_HEADER_SIZE = 32;
+	private static final int PICO_PIC_FORMAT_CMD = 2;
+	private static final int PICO_HEARTBEAT = 4;
+	
 	/**
 	 * OnExceptionListener defines interface for asynchronous mode clients to handle exception thrown in working thread.
 	 *
@@ -48,7 +53,16 @@ public class Client {
 		public void onProcessBitmapEnd(Client client, Bitmap bitmap);
 	}
 	private BitmapManager bitmapManager;
-	private static final int DEFAULT_SOCKET_TIMEOUT = 2000;
+	
+	public interface OnNotificationListener {
+		public void onRemoteRequestToStart(final Client client, final int numberOfWindows, final int position);
+		public void onRemoteRequestToStop(final Client client);
+		public void onRemoteRequestToChangePostion(final Client client, final int numberOfWindows, final int position);
+		public void onRemoteRequestToDisconnect(final Client client);		
+	}
+	private OnNotificationListener onNotificationListener;
+	
+	protected static final int DEFAULT_SOCKET_TIMEOUT = 2000;
 	private static final String TAG = "pigeon.Client";
 	private final String serverAddress;
 	private final int portNumber;
@@ -81,7 +95,7 @@ public class Client {
 		public final static Job nullJob = new Job();
 	}
 	private ArrayBlockingQueue<Job> pendingJobs = new ArrayBlockingQueue<Job>(1);
-	private final Thread backgroundThread = new Thread(new Runnable() {
+	private final Thread sendingThread = new Thread(new Runnable() {
 		@Override
 		public void run() {
 			Job job = null;
@@ -110,14 +124,13 @@ public class Client {
 						}
 					
 					} else if (!shouldStop) {
-						// TODO send heartbeat
-						Log.d(TAG, "Send heartbeat");
-						sendHeartbeat();						
+						if (shouldSendHeartbeat()) {
+							Log.d(TAG, "Send heartbeat");
+							sendHeartbeat();			
+						}
 					}
 				} catch (Exception e) {
-					if (null != onExceptionListener) {
-						onExceptionListener.onException(Client.this, e);
-					}
+					handleExceptionInThread(e);
 				}
 			}
 		}
@@ -131,29 +144,23 @@ public class Client {
 		this.serverAddress = serverAddress;
 		this.portNumber = portNumber;
 		
-		backgroundThread.start();
+		sendingThread.start();
+	}
+	/**
+	 * Working thread determines whether it should send heartbeat packet or not by calling this method. It returns true by default. Subclass can override this method to alter the behavior.
+	 * @return Return true if heartbeat packet should be sent in working thread. Otherwise, return false.
+	 */
+	protected boolean shouldSendHeartbeat() {
+		return true;
 	}
 	private void sendHeartbeat() throws IllegalArgumentException, IOException {
 		synchronized (this) {
 			Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
-			BufferedOutputStream socketStream = null;
-			try {
-				Log.d(TAG, "try to sendHeartbeat("+serverAddress+":"+portNumber+")");	
-				socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-			} catch (IOException e) {
-				e.printStackTrace();
-				resetSocket();
-				socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
-				socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-			}
-			try {
-				socketStream.write(createPacketHeaderForSendingHeartbeat().array());
-				socketStream.flush();
-				Log.d(TAG, "sendHeartbeat("+serverAddress+":"+portNumber+") done.");	
-			} catch (IOException e) {
-				throw e;
-			} finally {
-			}
+			final OutputStream socketStream = socketToServer.getOutputStream();
+			Log.d(TAG, "try to sendHeartbeat("+serverAddress+":"+portNumber+")");	
+			socketStream.write(createPacketHeaderForSendingHeartbeat().array());
+			socketStream.flush();
+			Log.d(TAG, "sendHeartbeat("+serverAddress+":"+portNumber+") done.");
 		}
 	}
 	/**
@@ -168,7 +175,6 @@ public class Client {
 			try {
 				compressionBuffer.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} finally {
 				compressionBuffer = null;
@@ -196,7 +202,7 @@ public class Client {
 		}
 		return compressionBuffer;
 	}
-	static private final int SOCKET_OUTPUT_STREAM_BUFFER_SIZE = 8192;
+	protected static final int SOCKET_OUTPUT_STREAM_BUFFER_SIZE = 8192;
 	/**
 	 * Send image to server by using specified format and quality synchronously.
 	 * @param bitmap The bitmap to be sent to the server/device.
@@ -208,16 +214,31 @@ public class Client {
 	 */
 	public void sendImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, IllegalArgumentException {
 		synchronized (this) {
-			final int width = bitmap.getWidth();
-			final int height = bitmap.getHeight();
-			Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
-			getCompressionBuffer().reset();
-			Log.d(TAG, "Start compress");
-			bitmap.compress(format, quailty, getCompressionBuffer());
-			Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
-			sendCompressedBufferToServer(width, height);	
+			if (canSendStream() || requestStreaming()) {
+				final int width = bitmap.getWidth();
+				final int height = bitmap.getHeight();
+				Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
+				getCompressionBuffer().reset();
+				Log.d(TAG, "Start compress");
+				bitmap.compress(format, quailty, getCompressionBuffer());
+				Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
+				sendCompressedBufferToServer(width, height);	
+			}
 		}
 	}
+	/**
+	 * Ask server's permission to send image data. Return true by default. Subclass can override this method to implement different mechanism.
+	 * @return Return true if it's able to send image; otherwise, return false;
+	 * @throws IOException 
+	 * @throws IllegalArgumentException 
+	 */
+	protected boolean requestStreaming() throws IllegalArgumentException, IOException {
+		return true;
+	}
+	public boolean canSendStream() {
+		return true;
+	}
+	
 	/**
 	 * Send YUV image to server by using specified quality synchronously. YUV image is encoded as JPEG.
 	 * @param yuvImage The image to be sent to the server/device.
@@ -229,15 +250,17 @@ public class Client {
 	 */
 	public void sendImageToServer(YuvImage yuvImage, int quailty) throws IOException, IllegalArgumentException {
 		synchronized (this) {
-			final int width = yuvImage.getWidth();
-			final int height = yuvImage.getHeight();
-			Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
-			getCompressionBuffer().reset();
-			Log.d(TAG, "Start compress");
-			android.graphics.Rect rect = new android.graphics.Rect(0, 0, width, height); 
-			yuvImage.compressToJpeg(rect, quailty, getCompressionBuffer());
-			Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
-			sendCompressedBufferToServer(width, height);		
+			if (canSendStream() || requestStreaming()) {
+				final int width = yuvImage.getWidth();
+				final int height = yuvImage.getHeight();
+				Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
+				getCompressionBuffer().reset();
+				Log.d(TAG, "Start compress");
+				android.graphics.Rect rect = new android.graphics.Rect(0, 0, width, height); 
+				yuvImage.compressToJpeg(rect, quailty, getCompressionBuffer());
+				Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
+				sendCompressedBufferToServer(width, height);	
+			}
 		}
 	}
 	private void resetSocket() {
@@ -245,7 +268,6 @@ public class Client {
 			try {
 				socketToServer.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			socketToServer = null;
@@ -257,24 +279,12 @@ public class Client {
 			Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
 			Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 			BufferedOutputStream socketStream = null;
-			try {
-				Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");	
-				socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-			} catch (IOException e) {
-				e.printStackTrace();
-				resetSocket();
-				socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
-				socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-			}
-			try {
-				socketStream.write(createPacketHeaderForSendingImage(width, height, getCompressionBuffer().size()).array());
-				socketStream.write(getCompressionBuffer().toByteArray());
-				socketStream.flush();
-				Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");	
-			} catch (IOException e) {
-				throw e;
-			} finally {
-			}
+			Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");	
+			socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
+			socketStream.write(createPacketHeaderForSendingImage(width, height, getCompressionBuffer().size()).array());
+			socketStream.write(getCompressionBuffer().toByteArray());
+			socketStream.flush();
+			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
 		}
 	}
 	/**
@@ -305,74 +315,81 @@ public class Client {
 	 */
 	public void sendImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
 		synchronized (this) {
-			Socket socketToServer = null;
-			BufferedOutputStream socketStream = null;
-			RandomAccessFile file = null;
-			try {
-				BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-				decodeOptions.inJustDecodeBounds = true; // we just need width and height
-				BitmapFactory.decodeFile(imageFile, decodeOptions);
-				Log.d(TAG, "width:" + decodeOptions.outWidth + " height:" + decodeOptions.outHeight  + " outMimeType: "+decodeOptions.outMimeType);
-				if (!decodeOptions.outMimeType.equals("image/jpeg")) {
-					sendImageToServer(BitmapFactory.decodeFile(imageFile, null), Bitmap.CompressFormat.JPEG, 100);
-					return;
-				} else {
-					file = new RandomAccessFile(imageFile, "r");
-					Log.d(TAG, "sentImageFileToServer file size:" + file.length());
-					socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
-					try {
-						socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-					} catch (IOException e) {
-						e.printStackTrace();
-						resetSocket();
+			if (canSendStream() || requestStreaming()) {
+				Socket socketToServer = null;
+				BufferedOutputStream socketStream = null;
+				RandomAccessFile file = null;
+				BufferedInputStream fileInputStream = null;
+				try {
+					final BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+					decodeOptions.inJustDecodeBounds = true; // we just need width and height
+					BitmapFactory.decodeFile(imageFile, decodeOptions);
+					Log.d(TAG, "width:" + decodeOptions.outWidth + " height:" + decodeOptions.outHeight  + " outMimeType: "+decodeOptions.outMimeType);
+					if (!decodeOptions.outMimeType.equals("image/jpeg")) {
+						sendImageToServer(BitmapFactory.decodeFile(imageFile, null), Bitmap.CompressFormat.JPEG, 100);
+						return;
+					} else {
+						file = new RandomAccessFile(imageFile, "r");
+						Log.d(TAG, "sentImageFileToServer file size:" + file.length());
 						socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 						socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
+						socketStream.write(createPacketHeaderForSendingImage(decodeOptions.outWidth, decodeOptions.outHeight, (int)file.length()).array());
+						
+						fileInputStream = new BufferedInputStream(new FileInputStream(imageFile));
+						byte[] buffer = new byte[4096];
+						for (int read = fileInputStream.read(buffer); read > 0; read = fileInputStream.read(buffer)) {
+							socketStream.write(buffer, 0, read);
+						}    
+						Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+")");	
 					}
-					
-					socketStream.write(createPacketHeaderForSendingImage(decodeOptions.outWidth, decodeOptions.outHeight, (int)file.length()).array());
-					
-					BufferedInputStream fileInputStream = new BufferedInputStream(new FileInputStream(imageFile));
-					byte[] buffer = new byte[4096];
-					for (int read = fileInputStream.read(buffer); read > 0; read = fileInputStream.read(buffer)) {
-						socketStream.write(buffer, 0, read);
-					}    
-					Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+")");	
-				}
-			} catch (IOException e) {
-				throw e;
-			} finally {
-				if (file != null) {
-					file.close();
+				} catch (IOException e) {
+					throw e;
+				} finally {
+					if (file != null) {
+						file.close();
+					}
+					if (fileInputStream != null) {
+						fileInputStream.close();
+					}
 				}
 			}
 		}
 	}
 	private Socket socketToServer;
-	private Socket createSocketToServer(int timeout) throws IOException, IllegalArgumentException {
-		if (socketToServer == null) {
-			socketToServer = new Socket();
-			try {
-				socketToServer.connect(new InetSocketAddress(serverAddress, portNumber), timeout);
-			} catch (IOException e) {
-				socketToServer = null;
-				throw e;
-			} catch (RuntimeException e) {
-				socketToServer = null;
-				throw e;
+	protected Socket createSocketToServer(int timeout) throws IOException, IllegalArgumentException {
+		synchronized(this) {
+			if (socketToServer == null) {
+				socketToServer = new Socket();
+				try {
+					socketToServer.connect(new InetSocketAddress(serverAddress, portNumber), timeout);
+				} catch (IOException e) {
+					socketToServer = null;
+					throw e;
+				} catch (RuntimeException e) {
+					socketToServer = null;
+					throw e;
+				}
 			}
+			return socketToServer;
 		}
-		return socketToServer;
 	}	
+	private int commandSequenceNumber = 0;
+	protected int getCommandSequenceNumber() {
+		return commandSequenceNumber++;
+	}
 	private ByteBuffer createPacketHeaderForSendingImage(int width, int height, int size) {
-		ByteBuffer header = ByteBuffer.allocate(32);
+		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		header.order(ByteOrder.LITTLE_ENDIAN);	
 		// Sequence
-		header.putInt(0);
+		header.putInt(getCommandSequenceNumber());
 		// TCP packet size = 24 + compressed image size
 		header.putInt(24+size);
 		// send image command
-		header.putInt(2); //tag == 2;
-		header.putInt(0); //
+		header.putInt(PICO_PIC_FORMAT_CMD); //tag == 2;
+		header.put((byte) 0); // flag = 0
+		header.put((byte) 16);
+		header.put((byte) 0); // reserve0
+		header.put((byte) 0); // reserve1
 		header.putInt(1); //jpeg == 1;
 		header.putInt(width);
 		header.putInt(height);
@@ -380,14 +397,14 @@ public class Client {
 		return header;
 	}
 	private ByteBuffer createPacketHeaderForSendingHeartbeat() {
-		ByteBuffer header = ByteBuffer.allocate(32);
+		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		header.order(ByteOrder.LITTLE_ENDIAN);	
 		// Sequence
-		header.putInt(0);
+		header.putInt(getCommandSequenceNumber());
 		// TCP packet size = 24 
 		header.putInt(24);
 		// send heartbeat command
-		header.putInt(4);
+		header.putInt(PICO_HEARTBEAT);
 		header.putInt(0);
 		header.putInt(0); 
 		header.putInt(0);
@@ -428,5 +445,16 @@ public class Client {
 	 */
 	public BitmapManager getBitmapManager() {
 		return bitmapManager;
+	}
+	public OnNotificationListener getOnNotificationListener() {
+		return onNotificationListener;
+	}
+	public void setOnNotificationListener(OnNotificationListener onNotificationListener) {
+		this.onNotificationListener = onNotificationListener;
+	}
+	protected void handleExceptionInThread(Exception e) {
+		if (null != onExceptionListener) {
+			onExceptionListener.onException(Client.this, e);
+		}
 	}
 }
