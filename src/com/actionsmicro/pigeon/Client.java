@@ -81,7 +81,7 @@ public class Client {
 		return serverAddress;
 	}
 	
-	private boolean shouldStop = false;
+	protected boolean shouldStop = false;
 	private static class Job {
 		public Bitmap bitmap;
 		public Bitmap.CompressFormat format; 
@@ -140,7 +140,7 @@ public class Client {
 	 * @param serverAddress The IP address of the server.
 	 * @param portNumber The port number of the server.
 	 */
-	public Client(String serverAddress, int portNumber) {
+	protected Client(String serverAddress, int portNumber) {
 		this.serverAddress = serverAddress;
 		this.portNumber = portNumber;
 		
@@ -213,8 +213,8 @@ public class Client {
 	 * @see <a href="http://developer.android.com/reference/android/graphics/Bitmap.html#compress(android.graphics.Bitmap.CompressFormat,%20int,%20java.io.OutputStream)">Bitmap.compress()</a>
 	 */
 	public void sendImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, IllegalArgumentException {
-		synchronized (this) {
-			if (canSendStream() || requestStreaming()) {
+		if (canSendStream() || requestStreaming()) {
+			synchronized (this) {
 				final int width = bitmap.getWidth();
 				final int height = bitmap.getHeight();
 				Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
@@ -249,8 +249,8 @@ public class Client {
 	 * @see <a href="http://developer.android.com/reference/android/graphics/YuvImage.html#compressToJpeg(android.graphics.Rect,%20int,%20java.io.OutputStream)">compressToJpeg()</a>
 	 */
 	public void sendImageToServer(YuvImage yuvImage, int quailty) throws IOException, IllegalArgumentException {
-		synchronized (this) {
-			if (canSendStream() || requestStreaming()) {
+		if (canSendStream() || requestStreaming()) {
+			synchronized (this) {
 				final int width = yuvImage.getWidth();
 				final int height = yuvImage.getHeight();
 				Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
@@ -314,8 +314,8 @@ public class Client {
 	 * @throws IllegalArgumentException
 	 */
 	public void sendImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
-		synchronized (this) {
-			if (canSendStream() || requestStreaming()) {
+		if (canSendStream() || requestStreaming()) {
+			synchronized (this) {
 				Socket socketToServer = null;
 				BufferedOutputStream socketStream = null;
 				RandomAccessFile file = null;

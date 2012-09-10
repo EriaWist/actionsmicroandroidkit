@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -22,17 +23,18 @@ public class ClientV2 extends Client {
 		@Override
 		public void run() {
 			try {
-				Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+				final Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 				final InputStream socketInputStream = socketToServer.getInputStream();
 				final ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 				header.order(ByteOrder.LITTLE_ENDIAN);
 				while (true) {
 					final int headerSize = socketInputStream.read(header.array());
+					Log.d(TAG, "receivingThread incoming message header size:"+headerSize);
 					if (headerSize == EZ_DISPLAY_HEADER_SIZE) {
 						@SuppressWarnings("unused")
 						final int sequenceNumber = header.getInt();
 						final int totalSize = header.getInt();
-						final int payloadSize = totalSize - EZ_DISPLAY_HEADER_SIZE;
+						final int payloadSize = totalSize - (EZ_DISPLAY_HEADER_SIZE - 8);
 						@SuppressWarnings("unused")
 						ByteBuffer payload = null;
 						if (payloadSize > 0) {
@@ -59,14 +61,20 @@ public class ClientV2 extends Client {
 					}
 					header.rewind();					
 				}
+			} catch (SocketException e) {
+				if (shouldStop == true) {
+					//Do Nothing
+				} else {
+					handleExceptionInThread(e);
+				}
 			} catch (Exception e) {
 				handleExceptionInThread(e);
 			}
 		}
 	});
 	private int request_result = REQUEST_RESULT_STATE_INVALID;
-	private Object requestReceivedNotificaiton;
-	public ClientV2(String serverAddress, int portNumber) {
+	private Object requestReceivedNotificaiton = new Object();
+	protected ClientV2(String serverAddress, int portNumber) {
 		super(serverAddress, portNumber);
 		receivingThread.start();
 	}
@@ -157,6 +165,7 @@ public class ClientV2 extends Client {
 
 	@SuppressWarnings("unused")
 	private void handleRequestResponse(final ByteBuffer header) {
+		Log.d(TAG, "handleRequestResponse");
 		final byte flag = header.get();
 		final byte len = header.get();
 		final byte reserve0 = header.get();
@@ -166,11 +175,14 @@ public class ClientV2 extends Client {
 		final int request_data2 = header.getInt();
 		synchronized (this) {			
 			request_result = header.getInt();
+			Log.d(TAG, "handleRequestResponse:" + request_result);
 			if (request_result == REQUEST_RESULT_ALLOW) {
 				state = State.STREAMING;
 			}
 		}
-		requestReceivedNotificaiton.notifyAll();
+		synchronized (requestReceivedNotificaiton) {			
+			requestReceivedNotificaiton.notifyAll();
+		}
 	}
 	@Override
 	protected boolean requestStreaming() throws IllegalArgumentException, IOException {
@@ -185,12 +197,16 @@ public class ClientV2 extends Client {
 		socketOutputStream.write(createRequestStreamingPacket().array());
 		socketOutputStream.flush();
 		try {
-			requestReceivedNotificaiton.wait(1000);
+			synchronized (requestReceivedNotificaiton) {			
+				requestReceivedNotificaiton.wait(3000);
+				Log.d(TAG, "requestReceivedNotificaiton wait returns");
+			}
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		synchronized (this) {			
+			Log.d(TAG, "requestStreaming check:" + request_result);
 			return request_result == REQUEST_RESULT_ALLOW;
 		}
 	}

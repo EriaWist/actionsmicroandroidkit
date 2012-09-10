@@ -20,6 +20,7 @@ import android.text.TextPaint;
 import android.util.Log;
 
 import com.actionsmicro.pigeon.Client;
+import com.actionsmicro.pigeon.Pigeon;
 import com.actionsmicro.utils.Screen;
 
 public class AMCapDDataConsumer extends DataConsumer {
@@ -62,12 +63,12 @@ public class AMCapDDataConsumer extends DataConsumer {
 			pixels.position(0);
 		}
 	}
-	public AMCapDDataConsumer(Context context, String serverAddress, int portNumber) {
+	public AMCapDDataConsumer(final Context context, final String version, final String serverAddress, int portNumber) {
 		this.context = context;
-		ezDisplayClient = new Client(serverAddress, portNumber);
+		ezDisplayClient = Pigeon.createPigeonClient(version, serverAddress, portNumber);
 	}
-	public AMCapDDataConsumer(Context context, InetAddress ipAddress, int portNumber) {
-		this(context, ipAddress.getHostAddress(), portNumber);
+	public AMCapDDataConsumer(final Context context, final String version, final InetAddress ipAddress, int portNumber) {
+		this(context, version, ipAddress.getHostAddress(), portNumber);
 	}
 	public String getServerAddress() {
 		if (ezDisplayClient != null) {
