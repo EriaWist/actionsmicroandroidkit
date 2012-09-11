@@ -223,8 +223,8 @@ public class ClientV2 extends Client {
 		header.put((byte) 16);
 		header.put((byte) 0); // reserve0
 		header.put((byte) 0); // reserve1
+		header.putInt(1); 
 		header.putInt(0); //畫面分割數(1,2,3,4) 0表示小機指定,在小機 reply時填入小機決定的分割數(1,2,3,4)
-		header.putInt(0);
 		header.putInt(0);
 		header.putInt(0);
 		return header;
