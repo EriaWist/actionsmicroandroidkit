@@ -168,7 +168,10 @@ public class Client {
 	 */
 	public void stop() {
 		shouldStop = true;
-		cleanUp(true);		
+		cleanUp(true);	
+		bitmapManager = null;
+		onExceptionListener = null;
+		onNotificationListener = null;
 	}
 	private void cleanUp(boolean stop) {
 		if (compressionBuffer != null) {
