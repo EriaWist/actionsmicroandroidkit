@@ -4,10 +4,13 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.Iterator;
 
 import android.content.Context;
@@ -84,6 +87,40 @@ public class Falcon {
 		DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
 		return dhcpInfo.serverAddress;
 	}
+	private static ArrayList<InetAddress> getBroadcastAddresses() {
+        ArrayList<InetAddress> listOfBroadcasts = new ArrayList<InetAddress>();
+        Enumeration<NetworkInterface> list;
+        try {
+        	list = NetworkInterface.getNetworkInterfaces();
+
+        	while(list.hasMoreElements()) {
+        		NetworkInterface iface = (NetworkInterface) list.nextElement();
+
+        		if(iface == null) continue;
+
+        		if(!iface.isLoopback() && iface.isUp()) {
+        			Log.i(TAG, "Found non-loopback, up interface:" + iface);
+
+        			Iterator<InterfaceAddress> it = iface.getInterfaceAddresses().iterator();
+        			while (it.hasNext()) {
+        				InterfaceAddress address = it.next();
+
+        				Log.i(TAG, "Found address: " + address);
+
+        				if(address == null) continue;
+        				InetAddress broadcast = address.getBroadcast();
+        				if(broadcast != null) listOfBroadcasts.add(broadcast);
+        			}
+        		}
+        	}
+        } catch (SocketException ex) {
+        	return new ArrayList<InetAddress>();
+        } catch (NullPointerException e) {
+
+        }
+
+        return listOfBroadcasts;
+}
 	static public String convertAddressToString(int address) {
 		return String.valueOf(String.format("%d.%d.%d.%d", (address & 0xff), (address >> 8 & 0xff), (address >> 16 & 0xff), (address >> 24 | 0xff)));
 	}
@@ -210,18 +247,19 @@ public class Falcon {
 			public void run() {
 				if (broadcastSocket != null) {
 					try {
-						final InetAddress broadcastAddress = InetAddress.getByName("255.255.255.255");
-						byte[] command = {0,':',0};
-						// send EZ Remote Lookup
-						broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_REMOTE_CONTROL_PORT_NUMBER));
-						
-						Log.d(TAG, "send entry command");	
-						// copy the logic from CSocketEx for Windows.
-						command = generateNoOperationCommand("android", "android");
-						broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
-						Thread.sleep(1000);
-						command = generateEntryCommand("android", "android");
-						broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+						for (final InetAddress broadcastAddress : Falcon.getBroadcastAddresses()) {
+							byte[] command = {0,':',0};
+							// send EZ Remote Lookup
+							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_REMOTE_CONTROL_PORT_NUMBER));
+
+							Log.d(TAG, "send entry command");	
+							// copy the logic from CSocketEx for Windows.
+							command = generateNoOperationCommand("android", "android");
+							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+							Thread.sleep(1000);
+							command = generateEntryCommand("android", "android");
+							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+						}
 					} catch (SocketTimeoutException e) {
 						Log.d(TAG, "Search timeout");					
 					} catch (SocketException e) {
@@ -253,7 +291,9 @@ public class Falcon {
 					broadcastSocket = new DatagramSocket();
 					broadcastSocket.setBroadcast(true);
 					byte command[] = generateExitCommand("android", "android");
-					broadcastSocket.send(new DatagramPacket(command, command.length, InetAddress.getByName("255.255.255.255"), EZ_WIFI_DISPLAY_PORT_NUMBER));
+					for (final InetAddress broadcastAddress : Falcon.getBroadcastAddresses()) {
+						broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+					}
 				} catch (SocketTimeoutException e) {
 					Log.d(TAG, "Exit timeout");					
 				} catch (SocketException e) {
