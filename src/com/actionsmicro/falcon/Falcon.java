@@ -364,7 +364,10 @@ public class Falcon {
 						projectorInfo.model = parameter.split("=")[1];
 					}
 				}
-				return true;
+				// Add sanity check to filter out other products which use same protocol
+				if (projectorInfo.model != null) {
+					return true;
+				}
 			}
 		}
 		return false;
