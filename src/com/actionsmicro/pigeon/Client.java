@@ -26,6 +26,7 @@ import android.util.Log;
  *
  */
 public class Client {
+	protected static final int STREAM_FORMAT_JEPG = 1;
 	protected static final int EZ_DISPLAY_HEADER_SIZE = 32;
 	private static final int PICO_PIC_FORMAT_CMD = 2;
 	private static final int PICO_HEARTBEAT = 4;
@@ -131,6 +132,7 @@ public class Client {
 					}
 				} catch (Exception e) {
 					handleExceptionInThread(e);
+					shouldStop = true;
 				}
 			}
 		}
@@ -166,7 +168,7 @@ public class Client {
 	/**
 	 * Stop and clean up this Client. You should not call any method of Client after {@link #stop()} is called.
 	 */
-	public void stop() {
+	protected void stop() {
 		shouldStop = true;
 		cleanUp(true);	
 		bitmapManager = null;
@@ -376,8 +378,8 @@ public class Client {
 			return socketToServer;
 		}
 	}	
-	private int commandSequenceNumber = 0;
-	protected int getCommandSequenceNumber() {
+	private static int commandSequenceNumber = 0;
+	protected static int getCommandSequenceNumber() {
 		return commandSequenceNumber++;
 	}
 	private ByteBuffer createPacketHeaderForSendingImage(int width, int height, int size) {
@@ -393,7 +395,7 @@ public class Client {
 		header.put((byte) 16);
 		header.put((byte) 0); // reserve0
 		header.put((byte) 0); // reserve1
-		header.putInt(1); //jpeg == 1;
+		header.putInt(STREAM_FORMAT_JEPG); //jpeg == 1;
 		header.putInt(width);
 		header.putInt(height);
 		header.putInt(size);
@@ -459,5 +461,8 @@ public class Client {
 		if (null != onExceptionListener) {
 			onExceptionListener.onException(Client.this, e);
 		}
+	}
+	public String getVersion() {
+		return "1";
 	}
 }

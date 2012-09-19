@@ -120,9 +120,15 @@ public class ClientV2 extends Client {
 			onNotificationListener.onRemoteRequestToDisconnect(this);
 		}
 	}
+	private int requestedNumberOfWindow = 0;
+	private int requestedPosition = 0;
+	
 	private void changePosition(int numberOfWindows, int position) {
 		synchronized (this) {
+			state = State.CONNECTED;
 			request_result = REQUEST_RESULT_STATE_INVALID;
+			requestedNumberOfWindow = numberOfWindows;
+			requestedPosition = position;
 		}
 		final OnNotificationListener onNotificationListener = getOnNotificationListener();
 		if (onNotificationListener != null) {
@@ -194,7 +200,9 @@ public class ClientV2 extends Client {
 		Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 		OutputStream socketOutputStream = socketToServer.getOutputStream();
 		Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
-		socketOutputStream.write(createRequestStreamingPacket().array());
+		socketOutputStream.write(createRequestStreamingPacket(STREAM_FORMAT_JEPG, requestedNumberOfWindow, requestedPosition).array());
+		requestedNumberOfWindow = 0;
+		requestedPosition = 0;
 		socketOutputStream.flush();
 		try {
 			synchronized (requestReceivedNotificaiton) {			
@@ -210,7 +218,7 @@ public class ClientV2 extends Client {
 			return request_result == REQUEST_RESULT_ALLOW;
 		}
 	}
-	private ByteBuffer createRequestStreamingPacket() {
+	private static ByteBuffer createRequestStreamingPacket(int streamingFormat, int requestedNumberOfWindow, int requestedPosition) {
 		ByteBuffer header = ByteBuffer.allocate(32);
 		header.order(ByteOrder.LITTLE_ENDIAN);	
 		// Sequence
@@ -224,9 +232,14 @@ public class ClientV2 extends Client {
 		header.put((byte) 0); // reserve0
 		header.put((byte) 0); // reserve1
 		header.putInt(1); 
-		header.putInt(0); //畫面分割數(1,2,3,4) 0表示小機指定,在小機 reply時填入小機決定的分割數(1,2,3,4)
-		header.putInt(0);
-		header.putInt(0);
+		header.putInt(requestedNumberOfWindow); //畫面分割數(1,2,3,4) 0表示小機指定,在小機 reply時填入小機決定的分割數(1,2,3,4)
+		header.putInt(requestedPosition);
+		header.putInt(streamingFormat);
 		return header;
 	}
+	@Override
+	public String getVersion() {
+		return "2";
+	}
+
 }
