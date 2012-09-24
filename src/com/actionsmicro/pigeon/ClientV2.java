@@ -130,6 +130,8 @@ public class ClientV2 extends Client {
 			requestedNumberOfWindow = numberOfWindows;
 			requestedPosition = position;
 		}
+		Log.d(TAG, "onRemoteRequestToChangePostion:(" + numberOfWindows +"/"+position+")");
+		
 		final OnNotificationListener onNotificationListener = getOnNotificationListener();
 		if (onNotificationListener != null) {
 			onNotificationListener.onRemoteRequestToChangePostion(this, numberOfWindows, position);
@@ -140,6 +142,7 @@ public class ClientV2 extends Client {
 			state = State.CONNECTED;
 			request_result = REQUEST_RESULT_STATE_INVALID;
 		}
+		Log.d(TAG, "onRemoteRequestToStop");
 		final OnNotificationListener onNotificationListener = getOnNotificationListener();
 		if (onNotificationListener != null) {
 			onNotificationListener.onRemoteRequestToStop(this);
@@ -148,7 +151,10 @@ public class ClientV2 extends Client {
 	private void startStreaming(final int numberOfWindows, final int position) {
 		synchronized (this) {
 			request_result = REQUEST_RESULT_STATE_INVALID;
+			requestedNumberOfWindow = numberOfWindows;
+			requestedPosition = position;
 		}
+		Log.d(TAG, "onRemoteRequestToStart:(" + numberOfWindows +"/"+position+")");
 		final OnNotificationListener onNotificationListener = getOnNotificationListener();
 		if (onNotificationListener != null) {
 			onNotificationListener.onRemoteRequestToStart(this, numberOfWindows, position);
@@ -200,7 +206,8 @@ public class ClientV2 extends Client {
 		Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 		OutputStream socketOutputStream = socketToServer.getOutputStream();
 		Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
-		socketOutputStream.write(createRequestStreamingPacket(STREAM_FORMAT_JEPG, requestedNumberOfWindow, requestedPosition).array());
+		// TODO change first parameter to appropriate value as defined in protocol
+		socketOutputStream.write(createRequestStreamingPacket(0, requestedNumberOfWindow, requestedPosition).array());
 		requestedNumberOfWindow = 0;
 		requestedPosition = 0;
 		socketOutputStream.flush();
@@ -219,7 +226,7 @@ public class ClientV2 extends Client {
 		}
 	}
 	private static ByteBuffer createRequestStreamingPacket(int streamingFormat, int requestedNumberOfWindow, int requestedPosition) {
-		ByteBuffer header = ByteBuffer.allocate(32);
+		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		header.order(ByteOrder.LITTLE_ENDIAN);	
 		// Sequence
 		header.putInt(getCommandSequenceNumber());
