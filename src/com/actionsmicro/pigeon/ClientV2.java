@@ -10,7 +10,7 @@ import java.nio.ByteOrder;
 
 import android.util.Log;
 
-public class ClientV2 extends Client {
+public class ClientV2 extends Client implements MultiRegionsDisplay {
 	private static final String TAG = "ClientV2";
 	private static final int PICO_STATUS_CMD = 1;
 	private static final int PICO_HBSC_CMD = 3;
@@ -174,6 +174,8 @@ public class ClientV2 extends Client {
 	private static final int REQUEST_RESULT_DENY 		  = 2;
 	private static final int REQUEST_RESULT_NOT_SUPPORTED = 3;
 	private static final int REQUEST_RESULT_INVALID_PARAM = 4;
+	private static final int REQUEST_RESULT_FULL		  = 5;
+	private static final int REQUEST_RESULT_NOT_AVAILABLE = 6;
 
 	@SuppressWarnings("unused")
 	private void handleRequestResponse(final ByteBuffer header) {
@@ -183,9 +185,9 @@ public class ClientV2 extends Client {
 		final byte reserve0 = header.get();
 		final byte reserve1 = header.get();
 		final int request = header.getInt();
-		final int request_data1 = header.getInt();
-		final int request_data2 = header.getInt();
 		synchronized (this) {			
+			requestedNumberOfWindow = header.getInt();
+			requestedPosition = header.getInt();
 			request_result = header.getInt();
 			Log.d(TAG, "handleRequestResponse:" + request_result);
 			if (request_result == REQUEST_RESULT_ALLOW) {
@@ -203,27 +205,8 @@ public class ClientV2 extends Client {
 				return true;
 			}
 		}
-		Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
-		OutputStream socketOutputStream = socketToServer.getOutputStream();
-		Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
-		// TODO change first parameter to appropriate value as defined in protocol
-		socketOutputStream.write(createRequestStreamingPacket(0, requestedNumberOfWindow, requestedPosition).array());
-		requestedNumberOfWindow = 0;
-		requestedPosition = 0;
-		socketOutputStream.flush();
-		try {
-			synchronized (requestReceivedNotificaiton) {			
-				requestReceivedNotificaiton.wait(3000);
-				Log.d(TAG, "requestReceivedNotificaiton wait returns");
-			}
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		synchronized (this) {			
-			Log.d(TAG, "requestStreaming check:" + request_result);
-			return request_result == REQUEST_RESULT_ALLOW;
-		}
+		RequestResult result = requestStreaming(requestedNumberOfWindow, requestedPosition);
+		return result == RequestResult.ALLOW;
 	}
 	private static ByteBuffer createRequestStreamingPacket(int streamingFormat, int requestedNumberOfWindow, int requestedPosition) {
 		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
@@ -247,6 +230,46 @@ public class ClientV2 extends Client {
 	@Override
 	public String getVersion() {
 		return "2";
+	}
+	private RequestResult requestResultToEnum(int result) {
+		switch (result) {
+		case REQUEST_RESULT_ALLOW:
+			return RequestResult.ALLOW;
+		case REQUEST_RESULT_DENY:
+			return RequestResult.DENY;
+		case REQUEST_RESULT_NOT_SUPPORTED:
+			return RequestResult.NOT_SUPPORTED;
+		case REQUEST_RESULT_INVALID_PARAM:
+			return RequestResult.INVALID_PARAMETER;
+		case REQUEST_RESULT_FULL:
+			return RequestResult.FULL;
+		case REQUEST_RESULT_NOT_AVAILABLE:
+			return RequestResult.NOT_AVAILABLE;
+		}
+		return RequestResult.UNDIFINED;
+		
+	}
+	@Override
+	public RequestResult requestStreaming(int numberOfRegions, int position) throws IllegalArgumentException, IOException {
+		Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+		OutputStream socketOutputStream = socketToServer.getOutputStream();
+		Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
+		// TODO change first parameter to appropriate value as defined in protocol
+		socketOutputStream.write(createRequestStreamingPacket(0, requestedNumberOfWindow, requestedPosition).array());
+		socketOutputStream.flush();
+		try {
+			synchronized (requestReceivedNotificaiton) {			
+				requestReceivedNotificaiton.wait(3000);
+				Log.d(TAG, "requestReceivedNotificaiton wait returns");
+			}
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		synchronized (this) {			
+			Log.d(TAG, "requestStreaming check:" + request_result);
+			return requestResultToEnum(request_result);
+		}
 	}
 
 }
