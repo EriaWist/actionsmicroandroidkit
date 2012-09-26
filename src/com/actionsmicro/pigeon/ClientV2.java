@@ -8,6 +8,7 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import android.os.Handler;
 import android.util.Log;
 
 public class ClientV2 extends Client implements MultiRegionsDisplay {
@@ -74,8 +75,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 	});
 	private int request_result = REQUEST_RESULT_STATE_INVALID;
 	private Object requestReceivedNotificaiton = new Object();
+	private Handler handler = new Handler();
 	protected ClientV2(String serverAddress, int portNumber) {
 		super(serverAddress, portNumber);
+		
 		receivingThread.start();
 	}
 	private enum State {
@@ -95,20 +98,25 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 		final int notification = header.getInt();
 		final int notification_data1 = header.getInt();
 		final int notification_data2 = header.getInt();
-		switch (notification) {
-		case NOTIFICATION_START_STREAM:
-			startStreaming(notification_data1, notification_data2);
-			break;
-		case NOTIFICATION_STOP_STREAM:
-			stopStreaming();
-			break;
-		case NOTIFICATION_CHANGE_STREAM:
-			changePosition(notification_data1, notification_data2);
-			break;
-		case NOTIFICATION_DISCONNECT:
-			disconnect();
-			break;
-		}
+		handler.post(new Runnable() {
+			@Override
+			public void run() {
+				switch (notification) {
+				case NOTIFICATION_START_STREAM:
+					startStreaming(notification_data1, notification_data2);
+					break;
+				case NOTIFICATION_STOP_STREAM:
+					stopStreaming();
+					break;
+				case NOTIFICATION_CHANGE_STREAM:
+					changePosition(notification_data1, notification_data2);
+					break;
+				case NOTIFICATION_DISCONNECT:
+					disconnect();
+					break;
+				}
+			}									
+		});
 	}
 	private void disconnect() {
 		synchronized (this) {
