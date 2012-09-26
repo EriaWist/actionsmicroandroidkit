@@ -2,6 +2,7 @@ package com.actionsmicro.utils;
 
 import java.lang.reflect.Method;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.view.Display;
@@ -65,4 +66,13 @@ public class Screen {
 			return 0; // bad, I know ;P
 		}
 	}
+	public static void setKeepScreenOn(Activity activity, boolean keepScreenOn) {
+	    if(keepScreenOn) {
+	      activity.getWindow().
+	        addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+	    } else {
+	      activity.getWindow().
+	        clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+	    }
+	  }
 }
