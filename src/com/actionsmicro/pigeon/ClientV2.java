@@ -114,6 +114,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 		synchronized (this) {
 			state = State.DISCONNECTED;
 			request_result = REQUEST_RESULT_STATE_INVALID;
+			requestedNumberOfWindow = 0;
+			requestedPosition = 0;
 		}
 		final OnNotificationListener onNotificationListener = getOnNotificationListener();
 		if (onNotificationListener != null) {
@@ -141,6 +143,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 		synchronized (this) {
 			state = State.CONNECTED;
 			request_result = REQUEST_RESULT_STATE_INVALID;
+			requestedNumberOfWindow = 0;
+			requestedPosition = 0;
 		}
 		Log.d(TAG, "onRemoteRequestToStop");
 		final OnNotificationListener onNotificationListener = getOnNotificationListener();
@@ -189,7 +193,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 			requestedNumberOfWindow = header.getInt();
 			requestedPosition = header.getInt();
 			request_result = header.getInt();
-			Log.d(TAG, "handleRequestResponse:" + request_result);
+			Log.d(TAG, "handleRequestResponse:" + request_result + ", number of window:" + requestedNumberOfWindow + ", position:" + requestedPosition);
 			if (request_result == REQUEST_RESULT_ALLOW) {
 				state = State.STREAMING;
 			}
@@ -255,7 +259,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 		OutputStream socketOutputStream = socketToServer.getOutputStream();
 		Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
 		// TODO change first parameter to appropriate value as defined in protocol
-		socketOutputStream.write(createRequestStreamingPacket(0, requestedNumberOfWindow, requestedPosition).array());
+		socketOutputStream.write(createRequestStreamingPacket(0, numberOfRegions, position).array());
 		socketOutputStream.flush();
 		try {
 			synchronized (requestReceivedNotificaiton) {			
@@ -270,6 +274,14 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 			Log.d(TAG, "requestStreaming check:" + request_result);
 			return requestResultToEnum(request_result);
 		}
+	}
+	@Override
+	public int getNumberOfRegions() {
+		return requestedNumberOfWindow;
+	}
+	@Override
+	public int getPosition() {
+		return requestedPosition;
 	}
 
 }

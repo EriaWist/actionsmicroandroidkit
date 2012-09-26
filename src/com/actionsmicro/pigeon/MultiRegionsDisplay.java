@@ -11,4 +11,6 @@ public interface MultiRegionsDisplay {
 		NOT_AVAILABLE
 	} 
 	public RequestResult requestStreaming(int numberOfRegions, int position) throws Exception;
+	public int getNumberOfRegions();
+	public int getPosition();
 }

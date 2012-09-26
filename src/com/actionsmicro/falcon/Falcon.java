@@ -356,6 +356,9 @@ public class Falcon {
 			final String [] parameters = receiveStrings[0].split(":");
 			if (parameters[4].equals(String.valueOf(IPMSG_ANSENTRY))) {
 				projectorInfo.osVerion = parameters[0];
+				if (!parameters[3].equals("(none)")) {
+					projectorInfo.name = parameters[3];
+				}
 				for (final String parameter : parameters) {
 					if (parameter.startsWith("name=")) {
 						projectorInfo.name = parameter.split("=")[1];
