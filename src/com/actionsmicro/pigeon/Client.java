@@ -183,6 +183,7 @@ public class Client {
 				e.printStackTrace();
 			} finally {
 				compressionBuffer = null;
+				compressedBufferWidth = compressedBufferHeight = 0;
 			}
 		}
 		final ArrayList<Job> expiredJobs = new ArrayList<Job>();
@@ -200,6 +201,8 @@ public class Client {
 		}
 	}
 	private ByteArrayOutputStream compressionBuffer;
+	private int compressedBufferWidth;
+	private int compressedBufferHeight;
 	private ByteArrayOutputStream getCompressionBuffer() {
 		// for performance reason we keep it as member
 		if (compressionBuffer == null) {
@@ -224,6 +227,7 @@ public class Client {
 				final int height = bitmap.getHeight();
 				Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
 				getCompressionBuffer().reset();
+				compressedBufferWidth = compressedBufferHeight = 0;
 				Log.d(TAG, "Start compress");
 				bitmap.compress(format, quailty, getCompressionBuffer());
 				Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
@@ -260,6 +264,7 @@ public class Client {
 				final int height = yuvImage.getHeight();
 				Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
 				getCompressionBuffer().reset();
+				compressedBufferWidth = compressedBufferHeight = 0;
 				Log.d(TAG, "Start compress");
 				android.graphics.Rect rect = new android.graphics.Rect(0, 0, width, height); 
 				yuvImage.compressToJpeg(rect, quailty, getCompressionBuffer());
@@ -281,6 +286,8 @@ public class Client {
 	private void sendCompressedBufferToServer(final int width, final int height)
 			throws IOException, IllegalArgumentException {
 		synchronized (this) {
+			compressedBufferWidth = width;
+			compressedBufferHeight = height;
 			Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
 			Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 			BufferedOutputStream socketStream = null;
@@ -464,5 +471,10 @@ public class Client {
 	}
 	public String getVersion() {
 		return "1";
+	}
+	public void resendLastImage() throws IOException, IllegalArgumentException {
+		if (compressionBuffer != null && compressedBufferWidth != 0 && compressedBufferHeight != 0) {
+			sendCompressedBufferToServer(compressedBufferWidth, compressedBufferHeight);
+		}
 	}
 }
