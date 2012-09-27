@@ -149,8 +149,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 			requestedNumberOfWindow = numberOfWindows;
 			requestedPosition = position;
 		}
+		requestStreaming(numberOfWindows, position);
 		Log.d(TAG, "onRemoteRequestToChangePostion:(" + numberOfWindows +"/"+position+")");
-		
 		final OnNotificationListener onNotificationListener = getOnNotificationListener();
 		if (onNotificationListener != null) {
 			onNotificationListener.onRemoteRequestToChangePostion(this, numberOfWindows, position);
