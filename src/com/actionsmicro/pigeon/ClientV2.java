@@ -3,6 +3,7 @@ package com.actionsmicro.pigeon;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
@@ -18,7 +19,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 	private static final int PICO_QUERY_INFO = 5;
 	private static final int PICO_REQUEST = 6;
 	private static final int PICO_NOTIFICATION = 7;
-	private static final int PICO_VENDOR_CMD = 8;
+	private static final int PICO_AV_STREAM_CMD = 8;
+	private static final int PICO_SET_DATA = 9;
+	private static final int PICO_CONTROL = 10;
+	private static final int PICO_VENDOR_CMD = 0x40;
 
 	private final Thread receivingThread = new Thread(new Runnable() {
 		@Override
@@ -31,6 +35,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 				while (true) {
 					final int headerSize = socketInputStream.read(header.array());
 					Log.d(TAG, "receivingThread incoming message header size:"+headerSize);
+					if (headerSize == -1) {
+						// TODO throw exception;
+						break;
+					}
 					if (headerSize == EZ_DISPLAY_HEADER_SIZE) {
 						@SuppressWarnings("unused")
 						final int sequenceNumber = header.getInt();
@@ -76,9 +84,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 	private int request_result = REQUEST_RESULT_STATE_INVALID;
 	private Object requestReceivedNotificaiton = new Object();
 	private Handler handler = new Handler();
-	protected ClientV2(String serverAddress, int portNumber) {
+	private String hostname;
+	protected ClientV2(String serverAddress, int portNumber, String hostname) {
 		super(serverAddress, portNumber);
-		
+		this.hostname = hostname;
 		receivingThread.start();
 	}
 	private enum State {
@@ -166,6 +175,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 			requestedNumberOfWindow = numberOfWindows;
 			requestedPosition = position;
 		}
+		requestStreaming(numberOfWindows, position);
 		Log.d(TAG, "onRemoteRequestToStart:(" + numberOfWindows +"/"+position+")");
 		final OnNotificationListener onNotificationListener = getOnNotificationListener();
 		if (onNotificationListener != null) {
@@ -221,14 +231,14 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 		return result == RequestResult.ALLOW;
 	}
 	private static ByteBuffer createRequestStreamingPacket(int streamingFormat, int requestedNumberOfWindow, int requestedPosition) {
-		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		final ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		header.order(ByteOrder.LITTLE_ENDIAN);	
 		// Sequence
 		header.putInt(getCommandSequenceNumber());
 		// TCP packet size = 24
 		header.putInt(24);
 		// send request streaming command
-		header.putInt(6); //tag == 6;
+		header.putInt(PICO_REQUEST); //tag == 6;
 		header.put((byte) 0); // flag = 0
 		header.put((byte) 16);
 		header.put((byte) 0); // reserve0
@@ -238,6 +248,33 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 		header.putInt(requestedPosition);
 		header.putInt(streamingFormat);
 		return header;
+	}
+	private static ByteBuffer createSetDataHostnamePacket(String hostname) {
+		try {
+			final byte[] hostnameInBytes = hostname.getBytes("UTF-8");
+			final ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE+hostnameInBytes.length);
+			header.order(ByteOrder.LITTLE_ENDIAN);	
+			// Sequence
+			header.putInt(getCommandSequenceNumber());
+			// TCP packet size = 24
+			header.putInt(24+hostnameInBytes.length);
+			// send request streaming command
+			header.putInt(PICO_SET_DATA);
+			header.put((byte) 0); // flag = 0
+			header.put((byte) 16);
+			header.put((byte) 0); // reserve0
+			header.put((byte) 0); // reserve1
+			header.putInt(1); //SET_DATA_HOSTNAME	
+			header.putInt(0); 
+			header.putInt(0);
+			header.putInt(hostnameInBytes.length);
+			header.put(hostnameInBytes);
+			return header;
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
 	}
 	@Override
 	public String getVersion() {
@@ -262,13 +299,25 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 		
 	}
 	@Override
-	public RequestResult requestStreaming(int numberOfRegions, int position) throws IllegalArgumentException, IOException {
-		Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
-		OutputStream socketOutputStream = socketToServer.getOutputStream();
-		Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
-		// TODO change first parameter to appropriate value as defined in protocol
-		socketOutputStream.write(createRequestStreamingPacket(0, numberOfRegions, position).array());
-		socketOutputStream.flush();
+	public RequestResult requestStreaming(final int numberOfRegions, final int position) {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					final Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+					final OutputStream socketOutputStream = socketToServer.getOutputStream();
+					Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
+					// TODO change first parameter to appropriate value as defined in protocol
+					socketOutputStream.write(createRequestStreamingPacket(0, numberOfRegions, position).array());
+					socketOutputStream.flush();
+				} catch (Exception e) {
+					if (onExceptionListener != null) {
+						onExceptionListener.onException(ClientV2.this, e);
+					}
+				}
+			}			
+		}).start();
+		
 		try {
 			synchronized (requestReceivedNotificaiton) {			
 				requestReceivedNotificaiton.wait(3000);
@@ -291,5 +340,22 @@ public class ClientV2 extends Client implements MultiRegionsDisplay {
 	public int getPosition() {
 		return requestedPosition;
 	}
-
+	@Override
+	protected void onConnectToServer(Socket socketToServer) {
+		if (hostname != null) {
+			try {
+				OutputStream socketOutputStream = socketToServer.getOutputStream();
+				Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
+				// TODO get the name from other mean
+				ByteBuffer hostnamePacket = createSetDataHostnamePacket(hostname);
+				if (hostnamePacket != null) {
+					socketOutputStream.write(hostnamePacket.array());
+					socketOutputStream.flush();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
 }

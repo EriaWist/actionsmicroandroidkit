@@ -41,7 +41,7 @@ public class Client {
 	public interface OnExceptionListener {
 		public void onException(Client client, Exception e);
 	}
-	private OnExceptionListener onExceptionListener;
+	protected OnExceptionListener onExceptionListener;
 	/**
 	 * BitmapManager defines interface for asynchronous mode clients to manage buffer life-cycle.
 	 *
@@ -221,7 +221,7 @@ public class Client {
 	 * @see <a href="http://developer.android.com/reference/android/graphics/Bitmap.html#compress(android.graphics.Bitmap.CompressFormat,%20int,%20java.io.OutputStream)">Bitmap.compress()</a>
 	 */
 	public void sendImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, IllegalArgumentException {
-		if (canSendStream() || requestStreaming()) {
+		if (canSendStream()) {
 			synchronized (this) {
 				final int width = bitmap.getWidth();
 				final int height = bitmap.getHeight();
@@ -258,7 +258,7 @@ public class Client {
 	 * @see <a href="http://developer.android.com/reference/android/graphics/YuvImage.html#compressToJpeg(android.graphics.Rect,%20int,%20java.io.OutputStream)">compressToJpeg()</a>
 	 */
 	public void sendImageToServer(YuvImage yuvImage, int quailty) throws IOException, IllegalArgumentException {
-		if (canSendStream() || requestStreaming()) {
+		if (canSendStream()) {
 			synchronized (this) {
 				final int width = yuvImage.getWidth();
 				final int height = yuvImage.getHeight();
@@ -326,7 +326,7 @@ public class Client {
 	 * @throws IllegalArgumentException
 	 */
 	public void sendImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
-		if (canSendStream() || requestStreaming()) {
+		if (canSendStream()) {
 			synchronized (this) {
 				Socket socketToServer = null;
 				BufferedOutputStream socketStream = null;
@@ -374,6 +374,7 @@ public class Client {
 				socketToServer = new Socket();
 				try {
 					socketToServer.connect(new InetSocketAddress(serverAddress, portNumber), timeout);
+					onConnectToServer(socketToServer);
 				} catch (IOException e) {
 					socketToServer = null;
 					throw e;
@@ -385,6 +386,10 @@ public class Client {
 			return socketToServer;
 		}
 	}	
+	protected void onConnectToServer(Socket socketToServer) {
+		
+	}
+
 	private static int commandSequenceNumber = 0;
 	protected static int getCommandSequenceNumber() {
 		return commandSequenceNumber++;
@@ -476,5 +481,17 @@ public class Client {
 		if (compressionBuffer != null && compressedBufferWidth != 0 && compressedBufferHeight != 0) {
 			sendCompressedBufferToServer(compressedBufferWidth, compressedBufferHeight);
 		}
+	}
+	public enum RequestResult {
+		UNDIFINED,
+		ALLOW,
+		DENY,
+		NOT_SUPPORTED,
+		INVALID_PARAMETER,
+		FULL,
+		NOT_AVAILABLE
+	} 
+	public RequestResult requestStreaming(int numberOfRegions, int position) {
+		return RequestResult.ALLOW;
 	}
 }

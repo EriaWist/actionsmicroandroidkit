@@ -1,6 +1,9 @@
 package com.actionsmicro.pigeon;
 
+import java.io.IOException;
 import java.util.HashMap;
+
+import android.os.Build;
 
 public class Pigeon {
 	private static class Triode {
@@ -57,7 +60,7 @@ public class Pigeon {
 		if (pigeon == null) {
 			if (version != null) {
 				if (version.equals("2")) {
-					pigeon = new ClientV2(serverAddress, portNumber);
+					pigeon = new ClientV2(serverAddress, portNumber, Build.MODEL);
 				} else {
 					pigeon = new Client(serverAddress, portNumber);				
 				}
