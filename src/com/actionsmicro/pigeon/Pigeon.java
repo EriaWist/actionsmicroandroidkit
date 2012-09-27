@@ -1,6 +1,5 @@
 package com.actionsmicro.pigeon;
 
-import java.io.IOException;
 import java.util.HashMap;
 
 import android.os.Build;
