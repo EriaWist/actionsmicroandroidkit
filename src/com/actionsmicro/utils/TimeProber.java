@@ -11,10 +11,13 @@ public class TimeProber {
 		if (avgInterval == 0) {
 			avgInterval = System.currentTimeMillis() - startTime;
 		} else {
-			avgInterval = (avgInterval * 7 + (System.currentTimeMillis() - startTime) * 3)/10;
+			avgInterval = (avgInterval * 8 + (System.currentTimeMillis() - startTime) * 2)/10;
 		}
 	}
 	public long getAverageInterval() {
 		return avgInterval;
+	}
+	public void reset() {
+		avgInterval = 0;		
 	}
 }
