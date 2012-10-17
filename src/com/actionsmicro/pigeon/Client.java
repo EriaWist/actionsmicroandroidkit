@@ -28,7 +28,7 @@ import android.util.Log;
 public class Client {
 	protected static final int STREAM_FORMAT_JEPG = 1;
 	protected static final int EZ_DISPLAY_HEADER_SIZE = 32;
-	private static final int PICO_PIC_FORMAT_CMD = 2;
+	protected static final int PICO_PIC_FORMAT_CMD = 2;
 	private static final int PICO_HEARTBEAT = 4;
 	
 	/**
@@ -156,14 +156,8 @@ public class Client {
 		return true;
 	}
 	private void sendHeartbeat() throws IllegalArgumentException, IOException {
-		synchronized (this) {
-			Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
-			final OutputStream socketStream = socketToServer.getOutputStream();
-			Log.d(TAG, "try to sendHeartbeat("+serverAddress+":"+portNumber+")");	
-			socketStream.write(createPacketHeaderForSendingHeartbeat().array());
-			socketStream.flush();
-			Log.d(TAG, "sendHeartbeat("+serverAddress+":"+portNumber+") done.");
-		}
+		Log.d(TAG, "try to sendHeartbeat("+serverAddress+":"+portNumber+")");	
+		sendDataToRemote(createPacketHeaderForSendingHeartbeat().array());	
 	}
 	/**
 	 * Stop and clean up this Client. You should not call any method of Client after {@link #stop()} is called.
@@ -471,7 +465,7 @@ public class Client {
 	}
 	protected void handleExceptionInThread(Exception e) {
 		if (null != onExceptionListener) {
-			onExceptionListener.onException(Client.this, e);
+			onExceptionListener.onException(this, e);
 		}
 	}
 	public String getVersion() {
@@ -493,5 +487,22 @@ public class Client {
 	} 
 	public RequestResult requestStreaming(int numberOfRegions, int position) {
 		return RequestResult.ALLOW;
+	}
+	protected void sendDataToRemote(byte[] data) {
+		sendDataToRemote(data, data.length);
+	}
+	protected void sendDataToRemote(byte[] data, int length) {
+		synchronized (this) {
+			try {
+				final Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+				final OutputStream socketOutputStream = socketToServer.getOutputStream();
+				socketOutputStream.write(data, 0, length);
+				socketOutputStream.flush();
+			} catch (Exception e) {
+				if (onExceptionListener != null) {
+					onExceptionListener.onException(this, e);
+				}
+			}
+		}
 	}
 }
