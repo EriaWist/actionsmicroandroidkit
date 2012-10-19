@@ -11,6 +11,7 @@ public interface MediaStreaming {
 	}
 	public void startMediaStreaming(DataSource dataSource);
 	public void sendStreamingContents(final byte[] contents, int length);
+	public void sendStreamingContentsUdp(final byte[] contents, int length);
 	public void sendEofPacket();
 	public void stopMediaStreaming();
 }

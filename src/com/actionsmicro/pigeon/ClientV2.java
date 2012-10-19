@@ -3,8 +3,12 @@ package com.actionsmicro.pigeon;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -578,5 +582,37 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	public void stopMediaStreaming() {
 		sendDataToRemote(createFileStopPacket().array());
 		isStreamingMedia = false;
+	}
+
+	private DatagramSocket udpSocket;
+	private DatagramSocket getUdpSocket() throws SocketException {
+		if (udpSocket == null) {
+			udpSocket = new DatagramSocket();
+		}
+		return udpSocket;
+	}
+	static public final int EZ_WIFI_DISPLAY_PORT_NUMBER = 2425;
+	
+	@Override
+	public void sendStreamingContentsUdp(byte[] contents, int length) {
+		try {
+			final DatagramSocket udpSocket = getUdpSocket();
+			final ByteBuffer header = createPacketHeaderForSendingEzStream(length);
+			final ByteBuffer udpPacket = ByteBuffer.allocate(header.position() + length);
+			udpPacket.put(header);
+			udpPacket.put(contents, 0, length);
+			udpSocket.send(new DatagramPacket(udpPacket.array(), 0, udpPacket.position(), InetAddress.getByName(getServerAddress()), EZ_WIFI_DISPLAY_PORT_NUMBER));
+		} catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
 	}
 }
