@@ -591,17 +591,35 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		}
 		return udpSocket;
 	}
-	static public final int EZ_WIFI_DISPLAY_PORT_NUMBER = 2425;
-	
+	static private final int EZ_WIFI_DISPLAY_PORT_NUMBER = 2425;
+	static private void logBytes(final byte[] data, int length) {
+		Log.d(TAG, "" + data.toString());
+		StringBuilder stringBuilder = new StringBuilder();
+		int counter = 0;
+		for (byte theByte : data) {
+			stringBuilder.append(String.format("%02x ", theByte));
+			counter ++;
+			if (counter >= length) {
+				break;
+			}
+			if (counter%4 == 0) {
+				stringBuilder.append("\n");
+			}
+			
+		}
+		Log.d(TAG, stringBuilder.toString());
+	}
 	@Override
 	public void sendStreamingContentsUdp(byte[] contents, int length) {
 		try {
 			final DatagramSocket udpSocket = getUdpSocket();
 			final ByteBuffer header = createPacketHeaderForSendingEzStream(length);
 			final ByteBuffer udpPacket = ByteBuffer.allocate(header.position() + length);
-			udpPacket.put(header);
+			udpPacket.put(header.array(), 0, header.position());
 			udpPacket.put(contents, 0, length);
+//			logBytes(ByteBuffer.wrap(udpPacket.array(), 0, header.position()).array(), header.position());
 			udpSocket.send(new DatagramPacket(udpPacket.array(), 0, udpPacket.position(), InetAddress.getByName(getServerAddress()), EZ_WIFI_DISPLAY_PORT_NUMBER));
+//			udpSocket.send(new DatagramPacket(contents, 0, length, InetAddress.getByName("192.168.66.100"), EZ_WIFI_DISPLAY_PORT_NUMBER));
 		} catch (SocketException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -612,7 +630,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		
+	}
+	@Override
+	protected boolean shouldSendHeartbeat() {
+		return !isStreamingMedia;
 	}
 }
