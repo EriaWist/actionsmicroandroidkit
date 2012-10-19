@@ -19,11 +19,13 @@ import android.net.DhcpInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 
 public class Falcon {
 	static private final String TAG = "Falcon";
-	public class ProjectorInfo
+	public static class ProjectorInfo implements Parcelable
 	{
 		public String osVerion;
 		public String name;
@@ -35,7 +37,42 @@ public class Falcon {
 		public final boolean hasNoPasscode() {
 			return passcode == null || passcode.length() == 0;
 		}
-		
+		public static final Parcelable.Creator<ProjectorInfo> CREATOR
+		= new Parcelable.Creator<ProjectorInfo>() {
+			public ProjectorInfo createFromParcel(Parcel in) {
+				return new ProjectorInfo(in);
+			}
+
+			public ProjectorInfo[] newArray(int size) {
+				return new ProjectorInfo[size];
+			}
+		};
+		@Override
+		public int describeContents() {
+			return 0;
+		}
+		@Override
+		public void writeToParcel(Parcel dest, int flags) {
+			dest.writeString(osVerion);
+			dest.writeString(name);
+			dest.writeSerializable(ipAddress);
+			dest.writeInt(wifiDisplayPortNumber);
+			dest.writeInt(remoteControlPortNumber);
+			dest.writeString(passcode);
+			dest.writeString(model);
+		}
+		public ProjectorInfo() {
+			
+		}
+		private ProjectorInfo(Parcel in) {
+			osVerion = in.readString();
+			name = in.readString();
+			ipAddress = (InetAddress) in.readSerializable();
+			wifiDisplayPortNumber = in.readInt();
+			remoteControlPortNumber = in.readInt();
+			passcode = in.readString();
+			model = in.readString();
+	    }
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
 	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
