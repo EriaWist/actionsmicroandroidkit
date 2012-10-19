@@ -101,7 +101,7 @@ public class Client {
 		public void run() {
 			Job job = null;
 			while (!shouldStop) {
-				Log.d(TAG, "waiting for job");
+//				Log.d(TAG, "waiting for job");
 				try {
 					job = pendingJobs.poll(1, TimeUnit.SECONDS);
 				} catch (InterruptedException e1) {

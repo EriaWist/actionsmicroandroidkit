@@ -369,6 +369,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private static final int STREAM_FORMAT_EZSTREAM = 6;
 	
 	private DataSource currentDataSource;
+	private boolean isStreamingMedia;
 	private static void prepareHeaderForAvStreamCmd(ByteBuffer header, int payloadSize, int cmd, int type, int size) {
 		// Sequence
 		header.putInt(getCommandSequenceNumber());
@@ -451,14 +452,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 					break;
 				case AV_FILE_START:
 					Log.d(TAG, "AV_FILE_START");
-					if (request_result == AV_RESULT_ERROR) {
-						assert currentDataSource != null:"currentDataSource should not be null";
-						if (currentDataSource != null) {
-							currentDataSource.mediaStreamingDidFail(request_result);
-						} else {
-							Log.e(TAG, "AV_FILE_START failed");
-						}						
-					}
+					handleFileStart(request_result);
 					break;
 				case AV_FILE_STOP:
 					Log.d(TAG, "AV_FILE_STOP");
@@ -480,25 +474,43 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 //			}									
 //		});
 	}
+
+
+	private void handleFileStart(final int request_result) {
+		if (request_result == AV_RESULT_ERROR) {
+			assert currentDataSource != null:"currentDataSource should not be null";
+			if (currentDataSource != null) {
+				currentDataSource.mediaStreamingDidFail(request_result);
+			} else {
+				Log.e(TAG, "AV_FILE_START failed");
+			}						
+		} else {
+			isStreamingMedia = true;
+		}
+	}
 	protected void handleFileStop() {
 		assert currentDataSource != null:"currentDataSource should not be null";
+		isStreamingMedia = false;
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
 		}
 	}
 	private void handleFilePause() {
 		assert currentDataSource != null:"currentDataSource should not be null";
+		isStreamingMedia = false;
 		if (currentDataSource != null) {
 			currentDataSource.pauseStreamingContents();
 		}
 	}
 	private void responseFileRead(long offset) {
+		Log.d(TAG, "responseFileRead(offset:" + offset +")");		
 		assert currentDataSource != null:"currentDataSource should not be null";
 		if (currentDataSource != null) {
 			long contentLength = currentDataSource.getContentLength();
 			assert contentLength >= 0:"contentLength should be equal to or larger than zero";
 			assert offset <= contentLength;
 			if (contentLength >= 0 && offset <= contentLength) {
+				isStreamingMedia = true;
 				currentDataSource.pauseStreamingContents();
 				sendDataToRemote(createFileReadResponsePacket(offset).array());
 				currentDataSource.startStreamingContents(this, offset);
@@ -553,8 +565,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public void sendStreamingContents(byte[] contents, int length) {
-		sendDataToRemote(createPacketHeaderForSendingEzStream(length).array());
-		sendDataToRemote(contents, length);
+		synchronized (this) {
+			sendDataToRemote(createPacketHeaderForSendingEzStream(length).array());
+			sendDataToRemote(contents, length);
+		}
 	}
 	@Override
 	public void sendEofPacket() {
@@ -562,6 +576,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public void stopMediaStreaming() {
-		sendDataToRemote(createFileStopPacket().array());				
+		sendDataToRemote(createFileStopPacket().array());
+		isStreamingMedia = false;
 	}
 }
