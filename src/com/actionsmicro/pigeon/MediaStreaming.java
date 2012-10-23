@@ -14,4 +14,5 @@ public interface MediaStreaming {
 	public void sendStreamingContentsUdp(final byte[] contents, int length);
 	public void sendEofPacket();
 	public void stopMediaStreaming();
+	public void resetPlayer();
 }

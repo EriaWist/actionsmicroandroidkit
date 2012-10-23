@@ -359,6 +359,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private static final int AV_FILE_PAUSE = 6;
 	private static final int AV_FILE_EOF = 7;
 	
+	private static final int AV_PLAYER_RESET = 15;
+	
 	private static final int AV_TYPE_VOID = 0;
 	private static final int AV_TYPE_INT32 = 1;
 	private static final int AV_TYPE_INT64 = 2;
@@ -389,6 +391,12 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		header.putInt(type); 
 		header.putInt(size);
 		header.putInt(AV_RESULT_OK);
+	}
+	private static ByteBuffer createPlayerResetPacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 0, AV_PLAYER_RESET, AV_TYPE_VOID, AV_SIZE_VOID);
+		return packet;
 	}
 	private static ByteBuffer createStartFileStreamingPacket() {
 		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
@@ -634,5 +642,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	@Override
 	protected boolean shouldSendHeartbeat() {
 		return !isStreamingMedia;
+	}
+	@Override
+	public void resetPlayer() {
+		sendDataToRemote(createPlayerResetPacket().array());
 	}
 }
