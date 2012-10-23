@@ -141,12 +141,16 @@ public class Falcon {
 	private static final int MSG_SearchDidEnd	= 2;
 	private DatagramSocket broadcastSocket;
 	private boolean searching;
+	private static final int INITIAL_LOOKUP_INTERVAL = 2; // in seconds
+	private int lookupInterval = INITIAL_LOOKUP_INTERVAL;
+	protected Runnable pendingLookup;
 	public void search() {
 		if (broadcastSocket != null && 
 			!isSearching()) {
 			projectors.clear();
 			mainThreadHandler.obtainMessage(MSG_SearchDidStart).sendToTarget();
 			searching = true;
+			lookupInterval = INITIAL_LOOKUP_INTERVAL;
 			sendLookupCommand();	
 			mainThreadHandler.postDelayed(new Runnable() {
 				@Override
@@ -226,6 +230,7 @@ public class Falcon {
 	private static final int IPMSG_BR_ENTRY		= 0x0001;
 	private static final int IPMSG_BR_EXIT 		= 0x0002;
 	private static final int IPMSG_ANSENTRY 	= 0x0003;
+	private static final int MAX_LOOKUP_INTERVAL = 60;
 	
 	private static long s_commandSequenceNumber = 0;
 	private static final byte[] generateCommand(String username, String hostname, int command) {
@@ -255,9 +260,9 @@ public class Falcon {
 
 							Log.d(TAG, "send entry command");	
 							// copy the logic from CSocketEx for Windows.
-							command = generateNoOperationCommand("android", "android");
-							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
-							Thread.sleep(1000);
+//							command = generateNoOperationCommand("android", "android");
+//							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+//							Thread.sleep(1000);
 							command = generateEntryCommand("android", "android");
 							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
 						}
@@ -272,9 +277,28 @@ public class Falcon {
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+					} finally {
+						synchronized(Falcon.this) {
+							if (pendingLookup != null) {
+								mainThreadHandler.removeCallbacks(pendingLookup);
+								pendingLookup = null;
+							}
+						
+							pendingLookup = new Runnable() {
+								@Override
+								public void run() {
+									synchronized(Falcon.this) {
+										pendingLookup = null;
+									}
+									sendLookupCommand();
+								}
+							};
+						}
+						mainThreadHandler.postDelayed(pendingLookup, lookupInterval * 1000);
+						lookupInterval = lookupInterval + 1;
+						if (lookupInterval > MAX_LOOKUP_INTERVAL) {
+							lookupInterval = MAX_LOOKUP_INTERVAL;
+						}
 					}
 				}
 			}
