@@ -65,7 +65,7 @@ public class Falcon {
 			}
 		};
 		try {
-			broadcastSocket = new DatagramSocket();
+			broadcastSocket = new DatagramSocket(EZ_WIFI_DISPLAY_PORT_NUMBER);
 			broadcastSocket.setBroadcast(true);
 			waitFeedbackInBackground();
 		} catch (SocketException e) {
