@@ -92,6 +92,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	});
 	private int request_result = REQUEST_RESULT_STATE_INVALID;
 	private Object requestReceivedNotificaiton = new Object();
+	private Object avCommandResponseReceivedNotificaiton = new Object();
 	// TODO remove handler, let client decide when to use handler or not
 	private Handler handler = new Handler();
 	private String hostname;
@@ -316,8 +317,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			@Override
 			public void run() {
 				Log.d(TAG, "try to requestStreaming("+getServerAddress()+":"+getPortNumber()+")");	
-				// TODO change first parameter to appropriate value as defined in protocol
-				sendDataToRemote(createRequestStreamingPacket(0, numberOfRegions, position).array());
+				// TODO add parameter to let client assign the stream format
+				sendDataToRemote(createRequestStreamingPacket(STREAM_FORMAT_JEPG, numberOfRegions, position).array());
 			}			
 		}).start();
 		
@@ -358,8 +359,16 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private static final int AV_FILE_READ = 5;
 	private static final int AV_FILE_PAUSE = 6;
 	private static final int AV_FILE_EOF = 7;
-	
+	private static final int AV_PLAYER_GET_LENGTH = 8;
+	private static final int AV_PLAYER_GET_TIME = 9;
+	private static final int AV_PLAYER_SEEKPLAY = 10;
+	private static final int AV_PLAYER_PAUSE = 11;
+	private static final int AV_PLAYER_RESUME = 12;
+	private static final int AV_PLAYER_FFPLAY = 13;
+	private static final int AV_PLAYER_FBPLAY = 14;
 	private static final int AV_PLAYER_RESET = 15;
+	private static final int AV_PLAYER_VOLUME_UP = 16;
+	private static final int AV_PLAYER_VOLUME_DOWN = 17;
 	
 	private static final int AV_TYPE_VOID = 0;
 	private static final int AV_TYPE_INT32 = 1;
@@ -376,6 +385,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	
 	private DataSource currentDataSource;
 	private boolean isStreamingMedia;
+	private int intResponse;
+	private int avRequestResult;
+	private boolean isPlaying;
 	private static void prepareHeaderForAvStreamCmd(ByteBuffer header, int payloadSize, int cmd, int type, int size) {
 		// Sequence
 		header.putInt(getCommandSequenceNumber());
@@ -447,47 +459,91 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		final int request_cmd = header.getInt();
 		final int request_data_type = header.getInt();
 		final int request_data_size = header.getInt();
-		final int request_result = header.getInt();
+		avRequestResult = header.getInt();
 //		handler.post(new Runnable() {
 //			@Override
 //			public void run() {
 				switch (request_cmd) {
 				case AV_FILE_GET_LENGTH:
-					Log.d(TAG, "AV_FILE_GET_LENGTH");
+					Log.d(TAG, "AV_FILE_GET_LENGTH:" + avRequestResult);
 					assert (request_data_type == AV_TYPE_INT64 && request_data_size == AV_SIZE_INT64);
 					responseFileGetLength();
 					break;
 				case AV_FILE_GET_SEEKABLE:
-					Log.d(TAG, "AV_FILE_GET_SEEKABLE");
+					Log.d(TAG, "AV_FILE_GET_SEEKABLE:" + avRequestResult);
 					assert (request_data_type == AV_TYPE_INT32 && request_data_size == AV_SIZE_INT32);
 					responseFileGetSeekable();
 					break;
 				case AV_FILE_START:
-					Log.d(TAG, "AV_FILE_START");
-					handleFileStart(request_result);
+					Log.d(TAG, "AV_FILE_START:" + avRequestResult);
+					handleFileStart(avRequestResult);
 					break;
 				case AV_FILE_STOP:
-					Log.d(TAG, "AV_FILE_STOP");
+					Log.d(TAG, "AV_FILE_STOP:" + avRequestResult);
 					handleFileStop();
 					break;
 				case AV_FILE_READ:
-					Log.d(TAG, "AV_FILE_READ");
+					Log.d(TAG, "AV_FILE_READ:" + avRequestResult);
 					assert (request_data_type == AV_TYPE_INT64 && request_data_size == AV_SIZE_INT64);
 					responseFileRead(payload.getLong());
 					break;
 				case AV_FILE_PAUSE:
-					Log.d(TAG, "AV_FILE_PAUSE");
+					Log.d(TAG, "AV_FILE_PAUSE:" + avRequestResult);
 					handleFilePause();
+					break;
+				case AV_PLAYER_GET_LENGTH:
+					Log.d(TAG, "AV_PLAYER_GET_LENGTH:" + avRequestResult);
+					handlePlayerGetLength(payload.getInt());
+					break;
+				case AV_PLAYER_GET_TIME:
+					Log.d(TAG, "AV_PLAYER_GET_TIME:" + avRequestResult);
+					handlePlayerGetTime(payload.getInt());
+					break;
+				case AV_PLAYER_SEEKPLAY:
+					Log.d(TAG, "AV_PLAYER_SEEKPLAY:" + avRequestResult);
+					break;
+				case AV_PLAYER_PAUSE:
+					Log.d(TAG, "AV_PLAYER_PAUSE:" + avRequestResult);
+					if (avRequestResult == AV_RESULT_OK) {
+						isPlaying = false;
+					}
+					break;
+				case AV_PLAYER_RESUME:
+					Log.d(TAG, "AV_PLAYER_RESUME:" + avRequestResult);
+					if (avRequestResult == AV_RESULT_OK) {
+						isPlaying = true;
+					}
+					break;
+				case AV_PLAYER_FFPLAY:
+					Log.d(TAG, "AV_PLAYER_FFPLAY:" + avRequestResult);
+					break;
+				case AV_PLAYER_FBPLAY:
+					Log.d(TAG, "AV_PLAYER_FBPLAY:" + avRequestResult);
+					break;
+				case AV_PLAYER_VOLUME_UP:
+					Log.d(TAG, "AV_PLAYER_VOLUME_UP:" + avRequestResult);
+					break;
+				case AV_PLAYER_VOLUME_DOWN:
+					Log.d(TAG, "AV_PLAYER_VOLUME_DOWN:" + avRequestResult);
 					break;
 				default:
 					assert false : request_cmd;
 					break;
 				}
+				synchronized(avCommandResponseReceivedNotificaiton) {
+					avCommandResponseReceivedNotificaiton.notifyAll();
+				}
 //			}									
 //		});
 	}
-
-
+	private void handlePlayerGetTime(int time) {
+		Log.d(TAG, "handlePlayerGetTime:"+time);
+		intResponse = time;
+	}
+	private void handlePlayerGetLength(int length) {
+		Log.d(TAG, "handlePlayerGetLength:"+length);
+		intResponse = length;
+	}
 	private void handleFileStart(final int request_result) {
 		if (request_result == AV_RESULT_ERROR) {
 			assert currentDataSource != null:"currentDataSource should not be null";
@@ -498,11 +554,14 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			}						
 		} else {
 			isStreamingMedia = true;
+			isPlaying = true;
 		}
 	}
 	protected void handleFileStop() {
 		assert currentDataSource != null:"currentDataSource should not be null";
 		isStreamingMedia = false;
+		isPlaying = false;
+		sendDataToRemote(createFileStopPacket().array());
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
 		}
@@ -646,5 +705,127 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	@Override
 	public void resetPlayer() {
 		sendDataToRemote(createPlayerResetPacket().array());
+	}
+
+	private boolean sendAVCommandAndWaitForResponse(final byte commandPacket[]) {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				sendDataToRemote(commandPacket);
+			}			
+		}).start();
+		try {
+			synchronized (avCommandResponseReceivedNotificaiton) {			
+				avCommandResponseReceivedNotificaiton.wait(3000);
+				Log.d(TAG, "avCommandResponseReceivedNotificaiton wait returns");
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+	private static ByteBuffer createPlayerGetLengthPacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE + AV_SIZE_INT32);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 4, AV_PLAYER_GET_LENGTH, AV_TYPE_INT32, AV_SIZE_INT32);
+		packet.putInt(0);
+		return packet;
+	}
+	@Override
+	public int getDuration() {
+		if (sendAVCommandAndWaitForResponse(createPlayerGetLengthPacket().array())) {
+			return intResponse;
+		}
+		return -1;
+	}
+	private static ByteBuffer createPlayerGetTimePacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE + AV_SIZE_INT32);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 4, AV_PLAYER_GET_TIME, AV_TYPE_INT32, AV_SIZE_INT32);
+		packet.putInt(0);
+		return packet;
+	}
+	
+	@Override
+	public int getTime() {
+		if (sendAVCommandAndWaitForResponse(createPlayerGetTimePacket().array())) {
+			return intResponse;
+		}
+		return -1;
+	}
+	private static ByteBuffer createPlayerSeekPlayPacket(int position) {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE + AV_SIZE_INT32);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 4, AV_PLAYER_SEEKPLAY, AV_TYPE_INT32, AV_SIZE_INT32);
+		packet.putInt(position);
+		return packet;
+	}
+	@Override
+	public int seekTo(int position) {
+		if (sendAVCommandAndWaitForResponse(createPlayerSeekPlayPacket(position).array())) {
+			return avRequestResult;
+		}
+		return -1;
+	}
+	private static ByteBuffer createPlayerPausePacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 0, AV_PLAYER_PAUSE, AV_TYPE_VOID, AV_SIZE_VOID);
+		return packet;
+	}
+	@Override
+	public int pauseMediaStreaming() {
+		if (sendAVCommandAndWaitForResponse(createPlayerPausePacket().array())) {
+			return avRequestResult;
+		}
+		return -1;
+	}
+	private static ByteBuffer createPlayerResumePacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 0, AV_PLAYER_RESUME, AV_TYPE_VOID, AV_SIZE_VOID);
+		return packet;
+	}
+	@Override
+	public int resumeMediaStreaming() {
+		if (sendAVCommandAndWaitForResponse(createPlayerResumePacket().array())) {
+			return avRequestResult;
+		}
+		return -1;
+	}
+
+	private static ByteBuffer createPlayerIncreaseVolumePacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 0, AV_PLAYER_VOLUME_UP, AV_TYPE_VOID, AV_SIZE_VOID);
+		return packet;
+	}
+	@Override
+	public int increaseVolume() {
+		if (sendAVCommandAndWaitForResponse(createPlayerIncreaseVolumePacket().array())) {
+			return avRequestResult;
+		}
+		return -1;
+	}
+
+	private static ByteBuffer createPlayerDecreaseVolumePacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 0, AV_PLAYER_VOLUME_DOWN, AV_TYPE_VOID, AV_SIZE_VOID);
+		return packet;
+	}
+	@Override
+	public int decreaseVolume() {
+		if (sendAVCommandAndWaitForResponse(createPlayerDecreaseVolumePacket().array())) {
+			return avRequestResult;
+		}
+		return -1;
+	}
+
+
+	@Override
+	public boolean isPlaying() {
+		return isPlaying;
 	}
 }

@@ -11,12 +11,20 @@ import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
 
 public class MediaStreamingFileDataSource implements DataSource {
+	public interface MediaStreamingStateListener {
+		public void mediaStreamingDidStart(MediaStreamingFileDataSource fileSource);
+		public void mediaStreamingDidStop(MediaStreamingFileDataSource fileSource);
+		public void medisStreamingFail(MediaStreamingFileDataSource fileSource, int resultCode);
+ 	}
+	
 	private static final String TAG = null;
 	private File mediaFile;
 	private MediaStreaming mediaStreaming;
 	private RandomAccessFile mediaFileInput;
 	private boolean shouldReadFile;
 	private Thread workerThread;
+	private MediaStreamingStateListener mediaStreamingStateListener;
+	
 	public MediaStreamingFileDataSource(File mediaFile) throws FileNotFoundException {
 		this.mediaFile = mediaFile;
 		mediaFileInput = new RandomAccessFile(mediaFile, "r");
@@ -36,6 +44,9 @@ public class MediaStreamingFileDataSource implements DataSource {
 	@Override
 	public void mediaStreamingDidFail(int resultCode) {
 		Log.e(TAG, "mediaStreamingDidFail:" + resultCode);
+		if (mediaStreamingStateListener != null) {
+			mediaStreamingStateListener.medisStreamingFail(this, resultCode);
+		}
 	}
 
 	@Override
@@ -48,9 +59,7 @@ public class MediaStreamingFileDataSource implements DataSource {
 			@Override
 			public void run() {
 				try {
-					if (offset != 0) {
-						mediaFileInput.seek(offset);
-					}
+					mediaFileInput.seek(offset);
 					final int bufferSize = 1024*32;
 					final byte[] buffer = new byte [bufferSize];
 					int sizeRead = 0;
@@ -60,7 +69,6 @@ public class MediaStreamingFileDataSource implements DataSource {
 							mediaStreaming.sendEofPacket();
 							shouldReadFile = false;
 						} else {
-							Log.d(TAG, "sendStreamingContents:" + sizeRead);
 							mediaStreaming.sendStreamingContents(buffer, sizeRead);
 						}
 					} while(shouldReadFile);
@@ -73,6 +81,9 @@ public class MediaStreamingFileDataSource implements DataSource {
 			
 		});
 		workerThread.start();
+		if (mediaStreamingStateListener != null) {
+			mediaStreamingStateListener.mediaStreamingDidStart(this);
+		}
 	}
 
 	@Override
@@ -95,6 +106,16 @@ public class MediaStreamingFileDataSource implements DataSource {
 	@Override
 	public void stopStreamingContents() {
 		stopWorkerThread();
+		if (mediaStreamingStateListener != null) {
+			mediaStreamingStateListener.mediaStreamingDidStop(this);
+		}
+	}
+	public MediaStreamingStateListener getMediaStreamingStateListener() {
+		return mediaStreamingStateListener;
+	}
+	public void setMediaStreamingStateListener(
+			MediaStreamingStateListener mediaStreamingStateListener) {
+		this.mediaStreamingStateListener = mediaStreamingStateListener;
 	}
 
 }

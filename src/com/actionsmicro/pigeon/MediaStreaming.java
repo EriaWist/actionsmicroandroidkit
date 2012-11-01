@@ -10,9 +10,18 @@ public interface MediaStreaming {
 		public void stopStreamingContents();
 	}
 	public void startMediaStreaming(DataSource dataSource);
+	public int  getDuration();
+	public int  getTime();
+	public int  seekTo(int position);
+	public int 	pauseMediaStreaming();
+	public int 	resumeMediaStreaming();
+	public int  increaseVolume();
+	public int  decreaseVolume();
+	public void stopMediaStreaming();
 	public void sendStreamingContents(final byte[] contents, int length);
 	public void sendStreamingContentsUdp(final byte[] contents, int length);
 	public void sendEofPacket();
-	public void stopMediaStreaming();
 	public void resetPlayer();
+	
+	public boolean isPlaying();
 }
