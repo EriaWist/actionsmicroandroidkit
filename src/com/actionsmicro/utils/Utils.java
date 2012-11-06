@@ -5,8 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
-import com.actionsmicro.R;
+import java.util.Formatter;
+import java.util.Locale;
 
 import android.app.Activity;
 import android.content.ContentResolver;
@@ -18,6 +18,8 @@ import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Images;
+
+import com.actionsmicro.R;
 
 public class Utils {
 	private static class ImageFileNamer {
@@ -95,5 +97,22 @@ public class Utils {
         int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
         cursor.moveToFirst();
         return cursor.getString(column_index);
+    }
+	private static StringBuilder sFormatBuilder = new StringBuilder();
+    private static Formatter sFormatter = new Formatter(sFormatBuilder, Locale.getDefault());
+    private static final Object[] sTimeArgs = new Object[5];
+    
+    public static String makeTimeString(String durationformat, long secs) {
+        
+    	sFormatBuilder.setLength(0);
+
+        final Object[] timeArgs = sTimeArgs;
+        timeArgs[0] = secs / 3600;
+        timeArgs[1] = secs / 60;
+        timeArgs[2] = (secs / 60) % 60;
+        timeArgs[3] = secs;
+        timeArgs[4] = secs % 60;
+
+        return sFormatter.format(durationformat, timeArgs).toString();
     }
 }
