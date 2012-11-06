@@ -8,6 +8,8 @@ public interface MediaStreaming {
 		public void startStreamingContents(MediaStreaming ms, long offset);
 		public void pauseStreamingContents();
 		public void stopStreamingContents();
+		public void playerTimeDidChange(int time);
+		public void playerTimeDurationReady(int duration);
 	}
 	public void startMediaStreaming(DataSource dataSource);
 	public int  getDuration();

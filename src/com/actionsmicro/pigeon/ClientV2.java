@@ -539,10 +539,16 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private void handlePlayerGetTime(int time) {
 		Log.d(TAG, "handlePlayerGetTime:"+time);
 		intResponse = time;
+		if (currentDataSource != null) {
+			currentDataSource.playerTimeDidChange(time);
+		}
 	}
 	private void handlePlayerGetLength(int length) {
 		Log.d(TAG, "handlePlayerGetLength:"+length);
 		intResponse = length;
+		if (currentDataSource != null) {
+			currentDataSource.playerTimeDurationReady(intResponse);
+		}
 	}
 	private void handleFileStart(final int request_result) {
 		if (request_result == AV_RESULT_ERROR) {

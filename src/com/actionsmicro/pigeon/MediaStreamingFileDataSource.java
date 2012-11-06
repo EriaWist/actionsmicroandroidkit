@@ -15,6 +15,9 @@ public class MediaStreamingFileDataSource implements DataSource {
 		public void mediaStreamingDidStart(MediaStreamingFileDataSource fileSource);
 		public void mediaStreamingDidStop(MediaStreamingFileDataSource fileSource);
 		public void medisStreamingFail(MediaStreamingFileDataSource fileSource, int resultCode);
+		public void medisStreamingTimeDidChange(MediaStreamingFileDataSource fileSource, int time);
+		public void medisStreamingDurationIsReady(MediaStreamingFileDataSource fileSource, int duration);
+		
  	}
 	
 	private static final String TAG = null;
@@ -116,6 +119,18 @@ public class MediaStreamingFileDataSource implements DataSource {
 	public void setMediaStreamingStateListener(
 			MediaStreamingStateListener mediaStreamingStateListener) {
 		this.mediaStreamingStateListener = mediaStreamingStateListener;
+	}
+	@Override
+	public void playerTimeDidChange(int time) {
+		if (mediaStreamingStateListener != null) {
+			mediaStreamingStateListener.medisStreamingTimeDidChange(this, time);
+		}
+	}
+	@Override
+	public void playerTimeDurationReady(int duration) {
+		if (mediaStreamingStateListener != null) {
+			mediaStreamingStateListener.medisStreamingDurationIsReady(this, duration);
+		}
 	}
 
 }
