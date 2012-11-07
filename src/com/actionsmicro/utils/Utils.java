@@ -8,10 +8,13 @@ import java.util.Date;
 
 import com.actionsmicro.R;
 
+import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Images;
@@ -83,4 +86,14 @@ public class Utils {
 		ContentResolver c = context.getContentResolver() ;
 		c.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);			
 	}
+	public static String getRealPathFromURI(Activity activity, Uri contentUri) {
+		if (contentUri.getScheme().equals("file")) {
+			return contentUri.getPath();
+		}
+        String[] proj = { MediaStore.Images.Media.DATA };
+        Cursor cursor = activity.managedQuery(contentUri, proj, null, null, null);
+        int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+        cursor.moveToFirst();
+        return cursor.getString(column_index);
+    }
 }
