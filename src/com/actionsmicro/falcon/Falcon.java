@@ -422,11 +422,20 @@ public class Falcon {
 				}
 				for (final String parameter : parameters) {
 					if (parameter.startsWith("name=")) {
-						projectorInfo.name = parameter.split("=")[1];
+						final String[] name = parameter.split("=");
+						if (name.length > 1) {
+							projectorInfo.name = parameter.split("=")[1];
+						}
 					} else if (parameter.startsWith("passcode=")) {
-						projectorInfo.passcode = parameter.split("=")[1];
+						final String[] passcode = parameter.split("=");
+						if (passcode.length > 1) {
+							projectorInfo.passcode = passcode[1];
+						}
 					} else if (parameter.startsWith("model=")) {
-						projectorInfo.model = parameter.split("=")[1];
+						final String[] model = parameter.split("=");
+						if (model.length > 1) {
+							projectorInfo.model = parameter.split("=")[1];
+						}
 					}
 				}
 				// Add sanity check to filter out other products which use same protocol
