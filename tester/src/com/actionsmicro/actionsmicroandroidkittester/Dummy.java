@@ -17,5 +17,7 @@ public class Dummy extends TestCase {
 	protected void tearDown() throws Exception {
 		super.tearDown();
 	}
-
+	public void testFailed() {
+		assertTrue(false);
+	}
 }
