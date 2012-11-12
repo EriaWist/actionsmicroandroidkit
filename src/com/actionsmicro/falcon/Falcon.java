@@ -24,6 +24,7 @@ import android.os.Parcelable;
 import android.util.Log;
 
 public class Falcon {
+	
 	static private final String TAG = "Falcon";
 	public static class ProjectorInfo implements Parcelable
 	{
@@ -221,7 +222,7 @@ public class Falcon {
 								mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 							} else if (recvPacket.getPort() == EZ_WIFI_DISPLAY_PORT_NUMBER) {
 								final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
-								if (parseReponse(recvPacket, projectorInfo)) {
+								if (parseResponse(recvPacket, projectorInfo)) {
 									Log.d(TAG, "receive EZ Wifi Response");
 									projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
 									mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
@@ -408,42 +409,46 @@ public class Falcon {
 		}
 		return projectorInfo;
 	}
-	private boolean parseReponse(final DatagramPacket recvPacket,
-			ProjectorInfo projectorInfo) {
+	private static boolean parseResponse(final DatagramPacket recvPacket, ProjectorInfo projectorInfo) {
 		final String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength(), Charset.forName("UTF-8")).split("\0");
+		if (receiveStrings.length > 0) {
+			return parseResponseString(receiveStrings[0], projectorInfo);
+		}
+		return false;
+	}
+	protected static boolean parseResponseString(String receiveString, ProjectorInfo projectorInfo) {
 		//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
 //	    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
-		if (receiveStrings.length > 0) {
-			final String [] parameters = receiveStrings[0].split(":");
-			if (parameters[4].equals(String.valueOf(IPMSG_ANSENTRY))) {
-				projectorInfo.osVerion = parameters[0];
-				if (!parameters[3].equals("(none)")) {
-					projectorInfo.name = parameters[3];
-				}
-				for (final String parameter : parameters) {
-					if (parameter.startsWith("name=")) {
-						final String[] name = parameter.split("=");
-						if (name.length > 1) {
-							projectorInfo.name = parameter.split("=")[1];
-						}
-					} else if (parameter.startsWith("passcode=")) {
-						final String[] passcode = parameter.split("=");
-						if (passcode.length > 1) {
-							projectorInfo.passcode = passcode[1];
-						}
-					} else if (parameter.startsWith("model=")) {
-						final String[] model = parameter.split("=");
-						if (model.length > 1) {
-							projectorInfo.model = parameter.split("=")[1];
-						}
+		final String [] parameters = receiveString.split(":");
+		if (parameters[4].equals(String.valueOf(IPMSG_ANSENTRY))) {
+			projectorInfo.osVerion = parameters[0];
+			if (!parameters[3].equals("(none)")) {
+				projectorInfo.name = parameters[3];
+			}
+			for (final String parameter : parameters) {
+				if (parameter.startsWith("name=")) {
+					final String[] name = parameter.split("=");
+					if (name.length > 1) {
+						projectorInfo.name = parameter.split("=")[1];
+					}
+				} else if (parameter.startsWith("passcode=")) {
+					final String[] passcode = parameter.split("=");
+					if (passcode.length > 1) {
+						projectorInfo.passcode = passcode[1];
+					}
+				} else if (parameter.startsWith("model=")) {
+					final String[] model = parameter.split("=");
+					if (model.length > 1) {
+						projectorInfo.model = parameter.split("=")[1];
 					}
 				}
-				// Add sanity check to filter out other products which use same protocol
-				if (projectorInfo.model != null) {
-					return true;
-				}
+			}
+			// Add sanity check to filter out other products which use same protocol
+			if (projectorInfo.model != null) {
+				return true;
 			}
 		}
 		return false;
 	}
+	
 }
