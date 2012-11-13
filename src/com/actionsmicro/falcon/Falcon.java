@@ -102,8 +102,15 @@ public class Falcon {
 				}
 			}
 		};
+		
 		try {
-			broadcastSocket = new DatagramSocket(EZ_WIFI_DISPLAY_PORT_NUMBER);
+			try {
+				broadcastSocket = new DatagramSocket(EZ_WIFI_DISPLAY_PORT_NUMBER);
+				broadcastSocket.setReuseAddress(true);
+			} catch (SocketException e) {
+				e.printStackTrace();
+				broadcastSocket = new DatagramSocket();
+			}
 			broadcastSocket.setBroadcast(true);
 			waitFeedbackInBackground();
 		} catch (SocketException e) {
