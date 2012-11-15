@@ -588,8 +588,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			assert offset <= contentLength;
 			if (contentLength >= 0 && offset <= contentLength) {
 				isStreamingMedia = true;
-				currentDataSource.pauseStreamingContents();
-				sendDataToRemote(createFileReadResponsePacket(offset).array());
+				currentDataSource.pauseStreamingContents(offset);
+				sendDataToRemote(createFileReadResponsePacket(offset).array());				
 				currentDataSource.startStreamingContents(this, offset);
 			}
 		}

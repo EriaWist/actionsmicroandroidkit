@@ -6,6 +6,7 @@ public interface MediaStreaming {
 		public boolean isSeekable();
 		public void mediaStreamingDidFail(int resultCode);
 		public void startStreamingContents(MediaStreaming ms, long offset);
+		public void pauseStreamingContents(long offset);
 		public void pauseStreamingContents();
 		public void stopStreamingContents();
 		public void playerTimeDidChange(int time);

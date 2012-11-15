@@ -93,6 +93,10 @@ public class MediaStreamingFileDataSource implements DataSource {
 	public void pauseStreamingContents() {
 		stopWorkerThread();
 	}
+	@Override
+	public void pauseStreamingContents(long offset) {
+		stopWorkerThread();
+	}
 	private void stopWorkerThread() {
 		if (workerThread != null) {
 			shouldReadFile = false;
