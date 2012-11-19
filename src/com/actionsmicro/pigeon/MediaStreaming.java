@@ -26,6 +26,8 @@ public interface MediaStreaming {
 	public void sendStreamingContentsUdp(final byte[] contents, int length);
 	public void sendEofPacket();
 	public void resetPlayer();
-	
-	public boolean isPlaying();
+	public enum PlayerState {
+		STOPPED, PLAYING, PAUSED
+	};
+	public PlayerState getPlayerState();
 }

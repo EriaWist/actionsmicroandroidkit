@@ -387,7 +387,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private boolean isStreamingMedia;
 	private int intResponse;
 	private int avRequestResult;
-	private boolean isPlaying;
+	private PlayerState playerState = PlayerState.STOPPED;
 	private static void prepareHeaderForAvStreamCmd(ByteBuffer header, int payloadSize, int cmd, int type, int size) {
 		// Sequence
 		header.putInt(getCommandSequenceNumber());
@@ -505,13 +505,13 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 				case AV_PLAYER_PAUSE:
 					Log.d(TAG, "AV_PLAYER_PAUSE:" + avRequestResult);
 					if (avRequestResult == AV_RESULT_OK) {
-						isPlaying = false;
+						playerState = PlayerState.PAUSED;
 					}
 					break;
 				case AV_PLAYER_RESUME:
 					Log.d(TAG, "AV_PLAYER_RESUME:" + avRequestResult);
 					if (avRequestResult == AV_RESULT_OK) {
-						isPlaying = true;
+						playerState = PlayerState.PLAYING;
 					}
 					break;
 				case AV_PLAYER_FFPLAY:
@@ -560,13 +560,13 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			}						
 		} else {
 			isStreamingMedia = true;
-			isPlaying = true;
+			playerState = PlayerState.PLAYING;
 		}
 	}
 	protected void handleFileStop() {
 		assert currentDataSource != null:"currentDataSource should not be null";
 		isStreamingMedia = false;
-		isPlaying = false;
+		playerState = PlayerState.STOPPED;
 		sendDataToRemote(createFileStopPacket().array());
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
@@ -831,10 +831,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		}
 		return -1;
 	}
-
-
 	@Override
-	public boolean isPlaying() {
-		return isPlaying;
+	public PlayerState getPlayerState() {
+		return playerState;
 	}
 }
