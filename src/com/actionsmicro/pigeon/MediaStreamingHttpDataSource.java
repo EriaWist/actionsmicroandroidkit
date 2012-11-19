@@ -1,6 +1,5 @@
 package com.actionsmicro.pigeon;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -21,14 +20,6 @@ import android.util.Log;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
 
 public class MediaStreamingHttpDataSource implements DataSource {
-	public interface MediaStreamingStateListener {
-		public void mediaStreamingDidStart(MediaStreamingHttpDataSource fileSource);
-		public void mediaStreamingDidStop(MediaStreamingHttpDataSource fileSource);
-		public void medisStreamingFail(MediaStreamingHttpDataSource fileSource, int resultCode);
-		public void medisStreamingTimeDidChange(MediaStreamingHttpDataSource fileSource, int time);
-		public void medisStreamingDurationIsReady(MediaStreamingHttpDataSource fileSource, int duration);
-		
- 	}
 	private MediaStreamingStateListener mediaStreamingStateListener;
 	private static final String TAG = "MediaStreamingHttpDataSource";
 	final HttpClient client = new DefaultHttpClient();
@@ -37,10 +28,9 @@ public class MediaStreamingHttpDataSource implements DataSource {
 
 	public MediaStreamingHttpDataSource(String url) {
 		this.urlString = url;
-		fetchContentInfo();
 	}
 	private MediaStreaming mediaStreaming;
-	private boolean seekable;
+	private boolean seekable = true;
 	@Override
 	public long getContentLength() {
 		if (contentLength == -1) {
@@ -75,8 +65,9 @@ public class MediaStreamingHttpDataSource implements DataSource {
 
 	@Override
 	public void mediaStreamingDidFail(int resultCode) {
-		// TODO Auto-generated method stub
-
+		if (mediaStreamingStateListener != null) {
+			mediaStreamingStateListener.medisStreamingFail(this, resultCode);
+		}
 	}
 	private static void logHeaders(final String title, final Header[] headers) {
 		Log.d(TAG, title);
@@ -90,6 +81,9 @@ public class MediaStreamingHttpDataSource implements DataSource {
 		Log.d(TAG, "startStreamingContents offset:" + offset);
 		mediaStreaming = ms;
 		startDownloadIfNeeded(offset);
+		if (mediaStreamingStateListener != null) {
+			mediaStreamingStateListener.mediaStreamingDidStart(this);
+		}
 	}
 
 	

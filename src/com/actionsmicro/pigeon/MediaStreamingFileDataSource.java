@@ -11,14 +11,6 @@ import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
 
 public class MediaStreamingFileDataSource implements DataSource {
-	public interface MediaStreamingStateListener {
-		public void mediaStreamingDidStart(MediaStreamingFileDataSource fileSource);
-		public void mediaStreamingDidStop(MediaStreamingFileDataSource fileSource);
-		public void medisStreamingFail(MediaStreamingFileDataSource fileSource, int resultCode);
-		public void medisStreamingTimeDidChange(MediaStreamingFileDataSource fileSource, int time);
-		public void medisStreamingDurationIsReady(MediaStreamingFileDataSource fileSource, int duration);
-		
- 	}
 	
 	private static final String TAG = null;
 	private File mediaFile;

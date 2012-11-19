@@ -11,6 +11,7 @@ public interface MediaStreaming {
 		public void stopStreamingContents();
 		public void playerTimeDidChange(int time);
 		public void playerTimeDurationReady(int duration);
+		public void setMediaStreamingStateListener(MediaStreamingStateListener mediaStreamingStateListener);
 	}
 	public void startMediaStreaming(DataSource dataSource);
 	public int  getDuration();

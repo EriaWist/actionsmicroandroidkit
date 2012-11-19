@@ -653,6 +653,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public void stopMediaStreaming() {
+		if (currentDataSource != null) {
+			currentDataSource.stopStreamingContents();
+		}
 		sendDataToRemote(createFileStopPacket().array());
 		isStreamingMedia = false;
 	}
