@@ -44,7 +44,10 @@ public class MediaStreamingHttpDataSource implements DataSource {
 			final HttpHead httpHead = new HttpHead(urlString);
 			final HttpResponse responseHead = client.execute(httpHead);
 			logHeaders("httpHead:" + urlString, responseHead.getAllHeaders());
-		    contentLength  = Long.valueOf(responseHead.getFirstHeader("Content-Length").getValue());
+			final Header contentLengthHeader = responseHead.getFirstHeader("Content-Length");
+			if (contentLengthHeader != null) {
+				contentLength  = Long.valueOf(contentLengthHeader.getValue());
+			}
 		    final Header acceptRanges = responseHead.getFirstHeader("Accept-Ranges");
 		    if (acceptRanges != null) {
 		    	seekable = acceptRanges.getValue().equals("bytes");
