@@ -115,4 +115,11 @@ public class Utils {
 
         return sFormatter.format(durationformat, timeArgs).toString();
     }
+    public static String getLastPathComponent(String path) {
+    	final String[] segments = path.split("/");
+    	if (segments != null && segments.length > 0) {
+    		return segments[segments.length - 1];
+    	}
+    	return path;
+    }
 }
