@@ -25,7 +25,12 @@ public class MediaStreamingHttpDataSource implements DataSource {
 	final HttpClient client = new DefaultHttpClient();
 	private String urlString;
 	private long contentLength = -1;
+	private String userAgentString;
 
+	public MediaStreamingHttpDataSource(String url, String userAgentString) {
+		this.urlString = url;
+		this.userAgentString = userAgentString;
+	}
 	public MediaStreamingHttpDataSource(String url) {
 		this.urlString = url;
 	}
@@ -42,6 +47,10 @@ public class MediaStreamingHttpDataSource implements DataSource {
 	private void fetchContentInfo() {
 		try {
 			final HttpHead httpHead = new HttpHead(urlString);
+			if (userAgentString != null) {
+				httpHead.addHeader("User-Agent", userAgentString);
+			}
+			
 			final HttpResponse responseHead = client.execute(httpHead);
 			logHeaders("httpHead:" + urlString, responseHead.getAllHeaders());
 			final Header contentLengthHeader = responseHead.getFirstHeader("Content-Length");
@@ -181,6 +190,9 @@ public class MediaStreamingHttpDataSource implements DataSource {
 						try {
 							HttpGet get = new HttpGet(urlString);
 							get.addHeader("Range", "bytes="+offset+"-"+contentLength);
+							if (userAgentString != null) {
+								get.addHeader("User-Agent", userAgentString);
+							}
 							HttpResponse responseGet = client.execute(get);  
 //							logHeaders("HttpGet:" + urlString, responseGet.getAllHeaders());
 							HttpEntity resEntityGet = responseGet.getEntity();  
