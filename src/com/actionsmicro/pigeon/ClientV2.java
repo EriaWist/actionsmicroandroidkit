@@ -658,6 +658,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		}
 		sendDataToRemote(createFileStopPacket().array());
 		isStreamingMedia = false;
+		playerState = PlayerState.STOPPED;
 	}
 
 	private DatagramSocket udpSocket;
