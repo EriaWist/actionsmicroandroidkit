@@ -2,10 +2,13 @@ package com.actionsmicro.pigeon;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PushbackInputStream;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -284,13 +287,20 @@ public class Client {
 		synchronized (this) {
 			compressedBufferWidth = width;
 			compressedBufferHeight = height;
+			final byte[] compressedBuffer = getCompressionBuffer().toByteArray();
+			sendJpegImageBytesToServer(compressedBuffer, width, height);
+		}
+	}
+	private void sendJpegImageBytesToServer(final byte[] compressedBuffer,
+			final int width, final int height) throws IOException {
+		synchronized (this) {
 			Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
 			Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 			BufferedOutputStream socketStream = null;
 			Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");	
 			socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-			socketStream.write(createPacketHeaderForSendingImage(width, height, getCompressionBuffer().size()).array());
-			socketStream.write(getCompressionBuffer().toByteArray());
+			socketStream.write(createPacketHeaderForSendingImage(width, height, compressedBuffer.length).array());
+			socketStream.write(compressedBuffer);
 			socketStream.flush();
 			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
 		}
@@ -324,31 +334,24 @@ public class Client {
 	public void sendImageFileToServer(String imageFile) throws IOException, IllegalArgumentException {
 		if (canSendStream()) {
 			synchronized (this) {
-				Socket socketToServer = null;
-				BufferedOutputStream socketStream = null;
 				RandomAccessFile file = null;
-				BufferedInputStream fileInputStream = null;
 				try {
 					final BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
 					decodeOptions.inJustDecodeBounds = true; // we just need width and height
 					BitmapFactory.decodeFile(imageFile, decodeOptions);
-					Log.d(TAG, "width:" + decodeOptions.outWidth + " height:" + decodeOptions.outHeight  + " outMimeType: "+decodeOptions.outMimeType);
+					final int imageWidth = decodeOptions.outWidth;
+					final int imageHeight = decodeOptions.outHeight;
+					Log.d(TAG, "width:" + imageWidth + " height:" + imageHeight  + " outMimeType: "+decodeOptions.outMimeType);
 					if (!decodeOptions.outMimeType.equals("image/jpeg")) {
 						sendImageToServer(BitmapFactory.decodeFile(imageFile, null), Bitmap.CompressFormat.JPEG, 100);
 						return;
 					} else {
 						file = new RandomAccessFile(imageFile, "r");
-						Log.d(TAG, "sentImageFileToServer file size:" + file.length());
-						socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
-						socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-						socketStream.write(createPacketHeaderForSendingImage(decodeOptions.outWidth, decodeOptions.outHeight, (int)file.length()).array());
-						
-						fileInputStream = new BufferedInputStream(new FileInputStream(imageFile));
-						byte[] buffer = new byte[4096];
-						for (int read = fileInputStream.read(buffer); read > 0; read = fileInputStream.read(buffer)) {
-							socketStream.write(buffer, 0, read);
-						}    
-						Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+")");	
+						final InputStream inputStream = new FileInputStream(imageFile);
+						final long length = file.length();
+						Log.d(TAG, "sentImageFileToServer file size:" + length);
+						sendJpegStreamToServer(inputStream, imageWidth, imageHeight, length);	
+						Log.d(TAG, "sentImageFileToServer("+serverAddress+":"+portNumber+")");
 					}
 				} catch (IOException e) {
 					throw e;
@@ -356,11 +359,41 @@ public class Client {
 					if (file != null) {
 						file.close();
 					}
-					if (fileInputStream != null) {
-						fileInputStream.close();
-					}
 				}
 			}
+		}
+	}
+	public void sendJpegStreamToServer(InputStream inputStream) throws IOException, IllegalArgumentException {
+		if (canSendStream()) {
+			final ByteArrayOutputStream bufferOS = new ByteArrayOutputStream(1024*100);
+			final byte buffer[] = new byte[1024];
+			int sizeRead = 0;
+			while ((sizeRead = inputStream.read(buffer)) != -1) {
+				bufferOS.write(buffer, 0, sizeRead);
+			}
+			final byte jpegBytes[] = bufferOS.toByteArray();
+			final BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+			decodeOptions.inJustDecodeBounds = true; // we just need width and height
+			BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.length, decodeOptions);
+			assert(decodeOptions.outMimeType.equals("image/jpeg"));
+			if (decodeOptions.outMimeType.equals("image/jpeg")) {
+				sendJpegImageBytesToServer(jpegBytes, decodeOptions.outWidth, decodeOptions.outHeight);
+			}
+		}
+	}
+	private void sendJpegStreamToServer(
+			final InputStream inputStream, final int imageWidth,
+			final int imageHeight, final long length) throws IllegalArgumentException, IOException {
+		synchronized (this) {
+			final Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+			final BufferedOutputStream socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
+			socketStream.write(createPacketHeaderForSendingImage(imageWidth, imageHeight, (int)length).array());
+
+			final BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
+			byte[] buffer = new byte[4096];
+			for (int read = bufferedInputStream.read(buffer); read > 0; read = bufferedInputStream.read(buffer)) {
+				socketStream.write(buffer, 0, read);
+			}    
 		}
 	}
 	private Socket socketToServer;
