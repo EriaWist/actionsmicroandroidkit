@@ -3,6 +3,10 @@ package com.actionsmicro.utils;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Formatter;
@@ -121,5 +125,15 @@ public class Utils {
     		return segments[segments.length - 1];
     	}
     	return path;
+    }
+    public static String convertInputStreamToString(InputStream inputStream) throws IOException {
+    	InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+    	StringWriter stringWriter = new StringWriter();
+    	char buffer[] = new char[512];
+    	int sizeRead;
+    	while ((sizeRead = inputStreamReader.read(buffer, 0, 512)) != -1) {
+    		stringWriter.write(buffer, 0, sizeRead);
+    	}
+    	return  stringWriter.toString();
     }
 }
