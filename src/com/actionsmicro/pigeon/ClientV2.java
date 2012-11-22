@@ -13,7 +13,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import android.os.Handler;
-import android.util.Log;
+
+import com.actionsmicro.utils.Log;
 
 public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStreaming {
 	private static final String TAG = "ClientV2";

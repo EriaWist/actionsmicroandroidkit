@@ -15,9 +15,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
 import org.apache.http.impl.client.DefaultHttpClient;
 
-import android.util.Log;
-
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
+import com.actionsmicro.utils.Log;
 
 public class MediaStreamingHttpDataSource implements DataSource {
 	private MediaStreamingStateListener mediaStreamingStateListener;

@@ -5,10 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import android.util.Log;
-
-import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
+import com.actionsmicro.utils.Log;
 
 public class MediaStreamingFileDataSource implements DataSource {
 	

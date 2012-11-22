@@ -19,7 +19,9 @@ import java.util.concurrent.TimeUnit;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.YuvImage;
-import android.util.Log;
+
+import com.actionsmicro.utils.Log;
+
 /**
  * Client is a gateway for client to send image data to EZ Wifi server.
  * @author James Chen

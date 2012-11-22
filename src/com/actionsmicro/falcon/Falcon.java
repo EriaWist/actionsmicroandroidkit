@@ -21,7 +21,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Log;
+
+import com.actionsmicro.utils.Log;
 
 public class Falcon {
 	

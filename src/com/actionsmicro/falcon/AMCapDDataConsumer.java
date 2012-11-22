@@ -17,10 +17,10 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.os.Debug;
 import android.text.TextPaint;
-import android.util.Log;
 
 import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.Pigeon;
+import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Screen;
 
 public class AMCapDDataConsumer extends DataConsumer {
