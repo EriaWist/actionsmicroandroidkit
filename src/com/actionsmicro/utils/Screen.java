@@ -66,13 +66,18 @@ public class Screen {
 			return 0; // bad, I know ;P
 		}
 	}
+	/**
+	 * Control screen lock.
+	 * @param activity Current activity.
+	 * @param keepScreenOn Set true to prevent screen lock. Otherwise, screen will locked for certain period.
+	 */
 	public static void setKeepScreenOn(Activity activity, boolean keepScreenOn) {
-	    if(keepScreenOn) {
-	      activity.getWindow().
-	        addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-	    } else {
-	      activity.getWindow().
-	        clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-	    }
-	  }
+		if (keepScreenOn) {
+			activity.getWindow().
+			addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		} else {
+			activity.getWindow().
+			clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		}
+	}
 }
