@@ -17,5 +17,10 @@ public class Log {
 	public static void e(String tag, String string) {
 		android.util.Log.e(tag, string);
 	}
+	public static void v(String tag, String string) {
+		if (BuildConfig.DEBUG) {
+			android.util.Log.v(tag, string);
+		}
+	}
 
 }
