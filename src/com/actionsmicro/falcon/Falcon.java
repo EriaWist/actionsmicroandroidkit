@@ -29,6 +29,9 @@ public class Falcon {
 	static private final String TAG = "Falcon";
 	public static class ProjectorInfo implements Parcelable
 	{
+		private static final int SERVICE_WIFI_LAN_DISPLAY 	= 1 << 0;
+		private static final int SERVICE_MEDIA_STREAMING 	= 1 << 1;
+		
 		public String osVerion;
 		public String name;
 		public InetAddress ipAddress;
@@ -36,6 +39,7 @@ public class Falcon {
 		public int remoteControlPortNumber;
 		public String passcode;
 		public String model;
+		public int service;
 		public final boolean hasNoPasscode() {
 			return passcode == null || passcode.length() == 0;
 		}
@@ -62,6 +66,7 @@ public class Falcon {
 			dest.writeInt(remoteControlPortNumber);
 			dest.writeString(passcode);
 			dest.writeString(model);
+			dest.writeInt(service);
 		}
 		public ProjectorInfo() {
 			
@@ -74,7 +79,11 @@ public class Falcon {
 			remoteControlPortNumber = in.readInt();
 			passcode = in.readString();
 			model = in.readString();
+			service = in.readInt();
 	    }
+		public boolean supportsMediaStreaming() {
+			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING;
+		}
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
 	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
@@ -218,7 +227,7 @@ public class Falcon {
 			public void run() {
 				if (broadcastSocket != null) {
 					try {
-						final byte[] recvBuf = new byte[64];
+						final byte[] recvBuf = new byte[256];
 						Log.d(TAG, "start receiveing");
 						while (true) {
 							final DatagramPacket recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
@@ -437,7 +446,7 @@ public class Falcon {
 				if (parameter.startsWith("name=")) {
 					final String[] name = parameter.split("=");
 					if (name.length > 1) {
-						projectorInfo.name = parameter.split("=")[1];
+						projectorInfo.name = name[1];
 					}
 				} else if (parameter.startsWith("passcode=")) {
 					final String[] passcode = parameter.split("=");
@@ -447,7 +456,12 @@ public class Falcon {
 				} else if (parameter.startsWith("model=")) {
 					final String[] model = parameter.split("=");
 					if (model.length > 1) {
-						projectorInfo.model = parameter.split("=")[1];
+						projectorInfo.model = model[1];
+					}
+				} else if (parameter.startsWith("service=")) {
+					final String[] service = parameter.split("=");
+					if (service.length > 1) {
+						projectorInfo.service = Integer.valueOf(service[1]);
 					}
 				}
 			}
