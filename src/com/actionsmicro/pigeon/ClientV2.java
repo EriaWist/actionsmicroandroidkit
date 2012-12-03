@@ -93,7 +93,12 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	});
 	private int request_result = REQUEST_RESULT_STATE_INVALID;
 	private Object requestReceivedNotificaiton = new Object();
-	private Object avCommandResponseReceivedNotificaiton = new Object();
+	private Object avCommandVolumeResponseReceivedNotificaiton = new Object();
+	private Object avCommandGetDurationResponseReceivedNotificaiton = new Object();
+	private Object avCommandGetTimeResponseReceivedNotificaiton = new Object();
+	private Object avCommandPauseResponseReceivedNotificaiton = new Object();
+	private Object avCommandResumeResponseReceivedNotificaiton = new Object();
+	private Object avCommandSeekToResponseReceivedNotificaiton = new Object();
 	// TODO remove handler, let client decide when to use handler or not
 	private Handler handler = new Handler();
 	private String hostname;
@@ -495,24 +500,39 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 				case AV_PLAYER_GET_LENGTH:
 					Log.d(TAG, "AV_PLAYER_GET_LENGTH:" + avRequestResult);
 					handlePlayerGetLength(payload.getInt());
+					synchronized(avCommandGetDurationResponseReceivedNotificaiton) {
+						avCommandGetDurationResponseReceivedNotificaiton.notifyAll();
+					}
 					break;
 				case AV_PLAYER_GET_TIME:
 					Log.d(TAG, "AV_PLAYER_GET_TIME:" + avRequestResult);
 					handlePlayerGetTime(payload.getInt());
+					synchronized(avCommandGetTimeResponseReceivedNotificaiton) {
+						avCommandGetTimeResponseReceivedNotificaiton.notifyAll();
+					}
 					break;
 				case AV_PLAYER_SEEKPLAY:
 					Log.d(TAG, "AV_PLAYER_SEEKPLAY:" + avRequestResult);
+					synchronized(avCommandSeekToResponseReceivedNotificaiton) {
+						avCommandSeekToResponseReceivedNotificaiton.notifyAll();
+					}
 					break;
 				case AV_PLAYER_PAUSE:
 					Log.d(TAG, "AV_PLAYER_PAUSE:" + avRequestResult);
 					if (avRequestResult == AV_RESULT_OK) {
 						playerState = PlayerState.PAUSED;
 					}
+					synchronized(avCommandPauseResponseReceivedNotificaiton) {
+						avCommandPauseResponseReceivedNotificaiton.notifyAll();
+					}
 					break;
 				case AV_PLAYER_RESUME:
 					Log.d(TAG, "AV_PLAYER_RESUME:" + avRequestResult);
 					if (avRequestResult == AV_RESULT_OK) {
 						playerState = PlayerState.PLAYING;
+					}
+					synchronized(avCommandResumeResponseReceivedNotificaiton) {
+						avCommandResumeResponseReceivedNotificaiton.notifyAll();
 					}
 					break;
 				case AV_PLAYER_FFPLAY:
@@ -523,16 +543,19 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 					break;
 				case AV_PLAYER_VOLUME_UP:
 					Log.d(TAG, "AV_PLAYER_VOLUME_UP:" + avRequestResult);
+					synchronized(avCommandVolumeResponseReceivedNotificaiton) {
+						avCommandVolumeResponseReceivedNotificaiton.notifyAll();
+					}
 					break;
 				case AV_PLAYER_VOLUME_DOWN:
 					Log.d(TAG, "AV_PLAYER_VOLUME_DOWN:" + avRequestResult);
+					synchronized(avCommandVolumeResponseReceivedNotificaiton) {
+						avCommandVolumeResponseReceivedNotificaiton.notifyAll();
+					}
 					break;
 				default:
 					assert false : request_cmd;
 					break;
-				}
-				synchronized(avCommandResponseReceivedNotificaiton) {
-					avCommandResponseReceivedNotificaiton.notifyAll();
 				}
 //			}									
 //		});
@@ -564,14 +587,14 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			playerState = PlayerState.PLAYING;
 		}
 	}
-	protected void handleFileStop() {
+	private void handleFileStop() {
 		assert currentDataSource != null:"currentDataSource should not be null";
 		isStreamingMedia = false;
 		playerState = PlayerState.STOPPED;
-		sendDataToRemote(createFileStopPacket().array());
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
 		}
+		sendDataToRemote(createFileStopPacket().array());		
 	}
 	private void handleFilePause() {
 		assert currentDataSource != null:"currentDataSource should not be null";
@@ -644,6 +667,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	@Override
 	public void sendStreamingContents(byte[] contents, int length) {
 		synchronized (this) {
+			Log.d(TAG, "sendStreamingContents:"+length);
 			sendDataToRemote(createPacketHeaderForSendingEzStream(length).array());
 			sendDataToRemote(contents, length);
 		}
@@ -718,7 +742,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		sendDataToRemote(createPlayerResetPacket().array());
 	}
 
-	private boolean sendAVCommandAndWaitForResponse(final byte commandPacket[]) {
+	private boolean sendAVCommandAndWaitForResponse(final byte commandPacket[], Object syncObject) {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -726,9 +750,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			}			
 		}).start();
 		try {
-			synchronized (avCommandResponseReceivedNotificaiton) {			
-				avCommandResponseReceivedNotificaiton.wait(3000);
-				Log.d(TAG, "avCommandResponseReceivedNotificaiton wait returns");
+			synchronized (syncObject) {			
+				syncObject.wait(3000);
+				Log.d(TAG, "syncObject wait returns");
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -745,7 +769,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public int getDuration() {
-		if (sendAVCommandAndWaitForResponse(createPlayerGetLengthPacket().array())) {
+		if (sendAVCommandAndWaitForResponse(createPlayerGetLengthPacket().array(), avCommandGetDurationResponseReceivedNotificaiton)) {
 			return intResponse;
 		}
 		return -1;
@@ -760,7 +784,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	
 	@Override
 	public int getTime() {
-		if (sendAVCommandAndWaitForResponse(createPlayerGetTimePacket().array())) {
+		if (sendAVCommandAndWaitForResponse(createPlayerGetTimePacket().array(), avCommandGetTimeResponseReceivedNotificaiton)) {
 			return intResponse;
 		}
 		return -1;
@@ -774,7 +798,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public int seekTo(int position) {
-		if (sendAVCommandAndWaitForResponse(createPlayerSeekPlayPacket(position).array())) {
+		Log.d(TAG, "seekTo:"+position);
+		if (sendAVCommandAndWaitForResponse(createPlayerSeekPlayPacket(position).array(), avCommandSeekToResponseReceivedNotificaiton)) {
 			return avRequestResult;
 		}
 		return -1;
@@ -787,7 +812,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public int pauseMediaStreaming() {
-		if (sendAVCommandAndWaitForResponse(createPlayerPausePacket().array())) {
+		if (sendAVCommandAndWaitForResponse(createPlayerPausePacket().array(), avCommandPauseResponseReceivedNotificaiton)) {
 			return avRequestResult;
 		}
 		return -1;
@@ -800,7 +825,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public int resumeMediaStreaming() {
-		if (sendAVCommandAndWaitForResponse(createPlayerResumePacket().array())) {
+		if (sendAVCommandAndWaitForResponse(createPlayerResumePacket().array(), avCommandResumeResponseReceivedNotificaiton)) {
 			return avRequestResult;
 		}
 		return -1;
@@ -814,7 +839,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public int increaseVolume() {
-		if (sendAVCommandAndWaitForResponse(createPlayerIncreaseVolumePacket().array())) {
+		if (sendAVCommandAndWaitForResponse(createPlayerIncreaseVolumePacket().array(), avCommandVolumeResponseReceivedNotificaiton)) {
 			return avRequestResult;
 		}
 		return -1;
@@ -828,7 +853,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public int decreaseVolume() {
-		if (sendAVCommandAndWaitForResponse(createPlayerDecreaseVolumePacket().array())) {
+		if (sendAVCommandAndWaitForResponse(createPlayerDecreaseVolumePacket().array(), avCommandVolumeResponseReceivedNotificaiton)) {
 			return avRequestResult;
 		}
 		return -1;
