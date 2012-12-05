@@ -169,4 +169,13 @@ public class Utils {
     	}
     	return  stringWriter.toString();
     }
+    
+    public static void deleteRecursively(File fileOrDirectory) {
+    	if (fileOrDirectory.isDirectory()) {
+    		for (File child : fileOrDirectory.listFiles()) {
+    			deleteRecursively(child);
+    		}
+    	}
+    	fileOrDirectory.delete();
+    }
 }
