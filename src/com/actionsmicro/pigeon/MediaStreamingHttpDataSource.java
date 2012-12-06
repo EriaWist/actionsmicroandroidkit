@@ -2,9 +2,9 @@ package com.actionsmicro.pigeon;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
+import java.nio.ByteBuffer;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -26,12 +26,14 @@ public class MediaStreamingHttpDataSource implements DataSource {
 	private long contentLength = -1;
 	private String userAgentString;
 
-	public MediaStreamingHttpDataSource(String url, String userAgentString) {
+	public MediaStreamingHttpDataSource(String url, String userAgentString, Long contentLength) {
 		this.urlString = url;
 		this.userAgentString = userAgentString;
+		this.contentLength = contentLength;
 	}
-	public MediaStreamingHttpDataSource(String url) {
+	public MediaStreamingHttpDataSource(String url, Long contentLength) {
 		this.urlString = url;
+		this.contentLength = contentLength;
 	}
 	private MediaStreaming mediaStreaming;
 	private boolean seekable = true;
@@ -138,12 +140,11 @@ public class MediaStreamingHttpDataSource implements DataSource {
 	private long downloadingOffset = -1;
 	private Thread downloadThread;
 	private boolean shouldDownload;
-	private PipedOutputStream outputPipe;
-	private PipedInputStream inputPipe;
+	private LinkedBlockingQueue<ByteBuffer> linkedBlockingQueue = new LinkedBlockingQueue<ByteBuffer>();
 	private Thread uploadThread;
 	private boolean shouldUpload;
 	protected boolean reachEof;
-	private void stopDownloadThread() {
+	private synchronized void stopDownloadThread() {
 		if (downloadThread != null) {
 			shouldDownload = false;
 			try {
@@ -155,7 +156,7 @@ public class MediaStreamingHttpDataSource implements DataSource {
 			downloadThread = null;
 		}
 	}
-	private void stopUploadThread() {
+	private synchronized void stopUploadThread() {
 		if (uploadThread != null) {
 			shouldUpload = false;
 			try {
@@ -172,14 +173,6 @@ public class MediaStreamingHttpDataSource implements DataSource {
 			if (downloadingOffset != offset) {
 				stopDownloadThread();
 				stopUploadThread();
-				final int pipeSize = 1024*1024;
-				outputPipe = new PipedOutputStream();
-				try {
-					inputPipe = new PipedInputStream(outputPipe, pipeSize);
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
 				shouldDownload = true;
 				downloadThread = new Thread(new Runnable() {
 					
@@ -187,6 +180,7 @@ public class MediaStreamingHttpDataSource implements DataSource {
 					public void run() {
 						InputStream inputStream = null;
 						try {
+							Log.d(TAG, "start HttpGet:"+urlString);
 							HttpGet get = new HttpGet(urlString);
 							get.addHeader("Range", "bytes="+offset+"-"+contentLength);
 							if (userAgentString != null) {
@@ -207,50 +201,28 @@ public class MediaStreamingHttpDataSource implements DataSource {
 								final byte[] buffer = new byte [bufferSize];
 								int sizeRead = 0;
 								long totalRead = 0;
-								Log.d(TAG, "start reading");	
+								Log.d(TAG, "start reading" + urlString);	
 								reachEof = false;
 								do {
 									sizeRead = inputStream.read(buffer);
-//									Log.d(TAG, "inputStream.read:"+sizeRead);
+									Log.d(TAG, "inputStream.read:"+sizeRead);
 									if (sizeRead == -1) {
-										// TODO
-										//									mediaStreaming.sendEofPacket();
 										reachEof = true;
-										outputPipe.flush();
 										shouldDownload = false;
 									} else {
 										totalRead += sizeRead;
-										if (totalRead >= pipeSize - bufferSize && downloadingOffset != -1) {
-											//downloadingOffset = -1;
-											//startUploadThread(); 
-										}
-										do {
-											try {
-//												Log.d(TAG, "outputPipe.write:"+sizeRead);
-												outputPipe.write(buffer, 0, sizeRead);
-//												Log.d(TAG, "outputPipe.write done");
-												break;
-											} catch (InterruptedIOException e) {
-												e.printStackTrace();
-												try {
-													Thread.sleep(100);
-												} catch (InterruptedException e1) {
-													// TODO Auto-generated catch block
-													e1.printStackTrace();
-													break;
-												}
-											}
-										} while (true);
+										final ByteBuffer byteBuffer = ByteBuffer.allocate(sizeRead);
+										byteBuffer.put(buffer, 0, sizeRead);
+										linkedBlockingQueue.add(byteBuffer);
 									}
 								} while(shouldDownload);
 								Log.d(TAG, "end reading. totalRead:" + totalRead);
-								outputPipe.close();
-								inputStream.close();
 							} catch (IOException e) {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
 						}
+						Log.d(TAG, "download thread ends");
 					}
 
 				});
@@ -266,46 +238,33 @@ public class MediaStreamingHttpDataSource implements DataSource {
 		uploadThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-				try {
-					final int bufferSize = 1024*32;
-					final byte[] buffer = new byte [bufferSize];
-					int sizeRead = 0;
-					long totalRead = 0;
-					int result;
-					Log.d(TAG, "start reading inputPipe");	
-					do {
-						result = inputPipe.read(buffer, sizeRead, bufferSize-sizeRead);
+				long totalRead = 0;
+				Log.d(TAG, "start reading linkedBlockingQueue");	
+				do {
+					ByteBuffer byteBuffer = null;
+					try {
+						byteBuffer = linkedBlockingQueue.poll(1, TimeUnit.SECONDS);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					if (byteBuffer == null) {
+						if (reachEof) {
+							mediaStreaming.sendEofPacket();
+							shouldUpload = false;
+						}
+						
+					} else {
 						synchronized (this) {
 							downloadingOffset = -1;
 						}						
-//						Log.d(TAG, "inputPipe.read:"+sizeRead);
-						if (result == -1) {
-							if (sizeRead > 0) {
-								totalRead += sizeRead;
-//								Log.d(TAG, "sendStreamingContents:"+sizeRead);
-								mediaStreaming.sendStreamingContents(buffer, sizeRead);
-								sizeRead = 0;								
-							}
-							if (reachEof) {
-								mediaStreaming.sendEofPacket();
-							}
-							shouldUpload = false;
-						} else {
-							sizeRead += result;
-							if (sizeRead >= 64) {
-								totalRead += sizeRead;
-//								Log.d(TAG, "sendStreamingContents:"+sizeRead);
-								mediaStreaming.sendStreamingContents(buffer, sizeRead);
-								sizeRead = 0;								
-							}
-						}
-					} while(shouldUpload);
-					Log.d(TAG, "end reading inputPipe. totalRead:" + totalRead);
-					inputPipe.close();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+						final byte buffer[] = byteBuffer.array();
+						Log.d(TAG, "linkedBlockingQueue.read:"+buffer.length);
+						totalRead += buffer.length;
+						mediaStreaming.sendStreamingContents(buffer, buffer.length);
+					}
+				} while(shouldUpload);
+				Log.d(TAG, "end reading linkedBlockingQueue. totalRead:" + totalRead);
 			}
 
 		});
