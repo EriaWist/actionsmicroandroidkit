@@ -1,6 +1,8 @@
 package com.actionsmicro.widget;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 import android.database.DataSetObserver;
 import android.view.View;
@@ -8,7 +10,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ListAdapter;
 
-public class CompositeAdapter extends BaseAdapter {
+public class CompositeAdapter<T extends ListAdapter> extends BaseAdapter {
 
 	private DataSetObserver dataSetObserver = new DataSetObserver() {
 		public void onChanged () {
@@ -18,7 +20,7 @@ public class CompositeAdapter extends BaseAdapter {
 			// TODO Auto-generated method stub			
 		}
 	};
-	private ArrayList<ListAdapter> subadapters = new ArrayList<ListAdapter>();
+	private ArrayList<T> subadapters = new ArrayList<T>();
 	@Override
 	public int getCount() {
 		int count = 0;
@@ -105,16 +107,26 @@ public class CompositeAdapter extends BaseAdapter {
 		return false;
 	}
 	
-	public void addAdapter(ListAdapter subadapter) {
+	public void addAdapter(T subadapter) {
 		subadapter.registerDataSetObserver(dataSetObserver);
 		subadapters.add(subadapter);
 		notifyDataSetChanged();
 	}
-	public void removeAdapter(ListAdapter subadapter) {
+	public void removeAdapter(T subadapter) {
 		if (subadapters.contains(subadapter)) {
 			subadapter.unregisterDataSetObserver(dataSetObserver);
 			subadapters.remove(subadapter);
 			notifyDataSetChanged();
 		}		
 	}
+	/**
+     * Sorts the content of this adapter using the specified comparator.
+     *
+     * @param comparator The comparator used to sort the objects contained
+     *        in this adapter.
+     */
+    public void sortAdapters(Comparator<? super T> comparator) {
+    	Collections.sort(subadapters, comparator);
+        notifyDataSetChanged();
+    }
 }
