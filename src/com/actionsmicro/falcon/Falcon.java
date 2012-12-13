@@ -27,7 +27,7 @@ import com.actionsmicro.utils.Log;
 public class Falcon {
 	
 	static private final String TAG = "Falcon";
-	public static class ProjectorInfo implements Parcelable
+	public static class ProjectorInfo implements Parcelable, Comparable<ProjectorInfo>
 	{
 		private static final int SERVICE_WIFI_LAN_DISPLAY 	= 1 << 0;
 		private static final int SERVICE_MEDIA_STREAMING 	= 1 << 1;
@@ -83,6 +83,38 @@ public class Falcon {
 	    }
 		public boolean supportsMediaStreaming() {
 			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING;
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null) {
+				return false;
+			}
+			if (obj instanceof ProjectorInfo) {
+				if (ipAddress.equals(((ProjectorInfo) obj).ipAddress)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		@Override 
+		public int hashCode() {
+			// Start with a non-zero constant.
+			int result = 213;
+			// Include a hash for each field.
+			result = 31 * result + (osVerion == null ? 0 : osVerion.hashCode());
+			result = 31 * result + (name == null ? 0 : name.hashCode());
+			result = 31 * result + (ipAddress == null ? 0 : ipAddress.hashCode());
+			result = 31 * result + wifiDisplayPortNumber;
+			result = 31 * result + remoteControlPortNumber;
+			result = 31 * result + (passcode == null ? 0 : passcode.hashCode());
+			result = 31 * result + (model == null ? 0 : model.hashCode());
+			result = 31 * result + service;
+			
+			return result;
+		}
+		@Override
+		public int compareTo(ProjectorInfo another) {
+			return ipAddress.getHostAddress().compareTo(another.ipAddress.getHostAddress());
 		}
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
