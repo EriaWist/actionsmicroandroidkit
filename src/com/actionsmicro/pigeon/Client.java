@@ -289,7 +289,7 @@ public class Client {
 			sendJpegImageBytesToServer(compressedBuffer, width, height);
 		}
 	}
-	private void sendJpegImageBytesToServer(final byte[] compressedBuffer,
+	private void sendJpegImageBytesToServer(final byte[] jpegData,
 			final int width, final int height) throws IOException {
 		synchronized (this) {
 			Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
@@ -297,8 +297,8 @@ public class Client {
 			BufferedOutputStream socketStream = null;
 			Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");	
 			socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-			socketStream.write(createPacketHeaderForSendingImage(width, height, compressedBuffer.length).array());
-			socketStream.write(compressedBuffer);
+			socketStream.write(createPacketHeaderForSendingImage(width, height, jpegData.length).array());
+			socketStream.write(jpegData);
 			socketStream.flush();
 			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
 		}
@@ -363,19 +363,22 @@ public class Client {
 	}
 	public void sendJpegStreamToServer(InputStream inputStream) throws IOException, IllegalArgumentException {
 		if (canSendStream()) {
-			final ByteArrayOutputStream bufferOS = new ByteArrayOutputStream(1024*100);
-			final byte buffer[] = new byte[1024];
-			int sizeRead = 0;
-			while ((sizeRead = inputStream.read(buffer)) != -1) {
-				bufferOS.write(buffer, 0, sizeRead);
-			}
-			final byte jpegBytes[] = bufferOS.toByteArray();
-			final BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-			decodeOptions.inJustDecodeBounds = true; // we just need width and height
-			BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.length, decodeOptions);
-			assert(decodeOptions.outMimeType.equals("image/jpeg"));
-			if (decodeOptions.outMimeType.equals("image/jpeg")) {
-				sendJpegImageBytesToServer(jpegBytes, decodeOptions.outWidth, decodeOptions.outHeight);
+			synchronized (this) {
+				final ByteArrayOutputStream compressionBuffer = getCompressionBuffer();
+				compressionBuffer.reset();
+				final byte buffer[] = new byte[1024];
+				int sizeRead = 0;
+				while ((sizeRead = inputStream.read(buffer)) != -1) {
+					compressionBuffer.write(buffer, 0, sizeRead);
+				}
+				final byte jpegBytes[] = compressionBuffer.toByteArray();
+				final BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+				decodeOptions.inJustDecodeBounds = true; // we just need width and height
+				BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.length, decodeOptions);
+				assert(decodeOptions.outMimeType.equals("image/jpeg"));
+				if (decodeOptions.outMimeType.equals("image/jpeg")) {
+					sendCompressedBufferToServer(decodeOptions.outWidth, decodeOptions.outHeight);
+				}
 			}
 		}
 	}
