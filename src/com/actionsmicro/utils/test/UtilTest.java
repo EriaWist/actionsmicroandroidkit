@@ -2,6 +2,7 @@ package com.actionsmicro.utils.test;
 
 import java.io.IOException;
 import java.io.StringBufferInputStream;
+import java.util.Arrays;
 
 import junit.framework.TestCase;
 
@@ -55,5 +56,12 @@ public class UtilTest extends TestCase {
 		assertEquals(Utils.makeTimeString(longFormatString, -3600), "-1:00:00");
 		assertEquals(Utils.makeTimeString(shortFormatString, 3600), "60:00");
 		assertEquals(Utils.makeTimeString(shortFormatString, -3600), "-60:00");
+	}
+	public void testConcatStringsWithSeparator() {
+		final String strings[] = {"brian", "Jesse", "Sanders", "James"};
+		assertEquals(Utils.concatStringsWithSeparator(Arrays.asList(strings), ":"), "brian:Jesse:Sanders:James");
+	}
+	public void testMd5() {
+		assertEquals(Utils.md5("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744"), "befb99b8eff320851dc5d2cd1b6853ee");
 	}
 }

@@ -7,9 +7,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Formatter;
+import java.util.List;
 import java.util.Locale;
 
 import android.app.Activity;
@@ -177,5 +181,28 @@ public class Utils {
     		}
     	}
     	fileOrDirectory.delete();
+    }
+    
+    public static String concatStringsWithSeparator(List<String> strings, String separator) {
+        StringBuilder sb = new StringBuilder();
+        String sep = "";
+        for(String s: strings) {
+            sb.append(sep).append(s);
+            sep = separator;
+        }
+        return sb.toString();                           
+    }
+    public static String md5(String inputString) {
+    	MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("MD5");
+            byte utf8_bytes[] = inputString.getBytes();
+            digest.update(utf8_bytes, 0, utf8_bytes.length);
+            String hash = new BigInteger(1, digest.digest()).toString(16);
+            return hash;
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return "";
     }
 }

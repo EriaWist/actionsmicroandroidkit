@@ -12,6 +12,7 @@ import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Iterator;
 
 import android.content.Context;
@@ -23,14 +24,27 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Utils;
 
 public class Falcon {
 	
+	private static final String MD5_SECRET = ":secret=82280189";
+	private static final String PARAMETER_MD5_KEY = "md5";
+	private static final String PARAMETER_SERVICE_KEY = "service";
+	private static final String PARAMETER_NAME_KEY = "name";
+	private static final String PARAMETER_DISCOVERY_KEY = "discovery";
 	static private final String TAG = "Falcon";
 	public static class ProjectorInfo implements Parcelable, Comparable<ProjectorInfo>
 	{
-		private static final int SERVICE_WIFI_LAN_DISPLAY 	= 1 << 0;
-		private static final int SERVICE_MEDIA_STREAMING 	= 1 << 1;
+		private static final int SERVICE_WIFI_LAN_DISPLAY 	= 0x01 << 0;
+		private static final int SERVICE_MEDIA_STREAMING 	= 0x01 << 1;
+		private static final int SERVICE_APP_PHOTO_VIEWER 	= 0x01 << 2;
+		private static final int SERVICE_APP_LIVE_CAM 		= 0x01 << 3;
+		private static final int SERVICE_APP_STREAMIG_DOC 	= 0x01 << 4;
+		private static final int SERVICE_SPLIT_SCREEN 		= 0x01 << 5;
+		private static final int SERVICE_APP_DROPBOX 		= 0x01 << 6;
+		private static final int SERVICE_APP_WEB_VIEWER 	= 0x01 << 7;
+
 		
 		public String osVerion;
 		public String name;
@@ -39,7 +53,9 @@ public class Falcon {
 		public int remoteControlPortNumber;
 		public String passcode;
 		public String model;
-		public int service;
+		public int service = SERVICE_WIFI_LAN_DISPLAY | SERVICE_MEDIA_STREAMING | SERVICE_APP_PHOTO_VIEWER | SERVICE_APP_LIVE_CAM | SERVICE_APP_STREAMIG_DOC | SERVICE_SPLIT_SCREEN | SERVICE_APP_DROPBOX | SERVICE_APP_WEB_VIEWER;
+		public String vendor;
+		public boolean isFraud;
 		public final boolean hasNoPasscode() {
 			return passcode == null || passcode.length() == 0;
 		}
@@ -83,6 +99,24 @@ public class Falcon {
 	    }
 		public boolean supportsMediaStreaming() {
 			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING;
+		}
+		public boolean supportsPixViewer() {
+			return (service & SERVICE_APP_PHOTO_VIEWER) == SERVICE_APP_PHOTO_VIEWER;
+		}
+		public boolean supportsLiveCam() {
+			return (service & SERVICE_APP_LIVE_CAM) == SERVICE_APP_LIVE_CAM;
+		}
+		public boolean supportsStreamingDoc() {
+			return (service & SERVICE_APP_STREAMIG_DOC) == SERVICE_APP_STREAMIG_DOC;
+		}
+		public boolean supportsSplitScreen() {
+			return (service & SERVICE_SPLIT_SCREEN) == SERVICE_SPLIT_SCREEN;
+		}
+		public boolean supportsDropbox() {
+			return (service & SERVICE_APP_DROPBOX) == SERVICE_APP_DROPBOX;
+		}
+		public boolean supportsWebViewer() {
+			return (service & SERVICE_APP_WEB_VIEWER) == SERVICE_APP_WEB_VIEWER;
 		}
 		@Override
 		public boolean equals(Object obj) {
@@ -465,6 +499,20 @@ public class Falcon {
 		}
 		return false;
 	}
+	private static HashMap<String, String> parseKeyValuePairs(String [] parameters) {
+		final HashMap<String, String> keyValuePairs = new HashMap<String, String>();
+		for (final String parameter : parameters) {
+			if (parameter.contains("=")) {
+				final String[] keyAndValue = parameter.split("=");
+				if (keyAndValue.length > 1) {
+					keyValuePairs.put(keyAndValue[0], keyAndValue[1]);
+				} else {
+					keyValuePairs.put(keyAndValue[0], "");					
+				}
+			}
+		}
+		return keyValuePairs;
+	}
 	protected static boolean parseResponseString(String receiveString, ProjectorInfo projectorInfo) {
 		//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
 //	    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
@@ -474,35 +522,55 @@ public class Falcon {
 			if (!parameters[3].equals("(none)")) {
 				projectorInfo.name = parameters[3];
 			}
-			for (final String parameter : parameters) {
-				if (parameter.startsWith("name=")) {
-					final String[] name = parameter.split("=");
-					if (name.length > 1) {
-						projectorInfo.name = name[1];
-					}
-				} else if (parameter.startsWith("passcode=")) {
-					final String[] passcode = parameter.split("=");
-					if (passcode.length > 1) {
-						projectorInfo.passcode = passcode[1];
-					}
-				} else if (parameter.startsWith("model=")) {
-					final String[] model = parameter.split("=");
-					if (model.length > 1) {
-						projectorInfo.model = model[1];
-					}
-				} else if (parameter.startsWith("service=")) {
-					final String[] service = parameter.split("=");
-					if (service.length > 1) {
-						projectorInfo.service = Integer.valueOf(service[1]);
-					}
+			HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
+			if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY)) {
+				if (checkMd5(parameters)) {
+					processAllValue(parameters, projectorInfo);
+				} else {
+					Log.i(TAG, "is fraud!!!!");
+					projectorInfo.isFraud = true;
 				}
+			} else {
+				processAllValue(parameters, projectorInfo);
 			}
 			// Add sanity check to filter out other products which use same protocol
-			if (projectorInfo.model != null) {
+			if (projectorInfo.model != null && !projectorInfo.isFraud) {
 				return true;
 			}
 		}
 		return false;
+	}
+	private static void processAllValue(String[] parameters, ProjectorInfo projectorInfo) {
+		final HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
+		if (keyValuePairs.containsKey(PARAMETER_NAME_KEY)) {
+			projectorInfo.name = keyValuePairs.get(PARAMETER_NAME_KEY);
+		}
+		projectorInfo.passcode = keyValuePairs.get("passcode");
+		projectorInfo.model = keyValuePairs.get("model");
+		projectorInfo.vendor = keyValuePairs.get("vendor");
+		if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY) && keyValuePairs.containsKey(PARAMETER_SERVICE_KEY)) {
+			projectorInfo.service = Integer.valueOf(keyValuePairs.get(PARAMETER_SERVICE_KEY));
+		}
+	}
+	private static boolean checkMd5(String[] parameters) {
+		final HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
+		if (keyValuePairs.containsKey(PARAMETER_MD5_KEY)) {
+			final String responseStringWithoutMD5Pair = responseStringWithoutMD5Pair(parameters);
+			if (Utils.md5(responseStringWithoutMD5Pair+MD5_SECRET).equals(keyValuePairs.get(PARAMETER_MD5_KEY))) {
+				return true;
+			}
+		}
+		return false;
+	}
+	private static String responseStringWithoutMD5Pair(String[] parameters) {
+		final ArrayList<String> parametersWithoutMd5Pair = new ArrayList<String>();
+		for (final String parameter : parameters) {
+			if (!parameter.startsWith(PARAMETER_MD5_KEY+"=")) {
+				parametersWithoutMd5Pair.add(parameter);
+			}
+		}
+		
+		return Utils.concatStringsWithSeparator(parametersWithoutMd5Pair, ":");
 	}
 	
 }
