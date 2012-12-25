@@ -18,56 +18,56 @@ public class FalconTest extends TestCase {
 	protected void tearDown() throws Exception {
 		super.tearDown();
 	}
-	public void testParserNormal() {
+	public void testWifiDisplayParserNormal() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertTrue(Falcon.parseResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744", projectorInfo));
+		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744", projectorInfo));
 		assertEquals(projectorInfo.osVerion, "1");
 		assertEquals(projectorInfo.model, "BENQ_GP10");
 		assertEquals(projectorInfo.passcode, "8744");
 		assertEquals(projectorInfo.name, "my_name");			
 	}
-	public void testParserNoName() {
+	public void testWifiDisplayParserNoName() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertTrue(Falcon.parseResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744", projectorInfo));
+		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744", projectorInfo));
 		assertEquals(projectorInfo.osVerion, "1");
 		assertEquals(projectorInfo.model, "BENQ_GP10");
 		assertEquals(projectorInfo.passcode, "8744");
 		assertTrue(projectorInfo.name == null);				
 	}
-	public void testParserHasNameTag() {
+	public void testWifiDisplayParserHasNameTag() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertTrue(Falcon.parseResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744:name=james", projectorInfo));
+		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744:name=james", projectorInfo));
 		assertEquals(projectorInfo.osVerion, "1");
 		assertEquals(projectorInfo.model, "BENQ_GP10");
 		assertEquals(projectorInfo.passcode, "8744");
 		assertEquals(projectorInfo.name, "james");			
 	}
-	public void testParserNoModel() {
+	public void testWifiDisplayParserNoModel() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertFalse(Falcon.parseResponseString("1:10163:root:(none):3:root::passcode=8744", projectorInfo));
+		assertFalse(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root::passcode=8744", projectorInfo));
 	}
-	public void testParserFraudWithoutMd5() {
+	public void testWifiDisplayParserFraudWithoutMd5() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertFalse(Falcon.parseResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1", projectorInfo));
+		assertFalse(Falcon.parseWifiDisplayResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1", projectorInfo));
 	}
-	public void testParserFraudWithWrongMd5() {
+	public void testWifiDisplayParserFraudWithWrongMd5() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertFalse(Falcon.parseResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=befb99b8eff320851dc5d2cd1b6853ee:discovery=1", projectorInfo));
+		assertFalse(Falcon.parseWifiDisplayResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=befb99b8eff320851dc5d2cd1b6853ee:discovery=1", projectorInfo));
 	}
-	public void testParserMd5Checksum() {
+	public void testWifiDisplayParserMd5Checksum() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
 		//1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1:vendor=actions:secret=82280189
-		assertTrue(Falcon.parseResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=f32bb4bf95cad9ac7a50cca2391fdb39:discovery=1:vendor=actions", projectorInfo));
+		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=f32bb4bf95cad9ac7a50cca2391fdb39:discovery=1:vendor=actions", projectorInfo));
 		assertEquals(projectorInfo.osVerion, "1");
 		assertEquals(projectorInfo.model, "BENQ_GP10");
 		assertEquals(projectorInfo.passcode, "8744");
 		assertEquals(projectorInfo.name, "my_name");
 		assertEquals(projectorInfo.vendor, "actions");
 	}
-	public void testParserService() {
+	public void testWifiDisplayParserService() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
 		//1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1:vendor=actions:service=10:secret=82280189
-		assertTrue(Falcon.parseResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=67fc211a6033d1e84f61f8d5421b751a:discovery=1:vendor=actions:service=10", projectorInfo));
+		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=67fc211a6033d1e84f61f8d5421b751a:discovery=1:vendor=actions:service=10", projectorInfo));
 		assertEquals(projectorInfo.osVerion, "1");
 		assertEquals(projectorInfo.model, "BENQ_GP10");
 		assertEquals(projectorInfo.passcode, "8744");
@@ -79,7 +79,18 @@ public class FalconTest extends TestCase {
 		assertFalse(projectorInfo.supportsStreamingDoc());
 		assertFalse(projectorInfo.supportsSplitScreen());
 		assertFalse(projectorInfo.supportsDropbox());
-		assertFalse(projectorInfo.supportsWebViewer());
-		
+		assertFalse(projectorInfo.supportsWebViewer());	
+	}
+	public void testRemoteControlParserOld() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo();
+		Falcon.parseRemoteControlResponseString("123.12321.31232", projectorInfo);
+		assertTrue(projectorInfo.vendor == null);
+		assertTrue(projectorInfo.model == null);
+	}
+	public void testRemoteControlParserNew() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo();
+		Falcon.parseRemoteControlResponseString("EZREMOTE:1:vendor=actions:model=BENQ_GP10", projectorInfo);
+		assertEquals(projectorInfo.model, "BENQ_GP10");
+		assertEquals(projectorInfo.vendor, "actions");
 	}
 }

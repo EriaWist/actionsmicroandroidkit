@@ -28,6 +28,8 @@ import com.actionsmicro.utils.Utils;
 
 public class Falcon {
 	
+	private static final String PARAMETER_VENDOR_KEY = "vendor";
+	private static final String PARAMETER_MODEL_KEY = "model";
 	private static final String MD5_SECRET = ":secret=82280189";
 	private static final String PARAMETER_MD5_KEY = "md5";
 	private static final String PARAMETER_SERVICE_KEY = "service";
@@ -293,7 +295,7 @@ public class Falcon {
 			public void run() {
 				if (broadcastSocket != null) {
 					try {
-						final byte[] recvBuf = new byte[256];
+						final byte[] recvBuf = new byte[512];
 						Log.d(TAG, "start receiveing");
 						while (true) {
 							final DatagramPacket recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
@@ -302,10 +304,11 @@ public class Falcon {
 								Log.d(TAG, "receive EZ Remote Response");
 								final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
 								projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
+								parseRemoteControlResponse(recvPacket, projectorInfo);
 								mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 							} else if (recvPacket.getPort() == EZ_WIFI_DISPLAY_PORT_NUMBER) {
 								final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
-								if (parseResponse(recvPacket, projectorInfo)) {
+								if (parseWifiDisplayResponse(recvPacket, projectorInfo)) {
 									Log.d(TAG, "receive EZ Wifi Response");
 									projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
 									mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
@@ -334,6 +337,26 @@ public class Falcon {
 			}
 		});
 		receivingThread.start();
+	}
+	private static void parseRemoteControlResponse(DatagramPacket recvPacket,
+			ProjectorInfo projectorInfo) {
+		final String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength(), Charset.forName("UTF-8")).split("\0");
+		if (receiveStrings.length > 0) {
+			final String receiveString = receiveStrings[0];
+			parseRemoteControlResponseString(receiveString, projectorInfo);
+		}
+	}
+	protected static void parseRemoteControlResponseString(final String receiveString, ProjectorInfo projectorInfo) {
+		if (receiveString.startsWith("EZREMOTE")) {
+			final String [] parameters = receiveString.split(":");
+			final HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
+			if (keyValuePairs.containsKey(PARAMETER_MODEL_KEY)) {
+				projectorInfo.model = keyValuePairs.get(PARAMETER_MODEL_KEY);
+			}
+			if (keyValuePairs.containsKey(PARAMETER_VENDOR_KEY)) {
+				projectorInfo.vendor = keyValuePairs.get(PARAMETER_VENDOR_KEY);
+			}
+		}
 	}
 	private ProjectorInfo getProjectorInfoWithAddress(InetAddress address) {
 		Iterator<ProjectorInfo> iterator = projectors.listIterator();
@@ -492,10 +515,10 @@ public class Falcon {
 		}
 		return projectorInfo;
 	}
-	private static boolean parseResponse(final DatagramPacket recvPacket, ProjectorInfo projectorInfo) {
+	private static boolean parseWifiDisplayResponse(final DatagramPacket recvPacket, ProjectorInfo projectorInfo) {
 		final String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength(), Charset.forName("UTF-8")).split("\0");
 		if (receiveStrings.length > 0) {
-			return parseResponseString(receiveStrings[0], projectorInfo);
+			return parseWifiDisplayResponseString(receiveStrings[0], projectorInfo);
 		}
 		return false;
 	}
@@ -513,7 +536,7 @@ public class Falcon {
 		}
 		return keyValuePairs;
 	}
-	protected static boolean parseResponseString(String receiveString, ProjectorInfo projectorInfo) {
+	protected static boolean parseWifiDisplayResponseString(String receiveString, ProjectorInfo projectorInfo) {
 		//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
 //	    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
 		final String [] parameters = receiveString.split(":");
@@ -546,17 +569,17 @@ public class Falcon {
 			projectorInfo.name = keyValuePairs.get(PARAMETER_NAME_KEY);
 		}
 		projectorInfo.passcode = keyValuePairs.get("passcode");
-		projectorInfo.model = keyValuePairs.get("model");
-		projectorInfo.vendor = keyValuePairs.get("vendor");
+		projectorInfo.model = keyValuePairs.get(PARAMETER_MODEL_KEY);
+		projectorInfo.vendor = keyValuePairs.get(PARAMETER_VENDOR_KEY);
 		if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY) && keyValuePairs.containsKey(PARAMETER_SERVICE_KEY)) {
-			projectorInfo.service = Integer.valueOf(keyValuePairs.get(PARAMETER_SERVICE_KEY));
+			projectorInfo.service = Integer.parseInt(keyValuePairs.get(PARAMETER_SERVICE_KEY), 16);
 		}
 	}
 	private static boolean checkMd5(String[] parameters) {
 		final HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
 		if (keyValuePairs.containsKey(PARAMETER_MD5_KEY)) {
 			final String responseStringWithoutMD5Pair = responseStringWithoutMD5Pair(parameters);
-			if (Utils.md5(responseStringWithoutMD5Pair+MD5_SECRET).equals(keyValuePairs.get(PARAMETER_MD5_KEY))) {
+			if (Utils.md5(responseStringWithoutMD5Pair+MD5_SECRET).equalsIgnoreCase(keyValuePairs.get(PARAMETER_MD5_KEY))) {
 				return true;
 			}
 		}
