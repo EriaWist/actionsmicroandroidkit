@@ -66,8 +66,8 @@ public class FalconTest extends TestCase {
 	}
 	public void testWifiDisplayParserService() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		//1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1:vendor=actions:service=10:secret=82280189
-		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=67fc211a6033d1e84f61f8d5421b751a:discovery=1:vendor=actions:service=10", projectorInfo));
+		//1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1:vendor=actions:service=0A:secret=82280189
+		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=d7308360fc0ab62e063b2a3f2c73e6a7:discovery=1:vendor=actions:service=0A", projectorInfo));
 		assertEquals(projectorInfo.osVerion, "1");
 		assertEquals(projectorInfo.model, "BENQ_GP10");
 		assertEquals(projectorInfo.passcode, "8744");
