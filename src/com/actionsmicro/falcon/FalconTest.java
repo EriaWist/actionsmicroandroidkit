@@ -34,6 +34,22 @@ public class FalconTest extends TestCase {
 		assertEquals(projectorInfo.passcode, "8744");
 		assertTrue(projectorInfo.name == null);				
 	}
+	public void testWifiDisplayParserNoPasscode() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo();
+		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=", projectorInfo));
+		assertEquals(projectorInfo.osVerion, "1");
+		assertEquals(projectorInfo.model, "BENQ_GP10");
+		assertEquals(projectorInfo.passcode, "");
+		assertTrue(projectorInfo.name == null);				
+	}
+	public void testWifiDisplayParsereEmptySegment() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo();
+		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root::model=BENQ_GP10:", projectorInfo));
+		assertEquals(projectorInfo.osVerion, "1");
+		assertEquals(projectorInfo.model, "BENQ_GP10");
+		assertTrue(projectorInfo.passcode == null);
+		assertTrue(projectorInfo.name == null);				
+	}
 	public void testWifiDisplayParserHasNameTag() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
 		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744:name=james", projectorInfo));
