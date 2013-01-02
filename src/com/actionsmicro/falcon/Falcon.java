@@ -58,6 +58,7 @@ public class Falcon {
 		public int service = SERVICE_WIFI_LAN_DISPLAY | SERVICE_MEDIA_STREAMING | SERVICE_APP_PHOTO_VIEWER | SERVICE_APP_LIVE_CAM | SERVICE_APP_STREAMIG_DOC | SERVICE_SPLIT_SCREEN | SERVICE_APP_DROPBOX | SERVICE_APP_WEB_VIEWER;
 		public String vendor;
 		public boolean isFraud;
+		public int discoveryVersion;
 		public final boolean hasNoPasscode() {
 			return passcode == null || passcode.length() == 0;
 		}
@@ -85,6 +86,8 @@ public class Falcon {
 			dest.writeString(passcode);
 			dest.writeString(model);
 			dest.writeInt(service);
+			dest.writeString(vendor);
+			dest.writeInt(discoveryVersion);
 		}
 		public ProjectorInfo() {
 			
@@ -98,6 +101,8 @@ public class Falcon {
 			passcode = in.readString();
 			model = in.readString();
 			service = in.readInt();
+			vendor = in.readString();
+			discoveryVersion = in.readInt();
 	    }
 		public boolean supportsMediaStreaming() {
 			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING;
@@ -145,6 +150,8 @@ public class Falcon {
 			result = 31 * result + (passcode == null ? 0 : passcode.hashCode());
 			result = 31 * result + (model == null ? 0 : model.hashCode());
 			result = 31 * result + service;
+			result = 31 * result + (vendor == null ? 0 : vendor.hashCode());
+			result = 31 * result + discoveryVersion;
 			
 			return result;
 		}
@@ -547,6 +554,7 @@ public class Falcon {
 			}
 			HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
 			if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY)) {
+				projectorInfo.discoveryVersion = Integer.valueOf(keyValuePairs.get(PARAMETER_DISCOVERY_KEY));
 				if (checkMd5(parameters)) {
 					processAllValue(parameters, projectorInfo);
 				} else {
