@@ -547,7 +547,7 @@ public class Falcon {
 		//07-23 13:10:54.940: D/Falcon(31650): datagramSocket receive:1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744 from:/192.168.111.1
 //	    Log.d(TAG, "datagramSocket receive:" + ((receiveStrings.length>0)?receiveStrings[0]:"null") + " from:" + recvPacket.getAddress());
 		final String [] parameters = receiveString.split(":");
-		if (parameters[4].equals(String.valueOf(IPMSG_ANSENTRY))) {
+		if (parameters.length >= 5 && parameters[4].equals(String.valueOf(IPMSG_ANSENTRY))) {
 			projectorInfo.osVerion = parameters[0];
 			if (!parameters[3].equals("(none)")) {
 				projectorInfo.name = parameters[3];
