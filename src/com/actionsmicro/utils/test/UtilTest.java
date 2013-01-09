@@ -63,5 +63,6 @@ public class UtilTest extends TestCase {
 	}
 	public void testMd5() {
 		assertEquals(Utils.md5("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744"), "befb99b8eff320851dc5d2cd1b6853ee");
+		assertEquals(Utils.md5("2:498:root:MY_DPF:3:vendor=Actions:model=AM8250:passcode=4050:service=ff:discovery=1:secret=82280189"), "04793c4e3b24c774dc3f4eda38679e13");
 	}
 }

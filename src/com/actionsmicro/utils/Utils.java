@@ -198,7 +198,7 @@ public class Utils {
             digest = MessageDigest.getInstance("MD5");
             byte utf8_bytes[] = inputString.getBytes();
             digest.update(utf8_bytes, 0, utf8_bytes.length);
-            String hash = new BigInteger(1, digest.digest()).toString(16);
+            String hash = String.format("%032x", new BigInteger(1, digest.digest()));
             return hash;
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();

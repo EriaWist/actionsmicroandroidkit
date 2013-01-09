@@ -558,7 +558,7 @@ public class Falcon {
 				if (checkMd5(parameters)) {
 					processAllValue(parameters, projectorInfo);
 				} else {
-					Log.i(TAG, "is fraud!!!!");
+					Log.i(TAG, "is fraud!!!!==>" + receiveString);
 					projectorInfo.isFraud = true;
 				}
 			} else {
@@ -587,6 +587,9 @@ public class Falcon {
 		final HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
 		if (keyValuePairs.containsKey(PARAMETER_MD5_KEY)) {
 			final String responseStringWithoutMD5Pair = responseStringWithoutMD5Pair(parameters);
+			Log.d(TAG, "responseStringWithoutMD5Pair:" + responseStringWithoutMD5Pair);
+			Log.d(TAG, "md5:" + keyValuePairs.get(PARAMETER_MD5_KEY));
+			Log.d(TAG, "md5:" + Utils.md5(responseStringWithoutMD5Pair+MD5_SECRET));
 			if (Utils.md5(responseStringWithoutMD5Pair+MD5_SECRET).equalsIgnoreCase(keyValuePairs.get(PARAMETER_MD5_KEY))) {
 				return true;
 			}
