@@ -28,6 +28,10 @@ public class UtilTest extends TestCase {
 		assertEquals("jarlist.cache", Utils.getLastPathComponent("/Users/jamchen/Developer/Android/actions-micro/git/EzRemoteControlAndroid/EzControl/bin/jarlist.cache"));
 		assertEquals("jarlist.cache", Utils.getLastPathComponent("jarlist.cache"));
 	}
+	public void testGetFileExtension() {
+		assertEquals("", Utils.getFileExtension("/Users/jamchen/Developer/Android/actions-micro/git/EzRemoteControlAndroid/EzControl/bin"));
+		assertEquals("cache", Utils.getFileExtension("/Users/jamchen/Developer/Android/actions-micro/git/EzRemoteControlAndroid/EzControl/bin/jarlist.cache"));
+	}
 	public void testConvertInputStreamToString() {
 		final String inputString = "d;alkjd;lkjaD;LKJ JJJDAS;LJD;J;ldjsaldkj";
 		try {

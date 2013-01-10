@@ -56,4 +56,12 @@ public class PigeonTest extends TestCase {
 		assertEquals(portNumber, client.getPortNumber());
 		Pigeon.releasePigeonClient(client);
 	}
+	public void testMediaStreamingFileExtSupport() {
+		for (String ext : MediaStreamingFileDataSource.getSupportedFileExt()) {
+			assertTrue(MediaStreamingFileDataSource.supportsFileExt(ext));
+		}
+		assertFalse(MediaStreamingFileDataSource.supportsFileExt("doc"));
+		assertFalse(MediaStreamingFileDataSource.supportsFileExt("ppt"));
+		assertFalse(MediaStreamingFileDataSource.supportsFileExt("xls"));
+	}
 }

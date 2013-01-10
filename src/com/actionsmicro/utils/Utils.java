@@ -157,6 +157,14 @@ public class Utils {
     	}
     	return path;
     }
+    public static String getFileExtension(String path) {
+    	final String lastPathComponent = getLastPathComponent(path);
+    	if (lastPathComponent.contains(".") && !lastPathComponent.endsWith(".")) {
+    		return lastPathComponent.substring(lastPathComponent.lastIndexOf(".")+1);
+    	} else {
+    		return "";
+    	}
+    }
     /**
      * Convert data from given input stream into string
      * @param inputStream The input stream contains string data. 

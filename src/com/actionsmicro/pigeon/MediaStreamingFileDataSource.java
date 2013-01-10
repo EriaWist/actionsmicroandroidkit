@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Arrays;
+import java.util.List;
 
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
 import com.actionsmicro.utils.Log;
@@ -126,5 +128,11 @@ public class MediaStreamingFileDataSource implements DataSource {
 			mediaStreamingStateListener.medisStreamingDurationIsReady(this, duration);
 		}
 	}
-
+	private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList("mov", "mkv", "mp4", "avi", "divx", "mpg", "mpeg", "ts", "xvid", "rmvb", "rm", "wmv", "m4v");
+	public static List<String> getSupportedFileExt() {
+		return SUPPORTED_FILE_EXTENSIONS;
+	}
+	public static boolean supportsFileExt(String ext) {
+		return SUPPORTED_FILE_EXTENSIONS.contains(ext);
+	}
 }
