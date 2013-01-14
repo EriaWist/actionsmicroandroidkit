@@ -39,7 +39,7 @@ public class Reachability {
 		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 		if (isWifiApEnabledMethod == null) {
 			try {
-				isWifiApEnabledMethod = wifiManager.getClass().getMethod("isWifiApEnabled", null);
+				isWifiApEnabledMethod = wifiManager.getClass().getMethod("isWifiApEnabled", (Class<?>[])null);
 				if (isWifiApEnabledMethod.getGenericReturnType() != boolean.class) {
 					isWifiApEnabledMethod = null;
 				}
@@ -53,7 +53,7 @@ public class Reachability {
 		}
 		if (isWifiApEnabledMethod != null) {
 			try {
-				return ((Boolean)isWifiApEnabledMethod.invoke(wifiManager, null)).booleanValue();
+				return ((Boolean)isWifiApEnabledMethod.invoke(wifiManager, (Object[])null)).booleanValue();
 			} catch (IllegalArgumentException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
