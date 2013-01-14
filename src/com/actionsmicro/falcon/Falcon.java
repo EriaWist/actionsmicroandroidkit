@@ -221,11 +221,6 @@ public class Falcon {
 	}
 	static public final int EZ_REMOTE_CONTROL_PORT_NUMBER = 63630;
 	static public final int EZ_WIFI_DISPLAY_PORT_NUMBER = 2425;
-	static public int getBroadcastAddress(Context context) {
-		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-		DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
-		return dhcpInfo.serverAddress;
-	}
 	private static ArrayList<InetAddress> getBroadcastAddresses() {
         ArrayList<InetAddress> listOfBroadcasts = new ArrayList<InetAddress>();
         Enumeration<NetworkInterface> list;
