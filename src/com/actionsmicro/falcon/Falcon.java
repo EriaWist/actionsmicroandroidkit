@@ -14,11 +14,13 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Locale;
 
 import android.content.Context;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -169,25 +171,31 @@ public class Falcon {
 		}
 		return singleton;
 	}
-	private Falcon() {
-		mainThreadHandler = new Handler() {
-			@Override
-			public void handleMessage (Message msg) {
-				switch (msg.what) {
-				case MSG_SearchDidStart:
-					notifyListenerWillStart(); 
-					break;					
-				case MSG_SearchDidFind:
-					notifyListenerDidFind((ProjectorInfo) msg.obj);
-					break;
-				case MSG_SearchDidEnd:
-					notifyListenerSearchDidEnd();
-					searching = false;
-					break;
-				}
+	private static class MainThreadHandler extends Handler {
+		private Falcon falcon;
+
+		public MainThreadHandler(Looper mainLooper, Falcon falcon) {
+			super(mainLooper);
+			this.falcon = falcon;
+		}
+
+		@Override
+		public void handleMessage (Message msg) {
+			switch (msg.what) {
+			case MSG_SearchDidStart:
+				falcon.notifyListenerWillStart(); 
+				break;					
+			case MSG_SearchDidFind:
+				falcon.notifyListenerDidFind((ProjectorInfo) msg.obj);
+				break;
+			case MSG_SearchDidEnd:
+				falcon.notifyListenerSearchDidEnd();
+				falcon.searching = false;
+				break;
 			}
-		};
-		
+		}
+	}
+	private Falcon() {		
 		try {
 			try {
 				broadcastSocket = new DatagramSocket(EZ_WIFI_DISPLAY_PORT_NUMBER);
@@ -253,7 +261,7 @@ public class Falcon {
         return listOfBroadcasts;
 }
 	static public String convertAddressToString(int address) {
-		return String.valueOf(String.format("%d.%d.%d.%d", (address & 0xff), (address >> 8 & 0xff), (address >> 16 & 0xff), (address >> 24 | 0xff)));
+		return String.valueOf(String.format(Locale.US, "%d.%d.%d.%d", (address & 0xff), (address >> 8 & 0xff), (address >> 16 & 0xff), (address >> 24 | 0xff)));
 	}
 	static public InetAddress convertAddressInetAddress(int address) throws UnknownHostException {
 		return InetAddress.getByName(convertAddressToString(address));
@@ -265,7 +273,7 @@ public class Falcon {
 		public void falconSearchDidFindProjector(Falcon falcon, ProjectorInfo projectorInfo);
 		public void falconSearchDidEnd(Falcon falcon);
 	}
-	private Handler mainThreadHandler;
+	private final Handler mainThreadHandler = new MainThreadHandler(Looper.getMainLooper(), this);
 	private static final int MSG_SearchDidStart	= 0;
 	private static final int MSG_SearchDidFind	= 1;
 	private static final int MSG_SearchDidEnd	= 2;
