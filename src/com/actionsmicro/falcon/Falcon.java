@@ -16,9 +16,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 
-import android.content.Context;
-import android.net.DhcpInfo;
-import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -107,7 +104,7 @@ public class Falcon {
 			discoveryVersion = in.readInt();
 	    }
 		public boolean supportsMediaStreaming() {
-			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING;
+			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING && Integer.valueOf(osVerion) > 1;
 		}
 		public boolean supportsPixViewer() {
 			return (service & SERVICE_APP_PHOTO_VIEWER) == SERVICE_APP_PHOTO_VIEWER;
