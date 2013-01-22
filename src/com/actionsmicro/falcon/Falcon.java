@@ -50,7 +50,7 @@ public class Falcon {
 	private static final String TAG = "Falcon";
 	/**
 	 * This contains basic information about the device.
-	 * @author jamchen
+	 * @author James Chen
 	 *
 	 */
 	public static class ProjectorInfo implements Parcelable, Comparable<ProjectorInfo> {
