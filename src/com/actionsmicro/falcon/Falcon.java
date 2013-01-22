@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Locale;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -25,6 +24,20 @@ import android.os.Parcelable;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
 
+/**
+ * This class is in charge of device discovery.
+ * <p>
+ * Sample steps to use this class:
+ * <OL>
+ * <li>Get the shared instance of Falcon by calling {@link Falcon#getInstance()}. 
+ * <li>Call {@link Falcon#addSearchResultListener(SearchReultListener)} to register callbacks.
+ * <li>Invoke {@link Falcon#search()}.
+ * <li>Handle callbacks in {@link SearchReultListener}.
+ * </OL>
+ * @author James Chen
+ * @version 1.0
+ * @serial 2013-01-22
+ */
 public class Falcon {
 	
 	private static final String PARAMETER_VENDOR_KEY = "vendor";
@@ -34,9 +47,13 @@ public class Falcon {
 	private static final String PARAMETER_SERVICE_KEY = "service";
 	private static final String PARAMETER_NAME_KEY = "name";
 	private static final String PARAMETER_DISCOVERY_KEY = "discovery";
-	static private final String TAG = "Falcon";
-	public static class ProjectorInfo implements Parcelable, Comparable<ProjectorInfo>
-	{
+	private static final String TAG = "Falcon";
+	/**
+	 * This contains basic information about the device.
+	 * @author jamchen
+	 *
+	 */
+	public static class ProjectorInfo implements Parcelable, Comparable<ProjectorInfo> {
 		private static final int SERVICE_WIFI_LAN_DISPLAY 	= 0x01 << 0;
 		private static final int SERVICE_MEDIA_STREAMING 	= 0x01 << 1;
 		private static final int SERVICE_APP_PHOTO_VIEWER 	= 0x01 << 2;
@@ -45,19 +62,87 @@ public class Falcon {
 		private static final int SERVICE_SPLIT_SCREEN 		= 0x01 << 5;
 		private static final int SERVICE_APP_DROPBOX 		= 0x01 << 6;
 		private static final int SERVICE_APP_WEB_VIEWER 	= 0x01 << 7;
-
 		
-		public String osVerion;
-		public String name;
-		public InetAddress ipAddress;
-		public int wifiDisplayPortNumber;
-		public int remoteControlPortNumber;
-		public String passcode;
-		public String model;
-		public int service = SERVICE_WIFI_LAN_DISPLAY | SERVICE_MEDIA_STREAMING | SERVICE_APP_PHOTO_VIEWER | SERVICE_APP_LIVE_CAM | SERVICE_APP_STREAMIG_DOC | SERVICE_SPLIT_SCREEN | SERVICE_APP_DROPBOX | SERVICE_APP_WEB_VIEWER;
-		public String vendor;
-		public boolean isFraud;
-		public int discoveryVersion;
+		private String osVerion;
+		private String name;
+		private InetAddress ipAddress;
+		private int wifiDisplayPortNumber;
+		private int remoteControlPortNumber;
+		private String passcode;
+		private String model;
+		private int service = SERVICE_WIFI_LAN_DISPLAY | SERVICE_MEDIA_STREAMING | SERVICE_APP_PHOTO_VIEWER | SERVICE_APP_LIVE_CAM | SERVICE_APP_STREAMIG_DOC | SERVICE_SPLIT_SCREEN | SERVICE_APP_DROPBOX | SERVICE_APP_WEB_VIEWER;
+		private String vendor;
+		private boolean isFraud;
+		private int discoveryVersion;
+		/**
+		 * Return the version of the device.
+		 * @return The protocol version of the device.
+		 */
+		public final String getOsVerion() {
+			return osVerion;
+		}
+		/**
+		 * Return the name of the device.
+		 * @return The name of the device.
+		 */
+		public final String getName() {
+			return name;
+		}
+		/**
+		 * Return the IP address of the device.
+		 * @return The IP address of the device.
+		 */
+		public final InetAddress getAddress() {
+			return ipAddress;
+		}
+		/**
+		 * Return the port number of WiFi display service.
+		 * @return The port number of WiFi display service.
+		 */
+		public final int getWifiDisplayPortNumber() {
+			return wifiDisplayPortNumber;
+		}
+		/**
+		 * Return the port number of WiFi remote service.
+		 * @return The port number of WiFi remote service.
+		 */
+		public final int getRemoteControlPortNumber() {
+			return remoteControlPortNumber;
+		}
+		/**
+		 * Return current passcode of the device. Application is recommended to verify the passcode before connecting to the device.
+		 * @return Current passcode of the device.
+		 * @see ProjectorInfo#hasNoPasscode
+		 */
+		public final String getPasscode() {
+			return passcode;
+		}
+		/**
+		 * Return the model name of the device.
+		 * @return The model name of the device.
+		 */
+		public final String getModel() {
+			return model;
+		}
+		/**
+		 * Return the vendor name of the device.
+		 * @return The vendor name of the device.
+		 */
+		public String getVendor() {
+			return vendor;
+		}
+		/**
+		 * Return the version of discovery protocol
+		 * @return the discoveryVersion
+		 */
+		public final int getDiscoveryVersion() {
+			return discoveryVersion;
+		}
+		/**
+		 * Return whether passcode verification is needed before connecting to the device.
+		 * @return Whether passcode verification is needed before connecting to the device.
+		 * @see ProjectorInfo#getPasscode
+		 */
 		public final boolean hasNoPasscode() {
 			return passcode == null || passcode.length() == 0;
 		}
@@ -88,7 +173,7 @@ public class Falcon {
 			dest.writeString(vendor);
 			dest.writeInt(discoveryVersion);
 		}
-		public ProjectorInfo() {
+		protected ProjectorInfo() {
 			
 		}
 		private ProjectorInfo(Parcel in) {
@@ -158,10 +243,42 @@ public class Falcon {
 		public int compareTo(ProjectorInfo another) {
 			return ipAddress.getHostAddress().compareTo(another.ipAddress.getHostAddress());
 		}
+		/**
+		 * Send remote control key code to the device.
+		 * @param keyCode The key code.
+		 */
+		public void sendKey(final int keyCode) {
+			new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					try {
+						final byte[] data = ("1:"+keyCode).getBytes();
+						final DatagramSocket udpsocket = new DatagramSocket();
+						final DatagramPacket packet = new DatagramPacket(data, data.length,ipAddress, remoteControlPortNumber);
+						udpsocket.send(packet);
+					} catch (SocketException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (UnknownHostException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				
+			}).start();
+		}
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
 	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
 	private static Falcon singleton;
+	/**
+	 * Return the shared instance of Falcon.
+	 * @return The shared instance of Falcon.
+	 */
 	static public Falcon getInstance() {
 		if (singleton == null) {
 			singleton = new Falcon();
@@ -207,12 +324,26 @@ public class Falcon {
 			e.printStackTrace();
 		}
 	}
+	/**
+	 * Get a list of found devices.
+	 * @return A list of found devices.
+	 */
 	public ArrayList<ProjectorInfo> getProjectors() {
 		return projectors;
 	}
+	/**
+	 * Register a {@link SearchReultListener} to Falcon. 
+	 * @param listener A {@link SearchReultListener} which receives notifications of Falcon.
+	 * @see Falcon#removeSearchResultListener(SearchReultListener)
+	 */
 	public void addSearchResultListener(SearchReultListener listener) {
 		listeners.add(listener);
 	}
+	/**
+	 * Unregister a {@link SearchReultListener} from Falcon.
+	 * @param listener The {@link SearchReultListener} to be removed.
+	 * @see Falcon#addSearchResultListener(SearchReultListener)
+	 */
 	public void removeSearchResultListener(SearchReultListener listener) {
 		listeners.remove(listener);
 	}
@@ -251,18 +382,30 @@ public class Falcon {
         }
 
         return listOfBroadcasts;
-}
-	static public String convertAddressToString(int address) {
-		return String.valueOf(String.format(Locale.US, "%d.%d.%d.%d", (address & 0xff), (address >> 8 & 0xff), (address >> 16 & 0xff), (address >> 24 | 0xff)));
-	}
-	static public InetAddress convertAddressInetAddress(int address) throws UnknownHostException {
-		return InetAddress.getByName(convertAddressToString(address));
-	}
+	}	
 //	static private final String lookupCommand = "1:0:am:amhost:1\0"+"\nUN:am\nHN:amhost\nNN:am\nGN:";
 	
+	/**
+	 * Interface definition for a callback to be invoked when Falcon is looking for devices.
+	 * @author James Chen
+	 *
+	 */
 	public interface SearchReultListener {
+		/**
+		 * Called when the Falcon starts to search.
+		 * @param falcon The falcon which starts to search.
+		 */
 		public void falconSearchWillStart(Falcon falcon);
+		/**
+		 * Called when the Falcon found a device.
+		 * @param falcon The falcon which is searching for devices.
+		 * @param projectorInfo The device which was just found.
+		 */
 		public void falconSearchDidFindProjector(Falcon falcon, ProjectorInfo projectorInfo);
+		/**
+		 * Called when the Falcon stops searching.
+		 * @param falcon The falcon which is about to stop searching.
+		 */
 		public void falconSearchDidEnd(Falcon falcon);
 	}
 	private final Handler mainThreadHandler = new MainThreadHandler(Looper.getMainLooper(), this);
@@ -274,6 +417,9 @@ public class Falcon {
 	private static final int INITIAL_LOOKUP_INTERVAL = 2; // in seconds
 	private int lookupInterval = INITIAL_LOOKUP_INTERVAL;
 	protected Runnable pendingLookup;
+	/**
+	 * Start searching devices. If it's already in searching state, it does nothing.
+	 */
 	public void search() {
 		if (broadcastSocket != null && 
 			!isSearching()) {
@@ -291,11 +437,14 @@ public class Falcon {
 			}, 3000);
 		}		
 	}
+	/**
+	 * Indicate whether it's searching.
+	 * @return Whether it's searching.
+	 */
 	public boolean isSearching() {
 		return searching;
 	}
 	//TODO add stop method
-	//TODO change to singleton
 	private void waitFeedbackInBackground() {
 		Thread receivingThread = new Thread(new Runnable() {
 			@Override
@@ -457,6 +606,10 @@ public class Falcon {
 		});
 		commandThread.start();
 	}
+	/**
+	 *
+	 * @deprecated 
+	 */
 	public static void sendExitCommand() {
 		Thread commandThread = new Thread(new Runnable() {
 			@Override
