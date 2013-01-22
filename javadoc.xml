@@ -12,7 +12,7 @@
     />
 
     <target name="javadoc">
-        <javadoc access="public" author="true" classpath="${sdk.dir}/platforms/android-14/android.jar" destdir="doc" doctitle="Actions-Micro Remote Control SDK" nodeprecated="true" nodeprecatedlist="true" noindex="false" nonavbar="false" notree="false" source="1.6" sourcefiles="src/com/actionsmicro/falcon/Falcon.java" sourcepath="gen:src" linkoffline="http://d.android.com/reference ${sdk.dir}/docs/reference" link="http://docs.oracle.com/javase/6/docs/api/"
+        <javadoc access="public" author="true" classpath="${sdk.dir}/platforms/android-14/android.jar" destdir="doc" doctitle="Actions-Micro Remote Control SDK" nodeprecated="true" nodeprecatedlist="true" noindex="false" nonavbar="false" notree="false" source="1.6" sourcefiles="src/com/actionsmicro/falcon/Falcon.java" linkoffline="http://d.android.com/reference ${sdk.dir}/docs/reference" link="http://docs.oracle.com/javase/6/docs/api/"
         splitindex="true" use="true" version="true"/>
     </target>
 </project>
