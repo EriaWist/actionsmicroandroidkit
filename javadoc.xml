@@ -13,7 +13,7 @@
 
     <target name="javadoc">
         <javadoc access="public" author="true" classpath="${sdk.dir}/platforms/android-14/android.jar" destdir="doc" doctitle="Actions-Micro Remote Control SDK" nodeprecated="true" nodeprecatedlist="true" noindex="false" nonavbar="false" notree="false" source="1.6" sourcefiles="src/com/actionsmicro/falcon/Falcon.java" linkoffline="http://d.android.com/reference ${sdk.dir}/docs/reference" link="http://docs.oracle.com/javase/6/docs/api/"
-        splitindex="true" use="true" version="true">
+        splitindex="true" use="true" version="true" docencoding="UTF-8" charset="UTF-8" encoding="UTF-8">
         <bottom><![CDATA[SDK v{SDK_VERSION_STRING} ©{BUILD_YEAR} Actions-Micro. All rights reserved. {BUILD_DATE}]]></bottom>
     </javadoc>
     </target>
