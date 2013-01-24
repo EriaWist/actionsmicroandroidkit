@@ -35,8 +35,8 @@ import com.actionsmicro.utils.Utils;
  * <li>Handle callbacks in {@link SearchReultListener}.
  * </OL>
  * @author James Chen
- * @version 1.0
- * @serial 2013-01-22
+ * @version {SDK_VERSION_STRING}
+ * @since 1.0
  */
 public class Falcon {
 	
