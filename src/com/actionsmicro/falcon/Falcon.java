@@ -110,6 +110,13 @@ public class Falcon {
 			return remoteControlPortNumber;
 		}
 		/**
+		 * Return whether remote control is enabled. Return true if remote control is enabled; Otherwise, return false.
+		 * @return Whether remote control is enabled.
+		 */
+		public final boolean isRemoteControlEnabled() {
+			return remoteControlPortNumber != 0;
+		}
+		/**
 		 * Return current passcode of the device. Application is recommended to verify the passcode before connecting to the device.
 		 * @return Current passcode of the device.
 		 * @see ProjectorInfo#hasNoPasscode
