@@ -255,12 +255,18 @@ public class Falcon {
 		 * @param keyCode The key code.
 		 */
 		public void sendKey(final int keyCode) {
+			sendKey(1, keyCode);
+		}
+		public void sendVendorKey(final int keyCode) {
+			sendKey(10, keyCode);
+		}
+		private void sendKey(final int commandCode, final int keyCode) {
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
 					try {
-						final byte[] data = ("1:"+keyCode).getBytes();
+						final byte[] data = (""+commandCode+":"+keyCode).getBytes();
 						final DatagramSocket udpsocket = new DatagramSocket();
 						final DatagramPacket packet = new DatagramPacket(data, data.length,ipAddress, remoteControlPortNumber);
 						udpsocket.send(packet);
