@@ -831,9 +831,24 @@ public class Falcon {
 				parseRemoteControlResponseString(receiveString, projectorInfo);
 				mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 			} else if (receiveString.startsWith("STANDARD:")) {	//小機送給App的message (公板用)
-				dispatchPrivateMessage(projectorInfo, parseMessageString(receiveString));
+				mainThreadHandler.post(new Runnable() {
+
+					@Override
+					public void run() {
+						dispatchPrivateMessage(projectorInfo, parseMessageString(receiveString));
+					}
+					
+				});
+				
 			} else if (receiveString.startsWith("CUSTOMER")) {	//小機送給App的message (客戶案用)
-				dispatchMessage(projectorInfo, parseMessageString(receiveString));
+				mainThreadHandler.post(new Runnable() {
+
+					@Override
+					public void run() {
+						dispatchMessage(projectorInfo, parseMessageString(receiveString));
+					}
+					
+				});
 			}
 		}
 	}
