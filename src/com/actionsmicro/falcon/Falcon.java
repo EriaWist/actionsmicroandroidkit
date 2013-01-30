@@ -1,7 +1,6 @@
 package com.actionsmicro.falcon;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -16,8 +15,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.WeakHashMap;
+import java.util.Set;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -58,7 +58,7 @@ public class Falcon {
 	 * @author James Chen
 	 *
 	 */
-	public static final class ProjectorInfo implements Parcelable, Comparable<ProjectorInfo> {
+	public static class ProjectorInfo implements Parcelable, Comparable<ProjectorInfo> {
 		private static final int SERVICE_WIFI_LAN_DISPLAY 	= 0x01 << 0;
 		private static final int SERVICE_MEDIA_STREAMING 	= 0x01 << 1;
 		private static final int SERVICE_APP_PHOTO_VIEWER 	= 0x01 << 2;
@@ -70,9 +70,9 @@ public class Falcon {
 		
 		private String osVerion;
 		private String name;
-		private InetAddress ipAddress;
-		private int wifiDisplayPortNumber;
-		private int remoteControlPortNumber;
+		protected InetAddress ipAddress;
+		protected int wifiDisplayPortNumber;
+		protected int remoteControlPortNumber;
 		private String passcode;
 		private String model;
 		private int service = SERVICE_WIFI_LAN_DISPLAY | SERVICE_MEDIA_STREAMING | SERVICE_APP_PHOTO_VIEWER | SERVICE_APP_LIVE_CAM | SERVICE_APP_STREAMIG_DOC | SERVICE_SPLIT_SCREEN | SERVICE_APP_DROPBOX | SERVICE_APP_WEB_VIEWER;
@@ -328,50 +328,50 @@ public class Falcon {
 		}
 		return singleton;
 	}
-	private final HashMap<InetAddress, WeakHashMap<MessageListener, WeakReference<MessageListener>>> privareMessageListeners = new HashMap<InetAddress, WeakHashMap<MessageListener, WeakReference<MessageListener>>>();
+	private final HashMap<InetAddress, Set<MessageListener>> privareMessageListeners = new HashMap<InetAddress, Set<MessageListener>>();
 	
 	protected void addPrivateMessageListener(ProjectorInfo projectorInfo, MessageListener listener) {
-		WeakHashMap<MessageListener, WeakReference<MessageListener>> listeners = privareMessageListeners.get(projectorInfo.getAddress());
+		Set<MessageListener> listeners = privareMessageListeners.get(projectorInfo.getAddress());
 		if (listeners == null) {
-			listeners = new WeakHashMap<MessageListener, WeakReference<MessageListener>>();
+			listeners = new HashSet<MessageListener>();
 			privareMessageListeners.put(projectorInfo.getAddress(), listeners);
 		}
 		if (listeners != null) {
-			listeners.put(listener, new WeakReference<MessageListener>(listener));
+			listeners.add(listener);
 		}
 	}
 	protected void removePrivateMessageListener(ProjectorInfo projectorInfo, MessageListener listener) {
-		final WeakHashMap<MessageListener, WeakReference<MessageListener>> listeners = privareMessageListeners.get(projectorInfo.getAddress());
+		final Set<MessageListener> listeners = privareMessageListeners.get(projectorInfo.getAddress());
 		if (listeners != null) {
 			listeners.remove(listener);
 		}
 	}
 	private void dispatchPrivateMessage(ProjectorInfo projectorInfo, String message) {
 		if (message != null) {
-			final WeakHashMap<MessageListener, WeakReference<MessageListener>> listeners = privareMessageListeners.get(projectorInfo.getAddress());
+			final Set<MessageListener> listeners = privareMessageListeners.get(projectorInfo.getAddress());
 			if (listeners != null) {
-				for (final MessageListener listener : listeners.keySet()) {
+				for (final MessageListener listener : listeners) {
 					listener.onReceiveMessage(projectorInfo, message);
 				}
 			}
 		}
 	}
-	private final HashMap<InetAddress, WeakHashMap<MessageListener, WeakReference<MessageListener>>> messageListeners = new HashMap<InetAddress, WeakHashMap<MessageListener, WeakReference<MessageListener>>>();
+	private final HashMap<InetAddress, Set<MessageListener>> messageListeners = new HashMap<InetAddress, Set<MessageListener>>();
 	
 	private void addMessageListener(ProjectorInfo projectorInfo, MessageListener listener) {
-		WeakHashMap<MessageListener, WeakReference<MessageListener>> listeners = messageListeners.get(projectorInfo.getAddress());
+		Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
 		if (listeners == null) {
-			Log.d(TAG, "Create MessageListener container");			
-			listeners = new WeakHashMap<MessageListener, WeakReference<MessageListener>>();
+			Log.d(TAG, "Create MessageListener container for " + projectorInfo.getAddress().getHostAddress());			
+			listeners = new HashSet<MessageListener>();
 			messageListeners.put(projectorInfo.getAddress(), listeners);
 		}
 		if (listeners != null) {
 			Log.d(TAG, "Add MessageListener to container");			
-			listeners.put(listener, new WeakReference<MessageListener>(listener));
+			listeners.add(listener);
 		}
 	}
 	private void removeMessageListener(ProjectorInfo projectorInfo, MessageListener listener) {
-		final WeakHashMap<MessageListener, WeakReference<MessageListener>> listeners = messageListeners.get(projectorInfo.getAddress());
+		final Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
 		if (listeners != null) {
 			listeners.remove(listener);
 		}
@@ -379,14 +379,14 @@ public class Falcon {
 	private void dispatchMessage(ProjectorInfo projectorInfo, String message) {
 		if (message != null) {
 			Log.d(TAG, "dispatchMessage:" + message);
-			final WeakHashMap<MessageListener, WeakReference<MessageListener>> listeners = messageListeners.get(projectorInfo.getAddress());
+			final Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
 			if (listeners != null) {
-				for (final MessageListener listener : listeners.keySet()) {
+				for (final MessageListener listener : listeners) {
 					Log.d(TAG, "send to " + listener);
 					listener.onReceiveMessage(projectorInfo, message);
 				}
 			} else {
-				Log.d(TAG, "no listener");				
+				Log.d(TAG, "no listener for " + projectorInfo.getAddress().getHostAddress());				
 			}
 		}
 	}
@@ -410,43 +410,37 @@ public class Falcon {
 				break;
 			case MSG_SearchDidEnd:
 //				falcon.notifyListenerSearchDidEnd();
-				falcon.searching = false;
 				break;
 			}
 		}
 	}
-	private Falcon() {		
+	protected Falcon() {		
+		singleton = this;
 		startListening();
+	}
+	protected DatagramSocket createDatagramSocket() throws SocketException {
+		DatagramSocket broadcastSocket = null;
+		try {
+			broadcastSocket = new DatagramSocket(null);
+			broadcastSocket.setReuseAddress(true);
+			broadcastSocket.bind(new InetSocketAddress((InetAddress)null, EZ_REMOTE_CONTROL_PORT_NUMBER));
+		} catch (SocketException e) {
+			e.printStackTrace();
+			broadcastSocket = new DatagramSocket();
+		}
+		return broadcastSocket;
 	}
 	private void startListening() {
 		if (broadcastSocket == null && receivingThread == null) {
 			try {
-				try {
-					broadcastSocket = new DatagramSocket(null);
-					broadcastSocket.setReuseAddress(true);
-					broadcastSocket.bind(new InetSocketAddress((InetAddress)null, EZ_REMOTE_CONTROL_PORT_NUMBER));
-				} catch (SocketException e) {
-					e.printStackTrace();
-					broadcastSocket = new DatagramSocket();
-				}
+				broadcastSocket = createDatagramSocket();
 				broadcastSocket.setBroadcast(true);
 				waitFeedbackInBackground();
 			} catch (SocketException e) {
 				e.printStackTrace();
 			}
 		}
-	}
-	/**
-	 * For unit-test only
-	 * @param socket
-	 */
-	protected Falcon(DatagramSocket socket) {
-		broadcastSocket = socket;
-		waitFeedbackInBackground();
-		if (singleton == null) {
-			singleton = this;
-		}
-	}
+	}	
 	/**
 	 * Get a list of found devices.
 	 * @return A list of found devices.
@@ -546,20 +540,12 @@ public class Falcon {
 	 */
 	public void search() {
 		startListening();
-		if (broadcastSocket != null && 
-			!isSearching()) {
+		if (broadcastSocket != null) {
+			Log.d(TAG, "Clear projector list");
 			projectors.clear();
-			mainThreadHandler.obtainMessage(MSG_SearchDidStart).sendToTarget();
 			searching = true;
 			lookupInterval = INITIAL_LOOKUP_INTERVAL;
-			sendLookupCommand();	
-			mainThreadHandler.postDelayed(new Runnable() {
-				@Override
-				public void run() {
-					mainThreadHandler.obtainMessage(MSG_SearchDidEnd).sendToTarget();					
-				}
-				
-			}, 3000);
+			sendLookupCommand();
 		}		
 	}
 	/**
@@ -812,7 +798,6 @@ public class Falcon {
 		projectorInfo = getProjectorInfoWithAddress(address);
 		if (projectorInfo == null) {
 			projectorInfo = new ProjectorInfo();
-			projectorInfo.name =  new String("Projector");
 			projectorInfo.ipAddress = address;
 			projectors.add(projectorInfo);
 		}
@@ -865,6 +850,7 @@ public class Falcon {
 	private static boolean parseWifiDisplayResponse(final DatagramPacket recvPacket, ProjectorInfo projectorInfo) {
 		final String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength(), Charset.forName("UTF-8")).split("\0");
 		if (receiveStrings.length > 0) {
+			Log.d(TAG, "parseWifiDisplayResponse:" + receiveStrings[0]);
 			return parseWifiDisplayResponseString(receiveStrings[0], projectorInfo);
 		}
 		return false;

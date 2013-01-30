@@ -7,8 +7,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+import android.os.Parcel;
 import android.util.Log;
 
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
@@ -17,85 +17,422 @@ import com.actionsmicro.falcon.Falcon.SearchReultListener;
 
 public class FalconTest extends TestCase {
 	protected static void setUpBeforeClass() throws Exception {
+		Log.d("FalconTest", "setUpBeforeClass");		
 	}
 
 	protected static void tearDownAfterClass() throws Exception {
 	}
-
+	private static DatagramSocket falconSocket;
+	private static Falcon falcon;
+	private static DatagramSocket ezRemoteSocket;
+	private static DatagramSocket ezDisplaySocket;
 	protected void setUp() throws Exception {
 		super.setUp();
+		Log.d("FalconTest", "setUp");	
+		if (ezRemoteSocket == null) {
+			ezRemoteSocket = new DatagramSocket(null);
+			ezRemoteSocket.setReuseAddress(true);
+			ezRemoteSocket.bind(new InetSocketAddress("127.0.0.1", Falcon.EZ_REMOTE_CONTROL_PORT_NUMBER));
+			Log.d("FalconTest", "ezRemoteSocket:" + ezRemoteSocket.getLocalAddress().getHostAddress() + ":" + ezRemoteSocket.getLocalPort());
+		}
+		if (ezDisplaySocket == null) {
+			ezDisplaySocket = new DatagramSocket(null);
+			ezDisplaySocket.setReuseAddress(true);
+			ezDisplaySocket.bind(new InetSocketAddress("127.0.0.1", Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER));
+			Log.d("FalconTest", "ezDisplaySocket:" + ezDisplaySocket.getLocalAddress().getHostAddress() + ":" + ezDisplaySocket.getLocalPort());
+		}
+		if (falconSocket == null) {
+			falconSocket = new DatagramSocket(null);
+			falconSocket.setReuseAddress(true);
+			falconSocket.bind(new InetSocketAddress("127.0.0.1", Falcon.EZ_REMOTE_CONTROL_PORT_NUMBER));
+			Log.d("FalconTest", "falconSocket:" + falconSocket.getLocalAddress().getHostAddress() + ":" + falconSocket.getLocalPort());
+		}
+		if (falcon == null) {
+			falcon = new Falcon() {
+				@Override
+				protected DatagramSocket createDatagramSocket() throws SocketException {
+					return falconSocket;
+				}
+			};
+		}
+		
 	}
 
 	protected void tearDown() throws Exception {
 		super.tearDown();
 	}
 	public void testWifiDisplayParserNormal() {
-		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744", projectorInfo));
-		assertEquals(projectorInfo.getOsVerion(), "1");
-		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
-		assertEquals(projectorInfo.getPasscode(), "8744");
-		assertEquals(projectorInfo.getName(), "my_name");			
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "1:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744", ezDisplaySocket);
+		assertNotNull(testContext.projectorInfo);
+		assertEquals(testContext.projectorInfo.getOsVerion(), "1");
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getPasscode(), "8744");
+		assertFalse(testContext.projectorInfo.hasNoPasscode());
+		assertEquals(testContext.projectorInfo.getName(), "my_name");	
+		assertEquals(testContext.projectorInfo.getWifiDisplayPortNumber(), ezDisplaySocket.getLocalPort());	
+		assertFalse(testContext.projectorInfo.isRemoteControlEnabled());
 	}
 	public void testWifiDisplayParserNoName() {
-		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744", projectorInfo));
-		assertEquals(projectorInfo.getOsVerion(), "1");
-		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
-		assertEquals(projectorInfo.getPasscode(), "8744");
-		assertTrue(projectorInfo.getName() == null);				
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744", ezDisplaySocket);
+		assertNotNull(testContext.projectorInfo);
+		assertEquals(testContext.projectorInfo.getOsVerion(), "1");
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getPasscode(), "8744");
+		assertFalse(testContext.projectorInfo.hasNoPasscode());
+		assertTrue(testContext.projectorInfo.getName() == null);
+		assertEquals(testContext.projectorInfo.getWifiDisplayPortNumber(), ezDisplaySocket.getLocalPort());	
+		assertFalse(testContext.projectorInfo.isRemoteControlEnabled());
 	}
 	public void testWifiDisplayParserNoPasscode() {
-		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=", projectorInfo));
-		assertEquals(projectorInfo.getOsVerion(), "1");
-		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
-		assertEquals(projectorInfo.getPasscode(), "");
-		assertTrue(projectorInfo.getName() == null);				
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "1:10163:root:(none):3:root:model=BENQ_GP10:passcode=", ezDisplaySocket);
+		assertNotNull(testContext.projectorInfo);
+		assertEquals(testContext.projectorInfo.getOsVerion(), "1");
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getPasscode(), "");
+		assertTrue(testContext.projectorInfo.hasNoPasscode());		
+		assertTrue(testContext.projectorInfo.getName() == null);	
+		assertEquals(testContext.projectorInfo.getWifiDisplayPortNumber(), ezDisplaySocket.getLocalPort());	
+		assertFalse(testContext.projectorInfo.isRemoteControlEnabled());
 	}
 	public void testWifiDisplayParsereEmptySegment() {
-		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root::model=BENQ_GP10:", projectorInfo));
-		assertEquals(projectorInfo.getOsVerion(), "1");
-		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
-		assertTrue(projectorInfo.getPasscode() == null);
-		assertTrue(projectorInfo.getName() == null);				
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "1:10163:root:(none):3:root::model=BENQ_GP10:", ezDisplaySocket);
+		assertNotNull(testContext.projectorInfo);
+		assertEquals(testContext.projectorInfo.getOsVerion(), "1");
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertTrue(testContext.projectorInfo.getPasscode() == null);
+		assertTrue(testContext.projectorInfo.hasNoPasscode());		
+		assertTrue(testContext.projectorInfo.getName() == null);
+		assertEquals(testContext.projectorInfo.getWifiDisplayPortNumber(), ezDisplaySocket.getLocalPort());	
+		assertFalse(testContext.projectorInfo.isRemoteControlEnabled());
 	}
 	public void testWifiDisplayParserHasNameTag() {
-		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		assertTrue(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744:name=james", projectorInfo));
-		assertEquals(projectorInfo.getOsVerion(), "1");
-		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
-		assertEquals(projectorInfo.getPasscode(), "8744");
-		assertEquals(projectorInfo.getName(), "james");	
-		assertFalse(projectorInfo.supportsMediaStreaming());		
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "1:10163:root:(none):3:root:model=BENQ_GP10:passcode=8744:name=james", ezDisplaySocket);
+		assertNotNull(testContext.projectorInfo);
+		assertEquals(testContext.projectorInfo.getOsVerion(), "1");
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getPasscode(), "8744");
+		assertFalse(testContext.projectorInfo.hasNoPasscode());
+		assertEquals(testContext.projectorInfo.getName(), "james");	
+		assertFalse(testContext.projectorInfo.supportsMediaStreaming());
+		assertEquals(testContext.projectorInfo.getDiscoveryVersion(), 0);
+		assertEquals(testContext.projectorInfo.getWifiDisplayPortNumber(), ezDisplaySocket.getLocalPort());	
+		assertFalse(testContext.projectorInfo.isRemoteControlEnabled());
 	}
 	public void testWifiDisplayParserNoModel() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
 		assertFalse(Falcon.parseWifiDisplayResponseString("1:10163:root:(none):3:root::passcode=8744", projectorInfo));
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "1:10163:root:(none):3:root::passcode=8744", ezDisplaySocket);
+		assertNull(testContext.projectorInfo);
 	}
 	public void testWifiDisplayParserFraudWithoutMd5() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
 		assertFalse(Falcon.parseWifiDisplayResponseString("2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1", projectorInfo));
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1", ezDisplaySocket);
+		assertNull(testContext.projectorInfo);		
 	}
 	public void testWifiDisplayParserFraudWithWrongMd5() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
 		assertFalse(Falcon.parseWifiDisplayResponseString("2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=befb99b8eff320851dc5d2cd1b6853ee:discovery=1", projectorInfo));
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=befb99b8eff320851dc5d2cd1b6853ee:discovery=1", ezDisplaySocket);
+		assertNull(testContext.projectorInfo);	
 	}
 	public void testWifiDisplayParserMd5Checksum() {
-		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		//2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1:vendor=actions:secret=82280189
-		assertTrue(Falcon.parseWifiDisplayResponseString("2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=15269172dfe877f9e71054e36b0b6b66:discovery=1:vendor=actions", projectorInfo));
-		assertEquals(projectorInfo.getOsVerion(), "2");
-		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
-		assertEquals(projectorInfo.getPasscode(), "8744");
-		assertEquals(projectorInfo.getName(), "my_name");
-		assertEquals(projectorInfo.getVendor(), "actions");
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=15269172dfe877f9e71054e36b0b6b66:discovery=1:vendor=actions", ezDisplaySocket);
+		assertNotNull(testContext.projectorInfo);
+		assertEquals(testContext.projectorInfo.getOsVerion(), "2");
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getPasscode(), "8744");
+		assertFalse(testContext.projectorInfo.hasNoPasscode());
+		assertEquals(testContext.projectorInfo.getName(), "my_name");
+		assertEquals(testContext.projectorInfo.getVendor(), "actions");
+		assertEquals(testContext.projectorInfo.getWifiDisplayPortNumber(), ezDisplaySocket.getLocalPort());	
+		assertFalse(testContext.projectorInfo.isRemoteControlEnabled());
 	}
 	public void testWifiDisplayParserService() {
+		final TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=9b90fb44a29d232ef62759f72b7f9f2f:discovery=1:vendor=actions:service=0A", ezDisplaySocket);
+		assertNotNull(testContext.projectorInfo);
+		assertEquals(testContext.projectorInfo.getDiscoveryVersion(), 1);
+		assertEquals(testContext.projectorInfo.getOsVerion(), "2");
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getPasscode(), "8744");
+		assertFalse(testContext.projectorInfo.hasNoPasscode());
+		assertEquals(testContext.projectorInfo.getName(), "my_name");
+		assertEquals(testContext.projectorInfo.getVendor(), "actions");
+		assertTrue(testContext.projectorInfo.supportsMediaStreaming());
+		assertFalse(testContext.projectorInfo.supportsPixViewer());
+		assertTrue(testContext.projectorInfo.supportsLiveCam());
+		assertFalse(testContext.projectorInfo.supportsStreamingDoc());
+		assertFalse(testContext.projectorInfo.supportsSplitScreen());
+		assertFalse(testContext.projectorInfo.supportsDropbox());
+		assertFalse(testContext.projectorInfo.supportsWebViewer());	
+		assertEquals(testContext.projectorInfo.getWifiDisplayPortNumber(), ezDisplaySocket.getLocalPort());	
+		assertFalse(testContext.projectorInfo.isRemoteControlEnabled());
+
+	}
+	public void testRemoteControlParserOld() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		//2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:discovery=1:vendor=actions:service=0A:secret=82280189
-		assertTrue(Falcon.parseWifiDisplayResponseString("2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=9b90fb44a29d232ef62759f72b7f9f2f:discovery=1:vendor=actions:service=0A", projectorInfo));
+		Falcon.parseRemoteControlResponseString("127.0.0.1123123131", projectorInfo);
+		assertTrue(projectorInfo.getVendor() == null);
+		assertTrue(projectorInfo.getModel() == null);
+		
+		TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "127.0.0.1123123131", ezRemoteSocket);
+		assertNotNull(testContext.projectorInfo);
+		assertTrue(testContext.projectorInfo.getVendor() == null);
+		assertTrue(testContext.projectorInfo.getModel() == null);
+		assertTrue(testContext.projectorInfo.isRemoteControlEnabled());
+	}
+	public void testRemoteControlParserOld2() {
+		TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "asdadalkj13", ezRemoteSocket);
+		assertNull(testContext.projectorInfo);
+	}
+	public void testRemoteControlParserNew() {
+		TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "EZREMOTE:1:vendor=actions:model=BENQ_GP10", ezRemoteSocket);
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getVendor(), "actions");
+		assertTrue(testContext.projectorInfo.isRemoteControlEnabled());
+	}
+	public void testRemoteControlParserWithMessage() {
+		assertEquals(Falcon.parseMessageString("STANDARD:1:vendor=actions:model=BENQ_GP10"), "vendor=actions:model=BENQ_GP10");
+		assertEquals(Falcon.parseMessageString("CUSTOMER:1:vendor=actions:model=BENQ_GP10"), "vendor=actions:model=BENQ_GP10");
+		assertNull(Falcon.parseMessageString("CUSTOMER:1:"));
+		assertNull(Falcon.parseMessageString("CUSTOMER:1"));
+		assertNull(Falcon.parseMessageString("CUSTOMER:"));
+		assertNull(Falcon.parseMessageString("CUSTOMER"));
+		assertEquals(Falcon.parseMessageString("EZREMOTE:1:vendor=actions:model=BENQ_GP10"), "vendor=actions:model=BENQ_GP10");
+	}
+	private class TestContext {
+		boolean listenerGetCalled;
+		ProjectorInfo projectorInfo = null;
+		protected String message;			
+	}
+	public void testSearchResultListener() {
+		TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "EZREMOTE:1:vendor=actions:model=BENQ_GP10", ezRemoteSocket);
+		assertNotNull(testContext.projectorInfo);
+		assertEquals(testContext.projectorInfo.getVendor(), "actions");
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getRemoteControlPortNumber(), ezRemoteSocket.getLocalPort());		
+	}
+
+	protected void testSearchResultListener(final TestContext testContext,
+			final String commandString, DatagramSocket sender) {
+		SearchReultListener searchReultListener = null;
+		try {
+			final String tag = "testSearchResultListener";
+			searchReultListener = new SearchReultListener() {
+
+				@Override
+				public void falconSearchDidFindProjector(Falcon falcon,
+						ProjectorInfo projectorInfo) {
+					Log.d(tag, "falconSearchDidFindProjector");
+					testContext.projectorInfo = projectorInfo;
+					synchronized(this) {
+						this.notify();
+					}
+				}
+				
+			};
+			falcon.addSearchResultListener(searchReultListener);
+			final byte[] command = commandString.getBytes();
+			sender.send(new DatagramPacket(command, command.length, falconSocket.getLocalAddress(), falconSocket.getLocalPort()));
+			
+			synchronized(searchReultListener) {
+				try {
+					searchReultListener.wait(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					fail(e.getMessage());
+				}
+			}
+			
+		} catch (SocketException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		} finally {
+			if (searchReultListener != null) {
+				falcon.removeSearchResultListener(searchReultListener);
+			}
+			falcon.stop();
+			falcon = null;
+			falconSocket = null;
+		}
+	}
+	private class MockProjectorInfo extends ProjectorInfo {
+		MockProjectorInfo(InetAddress address, int ezRemotePortNumber) {
+			this.ipAddress = address;
+			this.remoteControlPortNumber = ezRemotePortNumber;
+		}
+	}
+	protected void testMessageListener(final TestContext testContext, String commandString, boolean privateListener) {
+		MessageListener listener = null;
+		ProjectorInfo projectorInfo = null;
+		try {
+			final String tag = "testMessageListener";			
+			listener = new ProjectorInfo.MessageListener () {
+				@Override
+				public void onReceiveMessage(ProjectorInfo projector, String message) {
+					Log.d(tag, "onReceiveMessage");
+					testContext.message = message;
+					testContext.listenerGetCalled = true;
+					synchronized (this) {
+						this.notify();	
+					}
+				}				
+			};
+
+			projectorInfo = new MockProjectorInfo(ezRemoteSocket.getLocalAddress(), ezRemoteSocket.getLocalPort());
+			Falcon.parseRemoteControlResponseString("EZREMOTE:1:vendor=actions:model=BENQ_GP10", projectorInfo);
+
+			final byte[] messageCommand = commandString.getBytes();
+			if (privateListener) {
+				falcon.addPrivateMessageListener(projectorInfo, listener);
+			} else {
+				projectorInfo.addMessageListener(listener);
+			}
+			ezRemoteSocket.send(new DatagramPacket(messageCommand, messageCommand.length, falconSocket.getLocalAddress(), falconSocket.getLocalPort()));
+			synchronized(listener) {
+				try {
+					listener.wait(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					fail(e.getMessage());
+				}
+			}
+		} catch (SocketException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} finally {
+			if (listener != null && projectorInfo != null) {
+				if (privateListener) {
+					falcon.removePrivateMessageListener(projectorInfo, listener);
+				} else {
+					projectorInfo.removeMessageListener(listener);
+				}
+			}
+		}
+	}
+	public void testCustomerMessageListnener() {
+		final String originalMessage = "hello world";			
+		String commandString = "CUSTOMER:1:"+originalMessage;
+		TestContext testContext = new TestContext();
+		testMessageListener(testContext, commandString, false);
+		assertTrue(testContext.listenerGetCalled);
+		assertEquals(testContext.message, originalMessage);
+		
+		testContext = new TestContext();
+		testMessageListener(testContext, commandString, true);
+		assertFalse(testContext.listenerGetCalled);
+	}
+	public void testPrivateMessageListnener() {
+		final String originalMessage = "hello world";			
+		String commandString = "STANDARD:1:"+originalMessage;
+		TestContext testContext = new TestContext();
+		testMessageListener(testContext, commandString, false);
+		assertFalse(testContext.listenerGetCalled);
+		
+		testContext = new TestContext();
+		testMessageListener(testContext, commandString, true);
+		assertTrue(testContext.listenerGetCalled);
+		assertEquals(testContext.message, originalMessage);
+	}
+	public void testUnkownMessageListnener() {
+		final String originalMessage = "hello world";			
+		String commandString = "EZREMOTE:1:"+originalMessage;
+		final TestContext testContext = new TestContext();
+		testMessageListener(testContext, commandString, false);
+		assertFalse(testContext.listenerGetCalled);
+		testMessageListener(testContext, commandString, true);
+		assertFalse(testContext.listenerGetCalled);
+	}
+	public void testMessageListener() {
+		final String originalMessage = "hello world";			
+		String commandString = "CUSTOMER:1:"+originalMessage;
+		final TestContext testContext = new TestContext();
+		MessageListener listener = null;
+		ProjectorInfo projectorInfo = null;
+		try {
+			final String tag = "testMessageListener";			
+			listener = new ProjectorInfo.MessageListener () {
+				@Override
+				public void onReceiveMessage(ProjectorInfo projector, String message) {
+					Log.d(tag, "onReceiveMessage");
+					testContext.message = message;
+					testContext.listenerGetCalled = true;
+					synchronized (this) {
+						this.notify();	
+					}
+				}				
+			};
+			
+			projectorInfo = new MockProjectorInfo(ezRemoteSocket.getLocalAddress(), ezRemoteSocket.getLocalPort());
+			Falcon.parseRemoteControlResponseString("EZREMOTE:1:vendor=actions:model=BENQ_GP10", projectorInfo);
+			
+			final byte[] messageCommand = commandString.getBytes();
+			projectorInfo.addMessageListener(listener);
+			ezRemoteSocket.send(new DatagramPacket(messageCommand, messageCommand.length, falconSocket.getLocalAddress(), falconSocket.getLocalPort()));
+			synchronized(listener) {
+				try {
+					listener.wait(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					fail(e.getMessage());
+				}
+			}
+			assertTrue(testContext.listenerGetCalled);
+			assertEquals(testContext.message, originalMessage);
+			
+			testContext.listenerGetCalled = false;
+			projectorInfo.removeMessageListener(listener);
+			for (int i = 0; i < 10 ; i++) {
+				ezRemoteSocket.send(new DatagramPacket(messageCommand, messageCommand.length, falconSocket.getLocalAddress(), falconSocket.getLocalPort()));
+			}
+			synchronized(listener) {
+				try {
+					listener.wait(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			assertFalse(testContext.listenerGetCalled);
+		} catch (SocketException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} finally {
+			if (listener != null && projectorInfo != null) {
+				projectorInfo.removeMessageListener(listener);
+			}
+		}
+		
+	}
+	public void testProjectorInfoParcelable() {
+		ProjectorInfo projectorInfo = new ProjectorInfo();
+		Falcon.parseWifiDisplayResponseString("2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=9b90fb44a29d232ef62759f72b7f9f2f:discovery=1:vendor=actions:service=0A", projectorInfo);
 		assertEquals(projectorInfo.getOsVerion(), "2");
 		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
 		assertEquals(projectorInfo.getPasscode(), "8744");
@@ -107,135 +444,26 @@ public class FalconTest extends TestCase {
 		assertFalse(projectorInfo.supportsStreamingDoc());
 		assertFalse(projectorInfo.supportsSplitScreen());
 		assertFalse(projectorInfo.supportsDropbox());
-		assertFalse(projectorInfo.supportsWebViewer());	
-	}
-	public void testRemoteControlParserOld() {
-		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		Falcon.parseRemoteControlResponseString("123.12321.31232", projectorInfo);
-		assertTrue(projectorInfo.getVendor() == null);
-		assertTrue(projectorInfo.getModel() == null);
-	}
-	public void testRemoteControlParserNew() {
-		final ProjectorInfo projectorInfo = new ProjectorInfo();
-		Falcon.parseRemoteControlResponseString("EZREMOTE:1:vendor=actions:model=BENQ_GP10", projectorInfo);
-		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
-		assertEquals(projectorInfo.getVendor(), "actions");
-	}
-	public void testRemoteControlParserWithMessage() {
-		assertEquals(Falcon.parseMessageString("STANDARD:1:vendor=actions:model=BENQ_GP10"), "vendor=actions:model=BENQ_GP10");
-		assertEquals(Falcon.parseMessageString("CUSTOMER:1:vendor=actions:model=BENQ_GP10"), "vendor=actions:model=BENQ_GP10");
-		assertNull(Falcon.parseMessageString("CUSTOMER:1:"));
-		assertNull(Falcon.parseMessageString("CUSTOMER:1"));
-		assertNull(Falcon.parseMessageString("CUSTOMER:"));
-		assertNull(Falcon.parseMessageString("CUSTOMER"));
-		assertEquals(Falcon.parseMessageString("EZREMOTE:1:vendor=actions:model=BENQ_GP10"), "vendor=actions:model=BENQ_GP10");
-	}
-	private boolean listenerGetCalled;
-	private ProjectorInfo projectorInfo = null;
-	public void testMessageListener() {
-		try {
-			final byte[] messageCommand = "CUSTOMER:1:hello world".getBytes();
-			
-			final DatagramSocket testerSocket = new DatagramSocket(null);
-			testerSocket.setReuseAddress(true);
-			testerSocket.bind(new InetSocketAddress((InetAddress)null, Falcon.EZ_REMOTE_CONTROL_PORT_NUMBER));
-			
-			final DatagramSocket falconSocket = new DatagramSocket(null);
-			falconSocket.setReuseAddress(true);
-			falconSocket.bind(new InetSocketAddress((InetAddress)null, Falcon.EZ_REMOTE_CONTROL_PORT_NUMBER));
-					
-			Log.d("testMessageListener", "testerSocket:" + testerSocket.getLocalAddress().getHostAddress() + ":" + testerSocket.getLocalPort());
-			Log.d("testMessageListener", "falconSocket:" + falconSocket.getLocalAddress().getHostAddress() + ":" + falconSocket.getLocalPort());
-			
-			final Falcon falcon = new Falcon(falconSocket);
-			final MessageListener listener = new ProjectorInfo.MessageListener () {
-
-				
-				@Override
-				public void onReceiveMessage(ProjectorInfo projector, String message) {
-					Log.d("testMessageListener", "onReceiveMessage");
-					assertEquals(message, "hello world");
-					listenerGetCalled = true;
-				}
-				
-			};
-			
-			falcon.addSearchResultListener(new SearchReultListener() {
-
-				@Override
-				public void falconSearchDidFindProjector(Falcon falcon,
-						ProjectorInfo projectorInfo) {
-					Log.d("testMessageListener", "falconSearchDidFindProjector");
-					FalconTest.this.projectorInfo = projectorInfo;
-					projectorInfo.addMessageListener(listener);
-					new Thread(new Runnable() {
-
-						@Override
-						public void run() {
-							try {
-								testerSocket.send(new DatagramPacket(messageCommand, messageCommand.length, falconSocket.getLocalAddress(), falconSocket.getLocalPort()));
-							} catch (IOException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-						}
-						
-					}).start();
-				}
-				
-			});
-			
-			listenerGetCalled = false;
-			projectorInfo = null;
-			
-			final byte[] command = "EZREMOTE:1:vendor=actions:model=BENQ_GP10".getBytes();
-			testerSocket.send(new DatagramPacket(command, command.length, falconSocket.getLocalAddress(), falconSocket.getLocalPort()));
-			
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			assertNotNull(projectorInfo);
-			assertTrue(listenerGetCalled);
-			
-			listenerGetCalled = false;
-			if (projectorInfo != null) {
-				projectorInfo.removeMessageListener(listener);
-				for (int i = 0; i < 10 ; i++) {
-					new Thread(new Runnable() {
-	
-						@Override
-						public void run() {
-							try {
-								testerSocket.send(new DatagramPacket(messageCommand, messageCommand.length, falconSocket.getLocalAddress(), falconSocket.getLocalPort()));
-							} catch (IOException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-						}
-						
-					}).start();
-				}
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				assertFalse(listenerGetCalled);
-			}
-			
-			
-		} catch (SocketException e) {
-			e.printStackTrace();
-			Assert.fail(e.getMessage());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			Assert.fail(e.getMessage());
-		}
+		assertFalse(projectorInfo.supportsWebViewer());
+		final Parcel encodeParcel = Parcel.obtain();
+		encodeParcel.writeValue(projectorInfo);
+		final byte[] marshallData = encodeParcel.marshall();
+		final Parcel decodeParcel = Parcel.obtain();
+		decodeParcel.unmarshall(marshallData, 0, marshallData.length);
+		decodeParcel.setDataPosition(0);
+		projectorInfo = (ProjectorInfo) decodeParcel.readValue(ProjectorInfo.class.getClassLoader());
 		
+		assertEquals("2", projectorInfo.getOsVerion());
+		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(projectorInfo.getPasscode(), "8744");
+		assertEquals(projectorInfo.getName(), "my_name");
+		assertEquals(projectorInfo.getVendor(), "actions");
+		assertTrue(projectorInfo.supportsMediaStreaming());
+		assertFalse(projectorInfo.supportsPixViewer());
+		assertTrue(projectorInfo.supportsLiveCam());
+		assertFalse(projectorInfo.supportsStreamingDoc());
+		assertFalse(projectorInfo.supportsSplitScreen());
+		assertFalse(projectorInfo.supportsDropbox());
+		assertFalse(projectorInfo.supportsWebViewer());
 	}
 }
