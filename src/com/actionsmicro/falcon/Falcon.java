@@ -272,7 +272,7 @@ public class Falcon {
 				public void run() {
 					try {
 						final byte[] data = (""+commandCode+":"+keyCode).getBytes();
-						final DatagramSocket udpsocket = new DatagramSocket();
+						final DatagramSocket udpsocket = createDatagramSocket();
 						final DatagramPacket packet = new DatagramPacket(data, data.length,ipAddress, remoteControlPortNumber);
 						udpsocket.send(packet);
 					} catch (SocketException e) {
@@ -313,6 +313,9 @@ public class Falcon {
 		 */
 		public void removeMessageListener(MessageListener listener) {
 			Falcon.getInstance().removeMessageListener(this, listener);
+		}
+		protected DatagramSocket createDatagramSocket() throws SocketException {
+			return new DatagramSocket();
 		}		
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();

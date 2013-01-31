@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.nio.charset.Charset;
 
 import junit.framework.TestCase;
 import android.os.Parcel;
@@ -60,6 +61,12 @@ public class FalconTest extends TestCase {
 
 	protected void tearDown() throws Exception {
 		super.tearDown();
+		if (falcon != null) {
+			falcon.stop();
+			falcon = null;
+		}
+		falconSocket = null;
+		
 	}
 	public void testWifiDisplayParserNormal() {
 		final TestContext testContext = new TestContext();
@@ -224,7 +231,17 @@ public class FalconTest extends TestCase {
 		assertNotNull(testContext.projectorInfo);
 		assertEquals(testContext.projectorInfo.getVendor(), "actions");
 		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
-		assertEquals(testContext.projectorInfo.getRemoteControlPortNumber(), ezRemoteSocket.getLocalPort());		
+		assertEquals(testContext.projectorInfo.getRemoteControlPortNumber(), ezRemoteSocket.getLocalPort());
+		
+		assertFalse(falcon.isSearching());
+		falcon.search();
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		assertTrue(falcon.isSearching());
+		assertEquals(0, falcon.getProjectors().size());	
 	}
 
 	protected void testSearchResultListener(final TestContext testContext,
@@ -253,7 +270,6 @@ public class FalconTest extends TestCase {
 				try {
 					searchReultListener.wait(1000);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 					fail(e.getMessage());
 				}
@@ -263,16 +279,12 @@ public class FalconTest extends TestCase {
 			e.printStackTrace();
 			fail(e.getMessage());
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			fail(e.getMessage());
 		} finally {
 			if (searchReultListener != null) {
 				falcon.removeSearchResultListener(searchReultListener);
-			}
-			falcon.stop();
-			falcon = null;
-			falconSocket = null;
+			}			
 		}
 	}
 	private class MockProjectorInfo extends ProjectorInfo {
@@ -312,7 +324,6 @@ public class FalconTest extends TestCase {
 				try {
 					listener.wait(1000);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 					fail(e.getMessage());
 				}
@@ -396,7 +407,6 @@ public class FalconTest extends TestCase {
 				try {
 					listener.wait(1000);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 					fail(e.getMessage());
 				}
@@ -432,6 +442,12 @@ public class FalconTest extends TestCase {
 	}
 	public void testProjectorInfoParcelable() {
 		ProjectorInfo projectorInfo = new ProjectorInfo();
+		try {
+			assertFalse(projectorInfo.createDatagramSocket() instanceof MockDatagramSocket);
+		} catch (SocketException e) {
+			e.printStackTrace();
+			fail();
+		}
 		Falcon.parseWifiDisplayResponseString("2:10163:root:my_name:3:root:model=BENQ_GP10:passcode=8744:md5=9b90fb44a29d232ef62759f72b7f9f2f:discovery=1:vendor=actions:service=0A", projectorInfo);
 		assertEquals(projectorInfo.getOsVerion(), "2");
 		assertEquals(projectorInfo.getModel(), "BENQ_GP10");
@@ -445,6 +461,7 @@ public class FalconTest extends TestCase {
 		assertFalse(projectorInfo.supportsSplitScreen());
 		assertFalse(projectorInfo.supportsDropbox());
 		assertFalse(projectorInfo.supportsWebViewer());
+		int hashCode = projectorInfo.hashCode();
 		final Parcel encodeParcel = Parcel.obtain();
 		encodeParcel.writeValue(projectorInfo);
 		final byte[] marshallData = encodeParcel.marshall();
@@ -465,5 +482,79 @@ public class FalconTest extends TestCase {
 		assertFalse(projectorInfo.supportsSplitScreen());
 		assertFalse(projectorInfo.supportsDropbox());
 		assertFalse(projectorInfo.supportsWebViewer());
+		assertEquals(hashCode, projectorInfo.hashCode());
+	}
+	public void testProjectorInfoSendKey() {
+		final int keyCode = 12;
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			protected DatagramSocket createDatagramSocket() throws SocketException {
+				return new DatagramSocket() {
+					@Override
+					public void send (DatagramPacket pack) {
+						pack.getData();
+						final String [] receiveStrings = new String(pack.getData(), 0, pack.getLength(), Charset.forName("UTF-8")).split("\0");
+						if (receiveStrings.length > 0) {
+							assertTrue(receiveStrings[0].startsWith("1:"));
+							assertEquals("1:"+keyCode, receiveStrings[0]);
+						} else {
+							fail();
+						}
+						synchronized(FalconTest.this) {
+							FalconTest.this.notify();
+						}
+					}
+				};
+			}
+		};
+		projectorInfo.sendKey(keyCode);
+		
+		synchronized(this) {
+			try {
+				this.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	private class MockDatagramSocket extends DatagramSocket {
+
+		public MockDatagramSocket() throws SocketException {
+			super();
+		}
+		
+	}
+	public void testProjectorInfoSendVendorKey() {
+		final int keyCode = 12;
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			protected DatagramSocket createDatagramSocket() throws SocketException {
+				return new MockDatagramSocket() {
+					@Override
+					public void send (DatagramPacket pack) {
+						pack.getData();
+						final String [] receiveStrings = new String(pack.getData(), 0, pack.getLength(), Charset.forName("UTF-8")).split("\0");
+						if (receiveStrings.length > 0) {
+							assertTrue(receiveStrings[0].startsWith("10:"));
+							assertEquals("10:"+keyCode, receiveStrings[0]);
+						} else {
+							fail();
+						}
+						synchronized(FalconTest.this) {
+							FalconTest.this.notify();
+						}
+					}
+				};
+			}
+		};
+		projectorInfo.sendVendorKey(keyCode);
+		
+		synchronized(this) {
+			try {
+				this.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 }
