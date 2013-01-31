@@ -568,9 +568,15 @@ public class Falcon {
 			}
 			receivingThread = null;
 		}
-		if (broadcastSocket != null) {
-			broadcastSocket.close();
-			broadcastSocket = null;
+		synchronized(this) {
+			if (broadcastSocket != null) {
+				broadcastSocket.close();
+				broadcastSocket = null;
+			}
+		}
+		if (pendingLookup != null) {
+			mainThreadHandler.removeCallbacks(pendingLookup);
+			pendingLookup = null;
 		}
 		searching = false;
 	}
@@ -683,58 +689,63 @@ public class Falcon {
 		return generateCommand(username, hostname, IPMSG_NOOPERATION);
 	}
 	private void sendLookupCommand() {
+		Log.d(TAG, "sendLookupCommand");	
+		
 		Thread commandThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-				if (broadcastSocket != null) {
-					try {
-						for (final InetAddress broadcastAddress : Falcon.getBroadcastAddresses()) {
-							byte[] command = {0,':',0};
-							// send EZ Remote Lookup
-							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_REMOTE_CONTROL_PORT_NUMBER));
+				Log.d(TAG, "sendLookupCommand thread");
+				synchronized(Falcon.this) {
+					Log.d(TAG, "sendLookupCommand thread:" + broadcastSocket);
+					if (broadcastSocket != null) {
+						try {
+							for (final InetAddress broadcastAddress : Falcon.getBroadcastAddresses()) {
+								byte[] command = {0,':',0};
+								// send EZ Remote Lookup
+								broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_REMOTE_CONTROL_PORT_NUMBER));
 
-							Log.d(TAG, "send entry command");	
-							// copy the logic from CSocketEx for Windows.
-//							command = generateNoOperationCommand("android", "android");
-//							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
-//							Thread.sleep(1000);
-							command = generateEntryCommand("android", "android");
-							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
-						}
-					} catch (SocketTimeoutException e) {
-						Log.d(TAG, "Search timeout");					
-					} catch (SocketException e) {
-						e.printStackTrace();
-					} catch (UnknownHostException e) {
-						e.printStackTrace();
-					} catch (IOException e) {
-						e.printStackTrace();
-					} finally {
-						synchronized(Falcon.this) {
-							if (pendingLookup != null) {
-								mainThreadHandler.removeCallbacks(pendingLookup);
-								pendingLookup = null;
+								Log.d(TAG, "send entry command");	
+								// copy the logic from CSocketEx for Windows.
+								//							command = generateNoOperationCommand("android", "android");
+								//							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+								//							Thread.sleep(1000);
+								command = generateEntryCommand("android", "android");
+								broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
 							}
-						
-							pendingLookup = new Runnable() {
-								@Override
-								public void run() {
-									synchronized(Falcon.this) {
-										pendingLookup = null;
-									}
-									sendLookupCommand();
+						} catch (SocketTimeoutException e) {
+							e.printStackTrace();					
+						} catch (SocketException e) {
+							e.printStackTrace();
+						} catch (UnknownHostException e) {
+							e.printStackTrace();
+						} catch (IOException e) {
+							e.printStackTrace();
+						} finally {
+							synchronized(Falcon.this) {
+								if (pendingLookup != null) {
+									mainThreadHandler.removeCallbacks(pendingLookup);
+									pendingLookup = null;
 								}
-							};
-						}
-						mainThreadHandler.postDelayed(pendingLookup, lookupInterval * 1000);
-						lookupInterval = lookupInterval + 1;
-						if (lookupInterval > MAX_LOOKUP_INTERVAL) {
-							lookupInterval = MAX_LOOKUP_INTERVAL;
+
+								pendingLookup = new Runnable() {
+									@Override
+									public void run() {
+										synchronized(Falcon.this) {
+											pendingLookup = null;
+										}
+										sendLookupCommand();
+									}
+								};
+							}
+							mainThreadHandler.postDelayed(pendingLookup, lookupInterval * 1000);
+							lookupInterval = lookupInterval + 1;
+							if (lookupInterval > MAX_LOOKUP_INTERVAL) {
+								lookupInterval = MAX_LOOKUP_INTERVAL;
+							}
 						}
 					}
 				}
 			}
-			
 		});
 		commandThread.start();
 	}
