@@ -591,6 +591,14 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 						avCommandVolumeResponseReceivedNotificaiton.notifyAll();
 					}
 					break;
+				case AV_HTTP_START:
+					Log.d(TAG, "AV_HTTP_START:" + avRequestResult);
+					handleHttpStart(avRequestResult);
+					break;
+				case AV_HTTP_STOP:
+					Log.d(TAG, "AV_HTTP_STOP:" + avRequestResult);
+					handleHttpStop(avRequestResult);
+					break;
 				case AV_HTTP_GET_URL:
 					Log.d(TAG, "AV_HTTP_GET_URL:" + avRequestResult);
 					responseHttpGetUrl();
@@ -606,6 +614,30 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 //			}									
 //		});
 	}
+	
+	private void handleHttpStart(int avRequestResult) {
+		assert currentDataSource != null:"currentDataSource should not be null";
+		assert currentDataSource instanceof HttpDataSource : "currentDataSource should be HttpDataSource";
+		if (currentDataSource != null && currentDataSource instanceof HttpDataSource) {
+			if (avRequestResult == AV_RESULT_ERROR) {
+				currentDataSource.mediaStreamingDidFail(avRequestResult);
+			} else {
+				playerState = PlayerState.PLAYING;
+				((HttpDataSource)currentDataSource).startStreaming(this);
+			}
+		}
+	}
+	
+	private void handleHttpStop(int avRequestResult) {
+		assert currentDataSource != null:"currentDataSource should not be null";
+		isStreamingMedia = false;
+		playerState = PlayerState.STOPPED;
+		if (currentDataSource != null) {
+			currentDataSource.stopStreamingContents();
+		}
+		sendDataToRemote(createHttpStopPacket().array());	
+	}
+
 	private void responseHttpGetUrl() {
 		assert currentDataSource != null:"currentDataSource should not be null";
 		assert currentDataSource instanceof HttpDataSource : "currentDataSource should be HttpDataSource";
@@ -670,9 +702,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	private void handleFilePause() {
 		assert currentDataSource != null:"currentDataSource should not be null";
+		assert currentDataSource instanceof FileDataSource : "currentDataSource should be FileDataSource";
 		isStreamingMedia = false;
-		if (currentDataSource != null) {
-			currentDataSource.pauseStreamingContents();
+		if (currentDataSource != null && currentDataSource instanceof FileDataSource) {
+			((FileDataSource)currentDataSource).pauseStreamingContents();
 		}
 	}
 	private void responseFileRead(long offset) {
@@ -694,8 +727,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	private void responseFileGetSeekable() {
 		assert currentDataSource != null:"currentDataSource should not be null";
-		if (currentDataSource != null) {
-			sendDataToRemote(createFileGetSeekableResponsePacket(currentDataSource.isSeekable()).array());
+		assert currentDataSource instanceof FileDataSource : "currentDataSource should be FileDataSource";
+		if (currentDataSource != null && currentDataSource instanceof FileDataSource) {
+			sendDataToRemote(createFileGetSeekableResponsePacket(((FileDataSource)currentDataSource).isSeekable()).array());
 		}
 	}
 	private void responseFileGetLength() {

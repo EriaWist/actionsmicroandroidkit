@@ -2,20 +2,21 @@ package com.actionsmicro.pigeon;
 
 public interface MediaStreaming {
 	public interface DataSource {
-		public boolean isSeekable();
 		public void mediaStreamingDidFail(int resultCode);
-		public void pauseStreamingContents();
 		public void stopStreamingContents();
 		public void playerTimeDidChange(int time);
 		public void playerTimeDurationReady(int duration);
 		public void setMediaStreamingStateListener(MediaStreamingStateListener mediaStreamingStateListener);
 	}
 	public interface FileDataSource extends DataSource {
+		public boolean isSeekable();
 		public long getContentLength();		
 		public void startStreamingContents(MediaStreaming ms, long offset);
 		public void pauseStreamingContents(long offset);
+		public void pauseStreamingContents();		
 	}
 	public interface HttpDataSource extends DataSource {
+		public void startStreaming(MediaStreaming ms);
 		public String getUrl();
 		public String getUserAgent();		
 	}

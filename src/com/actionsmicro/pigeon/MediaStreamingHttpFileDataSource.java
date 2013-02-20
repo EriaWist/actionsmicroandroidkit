@@ -20,7 +20,7 @@ import com.actionsmicro.utils.Log;
 
 public class MediaStreamingHttpFileDataSource implements FileDataSource {
 	private MediaStreamingStateListener mediaStreamingStateListener;
-	private static final String TAG = "MediaStreamingHttpDataSource";
+	private static final String TAG = "MediaStreamingHttpFileDataSource";
 	final HttpClient client = new DefaultHttpClient();
 	private String urlString;
 	private long contentLength = -1;
