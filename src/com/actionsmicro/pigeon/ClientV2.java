@@ -375,10 +375,15 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private static final int AV_PLAYER_RESET = 15;
 	private static final int AV_PLAYER_VOLUME_UP = 16;
 	private static final int AV_PLAYER_VOLUME_DOWN = 17;
+	private static final int AV_HTTP_START = 18;
+	private static final int AV_HTTP_STOP = 19;
+	private static final int AV_HTTP_GET_URL = 20;
+	private static final int AV_HTTP_GET_USERAGENT = 21;
 	
 	private static final int AV_TYPE_VOID = 0;
 	private static final int AV_TYPE_INT32 = 1;
 	private static final int AV_TYPE_INT64 = 2;
+	private static final int AV_TYPE_UTF8 = 3;
 	
 	private static final int AV_SIZE_VOID = 0;
 	private static final int AV_SIZE_INT32 = 4;
@@ -422,6 +427,12 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		prepareHeaderForAvStreamCmd(packet, 0, AV_FILE_START, AV_TYPE_VOID, AV_SIZE_VOID);
 		return packet;
 	}
+	private static ByteBuffer createStartHttpStreamingPacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 0, AV_HTTP_START, AV_TYPE_VOID, AV_SIZE_VOID);
+		return packet;
+	}
 	private static ByteBuffer createFileEofPacket() {
 		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		packet.order(ByteOrder.LITTLE_ENDIAN);
@@ -434,12 +445,39 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		prepareHeaderForAvStreamCmd(packet, 0, AV_FILE_STOP, AV_TYPE_VOID, AV_SIZE_VOID);
 		return packet;
 	}
+	private static ByteBuffer createHttpStopPacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 0, AV_HTTP_STOP, AV_TYPE_VOID, AV_SIZE_VOID);
+		return packet;
+	}
 	private static ByteBuffer createFileGetLengthResponsePacket(long contentLength) {
 		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE+AV_SIZE_INT64);
 		packet.order(ByteOrder.LITTLE_ENDIAN);	
 		prepareHeaderForAvStreamCmd(packet, AV_SIZE_INT64, AV_FILE_GET_LENGTH, AV_TYPE_INT64, AV_SIZE_INT64);
 		packet.putLong(contentLength);
 		return packet;
+	}
+	private static ByteBuffer createUtf8StringResponsePacket(int cmd, final String stringData) {
+		try {
+			final byte[] stringDataInBytes = stringData.getBytes("UTF-8");
+			final int payloadSize = stringDataInBytes.length;
+			final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE+payloadSize);
+			packet.order(ByteOrder.LITTLE_ENDIAN);	
+			prepareHeaderForAvStreamCmd(packet, payloadSize, cmd, AV_TYPE_UTF8, payloadSize);
+			packet.put(stringDataInBytes);
+			return packet;
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	private static ByteBuffer createHttpGetUrlResponsePacket(final String url) {
+		return createUtf8StringResponsePacket(AV_HTTP_GET_URL, url);		
+	}
+	private static ByteBuffer createHttpGetUserAgentResponsePacket(final String userAgent) {
+		return createUtf8StringResponsePacket(AV_HTTP_GET_USERAGENT, userAgent);
 	}
 	private static ByteBuffer createFileGetSeekableResponsePacket(boolean isSeekable) {
 		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE+AV_SIZE_INT32);
@@ -553,12 +591,46 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 						avCommandVolumeResponseReceivedNotificaiton.notifyAll();
 					}
 					break;
+				case AV_HTTP_GET_URL:
+					Log.d(TAG, "AV_HTTP_GET_URL:" + avRequestResult);
+					responseHttpGetUrl();
+					break;
+				case AV_HTTP_GET_USERAGENT:
+					Log.d(TAG, "AV_HTTP_GET_USERAGENT:" + avRequestResult);
+					responseHttpGetUserAgent();
+					break;
 				default:
 					assert false : request_cmd;
 					break;
 				}
 //			}									
 //		});
+	}
+	private void responseHttpGetUrl() {
+		assert currentDataSource != null:"currentDataSource should not be null";
+		assert currentDataSource instanceof HttpDataSource : "currentDataSource should be HttpDataSource";
+		if (currentDataSource != null && currentDataSource instanceof HttpDataSource) {
+			final HttpDataSource httpDataSource = (HttpDataSource)currentDataSource;
+			final String url = httpDataSource.getUrl();
+			assert url != null:"url should not be null";
+			if (url != null) {
+				Log.d(TAG, "try response to AV_HTTP_GET_URL");
+				sendDataToRemote(createHttpGetUrlResponsePacket(url).array());
+			}
+		}
+	}
+	private void responseHttpGetUserAgent() {
+		assert currentDataSource != null:"currentDataSource should not be null";
+		assert currentDataSource instanceof HttpDataSource : "currentDataSource should be HttpDataSource";
+		if (currentDataSource != null && currentDataSource instanceof HttpDataSource) {
+			final HttpDataSource httpDataSource = (HttpDataSource)currentDataSource;
+			final String userAgent = httpDataSource.getUserAgent();
+			assert userAgent != null:"userAgent should not be null";
+			if (userAgent != null) {
+				Log.d(TAG, "try response to AV_HTTP_GET_USERAGENT");
+				sendDataToRemote(createHttpGetUserAgentResponsePacket(userAgent).array());
+			}
+		}
 	}
 	private void handlePlayerGetTime(int time) {
 		Log.d(TAG, "handlePlayerGetTime:"+time);
@@ -606,15 +678,17 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private void responseFileRead(long offset) {
 		Log.d(TAG, "responseFileRead(offset:" + offset +")");		
 		assert currentDataSource != null:"currentDataSource should not be null";
-		if (currentDataSource != null) {
-			long contentLength = currentDataSource.getContentLength();
+		assert currentDataSource instanceof FileDataSource : "currentDataSource should be FileDataSource";
+		if (currentDataSource != null && currentDataSource instanceof FileDataSource) {
+			final FileDataSource fileDataSource = (FileDataSource)currentDataSource;
+			long contentLength = fileDataSource.getContentLength();
 			assert contentLength >= 0:"contentLength should be equal to or larger than zero";
 			assert offset <= contentLength;
 			if (contentLength >= 0 && offset <= contentLength) {
 				isStreamingMedia = true;
-				currentDataSource.pauseStreamingContents(offset);
+				fileDataSource.pauseStreamingContents(offset);
 				sendDataToRemote(createFileReadResponsePacket(offset).array());				
-				currentDataSource.startStreamingContents(this, offset);
+				fileDataSource.startStreamingContents(this, offset);
 			}
 		}
 	}
@@ -626,8 +700,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	private void responseFileGetLength() {
 		assert currentDataSource != null:"currentDataSource should not be null";
-		if (currentDataSource != null) {
-			long contentLength = currentDataSource.getContentLength();
+		assert currentDataSource instanceof FileDataSource : "currentDataSource should be FileDataSource";
+		if (currentDataSource != null && currentDataSource instanceof FileDataSource) {
+			final FileDataSource fileDataSource = (FileDataSource)currentDataSource;
+			long contentLength = fileDataSource.getContentLength();
 			assert contentLength >= 0:"contentLength should be equal to or larger than zero";
 			if (contentLength >= 0) {
 				Log.d(TAG, "try response to AV_FILE_GET_LENGTH");	
@@ -640,8 +716,13 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		assert dataSource != null:"dataSource should not be null";
 		if (dataSource != null) {
 			currentDataSource = dataSource;
-			Log.d(TAG, "try to AV_FILE_START");	
-			sendDataToRemote(createStartFileStreamingPacket().array());
+			if (currentDataSource instanceof HttpDataSource) {
+				Log.d(TAG, "try to AV_HTTP_START");	
+				sendDataToRemote(createStartHttpStreamingPacket().array());
+			} else if (currentDataSource instanceof FileDataSource) {
+				Log.d(TAG, "try to AV_FILE_START");	
+				sendDataToRemote(createStartFileStreamingPacket().array());
+			}
 		}
 	}
 
@@ -681,7 +762,11 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
 		}
-		sendDataToRemote(createFileStopPacket().array());
+		if (currentDataSource instanceof FileDataSource) {
+			sendDataToRemote(createFileStopPacket().array());
+		} else if (currentDataSource instanceof HttpDataSource) {
+			sendDataToRemote(createHttpStopPacket().array());
+		}
 		isStreamingMedia = false;
 		playerState = PlayerState.STOPPED;
 	}

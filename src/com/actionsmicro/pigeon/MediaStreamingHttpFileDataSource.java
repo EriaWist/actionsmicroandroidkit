@@ -15,10 +15,10 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
 import org.apache.http.impl.client.DefaultHttpClient;
 
-import com.actionsmicro.pigeon.MediaStreaming.DataSource;
+import com.actionsmicro.pigeon.MediaStreaming.*;
 import com.actionsmicro.utils.Log;
 
-public class MediaStreamingHttpDataSource implements DataSource {
+public class MediaStreamingHttpFileDataSource implements FileDataSource {
 	private MediaStreamingStateListener mediaStreamingStateListener;
 	private static final String TAG = "MediaStreamingHttpDataSource";
 	final HttpClient client = new DefaultHttpClient();
@@ -26,12 +26,12 @@ public class MediaStreamingHttpDataSource implements DataSource {
 	private long contentLength = -1;
 	private String userAgentString;
 
-	public MediaStreamingHttpDataSource(String url, String userAgentString, Long contentLength) {
+	public MediaStreamingHttpFileDataSource(String url, String userAgentString, Long contentLength) {
 		this.urlString = url;
 		this.userAgentString = userAgentString;
 		this.contentLength = contentLength;
 	}
-	public MediaStreamingHttpDataSource(String url, Long contentLength) {
+	public MediaStreamingHttpFileDataSource(String url, Long contentLength) {
 		this.urlString = url;
 		this.contentLength = contentLength;
 	}
@@ -280,5 +280,4 @@ public class MediaStreamingHttpDataSource implements DataSource {
 		this.mediaStreamingStateListener = mediaStreamingStateListener;
 	}
 
-	
 }

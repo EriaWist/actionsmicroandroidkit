@@ -7,10 +7,10 @@ import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
 
-import com.actionsmicro.pigeon.MediaStreaming.DataSource;
+import com.actionsmicro.pigeon.MediaStreaming.*;
 import com.actionsmicro.utils.Log;
 
-public class MediaStreamingFileDataSource implements DataSource {
+public class MediaStreamingFileDataSource implements FileDataSource {
 	
 	private static final String TAG = null;
 	private File mediaFile;
