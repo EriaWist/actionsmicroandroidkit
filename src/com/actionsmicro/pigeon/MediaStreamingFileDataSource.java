@@ -7,10 +7,10 @@ import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
 
-import com.actionsmicro.pigeon.MediaStreaming.DataSource;
+import com.actionsmicro.pigeon.MediaStreaming.*;
 import com.actionsmicro.utils.Log;
 
-public class MediaStreamingFileDataSource implements DataSource {
+public class MediaStreamingFileDataSource implements FileDataSource {
 	
 	private static final String TAG = null;
 	private File mediaFile;
@@ -128,7 +128,7 @@ public class MediaStreamingFileDataSource implements DataSource {
 			mediaStreamingStateListener.medisStreamingDurationIsReady(this, duration);
 		}
 	}
-	private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList("mov", "mkv", "mp4", "avi", "divx", "mpg", "mpeg", "ts", "xvid", "rmvb", "rm", "wmv", "m4v");
+	private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList("mov", "mkv", "mp4", "avi", "divx", "mpg", "mpeg", "ts", "xvid", "rmvb", "rm", "wmv", "m4v", "3gp", "vob", "dat"); //, "mp3", "wma", "aac", "wav", "ogg"
 	public static List<String> getSupportedFileExt() {
 		return SUPPORTED_FILE_EXTENSIONS;
 	}

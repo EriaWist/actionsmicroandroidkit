@@ -67,7 +67,11 @@ public class Falcon {
 		private static final int SERVICE_SPLIT_SCREEN 		= 0x01 << 5;
 		private static final int SERVICE_APP_DROPBOX 		= 0x01 << 6;
 		private static final int SERVICE_APP_WEB_VIEWER 	= 0x01 << 7;
-		
+		private static final int SERVICE_APP_QUALITY_MODE 	= 0x01 << 8;
+		private static final int SERVICE_APP_HTTP_STREAMING = 0x01 << 9;
+		private static final int SERVICE_APP_REMOTE_CONTROL = 0x01 << 10;
+		private static final int SERVICE_MEDIA_STREAM_AUDIO = 0x01 << 11;	
+
 		private String osVerion;
 		private String name;
 		protected InetAddress ipAddress;
@@ -220,6 +224,18 @@ public class Falcon {
 		}
 		public boolean supportsWebViewer() {
 			return (service & SERVICE_APP_WEB_VIEWER) == SERVICE_APP_WEB_VIEWER;
+		}
+		public boolean supportsQualityMode() {
+			return (service & SERVICE_APP_QUALITY_MODE) == SERVICE_APP_QUALITY_MODE;
+		}
+		public boolean supportsHttpStreaming() {
+			return (service & SERVICE_APP_HTTP_STREAMING) == SERVICE_APP_HTTP_STREAMING;
+		}
+		public boolean supportsRemoteControl() {
+			return (service & SERVICE_APP_REMOTE_CONTROL) == SERVICE_APP_REMOTE_CONTROL;
+		}
+		public boolean supportsAudioMediaStreaming() {
+			return (service & SERVICE_MEDIA_STREAM_AUDIO) == SERVICE_MEDIA_STREAM_AUDIO;
 		}
 		@Override
 		public boolean equals(Object obj) {
