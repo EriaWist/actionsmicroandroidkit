@@ -703,7 +703,7 @@ public class Falcon {
 					if (broadcastSocket != null) {
 						try {
 							for (final InetAddress broadcastAddress : Falcon.getBroadcastAddresses()) {
-								byte[] command = {0,':',0};
+								byte[] command = {'0',':','0'};
 								// send EZ Remote Lookup
 								broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_REMOTE_CONTROL_PORT_NUMBER));
 
