@@ -13,17 +13,34 @@ import android.graphics.Xfermode;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+/**
+ * A graphic object to draw given path with given Paint.
+ * 
+ * @author jamchen
+ *
+ */
 
 public class PathGraphic implements Graphic {
 	private final Path path = new Path();
 	private final Paint paint;
 	private final ArrayList<Point> points = new ArrayList<Point>();
 
+	/**
+	 * Create a PathGraphic with initial position and Paint.
+	 * @param x Initial x position.
+	 * @param y Initial y position.
+	 * @param paint The Paint to be used while drawing the path.
+	 */
 	public PathGraphic(float x, float y, final Paint paint) {
 		this.paint = new Paint(paint);
 		path.moveTo(x, y);
 		points.add(new Point(x, y));
 	}
+	/**
+	 * Draw this graphic object to given Canvas.
+	 * @param canvas The canvas this graphic object draws to.
+	 */
+	@Override
 	public void draw(Canvas canvas) {
 		canvas.drawPath(path, paint);
 	}
@@ -37,6 +54,7 @@ public class PathGraphic implements Graphic {
 			return new PathGraphic[size];
 		}
 	};
+	@Override
 	public int describeContents() {
 		return 0;
 	}
@@ -53,10 +71,17 @@ public class PathGraphic implements Graphic {
 		}
 		paint = createPaintFromParcel(in);
 	}
+	@Override
 	public void writeToParcel(Parcel out, int flags) {
 		out.writeArray(points.toArray());
 		writePaitToParcel(paint, out);
 	}
+	/**
+	 * Create a Paint from Parcel.
+	 * @param in The Parcel which contains the data stored via writePaitToParcel.
+	 * @return A Paint which creates with parameters stored in the Parcel.
+	 * @see Falcon#writePaitToParcel
+	 */
 	private static Paint createPaintFromParcel(Parcel in) {
 		final Paint paint = new Paint();
 		paint.setColor(in.readInt());
@@ -70,6 +95,11 @@ public class PathGraphic implements Graphic {
 		}
 		return paint;
 	}
+	/**
+	 * Store parameters of a paint to Parcel for recreating a Paint which has same parameters later.
+	 * @param paint The Paint to be store.
+	 * @param out The Parcel the Paint's parameters will be stored to.
+	 */
 	private static void writePaitToParcel(Paint paint, Parcel out) {
 		out.writeInt(paint.getColor());
 		out.writeFloat(paint.getStrokeWidth());
@@ -88,6 +118,11 @@ public class PathGraphic implements Graphic {
 	public Paint getPaint() {
 		return paint;
 	}
+	/**
+	 * Add a line segment to the graphic.
+	 * @param x The destination x position.
+	 * @param y The destination y position.
+	 */
 	public void lineTo(float x, float y) {
 		this.path.lineTo(x, y);
 		points.add(new Point(x, y));
