@@ -399,6 +399,12 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private int intResponse;
 	private int avRequestResult;
 	private PlayerState playerState = PlayerState.STOPPED;
+	
+//	PC端在發出AV_PLAYER_SEEKPLAY後,直到收到小機的AV_PLAYER_SEEKPLAY回應之前,
+//	應忽略收到的AV_PLAYER_GET_TIME.另外,小機端收到PC端來的連續AV_PLAYER_SEEKPLAY,
+//	可能會一併處理,不一定會每一個AV_PLAYER_SEEKPLAY都回應.	
+	private boolean waitingForSeekPlayReturn = false;
+	
 	private static void prepareHeaderForAvStreamCmd(ByteBuffer header, int payloadSize, int cmd, int type, int size) {
 		// Sequence
 		header.putInt(getCommandSequenceNumber());
@@ -544,13 +550,21 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 					break;
 				case AV_PLAYER_GET_TIME:
 					Log.d(TAG, "AV_PLAYER_GET_TIME:" + avRequestResult);
-					handlePlayerGetTime(payload.getInt());
+//					PC端在發出AV_PLAYER_SEEKPLAY後,直到收到小機的AV_PLAYER_SEEKPLAY回應之前,
+//					應忽略收到的AV_PLAYER_GET_TIME.另外,小機端收到PC端來的連續AV_PLAYER_SEEKPLAY,
+//					可能會一併處理,不一定會每一個AV_PLAYER_SEEKPLAY都回應.	
+					if (!waitingForSeekPlayReturn) {
+						handlePlayerGetTime(payload.getInt());						
+					} else {
+						Log.d(TAG, "Waiting for SeekPlay return");
+					}
 					synchronized(avCommandGetTimeResponseReceivedNotificaiton) {
 						avCommandGetTimeResponseReceivedNotificaiton.notifyAll();
 					}
 					break;
 				case AV_PLAYER_SEEKPLAY:
 					Log.d(TAG, "AV_PLAYER_SEEKPLAY:" + avRequestResult);
+					waitingForSeekPlayReturn = false;
 					synchronized(avCommandSeekToResponseReceivedNotificaiton) {
 						avCommandSeekToResponseReceivedNotificaiton.notifyAll();
 					}
@@ -918,6 +932,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	@Override
 	public int seekTo(int position) {
 		Log.d(TAG, "seekTo:"+position);
+		waitingForSeekPlayReturn = true;
 		if (sendAVCommandAndWaitForResponse(createPlayerSeekPlayPacket(position).array(), avCommandSeekToResponseReceivedNotificaiton)) {
 			return avRequestResult;
 		}
