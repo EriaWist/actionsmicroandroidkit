@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 
 import android.app.Activity;
+import android.app.FragmentManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
@@ -130,5 +131,16 @@ public class Utils {
             e.printStackTrace();
         }
         return "";
+    }
+    public static void popAllBackStackAndFinish(Activity activity) {
+    	if (activity != null) {
+    		final FragmentManager fragmentManager = activity.getFragmentManager();
+    		if (fragmentManager != null) {
+    			while (fragmentManager.popBackStackImmediate()) {
+    				
+    			}
+    		}
+    		activity.finish();    		
+    	}
     }
 }
