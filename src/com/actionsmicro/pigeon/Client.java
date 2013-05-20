@@ -13,7 +13,10 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -134,7 +137,7 @@ public class Client {
 						}
 					}
 				} catch (Exception e) {
-					handleExceptionInThread(e);
+					handleException(e);
 					shouldStop = true;
 				}
 			}
@@ -170,7 +173,15 @@ public class Client {
 		cleanUp(true);	
 		bitmapManager = null;
 		onExceptionListener = null;
+		onExceptionObservable.deleteObservers();
+		onExceptionObservable = null;
+		exceptionListeners.clear();
+		exceptionListeners = null;
 		onNotificationListener = null;
+		onNotificationObservable.deleteObservers();
+		onNotificationObservable = null;
+		notificationListeners.clear();
+		notificationListeners = null;
 	}
 	private void cleanUp(boolean stop) {
 		if (compressionBuffer != null) {
@@ -499,10 +510,11 @@ public class Client {
 	public void setOnNotificationListener(OnNotificationListener onNotificationListener) {
 		this.onNotificationListener = onNotificationListener;
 	}
-	protected void handleExceptionInThread(Exception e) {
+	protected void handleException(Exception e) {
 		if (null != onExceptionListener) {
 			onExceptionListener.onException(this, e);
 		}
+		onExceptionObservable.notifyObservers(e);
 	}
 	public String getVersion() {
 		return "1";
@@ -535,10 +547,101 @@ public class Client {
 				socketOutputStream.write(data, 0, length);
 				socketOutputStream.flush();
 			} catch (Exception e) {
-				if (onExceptionListener != null) {
-					onExceptionListener.onException(this, e);
+				handleException(e);
+			}
+		}
+	}
+	private Observable onExceptionObservable = new Observable();
+	private class OnExceptionObserver implements Observer {
+		private OnExceptionListener listener;
+		public OnExceptionObserver(OnExceptionListener listener) {
+			this.listener = listener;
+		}
+		@Override
+		public void update(Observable observable, Object data) {
+			if (listener != null) {
+				listener.onException(Client.this, (Exception) data);
+			}
+		}		
+	}
+	private HashMap<OnExceptionListener, OnExceptionObserver> exceptionListeners = new HashMap<OnExceptionListener, OnExceptionObserver>();
+	public void addOnExceptionListener(OnExceptionListener listener) {
+		if (listener != null &&
+			!exceptionListeners.containsKey(listener)) {
+			final OnExceptionObserver onExceptionObserver = new OnExceptionObserver(listener);
+			exceptionListeners.put(listener, onExceptionObserver);
+			onExceptionObservable.addObserver(onExceptionObserver);
+		}
+	}
+	public void removeOnExceptionListener(OnExceptionListener listener) {
+		if (listener != null &&
+			exceptionListeners.containsKey(listener)) {
+			final OnExceptionObserver onExceptionObserver = exceptionListeners.get(listener);
+			exceptionListeners.remove(listener);
+			onExceptionObservable.deleteObserver(onExceptionObserver);
+		}
+	}
+	// TODO move to ClientV2
+	protected Observable onNotificationObservable = new Observable();
+	class RemoteRequestToChangePostionNotification {
+		public final int numberOfWindows;
+		public final int position;
+		public RemoteRequestToChangePostionNotification(int numberOfWindows, int position) {
+			this.numberOfWindows = numberOfWindows;
+			this.position = position;
+		}
+	}
+	class RemoteRequestToStopNotification {
+		
+	}
+	class RemoteRequestToDisconnectNotification {
+		
+	}
+	class RemoteRequestToStartNotification {
+		public final int numberOfWindows;
+		public final int position;
+		public RemoteRequestToStartNotification(int numberOfWindows, int position) {
+			this.numberOfWindows = numberOfWindows;
+			this.position = position;
+		}
+	}
+	private class OnNotificationObserver implements Observer {
+		private OnNotificationListener listener;
+		public OnNotificationObserver(OnNotificationListener listener) {
+			this.listener = listener;
+		}
+		@Override
+		public void update(Observable observable, Object data) {
+			if (listener != null) {
+				if (data instanceof RemoteRequestToChangePostionNotification) {
+					final RemoteRequestToChangePostionNotification notificaiton = (RemoteRequestToChangePostionNotification)data;
+					listener.onRemoteRequestToChangePostion(Client.this, notificaiton.numberOfWindows, notificaiton.position);
+				} else if (data instanceof RemoteRequestToStopNotification) {
+					listener.onRemoteRequestToStop(Client.this);
+				} else if (data instanceof RemoteRequestToDisconnectNotification) {
+					listener.onRemoteRequestToDisconnect(Client.this);
+				} else if (data instanceof RemoteRequestToStartNotification) {
+					final RemoteRequestToStartNotification notificaiton = (RemoteRequestToStartNotification)data;
+					listener.onRemoteRequestToStart(Client.this, notificaiton.numberOfWindows, notificaiton.position);
 				}
 			}
+		}		
+	}
+	private HashMap<OnNotificationListener, OnNotificationObserver> notificationListeners = new HashMap<OnNotificationListener, OnNotificationObserver>();
+	public void addOnNotificationListener(OnNotificationListener listener) {
+		if (listener != null &&
+			!notificationListeners.containsKey(listener)) {
+			final OnNotificationObserver onNotificationObserver = new OnNotificationObserver(listener);
+			notificationListeners.put(listener, onNotificationObserver);
+			onNotificationObservable.addObserver(onNotificationObserver);
+		}
+	}
+	public void removeOnNotificationListener(OnNotificationListener listener) {
+		if (listener != null &&
+			notificationListeners.containsKey(listener)) {
+			final OnNotificationObserver onNotificationObserver = notificationListeners.get(listener);
+			notificationListeners.remove(listener);
+			onNotificationObservable.deleteObserver(onNotificationObserver);
 		}
 	}
 }
