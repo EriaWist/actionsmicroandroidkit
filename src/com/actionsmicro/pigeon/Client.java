@@ -514,7 +514,9 @@ public class Client {
 		if (null != onExceptionListener) {
 			onExceptionListener.onException(this, e);
 		}
-		onExceptionObservable.notifyObservers(e);
+		if (null != onExceptionObservable) {
+			onExceptionObservable.notifyObservers(e);
+		}
 	}
 	public String getVersion() {
 		return "1";
