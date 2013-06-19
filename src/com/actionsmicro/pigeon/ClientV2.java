@@ -393,9 +393,6 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private static final int AV_SIZE_INT32 = 4;
 	private static final int AV_SIZE_INT64 = 8;
 	
-	private static final int AV_RESULT_OK = 0;
-	private static final int AV_RESULT_ERROR = 1;
-	
 	private static final int STREAM_FORMAT_EZSTREAM = 6;
 	
 	private DataSource currentDataSource;
@@ -534,7 +531,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 					break;
 				case AV_FILE_STOP:
 					Log.d(TAG, "AV_FILE_STOP:" + avRequestResult);
-					handleFileStop();
+					handleFileStop(avRequestResult);
 					break;
 				case AV_FILE_READ:
 					Log.d(TAG, "AV_FILE_READ:" + avRequestResult);
@@ -637,7 +634,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		assert currentDataSource != null:"currentDataSource should not be null";
 		assert currentDataSource instanceof HttpDataSource : "currentDataSource should be HttpDataSource";
 		if (currentDataSource != null && currentDataSource instanceof HttpDataSource) {
-			if (avRequestResult == AV_RESULT_ERROR) {
+			if (avRequestResult != AV_RESULT_OK) {
 				currentDataSource.mediaStreamingDidFail(avRequestResult);
 			} else {
 				playerState = PlayerState.PLAYING;
@@ -653,7 +650,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
 		}
-		sendDataToRemote(createHttpStopPacket().array());	
+		sendDataToRemote(createHttpStopPacket().array());
+		if (request_result != AV_RESULT_OK && currentDataSource != null) {
+			currentDataSource.mediaStreamingDidFail(request_result);
+		}
 	}
 
 	private void responseHttpGetUrl() {
@@ -697,7 +697,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		}
 	}
 	private void handleFileStart(final int request_result) {
-		if (request_result == AV_RESULT_ERROR) {
+		if (request_result != AV_RESULT_OK) {
 			assert currentDataSource != null:"currentDataSource should not be null";
 			if (currentDataSource != null) {
 				currentDataSource.mediaStreamingDidFail(request_result);
@@ -709,14 +709,17 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			playerState = PlayerState.PLAYING;
 		}
 	}
-	private void handleFileStop() {
+	private void handleFileStop(final int request_result) {
 		assert currentDataSource != null:"currentDataSource should not be null";
 		isStreamingMedia = false;
 		playerState = PlayerState.STOPPED;
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
 		}
-		sendDataToRemote(createFileStopPacket().array());		
+		sendDataToRemote(createFileStopPacket().array());
+		if (request_result != AV_RESULT_OK && currentDataSource != null) {
+			currentDataSource.mediaStreamingDidFail(request_result);
+		}
 	}
 	private void handleFilePause() {
 		assert currentDataSource != null:"currentDataSource should not be null";
