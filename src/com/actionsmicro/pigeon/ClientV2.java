@@ -651,8 +651,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			currentDataSource.stopStreamingContents();
 		}
 		sendDataToRemote(createHttpStopPacket().array());
-		if (request_result != AV_RESULT_OK && currentDataSource != null) {
-			currentDataSource.mediaStreamingDidFail(request_result);
+		if (avRequestResult != AV_RESULT_OK && currentDataSource != null) {
+			currentDataSource.mediaStreamingDidFail(avRequestResult);
 		}
 	}
 
