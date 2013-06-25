@@ -537,6 +537,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 					Log.d(TAG, "AV_FILE_START:" + avRequestResult);
 					handleFileStart(avRequestResult);
 					break;
+				case AV_FILE_START_AUDIO:
+					Log.d(TAG, "AV_FILE_START_AUDIO:" + avRequestResult);
+					handleFileStartAudio(avRequestResult);
+					break;
 				case AV_FILE_STOP:
 					Log.d(TAG, "AV_FILE_STOP:" + avRequestResult);
 					handleFileStop(avRequestResult);
@@ -705,6 +709,19 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		}
 	}
 	private void handleFileStart(final int request_result) {
+		if (request_result != AV_RESULT_OK) {
+			assert currentDataSource != null:"currentDataSource should not be null";
+			if (currentDataSource != null) {
+				currentDataSource.mediaStreamingDidFail(request_result);
+			} else {
+				Log.e(TAG, "AV_FILE_START failed");
+			}						
+		} else {
+			isStreamingMedia = true;
+			playerState = PlayerState.PLAYING;
+		}
+	}
+	private void handleFileStartAudio(final int request_result) {
 		if (request_result != AV_RESULT_OK) {
 			assert currentDataSource != null:"currentDataSource should not be null";
 			if (currentDataSource != null) {
