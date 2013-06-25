@@ -383,6 +383,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private static final int AV_HTTP_STOP = 19;
 	private static final int AV_HTTP_GET_URL = 20;
 	private static final int AV_HTTP_GET_USERAGENT = 21;
+	private static final int AV_FILE_START_AUDIO = 22;
 	
 	private static final int AV_TYPE_VOID = 0;
 	private static final int AV_TYPE_INT32 = 1;
@@ -434,6 +435,13 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		prepareHeaderForAvStreamCmd(packet, 0, AV_FILE_START, AV_TYPE_VOID, AV_SIZE_VOID);
 		return packet;
 	}
+	private ByteBuffer createStartAudioFileStreamingPacket() {
+		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		prepareHeaderForAvStreamCmd(packet, 0, AV_FILE_START_AUDIO, AV_TYPE_VOID, AV_SIZE_VOID);
+		return packet;
+	}
+
 	private static ByteBuffer createStartHttpStreamingPacket() {
 		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		packet.order(ByteOrder.LITTLE_ENDIAN);
@@ -775,12 +783,16 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 				Log.d(TAG, "try to AV_HTTP_START");	
 				sendDataToRemote(createStartHttpStreamingPacket().array());
 			} else if (currentDataSource instanceof FileDataSource) {
-				Log.d(TAG, "try to AV_FILE_START");	
-				sendDataToRemote(createStartFileStreamingPacket().array());
+				if (((FileDataSource) currentDataSource).isAudio()) {
+					Log.d(TAG, "try to AV_FILE_START_AUDIO");
+					sendDataToRemote(createStartAudioFileStreamingPacket().array());
+				} else {
+					Log.d(TAG, "try to AV_FILE_START");	
+					sendDataToRemote(createStartFileStreamingPacket().array());
+				}
 			}
 		}
 	}
-
 	private static ByteBuffer createPacketHeaderForSendingEzStream(int payloadSize) {
 		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		header.order(ByteOrder.LITTLE_ENDIAN);	

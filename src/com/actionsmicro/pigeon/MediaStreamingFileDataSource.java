@@ -4,11 +4,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.actionsmicro.pigeon.MediaStreaming.*;
+import com.actionsmicro.pigeon.MediaStreaming.FileDataSource;
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Utils;
 
 public class MediaStreamingFileDataSource implements FileDataSource {
 	
@@ -128,11 +130,25 @@ public class MediaStreamingFileDataSource implements FileDataSource {
 			mediaStreamingStateListener.medisStreamingDurationIsReady(this, duration);
 		}
 	}
-	private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList("mov", "mkv", "mp4", "avi", "divx", "mpg", "mpeg", "ts", "xvid", "rmvb", "rm", "wmv", "m4v", "3gp", "vob", "dat"); //, "mp3", "wma", "aac", "wav", "ogg"
+	private static final List<String> SUPPORTED_VIDEO_FILE_EXTENSIONS = Arrays.asList("mov", "mkv", "mp4", "avi", "divx", "mpg", "mpeg", "ts", "xvid", "rmvb", "rm", "wmv", "m4v", "3gp", "vob", "dat"); //"aac", "wav", "ogg"
+	private static final List<String> SUPPORTED_AUDIO_FILE_EXTENSIONS = Arrays.asList("mp3", "wma");
+	private static List<String> SUPPORTED_FILE_EXTENSIONS = null;
+	static {
+		SUPPORTED_FILE_EXTENSIONS = new ArrayList<String>(SUPPORTED_VIDEO_FILE_EXTENSIONS);
+		SUPPORTED_FILE_EXTENSIONS.addAll(SUPPORTED_AUDIO_FILE_EXTENSIONS);
+	}
 	public static List<String> getSupportedFileExt() {
 		return SUPPORTED_FILE_EXTENSIONS;
 	}
 	public static boolean supportsFileExt(String ext) {
 		return SUPPORTED_FILE_EXTENSIONS.contains(ext);
 	}
+	public static boolean isAudioFileExt(String ext) {
+		return SUPPORTED_AUDIO_FILE_EXTENSIONS.contains(ext);
+	}
+	@Override
+	public boolean isAudio() {
+		return MediaStreamingFileDataSource.isAudioFileExt(Utils.getFileExtension(mediaFile.getAbsolutePath()));
+	}
+
 }

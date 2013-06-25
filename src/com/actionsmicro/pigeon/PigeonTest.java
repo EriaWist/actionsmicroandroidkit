@@ -64,4 +64,11 @@ public class PigeonTest extends TestCase {
 		assertFalse(MediaStreamingFileDataSource.supportsFileExt("ppt"));
 		assertFalse(MediaStreamingFileDataSource.supportsFileExt("xls"));
 	}
+	public void testMediaStreamingAudioFileExtSupport() {
+		assertTrue(MediaStreamingFileDataSource.isAudioFileExt("mp3"));
+		assertTrue(MediaStreamingFileDataSource.isAudioFileExt("wma"));
+		assertFalse(MediaStreamingFileDataSource.isAudioFileExt("mp4"));
+		assertFalse(MediaStreamingFileDataSource.isAudioFileExt("m4v"));
+		assertFalse(MediaStreamingFileDataSource.isAudioFileExt("mov"));		
+	}
 }

@@ -279,5 +279,11 @@ public class MediaStreamingHttpFileDataSource implements FileDataSource {
 			MediaStreamingStateListener mediaStreamingStateListener) {
 		this.mediaStreamingStateListener = mediaStreamingStateListener;
 	}
+	@Override
+	public boolean isAudio() {
+		// always returns false
+		// TODO determine from mime type
+		return false;
+	}
 
 }

@@ -22,7 +22,8 @@ public interface MediaStreaming {
 		public long getContentLength();		
 		public void startStreamingContents(MediaStreaming ms, long offset);
 		public void pauseStreamingContents(long offset);
-		public void pauseStreamingContents();		
+		public void pauseStreamingContents();
+		public boolean isAudio();
 	}
 	public interface HttpDataSource extends DataSource {
 		public void startStreaming(MediaStreaming ms);
