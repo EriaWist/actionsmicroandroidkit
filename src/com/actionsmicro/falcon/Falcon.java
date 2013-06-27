@@ -287,6 +287,7 @@ public class Falcon {
 				@Override
 				public void run() {
 					try {
+						Log.d(TAG, "sendKey:(commandCode="+commandCode+", keyCode=" + keyCode+")");
 						final byte[] data = (""+commandCode+":"+keyCode).getBytes();
 						final DatagramSocket udpsocket = createDatagramSocket();
 						final DatagramPacket packet = new DatagramPacket(data, data.length,ipAddress, remoteControlPortNumber);
