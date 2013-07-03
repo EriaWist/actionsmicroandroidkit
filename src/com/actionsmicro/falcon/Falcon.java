@@ -474,7 +474,9 @@ public class Falcon {
 	 * @see Falcon#removeSearchResultListener(SearchReultListener)
 	 */
 	public void addSearchResultListener(SearchReultListener listener) {
-		listeners.add(listener);
+		synchronized(listeners) {
+			listeners.add(listener);
+		}
 	}
 	/**
 	 * Unregister a {@link SearchReultListener} from Falcon.
@@ -482,7 +484,9 @@ public class Falcon {
 	 * @see Falcon#addSearchResultListener(SearchReultListener)
 	 */
 	public void removeSearchResultListener(SearchReultListener listener) {
-		listeners.remove(listener);
+		synchronized(listeners) {
+			listeners.remove(listener);
+		}
 	}
 	static public final int EZ_REMOTE_CONTROL_PORT_NUMBER = 63630;
 	static public final int EZ_WIFI_DISPLAY_PORT_NUMBER = 2425;
@@ -810,10 +814,12 @@ public class Falcon {
 //		}
 //	}
 	private void notifyListenerDidFind(ProjectorInfo projector) {
-		Iterator<SearchReultListener> iterator = listeners.listIterator();
-		while (iterator.hasNext()) {
-			SearchReultListener listener = iterator.next(); 
-			listener.falconSearchDidFindProjector(Falcon.this, projector);						
+		synchronized(listeners) {
+			Iterator<SearchReultListener> iterator = listeners.listIterator();
+			while (iterator.hasNext()) {
+				SearchReultListener listener = iterator.next(); 
+				listener.falconSearchDidFindProjector(Falcon.this, projector);						
+			}
 		}
 	}
 //	private void notifyListenerSearchDidEnd() {
