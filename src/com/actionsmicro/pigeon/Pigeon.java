@@ -35,7 +35,8 @@ public class Pigeon {
 			// Check each field. Primitive fields, reference fields, and nullable reference
 			// fields are all treated differently.
 			return portNumber == lhs.portNumber &&
-					serverAddress.equals(lhs.serverAddress) &&
+					(serverAddress == null ? lhs.serverAddress == null
+					: serverAddress.equals(lhs.serverAddress)) &&
 					(version == null ? lhs.version == null
 					: version.equals(lhs.version));
 		}
@@ -45,7 +46,7 @@ public class Pigeon {
 			int result = 430;
 			// Include a hash for each field.
 			result = 31 * result + portNumber;
-			result = 31 * result + serverAddress.hashCode();
+			result = 31 * result + (serverAddress == null ? 0 : serverAddress.hashCode());
 			result = 31 * result + (version == null ? 0 : version.hashCode());
 
 			return result;
