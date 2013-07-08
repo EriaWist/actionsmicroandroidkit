@@ -158,7 +158,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		if (onNotificationListener != null) {
 			onNotificationListener.onRemoteRequestToDisconnect(this);
 		}
-		onNotificationObservable.notifyObservers(new RemoteRequestToDisconnectNotification());
+		if (onNotificationObservable != null) {
+			onNotificationObservable.notifyObservers(new RemoteRequestToDisconnectNotification());
+		}
 	}
 	private int requestedNumberOfWindow = 0;
 	private int requestedPosition = 0;
@@ -176,7 +178,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		if (onNotificationListener != null) {
 			onNotificationListener.onRemoteRequestToChangePostion(this, numberOfWindows, position);
 		}
-		onNotificationObservable.notifyObservers(new RemoteRequestToChangePostionNotification(numberOfWindows, position));
+		if (onNotificationObservable != null) {
+			onNotificationObservable.notifyObservers(new RemoteRequestToChangePostionNotification(numberOfWindows, position));
+		}
 	}
 	private void stopStreaming() {
 		synchronized (this) {
@@ -190,7 +194,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		if (onNotificationListener != null) {
 			onNotificationListener.onRemoteRequestToStop(this);
 		}
-		onNotificationObservable.notifyObservers(new RemoteRequestToStopNotification());
+		if (onNotificationObservable != null) {
+			onNotificationObservable.notifyObservers(new RemoteRequestToStopNotification());
+		}
 	}
 	private void startStreaming(final int numberOfWindows, final int position) {
 		synchronized (this) {
@@ -204,7 +210,9 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		if (onNotificationListener != null) {
 			onNotificationListener.onRemoteRequestToStart(this, numberOfWindows, position);
 		}
-		onNotificationObservable.notifyObservers(new RemoteRequestToStartNotification(numberOfWindows, position));
+		if (onNotificationObservable != null) {
+			onNotificationObservable.notifyObservers(new RemoteRequestToStartNotification(numberOfWindows, position));
+		}
 	}
 	@Override
 	public boolean canSendStream() {

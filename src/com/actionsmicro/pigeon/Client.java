@@ -568,19 +568,23 @@ public class Client {
 	}
 	private HashMap<OnExceptionListener, OnExceptionObserver> exceptionListeners = new HashMap<OnExceptionListener, OnExceptionObserver>();
 	public void addOnExceptionListener(OnExceptionListener listener) {
-		if (listener != null &&
-			!exceptionListeners.containsKey(listener)) {
-			final OnExceptionObserver onExceptionObserver = new OnExceptionObserver(listener);
-			exceptionListeners.put(listener, onExceptionObserver);
-			onExceptionObservable.addObserver(onExceptionObserver);
+		if (onExceptionObservable != null && exceptionListeners != null) {
+			if (listener != null &&
+					!exceptionListeners.containsKey(listener)) {
+				final OnExceptionObserver onExceptionObserver = new OnExceptionObserver(listener);
+				exceptionListeners.put(listener, onExceptionObserver);
+				onExceptionObservable.addObserver(onExceptionObserver);
+			}
 		}
 	}
 	public void removeOnExceptionListener(OnExceptionListener listener) {
-		if (listener != null &&
-			exceptionListeners.containsKey(listener)) {
-			final OnExceptionObserver onExceptionObserver = exceptionListeners.get(listener);
-			exceptionListeners.remove(listener);
-			onExceptionObservable.deleteObserver(onExceptionObserver);
+		if (onExceptionObservable != null && exceptionListeners != null) {
+			if (listener != null &&
+					exceptionListeners.containsKey(listener)) {
+				final OnExceptionObserver onExceptionObserver = exceptionListeners.get(listener);
+				exceptionListeners.remove(listener);
+				onExceptionObservable.deleteObserver(onExceptionObserver);
+			}
 		}
 	}
 	// TODO move to ClientV2
@@ -631,19 +635,23 @@ public class Client {
 	}
 	private HashMap<OnNotificationListener, OnNotificationObserver> notificationListeners = new HashMap<OnNotificationListener, OnNotificationObserver>();
 	public void addOnNotificationListener(OnNotificationListener listener) {
-		if (listener != null &&
-			!notificationListeners.containsKey(listener)) {
-			final OnNotificationObserver onNotificationObserver = new OnNotificationObserver(listener);
-			notificationListeners.put(listener, onNotificationObserver);
-			onNotificationObservable.addObserver(onNotificationObserver);
+		if (onNotificationObservable != null) {
+			if (listener != null &&
+					!notificationListeners.containsKey(listener)) {
+				final OnNotificationObserver onNotificationObserver = new OnNotificationObserver(listener);
+				notificationListeners.put(listener, onNotificationObserver);
+				onNotificationObservable.addObserver(onNotificationObserver);
+			}
 		}
 	}
 	public void removeOnNotificationListener(OnNotificationListener listener) {
-		if (listener != null &&
-			notificationListeners.containsKey(listener)) {
-			final OnNotificationObserver onNotificationObserver = notificationListeners.get(listener);
-			notificationListeners.remove(listener);
-			onNotificationObservable.deleteObserver(onNotificationObserver);
+		if (onNotificationObservable != null) {
+			if (listener != null &&
+					notificationListeners.containsKey(listener)) {
+				final OnNotificationObserver onNotificationObserver = notificationListeners.get(listener);
+				notificationListeners.remove(listener);
+				onNotificationObservable.deleteObserver(onNotificationObserver);
+			}
 		}
 	}
 }
