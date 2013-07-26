@@ -1,15 +1,20 @@
 package com.actionsmicro.falcon;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
+import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,6 +58,8 @@ public class Falcon {
 	private static final String PARAMETER_NAME_KEY = "name";
 	private static final String PARAMETER_DISCOVERY_KEY = "discovery";
 	private static final String TAG = "Falcon";
+	private static final String REMOTE_CONTROL_MESSGAE_CHARSET = "UTF-8";
+	
 	/**
 	 * This contains basic information about the device.
 	 * @author James Chen
@@ -276,32 +283,51 @@ public class Falcon {
 		 * @param keyCode The key code.
 		 */
 		public void sendKey(final int keyCode) {
-			sendKey(1, keyCode);
+			sendKey(1, keyCode, false);
+		}
+		public void sendKeyAndWait(final int keyCode) {
+			sendKey(1, keyCode, true);
 		}
 		public void sendVendorKey(final int keyCode) {
-			sendKey(10, keyCode);
+			sendKey(10, keyCode, false);
 		}
-		private void sendKey(final int commandCode, final int keyCode) {
+		private void sendKey(final int commandCode, final int keyCode, final boolean wait) {
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
 					try {
 						Log.d(TAG, "sendKey:(commandCode="+commandCode+", keyCode=" + keyCode+")");
-						final byte[] data = (""+commandCode+":"+keyCode).getBytes();
+						final byte[] data = (""+commandCode+":"+keyCode).getBytes(REMOTE_CONTROL_MESSGAE_CHARSET);
 						final DatagramSocket udpsocket = createDatagramSocket();
-						final DatagramPacket packet = new DatagramPacket(data, data.length,ipAddress, remoteControlPortNumber);
+						final DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, remoteControlPortNumber);
 						udpsocket.send(packet);
+						Falcon.getInstance().sendTcpRemoteControlData(data, ipAddress, remoteControlPortNumber);
 					} catch (SocketException e) {
 						e.printStackTrace();
 					} catch (UnknownHostException e) {
 						e.printStackTrace();
 					} catch (IOException e) {
 						e.printStackTrace();
+					} finally {
+						if (wait) {
+							synchronized (ProjectorInfo.this) {
+								ProjectorInfo.this.notify();	
+							}
+						}
 					}
 				}
 				
 			}).start();
+			if (wait) {
+				synchronized(this) {
+					try {
+						this.wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
 		}
 		/**
 		 * Implement this interface if you want to receive message from the device.
@@ -334,6 +360,9 @@ public class Falcon {
 		protected DatagramSocket createDatagramSocket() throws SocketException {
 			return new DatagramSocket();
 		}		
+		public void disconnectRemoteControl() {
+			Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
+		}
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
 	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
@@ -348,6 +377,82 @@ public class Falcon {
 		}
 		return singleton;
 	}
+	synchronized protected void sendTcpRemoteControlData(byte[] data, InetAddress ipAddress, int remoteControlPortNumber) throws IOException {
+		final Socket socketToRemoteControl = createSocketToRemoteControlIfNeeded(3000, ipAddress, remoteControlPortNumber);
+		final OutputStream socketOutputStream = socketToRemoteControl.getOutputStream();
+		final ByteBuffer packet = ByteBuffer.allocate(4+data.length);
+		packet.order(ByteOrder.LITTLE_ENDIAN);
+		packet.putInt(data.length);
+		packet.put(data);
+		socketOutputStream.write(packet.array());
+		socketOutputStream.flush();
+	}
+	synchronized private Socket createSocketToRemoteControlIfNeeded(int timeout, final InetAddress ipAddress, final int portNumber) throws IOException {
+		Log.d(TAG, "Find socket for address:" + ipAddress.toString());
+		Socket socketToRemoteControl = socketsToRemoteControls.get(ipAddress);
+		if (socketToRemoteControl == null) {
+			Log.d(TAG, "Cannot find socket for address:" + ipAddress.toString());
+			socketToRemoteControl = new Socket();
+			socketToRemoteControl.connect(new InetSocketAddress(ipAddress, portNumber), timeout);
+			socketsToRemoteControls.put(ipAddress, socketToRemoteControl);
+			final InputStream inputStream = socketToRemoteControl.getInputStream();
+			new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					try {
+						synchronized(inputStream) {
+							inputStream.notify();
+						}
+						while (true) {
+							final ByteBuffer header = ByteBuffer.allocate(4);
+							header.order(ByteOrder.LITTLE_ENDIAN);
+							final int headerSize = inputStream.read(header.array(), 0, header.capacity());
+							if (headerSize == -1) {
+								break;
+							} else if (headerSize == 4) {
+								int payloadSize = header.getInt();
+								final ByteBuffer payload = ByteBuffer.allocate(payloadSize);
+								inputStream.read(payload.array(), 0, payload.capacity());
+
+								final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
+								projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
+								final String receiveString = new String(payload.array(), REMOTE_CONTROL_MESSGAE_CHARSET);
+								processRemoteControlMessage(projectorInfo, receiveString);
+							}
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+						closeSocketToRemoteControl(ipAddress, portNumber);
+					}
+				}
+				
+			}).start();
+			// waiting for thread to be executed
+			synchronized(inputStream) {
+				try {
+					inputStream.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return socketToRemoteControl;
+	}
+	synchronized private void closeSocketToRemoteControl(InetAddress ipAddress, int portNumber) {
+		final Socket socketToRemoteControl = socketsToRemoteControls.get(ipAddress);
+		if (socketToRemoteControl != null) {
+			try {
+				socketToRemoteControl.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} finally {
+				socketsToRemoteControls.remove(ipAddress);
+			}
+		}
+	}
+	private final HashMap<InetAddress, Socket> socketsToRemoteControls = new HashMap<InetAddress, Socket>();
 	private final HashMap<InetAddress, Set<MessageListener>> privareMessageListeners = new HashMap<InetAddress, Set<MessageListener>>();
 	
 	protected void addPrivateMessageListener(ProjectorInfo projectorInfo, MessageListener listener) {
@@ -843,35 +948,45 @@ public class Falcon {
 	private void handleRemoteControlMessage(final DatagramPacket recvPacket) {
 		final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
 		projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
-		final String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength(), Charset.forName("UTF-8")).split("\0");
+		final String receiveString = getRemoteControlMessageFromDatagramPacket(recvPacket);
+		if (receiveString != null) {
+			processRemoteControlMessage(projectorInfo, receiveString);
+		}
+	}
+	private String getRemoteControlMessageFromDatagramPacket(
+			final DatagramPacket recvPacket) {
+		final String [] receiveStrings = new String(recvPacket.getData(), 0, recvPacket.getLength(), Charset.forName(REMOTE_CONTROL_MESSGAE_CHARSET)).split("\0");
 		if (receiveStrings.length > 0) {
-			final String receiveString = receiveStrings[0];
-			Log.d(TAG, "receive EZ Remote message:" + receiveString + " from:" + recvPacket.getAddress().getHostAddress() + ":" + recvPacket.getPort());
-			if (receiveString.startsWith(recvPacket.getAddress().getHostAddress())) { //backward compatibility
-				mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
-			} else if (receiveString.startsWith("EZREMOTE:")) {
-				parseRemoteControlResponseString(receiveString, projectorInfo);
-				mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
-			} else if (receiveString.startsWith("STANDARD:")) {	//小機送給App的message (公板用)
-				mainThreadHandler.post(new Runnable() {
+			return receiveStrings[0];
+		}
+		return null;
+	}
+	private void processRemoteControlMessage(final ProjectorInfo projectorInfo, final String receiveString) {
+		Log.d(TAG, "receive EZ Remote message:" + receiveString + " from:" + projectorInfo.getAddress().getHostAddress());
+		if (receiveString.startsWith(projectorInfo.getAddress().getHostAddress())) { //backward compatibility
+			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+		} else if (receiveString.startsWith("EZREMOTE:")) {
+			parseRemoteControlResponseString(receiveString, projectorInfo);
+			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+		} else if (receiveString.startsWith("STANDARD:")) {	//小機送給App的message (公板用)
+			mainThreadHandler.post(new Runnable() {
 
-					@Override
-					public void run() {
-						dispatchPrivateMessage(projectorInfo, parseMessageString(receiveString));
-					}
-					
-				});
+				@Override
+				public void run() {
+					dispatchPrivateMessage(projectorInfo, parseMessageString(receiveString));
+				}
 				
-			} else if (receiveString.startsWith("CUSTOMER")) {	//小機送給App的message (客戶案用)
-				mainThreadHandler.post(new Runnable() {
+			});
+			
+		} else if (receiveString.startsWith("CUSTOMER")) {	//小機送給App的message (客戶案用)
+			mainThreadHandler.post(new Runnable() {
 
-					@Override
-					public void run() {
-						dispatchMessage(projectorInfo, parseMessageString(receiveString));
-					}
-					
-				});
-			}
+				@Override
+				public void run() {
+					dispatchMessage(projectorInfo, parseMessageString(receiveString));
+				}
+				
+			});
 		}
 	}
 	private void handleWifiDisplayMessage(final DatagramPacket recvPacket) {
