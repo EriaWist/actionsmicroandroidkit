@@ -641,7 +641,7 @@ public class FalconTest extends TestCase {
 			}				
 		};
 		projectorInfo.addMessageListener(listener);
-		projectorInfo.sendKey(keyCode);
+		projectorInfo.sendKeyTcp(keyCode);
 		
 		synchronized(this) {
 			try {

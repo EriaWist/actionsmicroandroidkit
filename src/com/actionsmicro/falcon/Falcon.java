@@ -285,13 +285,22 @@ public class Falcon {
 		public void sendKey(final int keyCode) {
 			sendKey(1, keyCode, false);
 		}
+		public void sendKeyTcp(final int keyCode) {
+			sendKey(1, keyCode, false, true);
+		}
 		public void sendKeyAndWait(final int keyCode) {
 			sendKey(1, keyCode, true);
+		}
+		public void sendKeyTcpAndWait(final int keyCode) {
+			sendKey(1, keyCode, true, true);
 		}
 		public void sendVendorKey(final int keyCode) {
 			sendKey(10, keyCode, false);
 		}
 		private void sendKey(final int commandCode, final int keyCode, final boolean wait) {
+			sendKey(commandCode, keyCode, wait, false);
+		}
+		private void sendKey(final int commandCode, final int keyCode, final boolean wait, final boolean useTcp) {
 			new Thread(new Runnable() {
 
 				@Override
@@ -299,10 +308,13 @@ public class Falcon {
 					try {
 						Log.d(TAG, "sendKey:(commandCode="+commandCode+", keyCode=" + keyCode+")");
 						final byte[] data = (""+commandCode+":"+keyCode).getBytes(REMOTE_CONTROL_MESSGAE_CHARSET);
-						final DatagramSocket udpsocket = createDatagramSocket();
-						final DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, remoteControlPortNumber);
-						udpsocket.send(packet);
-						Falcon.getInstance().sendTcpRemoteControlData(data, ipAddress, remoteControlPortNumber);
+						if (useTcp) {
+							Falcon.getInstance().sendTcpRemoteControlData(data, ipAddress, remoteControlPortNumber);
+						} else {
+							final DatagramSocket udpsocket = createDatagramSocket();
+							final DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, remoteControlPortNumber);
+							udpsocket.send(packet);
+						}
 					} catch (SocketException e) {
 						e.printStackTrace();
 					} catch (UnknownHostException e) {
