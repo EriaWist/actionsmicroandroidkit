@@ -320,6 +320,18 @@ public class FalconTest extends TestCase {
 					synchronized (this) {
 						this.notify();	
 					}
+				}
+
+				@Override
+				public void onException(ProjectorInfo projector, Exception e) {
+					// TODO Auto-generated method stub
+					
+				}
+
+				@Override
+				public void onDisconnect(ProjectorInfo projector) {
+					// TODO Auto-generated method stub
+					
 				}				
 			};
 
@@ -407,6 +419,18 @@ public class FalconTest extends TestCase {
 					synchronized (this) {
 						this.notify();	
 					}
+				}
+
+				@Override
+				public void onException(ProjectorInfo projector, Exception e) {
+					// TODO Auto-generated method stub
+					
+				}
+
+				@Override
+				public void onDisconnect(ProjectorInfo projector) {
+					// TODO Auto-generated method stub
+					
 				}				
 			};
 			
@@ -638,6 +662,18 @@ public class FalconTest extends TestCase {
 				synchronized (this) {
 					this.notify();	
 				}
+			}
+
+			@Override
+			public void onException(ProjectorInfo projector, Exception e) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onDisconnect(ProjectorInfo projector) {
+				// TODO Auto-generated method stub
+				
 			}				
 		};
 		projectorInfo.addMessageListener(listener);

@@ -315,12 +315,9 @@ public class Falcon {
 							final DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, remoteControlPortNumber);
 							udpsocket.send(packet);
 						}
-					} catch (SocketException e) {
-						e.printStackTrace();
-					} catch (UnknownHostException e) {
-						e.printStackTrace();
 					} catch (IOException e) {
-						e.printStackTrace();
+						Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
+						Falcon.getInstance().dispatchExceptionOnMain(ipAddress, e);
 					} finally {
 						if (wait) {
 							synchronized (ProjectorInfo.this) {
@@ -352,6 +349,8 @@ public class Falcon {
 		 */
 		public interface MessageListener {
 			public void onReceiveMessage(ProjectorInfo projector, String message);
+			public void onException(ProjectorInfo projector, Exception e);
+			public void onDisconnect(ProjectorInfo projector);			
 		}
 		/**
 		 * Add message listener to receive message from the device.
@@ -399,68 +398,96 @@ public class Falcon {
 		socketOutputStream.write(packet.array());
 		socketOutputStream.flush();
 	}
-	synchronized private Socket createSocketToRemoteControlIfNeeded(int timeout, final InetAddress ipAddress, final int portNumber) throws IOException {
-		Log.d(TAG, "Find socket for address:" + ipAddress.toString());
-		Socket socketToRemoteControl = socketsToRemoteControls.get(ipAddress);
-		if (socketToRemoteControl == null) {
-			Log.d(TAG, "Cannot find socket for address:" + ipAddress.toString());
-			socketToRemoteControl = new Socket();
-			socketToRemoteControl.connect(new InetSocketAddress(ipAddress, portNumber), timeout);
-			socketsToRemoteControls.put(ipAddress, socketToRemoteControl);
-			final InputStream inputStream = socketToRemoteControl.getInputStream();
-			new Thread(new Runnable() {
+	private Socket createSocketToRemoteControlIfNeeded(int timeout, final InetAddress ipAddress, final int portNumber) throws IOException {
+		synchronized (socketsToRemoteControls) {
+			Log.d(TAG, "Try to find socket for address:" + ipAddress.toString());
+			Socket socketToRemoteControl = socketsToRemoteControls.get(ipAddress);
+			if (socketToRemoteControl == null) {
+				Log.d(TAG, "Cannot find socket for address:" + ipAddress.toString());
+				socketToRemoteControl = new Socket();
+				socketToRemoteControl.connect(new InetSocketAddress(ipAddress, portNumber), timeout);
+				socketsToRemoteControls.put(ipAddress, socketToRemoteControl);
+				final InputStream inputStream = socketToRemoteControl.getInputStream();
+				new Thread(new Runnable() {
 
-				@Override
-				public void run() {
-					try {
-						synchronized(inputStream) {
-							inputStream.notify();
-						}
-						while (true) {
-							final ByteBuffer header = ByteBuffer.allocate(4);
-							header.order(ByteOrder.LITTLE_ENDIAN);
-							final int headerSize = inputStream.read(header.array(), 0, header.capacity());
-							if (headerSize == -1) {
-								break;
-							} else if (headerSize == 4) {
-								int payloadSize = header.getInt();
-								final ByteBuffer payload = ByteBuffer.allocate(payloadSize);
-								inputStream.read(payload.array(), 0, payload.capacity());
-
-								final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
-								projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
-								final String receiveString = new String(payload.array(), REMOTE_CONTROL_MESSGAE_CHARSET);
-								processRemoteControlMessage(projectorInfo, receiveString);
+					@Override
+					public void run() {
+						try {
+							synchronized(inputStream) {
+								inputStream.notify();
 							}
+							final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
+							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
+							while (true) {
+								final ByteBuffer header = ByteBuffer.allocate(4);
+								header.order(ByteOrder.LITTLE_ENDIAN);
+								final int headerSize = inputStream.read(header.array(), 0, header.capacity());
+								if (headerSize == -1) {
+									break;
+								} else if (headerSize == 4) {
+									int payloadSize = header.getInt();
+									final ByteBuffer payload = ByteBuffer.allocate(payloadSize);
+									inputStream.read(payload.array(), 0, payload.capacity());
+									Log.d(TAG, "Receive TCP packet. Payload size:" + payloadSize);
+									final String receiveString = new String(payload.array(), REMOTE_CONTROL_MESSGAE_CHARSET);
+									processRemoteControlMessage(projectorInfo, receiveString);
+								}
+							}
+						} catch (Exception e) {
+							dispatchExceptionOnMain(ipAddress, e);
+						} finally {
+							closeSocketToRemoteControl(ipAddress, portNumber);
+							dispatchOnDisconnect(ipAddress);
 						}
-					} catch (IOException e) {
+					}
+
+				}).start();
+				// waiting for thread to be executed
+				synchronized(inputStream) {
+					try {
+						inputStream.wait();
+					} catch (InterruptedException e) {
 						e.printStackTrace();
-						closeSocketToRemoteControl(ipAddress, portNumber);
 					}
 				}
-				
-			}).start();
-			// waiting for thread to be executed
-			synchronized(inputStream) {
-				try {
-					inputStream.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+			} else {
+				Log.d(TAG, "Find socket for address:" + ipAddress.toString());				
 			}
+			return socketToRemoteControl;
 		}
-		return socketToRemoteControl;
+
 	}
-	synchronized private void closeSocketToRemoteControl(InetAddress ipAddress, int portNumber) {
-		final Socket socketToRemoteControl = socketsToRemoteControls.get(ipAddress);
-		if (socketToRemoteControl != null) {
-			try {
-				socketToRemoteControl.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} finally {
-				socketsToRemoteControls.remove(ipAddress);
+	private void dispatchOnDisconnect(InetAddress ipAddress) {
+		Log.d(TAG, "dispatchOnDisconnect");
+		final ProjectorInfo projector = createProjectorWithAddressIfNeeded(ipAddress);
+		mainThreadHandler.post(new Runnable() {
+
+			@Override
+			public void run() {
+				final Set<MessageListener> listeners = messageListeners.get(projector.getAddress());
+				if (listeners != null) {
+					for (final MessageListener listener : listeners) {
+						Log.d(TAG, "send to " + listener);
+						listener.onDisconnect(projector);
+					}
+				} else {
+					Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());				
+				}
+			}				
+		});
+	}
+	private void closeSocketToRemoteControl(InetAddress ipAddress, int portNumber) {
+		synchronized (socketsToRemoteControls) {
+			final Socket socketToRemoteControl = socketsToRemoteControls.get(ipAddress);
+			if (socketToRemoteControl != null) {
+				try {
+					socketToRemoteControl.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} finally {
+					socketsToRemoteControls.remove(ipAddress);
+				}
 			}
 		}
 	}
@@ -527,7 +554,29 @@ public class Falcon {
 			}
 		}
 	}
-	
+	private void dispatchExceptionOnMain(InetAddress address, final Exception e) {
+		if (e != null) {
+			Log.d(TAG, "dispatchException:" + e);
+			e.printStackTrace();
+			final ProjectorInfo projector = createProjectorWithAddressIfNeeded(address);
+			mainThreadHandler.post(new Runnable() {
+
+				@Override
+				public void run() {
+					final Set<MessageListener> listeners = messageListeners.get(projector.getAddress());
+					if (listeners != null) {
+						for (final MessageListener listener : listeners) {
+							Log.d(TAG, "send to " + listener);
+							listener.onException(projector, e);
+						}
+					} else {
+						Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());				
+					}
+				}				
+			});
+
+		}
+	}
 	private static class MainThreadHandler extends Handler {
 		private Falcon falcon;
 
@@ -672,7 +721,7 @@ public class Falcon {
 	private static final int MSG_SearchDidEnd	= 2;
 	private DatagramSocket broadcastSocket;
 	private boolean searching;
-	private static final int INITIAL_LOOKUP_INTERVAL = 2; // in seconds
+	private static final int INITIAL_LOOKUP_INTERVAL = 1;
 	private int lookupInterval = INITIAL_LOOKUP_INTERVAL;
 	protected Runnable pendingLookup;
 	protected boolean shouldStopReceiving;
@@ -683,7 +732,9 @@ public class Falcon {
 		startListening();
 		if (broadcastSocket != null) {
 			Log.d(TAG, "Clear projector list");
-			projectors.clear();
+			synchronized(projectors) {
+				projectors.clear();
+			}
 			searching = true;
 			lookupInterval = INITIAL_LOOKUP_INTERVAL;
 			sendLookupCommand();
@@ -796,14 +847,16 @@ public class Falcon {
 		}
 	}
 	private ProjectorInfo getProjectorInfoWithAddress(InetAddress address) {
-		Iterator<ProjectorInfo> iterator = projectors.listIterator();
-		while (iterator.hasNext()) {
-			ProjectorInfo projector = iterator.next(); 
-			if (projector.ipAddress.equals(address)) {
-				return projector;
+		synchronized(projectors) {
+			Iterator<ProjectorInfo> iterator = projectors.listIterator();
+			while (iterator.hasNext()) {
+				ProjectorInfo projector = iterator.next(); 
+				if (projector.ipAddress.equals(address)) {
+					return projector;
+				}
 			}
+			return null;
 		}
-		return null;
 	}
 	private static final int IPMSG_VERSION = 0x002;
 	
@@ -811,7 +864,7 @@ public class Falcon {
 	private static final int IPMSG_BR_ENTRY		= 0x0001;
 	private static final int IPMSG_BR_EXIT 		= 0x0002;
 	private static final int IPMSG_ANSENTRY 	= 0x0003;
-	private static final int MAX_LOOKUP_INTERVAL = 60;
+	private static final int MAX_LOOKUP_INTERVAL = 6;
 	
 	private static long s_commandSequenceNumber = 0;
 	private static final byte[] generateCommand(String username, String hostname, int command) {
@@ -949,11 +1002,13 @@ public class Falcon {
 	private ProjectorInfo createProjectorWithAddressIfNeeded(
 			final InetAddress address) {
 		ProjectorInfo projectorInfo;
-		projectorInfo = getProjectorInfoWithAddress(address);
-		if (projectorInfo == null) {
-			projectorInfo = new ProjectorInfo();
-			projectorInfo.ipAddress = address;
-			projectors.add(projectorInfo);
+		synchronized(projectors) {
+			projectorInfo = getProjectorInfoWithAddress(address);
+			if (projectorInfo == null) {
+				projectorInfo = new ProjectorInfo();
+				projectorInfo.ipAddress = address;
+				projectors.add(projectorInfo);
+			}
 		}
 		return projectorInfo;
 	}
@@ -1008,7 +1063,9 @@ public class Falcon {
 			projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
 			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 		} else {
-			projectors.remove(projectorInfo);
+			synchronized(projectors) {
+				projectors.remove(projectorInfo);
+			}
 		}
 	}
 	private static boolean parseWifiDisplayResponse(final DatagramPacket recvPacket, ProjectorInfo projectorInfo) {
