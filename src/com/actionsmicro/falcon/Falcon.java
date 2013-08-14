@@ -855,7 +855,7 @@ public class Falcon {
 	private static final int IPMSG_BR_ENTRY		= 0x0001;
 	private static final int IPMSG_BR_EXIT 		= 0x0002;
 	private static final int IPMSG_ANSENTRY 	= 0x0003;
-	private static final int MAX_LOOKUP_INTERVAL = 1;
+	private static final int MAX_LOOKUP_INTERVAL = 6;
 	
 	private static long s_commandSequenceNumber = 0;
 	private static final byte[] generateCommand(String username, String hostname, int command) {
