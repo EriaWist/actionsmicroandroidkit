@@ -464,15 +464,7 @@ public class Falcon {
 
 			@Override
 			public void run() {
-				final Set<MessageListener> listeners = messageListeners.get(projector.getAddress());
-				if (listeners != null) {
-					for (final MessageListener listener : listeners) {
-						Log.d(TAG, "send to " + listener);
-						listener.onDisconnect(projector);
-					}
-				} else {
-					Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());				
-				}
+				dispatchDisconnection(projector);
 			}				
 		});
 	}
@@ -523,34 +515,41 @@ public class Falcon {
 	private final HashMap<InetAddress, Set<MessageListener>> messageListeners = new HashMap<InetAddress, Set<MessageListener>>();
 	
 	private void addMessageListener(ProjectorInfo projectorInfo, MessageListener listener) {
-		Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
-		if (listeners == null) {
-			Log.d(TAG, "Create MessageListener container for " + projectorInfo.getAddress().getHostAddress());			
-			listeners = new HashSet<MessageListener>();
-			messageListeners.put(projectorInfo.getAddress(), listeners);
-		}
-		if (listeners != null) {
-			Log.d(TAG, "Add MessageListener to container");			
-			listeners.add(listener);
+		synchronized (messageListeners) {
+			Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
+			if (listeners == null) {
+				Log.d(TAG, "Create MessageListener container for " + projectorInfo.getAddress().getHostAddress());			
+				listeners = new HashSet<MessageListener>();
+				messageListeners.put(projectorInfo.getAddress(), listeners);
+			}
+			if (listeners != null) {
+				Log.d(TAG, "Add MessageListener to container");			
+				listeners.add(listener);
+			}
 		}
 	}
 	private void removeMessageListener(ProjectorInfo projectorInfo, MessageListener listener) {
-		final Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
-		if (listeners != null) {
-			listeners.remove(listener);
+		synchronized (messageListeners) {
+			final Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
+			if (listeners != null) {
+				listeners.remove(listener);
+			}
 		}
 	}
 	private void dispatchMessage(ProjectorInfo projectorInfo, String message) {
 		if (message != null) {
 			Log.d(TAG, "dispatchMessage:" + message);
-			final Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
-			if (listeners != null) {
-				for (final MessageListener listener : listeners) {
-					Log.d(TAG, "send to " + listener);
-					listener.onReceiveMessage(projectorInfo, message);
+			synchronized (messageListeners) {
+				Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
+				if (listeners != null) {
+					listeners = new HashSet<MessageListener>(listeners);
+					for (final MessageListener listener : listeners) {
+						Log.d(TAG, "send to " + listener);
+						listener.onReceiveMessage(projectorInfo, message);
+					}
+				} else {
+					Log.d(TAG, "no listener for " + projectorInfo.getAddress().getHostAddress());				
 				}
-			} else {
-				Log.d(TAG, "no listener for " + projectorInfo.getAddress().getHostAddress());				
 			}
 		}
 	}
@@ -563,15 +562,7 @@ public class Falcon {
 
 				@Override
 				public void run() {
-					final Set<MessageListener> listeners = messageListeners.get(projector.getAddress());
-					if (listeners != null) {
-						for (final MessageListener listener : listeners) {
-							Log.d(TAG, "send to " + listener);
-							listener.onException(projector, e);
-						}
-					} else {
-						Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());				
-					}
+					dispatchException(projector, e);
 				}				
 			});
 
@@ -864,7 +855,7 @@ public class Falcon {
 	private static final int IPMSG_BR_ENTRY		= 0x0001;
 	private static final int IPMSG_BR_EXIT 		= 0x0002;
 	private static final int IPMSG_ANSENTRY 	= 0x0003;
-	private static final int MAX_LOOKUP_INTERVAL = 6;
+	private static final int MAX_LOOKUP_INTERVAL = 1;
 	
 	private static long s_commandSequenceNumber = 0;
 	private static final byte[] generateCommand(String username, String hostname, int command) {
@@ -1065,6 +1056,35 @@ public class Falcon {
 		} else {
 			synchronized(projectors) {
 				projectors.remove(projectorInfo);
+			}
+		}
+	}
+	private void dispatchException(final ProjectorInfo projector,
+			final Exception e) {
+		synchronized (messageListeners) {
+			Set<MessageListener> listeners = messageListeners.get(projector.getAddress());
+			if (listeners != null) {
+				listeners = new HashSet<MessageListener>(listeners);
+				for (final MessageListener listener : listeners) {
+					Log.d(TAG, "send to " + listener);
+					listener.onException(projector, e);
+				}
+			} else {
+				Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());				
+			}
+		}
+	}
+	private void dispatchDisconnection(final ProjectorInfo projector) {
+		synchronized (messageListeners) {
+			Set<MessageListener> listeners = messageListeners.get(projector.getAddress());
+			if (listeners != null) {
+				listeners = new HashSet<MessageListener>(listeners);
+				for (final MessageListener listener : listeners) {
+					Log.d(TAG, "send to " + listener);
+					listener.onDisconnect(projector);
+				}
+			} else {
+				Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());				
 			}
 		}
 	}
