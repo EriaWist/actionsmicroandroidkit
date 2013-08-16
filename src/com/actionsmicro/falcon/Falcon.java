@@ -719,7 +719,7 @@ public class Falcon {
 	/**
 	 * Start searching devices. If it's already in searching state, it does nothing.
 	 */
-	public void search() {
+	synchronized public void search() {
 		startListening();
 		if (broadcastSocket != null) {
 			Log.d(TAG, "Clear projector list");
