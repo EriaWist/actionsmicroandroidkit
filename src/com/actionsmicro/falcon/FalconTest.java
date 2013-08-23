@@ -217,6 +217,16 @@ public class FalconTest extends TestCase {
 		testSearchResultListener(testContext, "asdadalkj13", ezRemoteSocket);
 		assertNull(testContext.projectorInfo);
 	}
+	public void testRemoteControlParserEzCast() {
+		TestContext testContext = new TestContext();
+		testSearchResultListener(testContext, "EZREMOTE:1:vendor=actions:model=BENQ_GP10:hostname=EZCast-01928473:srcvers=10023", ezRemoteSocket);
+		assertEquals(testContext.projectorInfo.getModel(), "BENQ_GP10");
+		assertEquals(testContext.projectorInfo.getVendor(), "actions");
+		assertEquals(testContext.projectorInfo.getName(), "EZCast-01928473");
+		assertEquals(testContext.projectorInfo.getParameter("hostname"), "EZCast-01928473");
+		assertEquals(testContext.projectorInfo.getParameter("srcvers"), "10023");
+		assertTrue(testContext.projectorInfo.isRemoteControlEnabled());
+	}
 	public void testRemoteControlParserNew() {
 		TestContext testContext = new TestContext();
 		testSearchResultListener(testContext, "EZREMOTE:1:vendor=actions:model=BENQ_GP10", ezRemoteSocket);

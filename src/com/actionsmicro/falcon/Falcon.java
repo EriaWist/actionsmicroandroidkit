@@ -90,6 +90,7 @@ public class Falcon {
 		private String vendor;
 		private boolean isFraud;
 		private int discoveryVersion;
+		private HashMap<String, String> keyValuePairs = new HashMap<String, String>();
 		/**
 		 * Return the version of the device.
 		 * @return The protocol version of the device.
@@ -374,6 +375,14 @@ public class Falcon {
 		public void disconnectRemoteControl() {
 			Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
 		}
+		/**
+		 * Get parameter value from given key.
+		 * @param key
+		 * @return parameter value from given key
+		 */
+		public final String getParameter(String key) {
+			return keyValuePairs.get(key);
+		}
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
 	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
@@ -475,7 +484,6 @@ public class Falcon {
 				try {
 					socketToRemoteControl.close();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} finally {
 					socketsToRemoteControls.remove(ipAddress);
@@ -835,6 +843,10 @@ public class Falcon {
 			if (keyValuePairs.containsKey(PARAMETER_VENDOR_KEY)) {
 				projectorInfo.vendor = keyValuePairs.get(PARAMETER_VENDOR_KEY);
 			}
+			if (keyValuePairs.containsKey("hostname")) { // Add since EZCast
+				projectorInfo.name = keyValuePairs.get("hostname");
+			}
+			projectorInfo.keyValuePairs.putAll(keyValuePairs);
 		}
 	}
 	private ProjectorInfo getProjectorInfoWithAddress(InetAddress address) {
@@ -1123,13 +1135,13 @@ public class Falcon {
 			if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY)) {
 				projectorInfo.discoveryVersion = Integer.valueOf(keyValuePairs.get(PARAMETER_DISCOVERY_KEY));
 				if (checkMd5(parameters)) {
-					processAllValue(parameters, projectorInfo);
+					processAllValue(keyValuePairs, projectorInfo);
 				} else {
 					Log.i(TAG, "is fraud!!!!==>" + receiveString);
 					projectorInfo.isFraud = true;
 				}
 			} else {
-				processAllValue(parameters, projectorInfo);
+				processAllValue(keyValuePairs, projectorInfo);
 			}
 			// Add sanity check to filter out other products which use same protocol
 			if (projectorInfo.model != null && !projectorInfo.isFraud) {
@@ -1138,8 +1150,7 @@ public class Falcon {
 		}
 		return false;
 	}
-	private static void processAllValue(String[] parameters, ProjectorInfo projectorInfo) {
-		final HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
+	private static void processAllValue(HashMap<String, String> keyValuePairs, ProjectorInfo projectorInfo) {
 		if (keyValuePairs.containsKey(PARAMETER_NAME_KEY)) {
 			projectorInfo.name = keyValuePairs.get(PARAMETER_NAME_KEY);
 		}
@@ -1149,6 +1160,7 @@ public class Falcon {
 		if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY) && keyValuePairs.containsKey(PARAMETER_SERVICE_KEY)) {
 			projectorInfo.service = Integer.parseInt(keyValuePairs.get(PARAMETER_SERVICE_KEY), 16);
 		}
+		projectorInfo.keyValuePairs.putAll(keyValuePairs);
 	}
 	private static boolean checkMd5(String[] parameters) {
 		final HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
