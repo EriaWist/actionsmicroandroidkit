@@ -196,10 +196,12 @@ public class Falcon {
 			dest.writeInt(service);
 			dest.writeString(vendor);
 			dest.writeInt(discoveryVersion);
+			dest.writeSerializable(keyValuePairs);
 		}
 		protected ProjectorInfo() {
 			
 		}
+		@SuppressWarnings("unchecked")
 		private ProjectorInfo(Parcel in) {
 			osVerion = in.readString();
 			name = in.readString();
@@ -211,6 +213,7 @@ public class Falcon {
 			service = in.readInt();
 			vendor = in.readString();
 			discoveryVersion = in.readInt();
+			keyValuePairs = (HashMap<String, String>) in.readSerializable();
 	    }
 		public boolean supportsMediaStreaming() {
 			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING && Integer.valueOf(osVerion) > 1;
@@ -272,7 +275,7 @@ public class Falcon {
 			result = 31 * result + service;
 			result = 31 * result + (vendor == null ? 0 : vendor.hashCode());
 			result = 31 * result + discoveryVersion;
-			
+			result = 31 * result + keyValuePairs.hashCode();
 			return result;
 		}
 		@Override
