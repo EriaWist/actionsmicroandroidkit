@@ -420,13 +420,13 @@ public class Falcon {
 				socketToRemoteControl.connect(new InetSocketAddress(ipAddress, portNumber), timeout);
 				socketsToRemoteControls.put(ipAddress, socketToRemoteControl);
 				final InputStream inputStream = socketToRemoteControl.getInputStream();
-				new Thread(new Runnable() {
+				Thread remoteControlReceiver = new Thread(new Runnable() {
 
 					@Override
 					public void run() {
 						try {
-							synchronized(inputStream) {
-								inputStream.notify();
+							synchronized(Thread.currentThread()) {
+								Thread.currentThread().notify();
 							}
 							final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
 							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
@@ -453,11 +453,12 @@ public class Falcon {
 						}
 					}
 
-				}).start();
+				});
+				remoteControlReceiver.start();
 				// waiting for thread to be executed
-				synchronized(inputStream) {
+				synchronized(remoteControlReceiver) {
 					try {
-						inputStream.wait();
+						remoteControlReceiver.wait();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
