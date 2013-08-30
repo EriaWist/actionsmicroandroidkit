@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.StringWriter;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -143,4 +144,12 @@ public class Utils {
     		activity.finish();    		
     	}
     }
+    public static void dump(InputStream is, OutputStream os) throws IOException {
+		byte buffer[] = new byte[4096];
+		int rc = is.read(buffer, 0, buffer.length);
+		while (rc > 0) {
+		    os.write(buffer, 0, rc);
+		    rc = is.read(buffer, 0, buffer.length);
+		}
+	}    
 }
