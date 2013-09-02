@@ -410,6 +410,36 @@ public class Falcon {
 		socketOutputStream.write(packet.array());
 		socketOutputStream.flush();
 	}
+	private class RemoteControlReceiverThread extends Thread {
+		private boolean isReady;
+		public synchronized boolean isReady() {
+			return isReady;
+		}
+		public synchronized void setReady(boolean isReady) {
+			this.isReady = isReady;
+		}
+		public RemoteControlReceiverThread(Runnable runnable) {
+			super(runnable);
+		}
+		public void run() {
+			synchronized(this) {
+				setReady(true);
+				this.notify();
+			}
+			super.run();
+		}
+		public void waitUntilThreadRun() {
+			synchronized(this) {
+				try {
+					while (!this.isReady()) {
+						this.wait();
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
 	private Socket createSocketToRemoteControlIfNeeded(int timeout, final InetAddress ipAddress, final int portNumber) throws IOException {
 		synchronized (socketsToRemoteControls) {
 			Log.d(TAG, "Try to find socket for address:" + ipAddress.toString());
@@ -420,14 +450,10 @@ public class Falcon {
 				socketToRemoteControl.connect(new InetSocketAddress(ipAddress, portNumber), timeout);
 				socketsToRemoteControls.put(ipAddress, socketToRemoteControl);
 				final InputStream inputStream = socketToRemoteControl.getInputStream();
-				Thread remoteControlReceiver = new Thread(new Runnable() {
-
+				RemoteControlReceiverThread remoteControlReceiver = new RemoteControlReceiverThread(new Runnable() {
 					@Override
 					public void run() {
 						try {
-							synchronized(Thread.currentThread()) {
-								Thread.currentThread().notify();
-							}
 							final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
 							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
 							while (true) {
@@ -456,13 +482,7 @@ public class Falcon {
 				});
 				remoteControlReceiver.start();
 				// waiting for thread to be executed
-				synchronized(remoteControlReceiver) {
-					try {
-						remoteControlReceiver.wait();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
+				remoteControlReceiver.waitUntilThreadRun();
 			} else {
 				Log.d(TAG, "Find socket for address:" + ipAddress.toString());				
 			}
