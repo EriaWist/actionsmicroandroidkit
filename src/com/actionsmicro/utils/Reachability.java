@@ -2,6 +2,8 @@ package com.actionsmicro.utils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -68,5 +70,45 @@ public class Reachability {
 		} else {
 			return false;
 		}
+	}
+	private static class DNSResolver implements Runnable {
+        private String domain;
+        private InetAddress inetAddr;
+
+        public DNSResolver(String domain) {
+            this.domain = domain;
+        }
+
+        public void run() {
+            try {
+                InetAddress addr = InetAddress.getByName(domain);
+                set(addr);
+            } catch (UnknownHostException e) {
+                
+            }
+        }
+
+        public synchronized void set(InetAddress inetAddr) {
+            this.inetAddr = inetAddr;
+        }
+        public synchronized InetAddress get() {
+            return inetAddr;
+        }
+    }
+	public static InetAddress resolveAddressByName(String name, long millis) throws UnknownHostException {
+		// TODO add thread pool
+		DNSResolver dnsRes = new DNSResolver(name);
+        Thread t = new Thread(dnsRes);
+        t.start();
+        try {
+			t.join(millis);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+        InetAddress inetAddr = dnsRes.get();
+        if (inetAddr == null) {
+        	throw new UnknownHostException();
+        }
+        return inetAddr;
 	}
 }
