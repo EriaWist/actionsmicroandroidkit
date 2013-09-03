@@ -15,9 +15,11 @@ import java.util.Locale;
 
 import android.app.Activity;
 import android.app.FragmentManager;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.util.TypedValue;
 
 
 public class Utils {
@@ -151,5 +153,25 @@ public class Utils {
 		    os.write(buffer, 0, rc);
 		    rc = is.read(buffer, 0, buffer.length);
 		}
-	}    
+	}
+    public static boolean isActionBarSplitted(){
+		try {
+			Resources res = Resources.getSystem();
+			return res.getBoolean(res.getIdentifier("split_action_bar_is_narrow", "bool", "android"));
+		} catch (Resources.NotFoundException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+	public static int getBottomMargin(Activity activity){
+		if (!activity.getActionBar().isShowing()) {
+			return 0;
+		} else {
+			TypedValue tv = new TypedValue();
+			if (activity.getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
+				return TypedValue.complexToDimensionPixelSize(tv.data,activity.getResources().getDisplayMetrics());
+			}   			
+		}
+		return 0;
+	}
 }
