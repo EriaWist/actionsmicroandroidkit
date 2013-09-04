@@ -73,9 +73,11 @@ public class Utils {
      * @return Return last path component.
      */
     public static String getLastPathComponent(String path) {
-    	final String[] segments = path.split("/");
-    	if (segments != null && segments.length > 0) {
-    		return segments[segments.length - 1];
+    	if (path != null) {
+    		final String[] segments = path.split("/");
+    		if (segments != null && segments.length > 0) {
+    			return segments[segments.length - 1];
+    		}
     	}
     	return path;
     }
