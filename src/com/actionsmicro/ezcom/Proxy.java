@@ -1,6 +1,12 @@
 package com.actionsmicro.ezcom;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.Socket;
 import java.net.URL;
 import java.text.DateFormat;
@@ -462,5 +468,36 @@ public class Proxy {
 		params.setIntParameter(HttpConnectionParams.SOCKET_BUFFER_SIZE, 8192);
 		clientConnection.bind(socket, params);
 		return clientConnection;
+	}
+	private static void uploadDataToServer(InputStream input, String address, int portNumber, String path) throws IOException {
+		HttpURLConnection urlConnection = null;
+		try {
+			URL url = new URL("http://"+address+":"+portNumber+path);
+			urlConnection = (HttpURLConnection) url.openConnection();
+			urlConnection.setDoOutput(true);
+			urlConnection.setRequestMethod("PUT");
+			urlConnection.connect();
+			OutputStream out = new BufferedOutputStream(urlConnection.getOutputStream());
+			com.actionsmicro.utils.Utils.dump(input, out);
+			urlConnection.getResponseCode();
+			InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+			byte buffer[] = new byte[4096];
+			int rc = in.read(buffer, 0, buffer.length);
+			while (rc > 0) {
+				rc = in.read(buffer, 0, buffer.length);
+			}			
+		} catch (MalformedURLException e) {
+			throw e;
+		} catch (IOException e) {
+			throw e;
+		} finally {
+			if (urlConnection != null) {
+				urlConnection.disconnect();
+				urlConnection = null;
+			}
+		}
+	}
+	public static void uploadTestDataToServer(InputStream input, String address, int portNumber) throws IOException {
+		uploadDataToServer(input, address, portNumber, "/file/echo");
 	}
 }
