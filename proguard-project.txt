@@ -31,3 +31,4 @@
 -keep public class com.actionsmicro.falcon.Falcon$* {
 	public *;
 }
+-keep class com.thetransactioncompany.** { *; } -dontwarn com.thetransactioncompany.**
