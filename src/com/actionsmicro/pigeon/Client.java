@@ -231,15 +231,18 @@ public class Client {
 	public void sendImageToServer(Bitmap bitmap, Bitmap.CompressFormat format, int quailty) throws IOException, IllegalArgumentException {
 		if (canSendStream()) {
 			synchronized (this) {
-				final int width = bitmap.getWidth();
-				final int height = bitmap.getHeight();
-				Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
-				getCompressionBuffer().reset();
-				compressedBufferWidth = compressedBufferHeight = 0;
-				Log.d(TAG, "Start compress");
-				bitmap.compress(format, quailty, getCompressionBuffer());
-				Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
-				sendCompressedBufferToServer(width, height);	
+				if (!bitmap.isRecycled())
+				{
+					final int width = bitmap.getWidth();
+					final int height = bitmap.getHeight();
+					Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
+					getCompressionBuffer().reset();
+					compressedBufferWidth = compressedBufferHeight = 0;
+					Log.d(TAG, "Start compress");
+					bitmap.compress(format, quailty, getCompressionBuffer());
+					Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
+					sendCompressedBufferToServer(width, height);
+				}
 			}
 		}
 	}
