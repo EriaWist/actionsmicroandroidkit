@@ -155,6 +155,7 @@ public class Utils {
 		    os.write(buffer, 0, rc);
 		    rc = is.read(buffer, 0, buffer.length);
 		}
+		os.flush();
 	}
     public static boolean isActionBarSplitted(){
 		try {
