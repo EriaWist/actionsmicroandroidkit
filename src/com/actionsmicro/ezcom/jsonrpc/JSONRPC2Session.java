@@ -26,8 +26,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.util.EntityUtils;
 
-import android.net.http.AndroidHttpClient;
-
+import com.actionsmicro.ezcom.http.AndroidHttpClient;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2ParseException;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
@@ -667,8 +666,10 @@ public class JSONRPC2Session {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new JSONRPC2SessionException(
+					"Network exception: " + e.getMessage(),
+					JSONRPC2SessionException.NETWORK_EXCEPTION,
+					e);
 		}
 	}
 

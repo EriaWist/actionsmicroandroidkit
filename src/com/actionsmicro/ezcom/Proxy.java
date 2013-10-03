@@ -64,6 +64,7 @@ public class Proxy {
 	private static final int CONNECT_TIMEOUT = 3000;
 	private static final int READ_TIMEOUT = 3000;
 	private static final String TAG = "Proxy";
+	private static final int SOCKET_OPERATION_TIMEOUT = 10*1000;
 	private int portNumber;
 	private String address;
 	private JSONRPC2Session controlSession;
@@ -79,18 +80,56 @@ public class Proxy {
 	private Socket reverseConnection;
 	protected boolean shouldStop = false;
 	private Thread controlSessionWorker;
+	private boolean isConnecting;
 	public Proxy(String ipV4Address, int portNumber) {
 		this.address = ipV4Address;
 		this.portNumber = portNumber;
 		Thread initializer = new Thread(new Runnable(){
 			@Override
 			public void run() {
-				connect();
+				if (!isConnecting()) { 
+					beginConnecting();
+					connect();
+					endConnecting();
+				}
+			}			
+		});
+		initializer.setName("EZCom - Initializer");
+		initializer.start();
+	}
+	public void reconnect() {
+		Thread initializer = new Thread(new Runnable(){
+			@Override
+			public void run() {
+				if (!isConnecting()) { 
+					beginConnecting();
+					uiThreadHandler.post(new Runnable() {
+						@Override
+						public void run() {
+							if (connectionManager != null) {
+								connectionManager.tryToReconnect(Proxy.this);
+							}
+						}
+
+					});
+					close();
+					connect();
+					endConnecting();
+				}
 			}
 			
 		});
 		initializer.setName("EZCom - Initializer");
 		initializer.start();
+	}
+	protected synchronized void endConnecting() {
+		isConnecting = false;
+	}
+	protected synchronized void beginConnecting() {
+		isConnecting = true;
+	}
+	protected synchronized boolean isConnecting() {
+		return isConnecting;
 	}
 	public void close() {
 		closeControlSession();
@@ -107,7 +146,12 @@ public class Proxy {
 		}
 	}
 	private void closeControlSession() {
-		stopAndWaitControlSessionWorker();
+		closeControlSession(true);
+	}	
+	private void closeControlSession(boolean stopThread) {
+		if (stopThread) {
+			stopAndWaitControlSessionWorker();
+		}
 		if (controlSession != null) {
 			controlSession.close();
 			controlSession = null;
@@ -154,6 +198,15 @@ public class Proxy {
 			try {
 				createReverseSession();
 				spamControlSessionWorker();
+				uiThreadHandler.post(new Runnable() {
+					@Override
+					public void run() {
+						if (connectionManager != null) {
+							connectionManager.connectionsEstablishedSuccessfully(Proxy.this);
+						}
+					}
+					
+				});
 			} catch (Exception e) {
 				e.printStackTrace();
 				handleReverseSessionInitException();
@@ -205,8 +258,12 @@ public class Proxy {
 						e1.printStackTrace();
 						shouldStop = true;
 					} catch (JSONRPC2SessionException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						if (e.getCauseType() == JSONRPC2SessionException.NETWORK_EXCEPTION) {
+							handleControlSessionNetworkConnection(e);
+							shouldStop = true;
+						} else {
+							e.printStackTrace();
+						}
 					}
 				}
 			}			
@@ -344,17 +401,7 @@ public class Proxy {
 				try {
 					runRpcServer(reverseConnection);
 				} catch (final IOException e) {
-					closeReverseSession();
-
-					uiThreadHandler.post(new Runnable() {
-						@Override
-						public void run() {
-							if (connectionManager != null) {
-								connectionManager.reverseConnectionDidDisconnected(Proxy.this, e);
-							}
-						}
-						
-					});
+					handleReverseSessionNetworkException(e);
 				}
 			}
 
@@ -416,7 +463,7 @@ public class Proxy {
 		DefaultHttpServerConnection serverConnection = new DefaultHttpServerConnection();
 		BasicHttpParams params = new BasicHttpParams();
 		params.setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
-		serverConnection.bind(socket, params);
+        serverConnection.bind(socket, params);
 		return serverConnection;
 	}
 	private class ReverseConnectionException extends Exception {
@@ -466,8 +513,36 @@ public class Proxy {
 		DefaultHttpClientConnection clientConnection = new DefaultHttpClientConnection();
 		BasicHttpParams params = new BasicHttpParams();
 		params.setIntParameter(HttpConnectionParams.SOCKET_BUFFER_SIZE, 8192);
+		HttpConnectionParams.setConnectionTimeout(params, SOCKET_OPERATION_TIMEOUT);
+        HttpConnectionParams.setSoTimeout(params, SOCKET_OPERATION_TIMEOUT);
 		clientConnection.bind(socket, params);
 		return clientConnection;
+	}
+	private void handleControlSessionNetworkConnection(
+			final JSONRPC2SessionException e) {
+		closeControlSession(false);
+		closeReverseSession();
+		uiThreadHandler.post(new Runnable() {
+			@Override
+			public void run() {
+				if (connectionManager != null) {
+					connectionManager.controlConnectionDidDisconnected(Proxy.this, e);
+				}
+			}
+			
+		});
+	}
+	private void handleReverseSessionNetworkException(final IOException e) {
+		close();
+		uiThreadHandler.post(new Runnable() {
+			@Override
+			public void run() {
+				if (connectionManager != null) {
+					connectionManager.reverseConnectionDidDisconnected(Proxy.this, e);
+				}
+			}
+			
+		});
 	}
 	private static void uploadDataToServer(InputStream input, String address, int portNumber, String path) throws IOException {
 		HttpURLConnection urlConnection = null;
@@ -476,16 +551,25 @@ public class Proxy {
 			urlConnection = (HttpURLConnection) url.openConnection();
 			urlConnection.setDoOutput(true);
 			urlConnection.setRequestMethod("PUT");
+			Log.d(TAG, "connecting to "+ url.toString());
 			urlConnection.connect();
+			Log.d(TAG, "connected to "+ url.toString());
 			OutputStream out = new BufferedOutputStream(urlConnection.getOutputStream());
+			Log.d(TAG, "writing to "+ url.toString());
 			com.actionsmicro.utils.Utils.dump(input, out);
+			Log.d(TAG, "reading "+ url.toString());
 			urlConnection.getResponseCode();
+			Log.d(TAG, "reading.opening input stream "+ url.toString());
 			InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+			Log.d(TAG, "reading.input stream opened"+ url.toString());
 			byte buffer[] = new byte[4096];
 			int rc = in.read(buffer, 0, buffer.length);
+			int totalRead = 0;
 			while (rc > 0) {
+				totalRead += rc;
 				rc = in.read(buffer, 0, buffer.length);
-			}			
+			}
+			Log.d(TAG, "reading done. totalRead:" + totalRead);
 		} catch (MalformedURLException e) {
 			throw e;
 		} catch (IOException e) {
@@ -498,6 +582,6 @@ public class Proxy {
 		}
 	}
 	public static void uploadTestDataToServer(InputStream input, String address, int portNumber) throws IOException {
-		uploadDataToServer(input, address, portNumber, "/file/echo");
+		uploadDataToServer(input, address, portNumber, "/object/echo");
 	}
 }
