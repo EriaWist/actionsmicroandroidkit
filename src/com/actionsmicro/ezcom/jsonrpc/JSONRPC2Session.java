@@ -182,6 +182,10 @@ public class JSONRPC2Session {
 
 		// No initial connection configurator
 		connectionConfigurator = null;
+		
+		if (httpClient == null) {
+			createHttpClient();
+		}		
 	}
 
 
@@ -561,9 +565,6 @@ public class JSONRPC2Session {
 			throws JSONRPC2SessionException {
 
 		try {
-			if (httpClient == null) {
-				createHttpClient();
-			}
 			HttpPost postRequest = Utils.createRpcPostRequest(request, url.toURI());
 
 			HttpResponse rawResponse = httpClient.execute(postRequest);
@@ -627,7 +628,7 @@ public class JSONRPC2Session {
 		return null;
 	}
 
-	public void close() {
+	public synchronized void close() {
 		if (httpClient != null) {
 			httpClient.close();
 			httpClient = null;
@@ -647,9 +648,6 @@ public class JSONRPC2Session {
 	public synchronized void send(final JSONRPC2Notification notification)
 			throws JSONRPC2SessionException {
 
-		if (httpClient == null) {
-			createHttpClient();
-		}
 		try {
 			HttpPost postRequest = Utils.createRpcPostRequest(notification, url.toURI());
 			HttpResponse rawResponse = httpClient.execute(postRequest);

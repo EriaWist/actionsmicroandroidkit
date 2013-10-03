@@ -132,8 +132,10 @@ public class Proxy {
 		return isConnecting;
 	}
 	public void close() {
+		beginClosing();
 		closeControlSession();
 		closeReverseSession();
+		endClosing();
 	}
 	private void closeReverseSession() {
 		if (reverseConnection != null) {
@@ -142,16 +144,21 @@ public class Proxy {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			if (reverseSessionRequestHandler != null) {
+				if (!reverseSessionRequestHandler.equals(Thread.currentThread())) {
+					try {
+						reverseSessionRequestHandler.join();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				reverseSessionRequestHandler = null;
+			}
 			reverseConnection = null;
-		}
+		}		
 	}
 	private void closeControlSession() {
-		closeControlSession(true);
-	}	
-	private void closeControlSession(boolean stopThread) {
-		if (stopThread) {
-			stopAndWaitControlSessionWorker();
-		}
+		stopAndWaitControlSessionWorker();
 		if (controlSession != null) {
 			controlSession.close();
 			controlSession = null;
@@ -160,10 +167,12 @@ public class Proxy {
 	private void stopAndWaitControlSessionWorker() {
 		shouldStop = true;
 		if (controlSessionWorker != null) {
-			try {
-				controlSessionWorker.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			if (!controlSessionWorker.equals(Thread.currentThread())) {
+				try {
+					controlSessionWorker.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 			controlSessionWorker = null;
 		}
@@ -240,6 +249,8 @@ public class Proxy {
 		});
 	}
 	private ArrayBlockingQueue<JSONRPC2Request> pendingRequests = new ArrayBlockingQueue<JSONRPC2Request>(10);
+	private boolean isClosingConnection;
+	private Thread reverseSessionRequestHandler;
 	
 	private void spamControlSessionWorker() {
 		controlSessionWorker = new Thread(new Runnable() {
@@ -259,7 +270,7 @@ public class Proxy {
 						shouldStop = true;
 					} catch (JSONRPC2SessionException e) {
 						if (e.getCauseType() == JSONRPC2SessionException.NETWORK_EXCEPTION) {
-							handleControlSessionNetworkConnection(e);
+							handleControlSessionNetworkException(e);
 							shouldStop = true;
 						} else {
 							e.printStackTrace();
@@ -394,14 +405,16 @@ public class Proxy {
 		}
 	}
 	private void spamReverseRequestHandler() {
-		Thread reverseSessionRequestHandler = new Thread(new Runnable() {
+		reverseSessionRequestHandler = new Thread(new Runnable() {
 
 			@Override
 			public void run() {
 				try {
 					runRpcServer(reverseConnection);
 				} catch (final IOException e) {
-					handleReverseSessionNetworkException(e);
+					if (!isClosing()) {
+						handleReverseSessionNetworkException(e);
+					}
 				}
 			}
 
@@ -409,6 +422,16 @@ public class Proxy {
 		reverseSessionRequestHandler.setName("EZCom - Reverse Session Handler");
 		reverseSessionRequestHandler.start();
 	}
+	protected synchronized boolean isClosing() {
+		return isClosingConnection;
+	}
+	private synchronized void endClosing() {
+		isClosingConnection = false;
+	}
+	private synchronized void beginClosing() {
+		isClosingConnection = true;		
+	}
+	
 	private void runRpcServer(Socket socket) throws IOException {
 		DefaultHttpServerConnection serverConnection = createServerConnection(socket);
 		final Dispatcher dispatcher = new Dispatcher();
@@ -518,10 +541,9 @@ public class Proxy {
 		clientConnection.bind(socket, params);
 		return clientConnection;
 	}
-	private void handleControlSessionNetworkConnection(
+	private void handleControlSessionNetworkException(
 			final JSONRPC2SessionException e) {
-		closeControlSession(false);
-		closeReverseSession();
+		close();
 		uiThreadHandler.post(new Runnable() {
 			@Override
 			public void run() {
