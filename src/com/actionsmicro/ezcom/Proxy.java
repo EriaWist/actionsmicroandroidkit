@@ -9,9 +9,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.Socket;
 import java.net.URL;
-import java.text.DateFormat;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -47,7 +45,6 @@ import android.os.Looper;
 import com.actionsmicro.ezcom.jsonrpc.JSONRPC2Session;
 import com.actionsmicro.ezcom.jsonrpc.Utils;
 import com.actionsmicro.utils.Log;
-import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2ParseException;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
@@ -56,13 +53,9 @@ import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 import com.thetransactioncompany.jsonrpc2.client.RawResponse;
 import com.thetransactioncompany.jsonrpc2.client.RawResponseInspector;
 import com.thetransactioncompany.jsonrpc2.server.Dispatcher;
-import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
 public class Proxy {
-	// TODO timeout design
-	private static final int CONNECT_TIMEOUT = 3000;
-	private static final int READ_TIMEOUT = 3000;
 	private static final String TAG = "Proxy";
 	private static final int SOCKET_OPERATION_TIMEOUT = 10*1000;
 	private int portNumber;
@@ -191,7 +184,7 @@ public class Proxy {
 		return null;
 	}
 	private int sRpcId = 0;
-	private synchronized int generateRpcId() {
+	public synchronized int generateRpcId() {
 		return sRpcId++;
 	}
 	public long add(long a, long b) throws JSONRPC2SessionException {
@@ -295,99 +288,28 @@ public class Proxy {
 				}
 				
 			});
-		}		
-		testControlSession();
-
-	}
-	private void testControlSession() {
-		JSONRPC2Request request = null;
-		JSONRPC2Response response = null;
-		try {
-			List<Object> echoParam = new LinkedList<Object>();
-			echoParam.add("Hello world!");
-			request = new JSONRPC2Request("echo", echoParam, generateRpcId());
-			response = controlSession.send(request);
-			Utils.matchRequestResponseIdAndThrow(request, response);
-			Log.d(TAG, response.toString());
-			request = new JSONRPC2Request("getDate", generateRpcId());
-			response = controlSession.send(request);
-			Utils.matchRequestResponseIdAndThrow(request, response);
-			Log.d(TAG, response.toString());
-			request = new JSONRPC2Request("getTime", generateRpcId());
-			response = controlSession.send(request);
-			Utils.matchRequestResponseIdAndThrow(request, response);
-			Log.d(TAG, response.toString());
-			long result = add(10, 9);
-			Log.d(TAG, "result of add(10, 9) = " + result);
-			
-			sendHeartBeat();
-			
-		} catch (JSONRPC2SessionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
+	}
+	public JSONRPC2Response sendRequest(JSONRPC2Request request) throws JSONRPC2SessionException, IllegalStateException {
+		JSONRPC2Response response = null;
+		if (controlSession != null) {
+			response = controlSession.send(request);
+			Utils.matchRequestResponseIdAndThrow(request, response);
+			return response;
+		}
+		throw new IllegalStateException("controlSession is not ready");
+	}
+	public void sendNotification(JSONRPC2Notification notification) throws JSONRPC2SessionException, IllegalStateException {
+		if (controlSession != null) {
+			controlSession.send(notification);
+		}
+		throw new IllegalStateException("controlSession is not ready");
 	}
 	private void sendHeartBeat() throws JSONRPC2SessionException {
 		JSONRPC2Notification notification = new JSONRPC2Notification("heartbeat");
 		controlSession.send(notification);
 	}
-	// Implements a handler for "getDate" and "getTime" JSON-RPC methods
-	// that return the current date and time
-	public static class TestMethodsHandler implements RequestHandler {
-
-
-		// Reports the method names of the handled requests
-		public String[] handledRequests() {
-
-			return new String[]{"getDate", "getTime", "echo", "add"};
-		}
-
-
-		// Processes the requests
-		public JSONRPC2Response process(JSONRPC2Request req, MessageContext ctx) {
-
-			if (req.getMethod().equals("getDate")) {
-
-				DateFormat df = DateFormat.getDateInstance();
-
-				String date = df.format(new Date());
-
-				return new JSONRPC2Response(date, req.getID());
-
-			}
-			else if (req.getMethod().equals("getTime")) {
-
-				DateFormat df = DateFormat.getTimeInstance();
-
-				String time = df.format(new Date());
-
-				return new JSONRPC2Response(time, req.getID());
-			} else if (req.getMethod().equals("add")) {
-				
-				List<Object> params = req.getPositionalParams();
-				int result = 0;
-				for (Object object : params) {
-					result += ((Long)object).longValue();
-				}
-				return new JSONRPC2Response(Long.valueOf(result), req.getID());
-				
-			} else if (req.getMethod().equals("echo")) {
-
-				// Echo first parameter
-				List<Object> params = req.getPositionalParams();
-
-				Object input = params.get(0);
-
-				return new JSONRPC2Response(input, req.getID());
-			}
-			else {
-
-				// Method name not supported
-
-				return new JSONRPC2Response(JSONRPC2Error.METHOD_NOT_FOUND, req.getID());
-			}
-		}
-	}
+	
 	private void createReverseSession() throws ReverseConnectionException {
 		
 		try {
@@ -433,11 +355,16 @@ public class Proxy {
 	private synchronized void beginClosing() {
 		isClosingConnection = true;		
 	}
-	
+	private Dispatcher dispatcher = new Dispatcher();
+	public void registerRpcRequestHandler(RequestHandler requestHandler) throws IllegalStateException {
+		if (dispatcher != null) {
+			dispatcher.register(requestHandler);
+		} else {
+			throw new IllegalStateException("dispatcher is null");
+		}
+	}
 	private void runRpcServer(Socket socket) throws IOException {
 		DefaultHttpServerConnection serverConnection = createServerConnection(socket);
-		final Dispatcher dispatcher = new Dispatcher();
-		dispatcher.register(new TestMethodsHandler());
 		HttpService httpService = new HttpService(new BasicHttpProcessor(), new DefaultConnectionReuseStrategy(), new DefaultHttpResponseFactory());
 		httpService.setHandlerResolver(new HttpRequestHandlerResolver() {
 
