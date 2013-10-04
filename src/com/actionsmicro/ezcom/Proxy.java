@@ -132,10 +132,12 @@ public class Proxy {
 		return isConnecting;
 	}
 	public void close() {
-		beginClosing();
-		closeControlSession();
-		closeReverseSession();
-		endClosing();
+		if (!isClosing()) {
+			beginClosing();
+			closeControlSession();
+			closeReverseSession();
+			endClosing();
+		}
 	}
 	private void closeReverseSession() {
 		if (reverseConnection != null) {
