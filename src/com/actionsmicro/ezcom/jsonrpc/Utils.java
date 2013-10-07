@@ -27,7 +27,7 @@ public class Utils {
 			postRequest.setHeader(HTTP.CONTENT_LEN, Long.valueOf(entity.getContentLength()).toString());
 			postRequest.setHeader(HTTP.CONTENT_TYPE, entity.getContentType().getValue());
 			postRequest.setHeader(HTTP.CONTENT_ENCODING, entity.getContentEncoding().getValue());
-			
+			postRequest.setHeader("Host", uri.getHost()+":"+uri.getPort());
 			return postRequest;
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
@@ -40,7 +40,7 @@ public class Utils {
 			throws UnsupportedEncodingException {
 		HttpPost postRequest = new HttpPost(uri);
 		StringEntity entity = new StringEntity(request.toString(), HTTP.UTF_8);
-		entity.setContentType("application/json" + HTTP.CHARSET_PARAM + HTTP.UTF_8);
+		entity.setContentType("application/json"/* + HTTP.CHARSET_PARAM + HTTP.UTF_8*/);
 		entity.setContentEncoding(HTTP.UTF_8);
 		postRequest.setEntity(entity);
 		return postRequest;
@@ -49,7 +49,7 @@ public class Utils {
 	public static void buildHttpResponse(HttpResponse httpResponse, JSONRPC2Response resp) {
 		try {
 			StringEntity rpcentity = new StringEntity(resp.toString(), HTTP.UTF_8);
-			rpcentity.setContentType("application/json" + HTTP.CHARSET_PARAM + HTTP.UTF_8);
+			rpcentity.setContentType("application/json"/* + HTTP.CHARSET_PARAM + HTTP.UTF_8*/);
 			rpcentity.setContentEncoding(HTTP.UTF_8);
 			httpResponse.setEntity(rpcentity);
 			httpResponse.setHeader(HTTP.CONTENT_LEN, Long.valueOf(rpcentity.getContentLength()).toString());
