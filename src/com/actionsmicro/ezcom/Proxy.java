@@ -56,6 +56,7 @@ import com.thetransactioncompany.jsonrpc2.server.Dispatcher;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
 public class Proxy {
+	private static final String PATH_JSONRPC = "/jsonrpc";
 	private static final String TAG = "Proxy";
 	private static final int SOCKET_OPERATION_TIMEOUT = 10*1000;
 	private int portNumber;
@@ -279,7 +280,7 @@ public class Proxy {
 	}
 	private void createControlSession() throws IOException {
 		if (controlSession == null) {
-			controlSession = new JSONRPC2Session(new URL("http", address, portNumber, "/"));
+			controlSession = new JSONRPC2Session(new URL("http", address, portNumber, PATH_JSONRPC));
 			controlSession.setRawResponseInspector(new RawResponseInspector() {
 
 				@Override
@@ -431,9 +432,10 @@ public class Proxy {
 		try {
 			DefaultHttpClientConnection clientConnection = createClientConnection(socket);
 			JSONRPC2Request request = new JSONRPC2Request("reverse", generateRpcId());
-			HttpPost postRequest = Utils.createRpcPostRequestAndPreprocess(request, new URL("http", address, portNumber, "/").toURI());
+			HttpPost postRequest = Utils.createRpcPostRequestAndPreprocess(request, new URL("http", address, portNumber, PATH_JSONRPC).toURI());
 			HttpRequestExecutor executor = new HttpRequestExecutor();
 			HttpContext context = new BasicHttpContext();
+			Utils.logHttpRequest(TAG, postRequest);
 			HttpResponse rawResponse = executor.execute(postRequest, clientConnection, context);
 			Log.d(TAG, "reverse http raw response:");
 			String tag = TAG;
