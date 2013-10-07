@@ -564,67 +564,70 @@ public class JSONRPC2Session {
 	public synchronized JSONRPC2Response send(final JSONRPC2Request request)
 			throws JSONRPC2SessionException {
 
-		try {
-			HttpPost postRequest = Utils.createRpcPostRequest(request, url.toURI());
+		if (httpClient != null) {
+			try {
+				HttpPost postRequest = Utils.createRpcPostRequest(request, url.toURI());
 
-			HttpResponse rawResponse = httpClient.execute(postRequest);
+				HttpResponse rawResponse = httpClient.execute(postRequest);
 
-			// Check response content type
-			String contentType = rawResponse.getFirstHeader("content-type").getValue();
+				// Check response content type
+				String contentType = rawResponse.getFirstHeader("content-type").getValue();
 
-			if (! options.isAllowedResponseContentType(contentType)) {
+				if (! options.isAllowedResponseContentType(contentType)) {
 
-				String msg = null;
+					String msg = null;
 
-				if (contentType == null)
-					msg = "Missing Content-Type header in the HTTP response";
-				else
-					msg = "Unexpected \"" + contentType + "\" content type of the HTTP response";
+					if (contentType == null)
+						msg = "Missing Content-Type header in the HTTP response";
+					else
+						msg = "Unexpected \"" + contentType + "\" content type of the HTTP response";
 
-				throw new JSONRPC2SessionException(msg, JSONRPC2SessionException.UNEXPECTED_CONTENT_TYPE);
-			}
+					throw new JSONRPC2SessionException(msg, JSONRPC2SessionException.UNEXPECTED_CONTENT_TYPE);
+				}
 
-			// Parse and return the response
-			JSONRPC2Response response = null;
-			HttpEntity entity = rawResponse.getEntity();
-			if (entity != null) {
-				try {
-					response = JSONRPC2Response.parse(EntityUtils.toString(entity), 
-							options.preservesParseOrder(), 
-							options.ignoresVersion(),
-							options.parsesNonStdAttributes());
+				// Parse and return the response
+				JSONRPC2Response response = null;
+				HttpEntity entity = rawResponse.getEntity();
+				if (entity != null) {
+					try {
+						response = JSONRPC2Response.parse(EntityUtils.toString(entity), 
+								options.preservesParseOrder(), 
+								options.ignoresVersion(),
+								options.parsesNonStdAttributes());
 
-				} catch (JSONRPC2ParseException e) {
+					} catch (JSONRPC2ParseException e) {
 
+						throw new JSONRPC2SessionException(
+								"Invalid JSON-RPC 2.0 response",
+								JSONRPC2SessionException.BAD_RESPONSE,
+								e);
+					} finally {
+						entity.consumeContent();
+					}
+				} else {
 					throw new JSONRPC2SessionException(
 							"Invalid JSON-RPC 2.0 response",
-							JSONRPC2SessionException.BAD_RESPONSE,
-							e);
-				} finally {
-					entity.consumeContent();
+							JSONRPC2SessionException.BAD_RESPONSE);
 				}
-			} else {
-				throw new JSONRPC2SessionException(
-						"Invalid JSON-RPC 2.0 response",
-						JSONRPC2SessionException.BAD_RESPONSE);
+
+				// Response ID must match the request ID, except for
+				// -32700 (parse error), -32600 (invalid request) and 
+				// -32603 (internal error)
+
+				Utils.matchRequestResponseIdAndThrow(request, response);
+
+				return response;
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (URISyntaxException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} finally {
 			}
-
-			// Response ID must match the request ID, except for
-			// -32700 (parse error), -32600 (invalid request) and 
-			// -32603 (internal error)
-
-			Utils.matchRequestResponseIdAndThrow(request, response);
-
-			return response;
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} finally {
+		} else {
+			throw new JSONRPC2SessionException("httpClient is null", JSONRPC2SessionException.UNSPECIFIED, new IllegalStateException());
 		}
-
 		return null;
 	}
 
@@ -647,27 +650,30 @@ public class JSONRPC2Session {
 	 */
 	public synchronized void send(final JSONRPC2Notification notification)
 			throws JSONRPC2SessionException {
-
-		try {
-			HttpPost postRequest = Utils.createRpcPostRequest(notification, url.toURI());
-			HttpResponse rawResponse = httpClient.execute(postRequest);
-			Utils.logHttpResponse(TAG, rawResponse);
-			HttpEntity entity = rawResponse.getEntity();
-			if (entity != null) {
-				EntityUtils.toString(entity);
-				entity.consumeContent();
-			} 
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			throw new JSONRPC2SessionException(
-					"Network exception: " + e.getMessage(),
-					JSONRPC2SessionException.NETWORK_EXCEPTION,
-					e);
+		if (httpClient != null) {
+			try {
+				HttpPost postRequest = Utils.createRpcPostRequest(notification, url.toURI());
+				HttpResponse rawResponse = httpClient.execute(postRequest);
+				Utils.logHttpResponse(TAG, rawResponse);
+				HttpEntity entity = rawResponse.getEntity();
+				if (entity != null) {
+					EntityUtils.toString(entity);
+					entity.consumeContent();
+				} 
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (URISyntaxException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				throw new JSONRPC2SessionException(
+						"Network exception: " + e.getMessage(),
+						JSONRPC2SessionException.NETWORK_EXCEPTION,
+						e);
+			}
+		} else {
+			throw new JSONRPC2SessionException("httpClient is null", JSONRPC2SessionException.UNSPECIFIED, new IllegalStateException());
 		}
 	}
 
