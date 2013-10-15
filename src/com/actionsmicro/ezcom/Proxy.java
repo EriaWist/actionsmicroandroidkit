@@ -8,13 +8,17 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.http.HttpClientConnection;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpException;
@@ -23,6 +27,8 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.ParseException;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.DefaultConnectionReuseStrategy;
 import org.apache.http.impl.DefaultHttpClientConnection;
 import org.apache.http.impl.DefaultHttpResponseFactory;
@@ -32,6 +38,7 @@ import org.apache.http.params.CoreProtocolPNames;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.BasicHttpProcessor;
+import org.apache.http.protocol.HTTP;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpRequestExecutor;
 import org.apache.http.protocol.HttpRequestHandler;
@@ -56,7 +63,9 @@ import com.thetransactioncompany.jsonrpc2.server.Dispatcher;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
 public class Proxy {
+	private static final String METHOD_SET_HOSTNAME = "common.set_hostname";
 	private static final String PATH_JSONRPC = "/jsonrpc";
+	private static final String PATH_SCREEN = "/screen";
 	private static final String TAG = "Proxy";
 	private static final int SOCKET_OPERATION_TIMEOUT = 10*1000;
 	private int portNumber;
@@ -78,6 +87,8 @@ public class Proxy {
 	public Proxy(String ipV4Address, int portNumber) {
 		this.address = ipV4Address;
 		this.portNumber = portNumber;
+	}
+	public void open() {
 		Thread initializer = new Thread(new Runnable(){
 			@Override
 			public void run() {
@@ -130,8 +141,12 @@ public class Proxy {
 			beginClosing();
 			closeControlSession();
 			closeReverseSession();
+			closeScreenConnection();
 			endClosing();
 		}
+	}
+	public synchronized boolean isConnected() {
+		return reverseConnection != null && reverseConnection != null;
 	}
 	private void closeReverseSession() {
 		if (reverseConnection != null) {
@@ -195,6 +210,15 @@ public class Proxy {
 			return (Long)response.getResult();
 		}
 		return 0;
+	}
+	public void setHostname(String hostname) throws JSONRPC2SessionException {
+		if (controlSession != null) {
+			JSONRPC2Request request = new JSONRPC2Request(METHOD_SET_HOSTNAME, Arrays.asList((Object)hostname), generateRpcId());
+			JSONRPC2Response response = controlSession.send(request);
+			if (!response.indicatesSuccess()) {
+				Log.e(TAG, "METHOD_SET_HOSTNAME failed:"+response.getError().getMessage());
+			}
+		}
 	}
 	private void connect() {
 		shouldStop = false;
@@ -435,11 +459,11 @@ public class Proxy {
 			HttpPost postRequest = Utils.createRpcPostRequestAndPreprocess(request, new URL("http", address, portNumber, PATH_JSONRPC).toURI());
 			HttpRequestExecutor executor = new HttpRequestExecutor();
 			HttpContext context = new BasicHttpContext();
-			Utils.logHttpRequest(TAG, postRequest);
+			com.actionsmicro.ezcom.http.Utils.logHttpRequest(TAG, postRequest);
 			HttpResponse rawResponse = executor.execute(postRequest, clientConnection, context);
 			Log.d(TAG, "reverse http raw response:");
 			String tag = TAG;
-			Utils.logHttpResponse(tag, rawResponse);
+			com.actionsmicro.ezcom.http.Utils.logHttpResponse(tag, rawResponse);
 			HttpEntity entity = rawResponse.getEntity();
 			String jsonString = EntityUtils.toString(entity);
 			entity.consumeContent();
@@ -536,5 +560,63 @@ public class Proxy {
 	}
 	public static void uploadTestDataToServer(InputStream input, String address, int portNumber) throws IOException {
 		uploadDataToServer(input, address, portNumber, "/object/echo");
+	}
+	private HttpClientConnection screenConnection = null;
+	private synchronized HttpClientConnection getScreenSession() {
+		if (screenConnection == null) {
+			try {
+				Socket screen = new Socket(address, portNumber);
+				screenConnection = createClientConnection(screen);
+				Log.d(TAG, "create screen connection:"+screenConnection);
+			} catch (UnknownHostException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return screenConnection;
+	}
+	public synchronized void sendJpegEncodedScreenData(InputStream input, long length) {
+		if (isConnected() && !isClosing()) {
+			try {
+				HttpClientConnection screenSession = getScreenSession();
+				if (screenSession != null) {
+					URI targetUri = new URL("http", address, portNumber, PATH_SCREEN).toURI();
+					HttpPut putRequest = new HttpPut(targetUri);
+					InputStreamEntity entity = new InputStreamEntity(input, length);
+					entity.setContentType("image/jpeg");
+					putRequest.setEntity(entity);
+					putRequest.setHeader(HTTP.CONTENT_LEN, Long.valueOf(entity.getContentLength()).toString());
+					putRequest.setHeader(entity.getContentType());
+					putRequest.setHeader(HTTP.TARGET_HOST, targetUri.getHost()+":"+targetUri.getPort());
+					HttpContext context = new BasicHttpContext();
+					com.actionsmicro.ezcom.http.Utils.logHttpRequest(TAG, putRequest);
+					com.actionsmicro.ezcom.http.Utils.sendRequestWithoutResponse(putRequest, screenSession, context);
+				}
+			} catch (MalformedURLException e) {
+				e.printStackTrace();
+			} catch (URISyntaxException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+				closeScreenConnection();
+			} catch (HttpException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	private void closeScreenConnection() {
+		if (screenConnection != null) {
+			Log.d(TAG, "close screen connection:"+screenConnection);
+			try {
+				screenConnection.close();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			} finally {
+				screenConnection = null;
+			}
+		}
 	}
 }

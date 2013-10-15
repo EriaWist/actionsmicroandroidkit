@@ -654,7 +654,7 @@ public class JSONRPC2Session {
 			try {
 				HttpPost postRequest = Utils.createRpcPostRequest(notification, url.toURI());
 				HttpResponse rawResponse = httpClient.execute(postRequest);
-				Utils.logHttpResponse(TAG, rawResponse);
+				com.actionsmicro.ezcom.http.Utils.logHttpResponse(TAG, rawResponse);
 				HttpEntity entity = rawResponse.getEntity();
 				if (entity != null) {
 					EntityUtils.toString(entity);
