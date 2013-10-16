@@ -664,7 +664,9 @@ public class Falcon {
 	 */
 	public void addSearchResultListener(SearchReultListener listener) {
 		synchronized(listeners) {
-			listeners.add(listener);
+			if (!listeners.contains(listener)) {
+				listeners.add(listener);
+			}
 		}
 	}
 	/**
