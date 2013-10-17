@@ -5,7 +5,7 @@ import com.actionsmicro.ezcom.impl.DisplayImpl;
 import com.actionsmicro.ezcom.impl.ModeratorImpl;
 import com.actionsmicro.ezcom.impl.RemoteControlImpl;
 
-public class EzDisplayProxy extends Proxy implements RemoteControl, Authorizer, Display, Moderator {
+public class EzDisplayProxy extends BasicProxy implements RemoteControl, Authorizer, Display, Moderator {
 	private RemoteControlImpl remoteControl;
 	private AuthorizerImpl authorizer;
 	private DisplayImpl display;

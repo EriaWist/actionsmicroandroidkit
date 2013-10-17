@@ -14,6 +14,7 @@ import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
 public class AuthorizerImpl implements Authorizer, RequestHandler {
+	private static final boolean FROM_RESPONSE = true;
 	private static final String METHOD_ANSWER_REQUEST_STREAM = "common.answer_request_stream";
 	private static final String METHOD_CANCEL_REQUEST_STREAM = "common.cancel_request_stream";
 	private static final String PARAM_REASON = "reason";
@@ -40,7 +41,7 @@ public class AuthorizerImpl implements Authorizer, RequestHandler {
 		try {
 			JSONRPC2Response response = proxy.sendRequest(request);
 			if (response.indicatesSuccess()) {
-				handleRequestResult((Map<String, Object>) response.getResult());
+				handleRequestResult((Map<String, Object>) response.getResult(), FROM_RESPONSE);
 			} else {
 				if (listener != null) {
 					listener.authorizationIsDenied(this, DeniedReason.UNDEFINED);
@@ -55,7 +56,7 @@ public class AuthorizerImpl implements Authorizer, RequestHandler {
 		}
 	}
 
-	private boolean handleRequestResult(Map<String, Object> resultData) {
+	private boolean handleRequestResult(Map<String, Object> resultData, boolean fromResponse) {
 		if (resultData.containsKey(PARAM_RESULT)) {
 			String result = (String) resultData.get(PARAM_RESULT);
 			if (result.equals(PARAM_VALUE_ALLOW) && 
@@ -69,7 +70,7 @@ public class AuthorizerImpl implements Authorizer, RequestHandler {
 				return true;
 			} else if (result.equals(PARAM_VALUE_DENY) && resultData.containsKey(PARAM_REASON)){
 				if (listener != null) {
-					listener.authorizationIsDenied(this, reasonCodeToDeniedReason((Long) resultData.get(PARAM_REASON)));
+					listener.authorizationIsDenied(this, reasonCodeToDeniedReason((Long) resultData.get(PARAM_REASON), fromResponse));
 				}
 				return true;
 			}
@@ -113,16 +114,22 @@ public class AuthorizerImpl implements Authorizer, RequestHandler {
 
 	private JSONRPC2Response answerRequestStream(JSONRPC2Request request) {
 		Map<String, Object> params = request.getNamedParams();
-		if (handleRequestResult(params)) {
+		if (handleRequestResult(params, !FROM_RESPONSE)) {
 			return new JSONRPC2Response(Long.valueOf(0), request.getID()); 
 		}
 		return new JSONRPC2Response(JSONRPC2Error.INVALID_PARAMS, request.getID());
 	}
-	private static DeniedReason reasonCodeToDeniedReason(long reason) {
-		if (reason == 1) {
-			return DeniedReason.DENIED_BY_HOST_AUTOMATICALLY;
-		} else if (reason == 2) {
-			return DeniedReason.DENIED_BY_HOST_MANUALLY;
+	private static DeniedReason reasonCodeToDeniedReason(long reason, boolean fromResponse) {
+		if (fromResponse) {
+			if (reason == 1) {
+				return DeniedReason.FULLY_OCCUPIED;
+			}
+		} else {
+			if (reason == 1) {
+				return DeniedReason.DENIED_BY_HOST_AUTOMATICALLY;
+			} else if (reason == 2) {
+				return DeniedReason.DENIED_BY_HOST_MANUALLY;
+			}
 		}
 		return DeniedReason.UNDEFINED;
 	}

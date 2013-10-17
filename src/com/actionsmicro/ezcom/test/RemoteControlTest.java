@@ -4,7 +4,7 @@ import java.util.Map;
 
 import junit.framework.TestCase;
 
-import com.actionsmicro.ezcom.Proxy;
+import com.actionsmicro.ezcom.BasicProxy;
 import com.actionsmicro.ezcom.impl.RemoteControlImpl;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Response;
@@ -16,7 +16,7 @@ public class RemoteControlTest extends TestCase {
 	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
-		remoteControl = new RemoteControlImpl(new Proxy("", 0) {
+		remoteControl = new RemoteControlImpl(new BasicProxy("", 0) {
 			@Override
 			public JSONRPC2Response sendRequest(JSONRPC2Request request) throws JSONRPC2SessionException, IllegalStateException {
 				catchedRequest = request;
