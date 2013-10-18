@@ -83,7 +83,7 @@ public class AuthorizerTest extends TestCase {
 				result.put("split_count", Long.valueOf(splitCount));
 				result.put("position", Long.valueOf(position));
 
-				oneOf (proxy).sendRequest(with(withMethodAndNamedParams(equal("common.request_stream"), 
+				oneOf (proxy).sendRequest(with(requestWithMethodAndNamedParams(equal("common.request_stream"), 
 						allOf(hasEntry("split_count", (Object)Long.valueOf(splitCount)), 
 								hasEntry("position", (Object)Long.valueOf(position))))));
 				will(returnJSONRPC2Response(result));
@@ -112,7 +112,7 @@ public class AuthorizerTest extends TestCase {
 				result.put("result", "deny");
 				result.put("reason", Long.valueOf(1));
 
-				oneOf (proxy).sendRequest(with(withMethodAndNamedParams(equal("common.request_stream"), 
+				oneOf (proxy).sendRequest(with(requestWithMethodAndNamedParams(equal("common.request_stream"), 
 						allOf(hasEntry("split_count", (Object)Long.valueOf(splitCount)), 
 								hasEntry("position", (Object)Long.valueOf(position))))));
 				will(returnJSONRPC2Response(result));
@@ -140,7 +140,7 @@ public class AuthorizerTest extends TestCase {
 				HashMap<String, Object> result = new HashMap<String, Object>();
 				result.put("result", "wait");
 
-				oneOf (proxy).sendRequest(with(withMethodAndNamedParams(equal("common.request_stream"), 
+				oneOf (proxy).sendRequest(with(requestWithMethodAndNamedParams(equal("common.request_stream"), 
 						allOf(hasEntry("split_count", (Object)Long.valueOf(splitCount)), 
 								hasEntry("position", (Object)Long.valueOf(position))))));
 				will(returnJSONRPC2Response(result));
@@ -164,7 +164,7 @@ public class AuthorizerTest extends TestCase {
 				HashMap<String, Object> result = new HashMap<String, Object>();
 				result.put("result", Long.valueOf(0));
 
-				oneOf (proxy).sendRequest(with(withMethod(equal("common.cancel_request_stream")))); will(returnJSONRPC2Response(result));
+				oneOf (proxy).sendRequest(with(requestWithMethod(equal("common.cancel_request_stream")))); will(returnJSONRPC2Response(result));
 
 			}});
 		} catch (JSONRPC2SessionException e) {

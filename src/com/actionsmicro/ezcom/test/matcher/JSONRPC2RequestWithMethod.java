@@ -26,7 +26,7 @@ public class JSONRPC2RequestWithMethod extends TypeSafeMatcher<JSONRPC2Request> 
 	}
 	
 	@Factory
-    public static JSONRPC2RequestWithMethod withMethod(Matcher<?> value) {
+    public static JSONRPC2RequestWithMethod requestWithMethod(Matcher<?> value) {
         return new JSONRPC2RequestWithMethod(value);
     }
 }

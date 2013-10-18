@@ -29,16 +29,16 @@ public class JSONRPCExpectations extends Expectations {
 		return Matchers.hasEntry(key, value);
 	}
 	
-	public static JSONRPC2RequestWithMethod withMethod(Matcher<?> method) {
-		return JSONRPC2RequestWithMethod.withMethod(method);
+	public static JSONRPC2RequestWithMethod requestWithMethod(Matcher<?> method) {
+		return JSONRPC2RequestWithMethod.requestWithMethod(method);
 	}
 	
-	public static JSONRPC2RequestWithNamedParams withNamedParams(Matcher<?> value) {
-		return JSONRPC2RequestWithNamedParams.withNamedParams(value);
+	public static JSONRPC2RequestWithNamedParams requestWithNamedParams(Matcher<?> value) {
+		return JSONRPC2RequestWithNamedParams.requestWithNamedParams(value);
 	}
 	
-	public static Matcher<? extends JSONRPC2Request> withMethodAndNamedParams(org.hamcrest.Matcher<?> method, org.hamcrest.Matcher<?> namedParams) {
-		return JSONRPCExpectations.<JSONRPC2Request>allOf(withMethod(method), withNamedParams(namedParams));
+	public static Matcher<? extends JSONRPC2Request> requestWithMethodAndNamedParams(org.hamcrest.Matcher<?> method, org.hamcrest.Matcher<?> namedParams) {
+		return JSONRPCExpectations.<JSONRPC2Request>allOf(requestWithMethod(method), requestWithNamedParams(namedParams));
 	}
 	// actions
 	public static Action returnJSONRPC2Response(Object result) {

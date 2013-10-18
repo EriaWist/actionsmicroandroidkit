@@ -29,7 +29,7 @@ public class JSONRPC2RequestWithNamedParams extends TypeSafeMatcher<JSONRPC2Requ
 	}
 	
 	@Factory
-    public static JSONRPC2RequestWithNamedParams withNamedParams(Matcher<?> value) {
+    public static JSONRPC2RequestWithNamedParams requestWithNamedParams(Matcher<?> value) {
         return new JSONRPC2RequestWithNamedParams(value);
     }
 }
