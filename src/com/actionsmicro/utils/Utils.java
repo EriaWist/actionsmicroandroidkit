@@ -177,4 +177,15 @@ public class Utils {
 		}
 		return 0;
 	}
+	public static void executeOnThreadAndWait(Runnable runnable) {
+		Thread thread = new Thread(runnable);
+		thread.start();
+		try {
+			thread.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
 }
