@@ -189,15 +189,15 @@ public class BasicProxy implements Proxy {
 		}
 	}
 	public String echo(String msg) throws JSONRPC2SessionException {
-		if (controlSession != null) {
-			List<Object> echoParam = new LinkedList<Object>();
-			echoParam.add(msg);
-			JSONRPC2Request request = new JSONRPC2Request("echo", echoParam, generateRpcId());
-			JSONRPC2Response response = controlSession.send(request);
-			Utils.matchRequestResponseIdAndThrow(request, response);
+		List<Object> echoParam = new LinkedList<Object>();
+		echoParam.add(msg);
+		JSONRPC2Request request = new JSONRPC2Request("echo", echoParam, generateRpcId());
+		JSONRPC2Response response = sendRequest(request);
+		if (response.indicatesSuccess()) {
 			return (String) response.getResult();
+		} else {
+			return null;
 		}
-		return null;
 	}
 	private int sRpcId = 0;
 	/* (non-Javadoc)
@@ -208,20 +208,23 @@ public class BasicProxy implements Proxy {
 		return sRpcId++;
 	}
 	public long add(long a, long b) throws JSONRPC2SessionException {
-		if (controlSession != null) {
-			JSONRPC2Request request = new JSONRPC2Request("add", Arrays.asList((Object)Long.valueOf(a), Long.valueOf(b)), generateRpcId());
-			JSONRPC2Response response = controlSession.send(request);
+		JSONRPC2Request request = new JSONRPC2Request("add", Arrays.asList((Object)Long.valueOf(a), Long.valueOf(b)), generateRpcId());
+		JSONRPC2Response response = sendRequest(request);
+		if (response.indicatesSuccess()) {
 			return (Long)response.getResult();
+		} else {
+			return 0;
 		}
-		return 0;
 	}
 	public void setHostname(String hostname) throws JSONRPC2SessionException {
-		if (controlSession != null) {
-			JSONRPC2Request request = new JSONRPC2Request(METHOD_SET_HOSTNAME, Arrays.asList((Object)hostname), generateRpcId());
-			JSONRPC2Response response = controlSession.send(request);
+		JSONRPC2Request request = new JSONRPC2Request(METHOD_SET_HOSTNAME, Arrays.asList((Object)hostname), generateRpcId());
+		try {
+			JSONRPC2Response response = sendRequest(request);
 			if (!response.indicatesSuccess()) {
 				Log.e(TAG, "METHOD_SET_HOSTNAME failed:"+response.getError().getMessage());
 			}
+		} catch (IllegalStateException e) {
+			e.printStackTrace();
 		}
 	}
 	private void connect() {
@@ -326,8 +329,8 @@ public class BasicProxy implements Proxy {
 	public JSONRPC2Response sendRequest(JSONRPC2Request request) throws JSONRPC2SessionException, IllegalStateException {
 		JSONRPC2Response response = null;
 		if (controlSession != null) {
+			Log.d(TAG, "send json-rpc request:"+request);
 			response = controlSession.send(request);
-			Utils.matchRequestResponseIdAndThrow(request, response);
 			return response;
 		}
 		throw new IllegalStateException("controlSession is not ready");
@@ -418,12 +421,14 @@ public class BasicProxy implements Proxy {
 							HttpResponse httpResponse, HttpContext context)
 							throws HttpException, IOException {
 						Log.d(TAG, "Handle request:" + receivedRequest.getRequestLine());
+						com.actionsmicro.ezcom.http.Utils.logHttpRequest(TAG, receivedRequest);
 						try {
 							if (receivedRequest instanceof HttpEntityEnclosingRequest) {
 								HttpEntity entity = ((HttpEntityEnclosingRequest) receivedRequest).getEntity();
 								String jsonString = EntityUtils.toString(entity);
 								entity.consumeContent();
 								JSONRPC2Request req = JSONRPC2Request.parse(jsonString);
+								Log.d(TAG, "json-rpc:"+req);
 								JSONRPC2Response resp = dispatcher.process(req, null);
 								Utils.buildHttpResponse(httpResponse, resp);
 								Log.d(TAG, "httpResponse to " + receivedRequest.getRequestLine() + ":" + httpResponse.getStatusLine());
