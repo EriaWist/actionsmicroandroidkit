@@ -117,6 +117,9 @@ import com.thetransactioncompany.jsonrpc2.client.RawResponseInspector;
 public class JSONRPC2Session {
 
 
+	private static final String DEFAULT_JSON_RPC_CONTENT_CHARSET = "UTF-8";
+
+
 	private static final String TAG = "JSONRPC2Session";
 
 
@@ -371,7 +374,7 @@ public class JSONRPC2Session {
 			throws JSONRPC2SessionException {
 
 		// Expect UTF-8 for JSON
-		con.setRequestProperty("Accept-Charset", "UTF-8");
+		con.setRequestProperty("Accept-Charset", DEFAULT_JSON_RPC_CONTENT_CHARSET);
 
 		// Add "Content-Type" header?
 		if (options.getRequestContentType() != null)
@@ -473,7 +476,7 @@ public class JSONRPC2Session {
 			throws JSONRPC2SessionException {
 
 		try {
-			OutputStreamWriter wr = new OutputStreamWriter(con.getOutputStream(), "UTF-8");
+			OutputStreamWriter wr = new OutputStreamWriter(con.getOutputStream(), DEFAULT_JSON_RPC_CONTENT_CHARSET);
 			wr.write(data);
 			wr.flush();
 			wr.close();
@@ -590,7 +593,7 @@ public class JSONRPC2Session {
 				HttpEntity entity = rawResponse.getEntity();
 				if (entity != null) {
 					try {
-						response = JSONRPC2Response.parse(EntityUtils.toString(entity), 
+						response = JSONRPC2Response.parse(EntityUtils.toString(entity, DEFAULT_JSON_RPC_CONTENT_CHARSET), 
 								options.preservesParseOrder(), 
 								options.ignoresVersion(),
 								options.parsesNonStdAttributes());
@@ -657,7 +660,7 @@ public class JSONRPC2Session {
 				com.actionsmicro.ezcom.http.Utils.logHttpResponse(TAG, rawResponse);
 				HttpEntity entity = rawResponse.getEntity();
 				if (entity != null) {
-					EntityUtils.toString(entity);
+					EntityUtils.toString(entity, DEFAULT_JSON_RPC_CONTENT_CHARSET);
 					entity.consumeContent();
 				} 
 			} catch (UnsupportedEncodingException e) {

@@ -63,6 +63,7 @@ import com.thetransactioncompany.jsonrpc2.server.Dispatcher;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
 public class BasicProxy implements Proxy {
+	private static final String DEFAULT_JSON_RPC_CONTENT_CHARSET = "UTF-8";
 	private static final String METHOD_SET_HOSTNAME = "common.set_hostname";
 	private static final String PATH_JSONRPC = "/jsonrpc";
 	private static final String PATH_SCREEN = "/screen";
@@ -425,7 +426,7 @@ public class BasicProxy implements Proxy {
 						try {
 							if (receivedRequest instanceof HttpEntityEnclosingRequest) {
 								HttpEntity entity = ((HttpEntityEnclosingRequest) receivedRequest).getEntity();
-								String jsonString = EntityUtils.toString(entity);
+								String jsonString = EntityUtils.toString(entity, DEFAULT_JSON_RPC_CONTENT_CHARSET);
 								entity.consumeContent();
 								JSONRPC2Request req = JSONRPC2Request.parse(jsonString);
 								Log.d(TAG, "json-rpc:"+req);
@@ -486,7 +487,7 @@ public class BasicProxy implements Proxy {
 			String tag = TAG;
 			com.actionsmicro.ezcom.http.Utils.logHttpResponse(tag, rawResponse);
 			HttpEntity entity = rawResponse.getEntity();
-			String jsonString = EntityUtils.toString(entity);
+			String jsonString = EntityUtils.toString(entity, DEFAULT_JSON_RPC_CONTENT_CHARSET);
 			entity.consumeContent();
 			JSONRPC2Response response = JSONRPC2Response.parse(jsonString, 
 					false, 
