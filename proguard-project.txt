@@ -32,3 +32,5 @@
 	public *;
 }
 -keep class com.thetransactioncompany.** { *; } -dontwarn com.thetransactioncompany.**
+
+-dontwarn org.hamcrest.**
