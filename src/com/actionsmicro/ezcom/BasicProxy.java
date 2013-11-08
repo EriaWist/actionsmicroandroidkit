@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.Socket;
 import java.net.URI;
@@ -88,6 +89,12 @@ public class BasicProxy implements Proxy {
 	public BasicProxy(String ipV4Address, int portNumber) {
 		this.address = ipV4Address;
 		this.portNumber = portNumber;
+	}
+	public int getPortNumber() {
+		return portNumber;
+	}
+	public String getAddress() {
+		return address;
 	}
 	public void open() {
 		Thread initializer = new Thread(new Runnable(){
@@ -354,7 +361,9 @@ public class BasicProxy implements Proxy {
 	private void createReverseSession() throws ReverseConnectionException {
 		
 		try {
-			reverseConnection = new Socket(address, portNumber);
+			reverseConnection = new Socket();
+			reverseConnection.connect(new InetSocketAddress(address, portNumber), SOCKET_OPERATION_TIMEOUT);
+			reverseConnection.setSoTimeout(SOCKET_OPERATION_TIMEOUT);
 			// to close this socket
 			invokeReverseRpc(reverseConnection);
 			spamReverseRequestHandler();
@@ -587,7 +596,9 @@ public class BasicProxy implements Proxy {
 	private synchronized HttpClientConnection getScreenSession() {
 		if (screenConnection == null) {
 			try {
-				Socket screen = new Socket(address, portNumber);
+				Socket screen = new Socket();
+				screen.connect(new InetSocketAddress(address, portNumber), SOCKET_OPERATION_TIMEOUT);
+				screen.setSoTimeout(SOCKET_OPERATION_TIMEOUT);
 				screenConnection = createClientConnection(screen);
 				Log.d(TAG, "create screen connection:"+screenConnection);
 			} catch (UnknownHostException e) {
