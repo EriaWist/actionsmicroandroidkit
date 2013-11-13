@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.RectF;
 import android.graphics.Xfermode;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -126,5 +127,12 @@ public class PathGraphic implements Graphic {
 	public void lineTo(float x, float y) {
 		this.path.lineTo(x, y);
 		points.add(new Point(x, y));
+	}
+	@Override
+	public RectF getBounds() {
+		RectF bounds = new RectF();
+		this.path.computeBounds(bounds, false);
+		bounds.inset(-paint.getStrokeWidth()/2, -paint.getStrokeWidth()/2);
+		return bounds;
 	}
 }
