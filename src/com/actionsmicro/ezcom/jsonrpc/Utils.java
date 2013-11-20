@@ -3,16 +3,12 @@ package com.actionsmicro.ezcom.jsonrpc;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 
-import org.apache.http.Header;
-import org.apache.http.HeaderIterator;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.protocol.HTTP;
 
-import com.actionsmicro.utils.Log;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Message;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Response;
@@ -20,14 +16,15 @@ import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 
 public class Utils {
 
+	private static final String MIME_TYPE_APPLICATION_JSON = "application/json"/* + HTTP.CHARSET_PARAM + HTTP.UTF_8*/;
 	public static HttpPost createRpcPostRequestAndPreprocess(JSONRPC2Request request, URI uri) {
 		try {
 			HttpPost postRequest = createRpcPostRequest(request, uri);
 			HttpEntity entity = postRequest.getEntity();
 			postRequest.setHeader(HTTP.CONTENT_LEN, Long.valueOf(entity.getContentLength()).toString());
-			postRequest.setHeader(HTTP.CONTENT_TYPE, entity.getContentType().getValue());
-			postRequest.setHeader(HTTP.CONTENT_ENCODING, entity.getContentEncoding().getValue());
-			postRequest.setHeader("Host", uri.getHost()+":"+uri.getPort());
+			postRequest.setHeader(entity.getContentType());
+			postRequest.setHeader(entity.getContentEncoding());
+			postRequest.setHeader(HTTP.TARGET_HOST, uri.getHost()+":"+uri.getPort());
 			return postRequest;
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
@@ -40,7 +37,7 @@ public class Utils {
 			throws UnsupportedEncodingException {
 		HttpPost postRequest = new HttpPost(uri);
 		StringEntity entity = new StringEntity(request.toString(), HTTP.UTF_8);
-		entity.setContentType("application/json"/* + HTTP.CHARSET_PARAM + HTTP.UTF_8*/);
+		entity.setContentType(MIME_TYPE_APPLICATION_JSON);
 		entity.setContentEncoding(HTTP.UTF_8);
 		postRequest.setEntity(entity);
 		return postRequest;
@@ -49,12 +46,12 @@ public class Utils {
 	public static void buildHttpResponse(HttpResponse httpResponse, JSONRPC2Response resp) {
 		try {
 			StringEntity rpcentity = new StringEntity(resp.toString(), HTTP.UTF_8);
-			rpcentity.setContentType("application/json"/* + HTTP.CHARSET_PARAM + HTTP.UTF_8*/);
+			rpcentity.setContentType(MIME_TYPE_APPLICATION_JSON);
 			rpcentity.setContentEncoding(HTTP.UTF_8);
 			httpResponse.setEntity(rpcentity);
 			httpResponse.setHeader(HTTP.CONTENT_LEN, Long.valueOf(rpcentity.getContentLength()).toString());
-			httpResponse.setHeader(HTTP.CONTENT_TYPE, rpcentity.getContentType().getValue());
-			httpResponse.setHeader(HTTP.CONTENT_ENCODING, rpcentity.getContentEncoding().getValue());
+			httpResponse.setHeader(rpcentity.getContentType());
+			httpResponse.setHeader(rpcentity.getContentEncoding());
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		} finally {
@@ -87,21 +84,5 @@ public class Utils {
 							JSONRPC2SessionException.BAD_RESPONSE);
 		}
 		return true;
-	}
-	public static void logHttpRequest(String tag, HttpRequest request) {
-		Log.d(tag, request.getRequestLine().toString());
-		HeaderIterator iterator = request.headerIterator();
-		while (iterator.hasNext()) {
-			Header header = iterator.nextHeader();
-			Log.d(tag, header.getName() + " : " + header.getValue());
-		}
-	}
-	public static void logHttpResponse(String tag, HttpResponse rawResponse) {
-		Log.d(tag, rawResponse.getStatusLine().toString());
-		HeaderIterator iterator = rawResponse.headerIterator();
-		while (iterator.hasNext()) {
-			Header header = iterator.nextHeader();
-			Log.d(tag, header.getName() + " : " + header.getValue());
-		}
-	}
+	} 
 }
