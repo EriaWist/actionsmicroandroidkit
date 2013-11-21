@@ -861,6 +861,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		}
 		isStreamingMedia = false;
 		playerState = PlayerState.STOPPED;
+		waitingForSeekPlayReturn = false;
 	}
 
 	private DatagramSocket udpSocket;
@@ -978,6 +979,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		Log.d(TAG, "seekTo:"+position);
 		waitingForSeekPlayReturn = true;
 		if (sendAVCommandAndWaitForResponse(createPlayerSeekPlayPacket(position).array(), avCommandSeekToResponseReceivedNotificaiton)) {
+			waitingForSeekPlayReturn = false;
 			return avRequestResult;
 		}
 		return -1;

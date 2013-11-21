@@ -3,16 +3,16 @@ package com.actionsmicro.ezcom;
 
 public interface ConnectionManager {
 
-	void controlConnectionDidFail(Proxy proxy);
+	void controlConnectionDidFail(BasicProxy proxy);
 
-	void reverseConnectionDidFail(Proxy proxy);
+	void reverseConnectionDidFail(BasicProxy proxy);
 
-	void controlConnectionDidDisconnected(Proxy proxy, Exception e);
+	void controlConnectionDidDisconnected(BasicProxy proxy, Exception e);
 
-	void reverseConnectionDidDisconnected(Proxy proxy, Exception e);
+	void reverseConnectionDidDisconnected(BasicProxy proxy, Exception e);
 
-	void connectionsEstablishedSuccessfully(Proxy proxy);
+	void connectionsEstablishedSuccessfully(BasicProxy proxy);
 
-	void tryToReconnect(Proxy proxy);
+	void tryToReconnect(BasicProxy proxy);
 
 }
