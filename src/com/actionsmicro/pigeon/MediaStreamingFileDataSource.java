@@ -131,7 +131,7 @@ public class MediaStreamingFileDataSource implements FileDataSource {
 		}
 	}
 	private static final List<String> SUPPORTED_VIDEO_FILE_EXTENSIONS = Arrays.asList("mov", "mkv", "mp4", "avi", "divx", "mpg", "mpeg", "ts", "xvid", "rmvb", "rm", "wmv", "m4v", "3gp", "vob", "dat"); //"aac", "wav", "ogg"
-	private static final List<String> SUPPORTED_AUDIO_FILE_EXTENSIONS = Arrays.asList("mp3", "wma");
+	private static final List<String> SUPPORTED_AUDIO_FILE_EXTENSIONS = Arrays.asList("mp3", "wma", "m4a");
 	private static List<String> SUPPORTED_FILE_EXTENSIONS = null;
 	static {
 		SUPPORTED_FILE_EXTENSIONS = new ArrayList<String>(SUPPORTED_VIDEO_FILE_EXTENSIONS);
