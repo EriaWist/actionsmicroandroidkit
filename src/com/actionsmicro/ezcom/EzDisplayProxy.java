@@ -1,5 +1,10 @@
 package com.actionsmicro.ezcom;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+
 import com.actionsmicro.ezcom.impl.AuthorizerImpl;
 import com.actionsmicro.ezcom.impl.DisplayImpl;
 import com.actionsmicro.ezcom.impl.ModeratorImpl;
@@ -106,4 +111,26 @@ public class EzDisplayProxy extends BasicProxy implements RemoteControl, Authori
 	public void setModerationDelegate(ModerationDelegate moderationDelegate) {
 		moderator.setModerationDelegate(moderationDelegate);
 	}
+	
+	private URL urlWithPath(String path) throws MalformedURLException {
+		return new URL("http", getAddress(), getPortNumber(), path);
+	}
+
+	private InputStream openUrl(URL url) throws IOException {
+		try {
+			return url.openStream();
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} finally {
+			
+		}
+		return null;
+	}
+	public InputStream getProductImage() throws IOException {
+		return openUrl(urlWithPath("object/product_image"));
+	}
+	public InputStream getStandbyPage() throws IOException {
+		return openUrl(urlWithPath("object/standby_page"));
+	}
+
 }
