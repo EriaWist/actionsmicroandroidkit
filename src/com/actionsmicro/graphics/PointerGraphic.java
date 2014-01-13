@@ -3,6 +3,7 @@ package com.actionsmicro.graphics;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -91,5 +92,9 @@ public class PointerGraphic implements Graphic {
 	@Override
 	public Paint getPaint() {
 		return paint;
+	}
+	@Override
+	public RectF getBounds() {		
+		return new RectF(x-radius, y-radius, x+radius, y+radius);
 	}
 }
