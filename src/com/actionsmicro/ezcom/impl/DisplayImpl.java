@@ -4,6 +4,8 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import android.graphics.YuvImage;
+
 import com.actionsmicro.ezcast.DisplayApi;
 import com.actionsmicro.ezcom.Proxy;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
@@ -161,5 +163,11 @@ public class DisplayImpl implements DisplayApi, RequestHandler {
 		if (proxy != null) {
 			proxy.sendJpegEncodedScreenData(input, length);
 		}
+	}
+	@Override
+	public void sendYuvScreenData(YuvImage yuvImage, int quailty)
+			throws Exception {
+		// TODO Auto-generated method stub
+		
 	}
 }

@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 
+import android.graphics.YuvImage;
+
 import com.actionsmicro.ezcast.AuthorizationApi;
 import com.actionsmicro.ezcast.DisplayApi;
 import com.actionsmicro.ezcom.impl.AuthorizerImpl;
@@ -148,6 +150,12 @@ public class EzDisplayProxy extends BasicProxy implements RemoteControl, Authori
 	@Override
 	public void resendLastImage() throws Exception {
 		display.resendLastImage();
+	}
+
+	@Override
+	public void sendYuvScreenData(YuvImage yuvImage, int quailty)
+			throws Exception {
+		display.sendYuvScreenData(yuvImage, quailty);
 	}
 
 }

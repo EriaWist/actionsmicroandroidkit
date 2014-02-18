@@ -2,6 +2,8 @@ package com.actionsmicro.ezcast.imp.ezdisplay;
 
 import java.io.InputStream;
 
+import android.graphics.YuvImage;
+
 import com.actionsmicro.ezcast.DisplayApi;
 import com.actionsmicro.ezcast.DisplayApiBuilder;
 import com.actionsmicro.pigeon.Client;
@@ -78,6 +80,14 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 	public void sendJpegEncodedScreenData(InputStream inputStream, long length) throws Exception { // TODO deal with parameter length
 		if (pigeonClient != null) {
 			pigeonClient.sendJpegStreamToServer(inputStream);
+		}
+	}
+
+	@Override
+	public void sendYuvScreenData(YuvImage yuvImage, int quailty)
+			throws Exception {
+		if (pigeonClient != null) {
+			pigeonClient.sendImageToServer(yuvImage, quailty);
 		}
 	}
 }

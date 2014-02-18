@@ -2,6 +2,8 @@ package com.actionsmicro.ezcast;
 
 import java.io.InputStream;
 
+import android.graphics.YuvImage;
+
 public interface DisplayApi extends Api {
 	public enum Role {
 		UNDEFINED, HOST, GUEST
@@ -23,4 +25,5 @@ public interface DisplayApi extends Api {
 	public void resendLastImage() throws Exception;
 
 	public void sendJpegEncodedScreenData(InputStream input, long length) throws Exception;
+	public void sendYuvScreenData(YuvImage yuvImage, int quailty) throws Exception;
 }
