@@ -3,8 +3,8 @@ package com.actionsmicro.ezcom.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.actionsmicro.ezcom.Authorizer;
-import com.actionsmicro.ezcom.Authorizer.AuthorizationListener.DeniedReason;
+import com.actionsmicro.ezcast.AuthorizationApi;
+import com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener.DeniedReason;
 import com.actionsmicro.ezcom.Proxy;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
@@ -13,7 +13,7 @@ import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
-public class AuthorizerImpl implements Authorizer, RequestHandler {
+public class AuthorizerImpl implements AuthorizationApi, RequestHandler {
 	private static final boolean FROM_RESPONSE = true;
 	private static final String METHOD_ANSWER_REQUEST_STREAM = "common.answer_request_stream";
 	private static final String METHOD_CANCEL_REQUEST_STREAM = "common.cancel_request_stream";
@@ -132,5 +132,17 @@ public class AuthorizerImpl implements Authorizer, RequestHandler {
 			}
 		}
 		return DeniedReason.UNDEFINED;
+	}
+
+	@Override
+	public void connect() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void disconnect() {
+		// TODO Auto-generated method stub
+		
 	}
 }

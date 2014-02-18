@@ -5,12 +5,14 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 
+import com.actionsmicro.ezcast.AuthorizationApi;
+import com.actionsmicro.ezcast.DisplayApi;
 import com.actionsmicro.ezcom.impl.AuthorizerImpl;
 import com.actionsmicro.ezcom.impl.DisplayImpl;
 import com.actionsmicro.ezcom.impl.ModeratorImpl;
 import com.actionsmicro.ezcom.impl.RemoteControlImpl;
 
-public class EzDisplayProxy extends BasicProxy implements RemoteControl, Authorizer, Display, Moderator {
+public class EzDisplayProxy extends BasicProxy implements RemoteControl, AuthorizationApi, DisplayApi, Moderator {
 	private RemoteControlImpl remoteControl;
 	private AuthorizerImpl authorizer;
 	private DisplayImpl display;
@@ -131,6 +133,21 @@ public class EzDisplayProxy extends BasicProxy implements RemoteControl, Authori
 	}
 	public InputStream getStandbyPage() throws IOException {
 		return openUrl(urlWithPath("object/standby_page"));
+	}
+
+	@Override
+	public void connect() {
+		open();
+	}
+
+	@Override
+	public void disconnect() {
+		close();
+	}
+
+	@Override
+	public void resendLastImage() throws Exception {
+		display.resendLastImage();
 	}
 
 }

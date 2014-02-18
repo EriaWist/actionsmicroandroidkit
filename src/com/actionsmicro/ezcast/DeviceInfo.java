@@ -1,5 +1,9 @@
 package com.actionsmicro.ezcast;
 
-public class DeviceInfo {
+import android.os.Parcelable;
+
+public abstract class DeviceInfo implements Parcelable {
+
+	
 	
 }

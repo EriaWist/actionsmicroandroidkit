@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import com.actionsmicro.ezcast.imp.FalconDeviceFinder;
+import com.actionsmicro.ezcast.imp.ezdisplay.FalconDeviceFinder;
 
 public class DeviceFinder {
 	

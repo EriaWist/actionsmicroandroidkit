@@ -7,9 +7,9 @@ import junit.framework.TestCase;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 
-import com.actionsmicro.ezcom.Authorizer;
-import com.actionsmicro.ezcom.Authorizer.AuthorizationListener;
-import com.actionsmicro.ezcom.Authorizer.AuthorizationListener.DeniedReason;
+import com.actionsmicro.ezcast.AuthorizationApi;
+import com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener;
+import com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener.DeniedReason;
 import com.actionsmicro.ezcom.Proxy;
 import com.actionsmicro.ezcom.impl.AuthorizerImpl;
 import com.actionsmicro.ezcom.test.mock.JSONRPCExpectations;
@@ -145,7 +145,7 @@ public class AuthorizerTest extends TestCase {
 								hasEntry("position", (Object)Long.valueOf(position))))));
 				will(returnJSONRPC2Response(result));
 
-				never (listener).authorizationIsDenied(with(any(Authorizer.class)), with(any(DeniedReason.class)));
+				never (listener).authorizationIsDenied(with(any(AuthorizationApi.class)), with(any(DeniedReason.class)));
 				never (listener).authorizationIsGranted(authorizer, splitCount, position);
 
 			}});

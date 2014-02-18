@@ -7,9 +7,9 @@ import junit.framework.TestCase;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 
-import com.actionsmicro.ezcom.Display;
-import com.actionsmicro.ezcom.Display.DisplayListener;
-import com.actionsmicro.ezcom.Display.Role;
+import com.actionsmicro.ezcast.DisplayApi;
+import com.actionsmicro.ezcast.DisplayApi.DisplayListener;
+import com.actionsmicro.ezcast.DisplayApi.Role;
 import com.actionsmicro.ezcom.Proxy;
 import com.actionsmicro.ezcom.impl.DisplayImpl;
 import com.actionsmicro.ezcom.test.mock.JSONRPCExpectations;
@@ -24,7 +24,7 @@ public class DisplayTest extends TestCase {
 	
 	protected void setUp() throws Exception {
 		super.setUp();
-		listener = context.mock(Display.DisplayListener.class);
+		listener = context.mock(DisplayApi.DisplayListener.class);
 		proxy = context.mock(Proxy.class);
 		context.checking(new Expectations() {{
 			oneOf (proxy).registerRpcRequestHandler(with(aNonNull(DisplayImpl.class)));			

@@ -1,4 +1,4 @@
-package com.actionsmicro.ezcast.imp;
+package com.actionsmicro.ezcast.imp.ezdisplay;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ public class FalconDeviceFinder extends DeviceFinderBase {
 			@Override
 			public void falconSearchDidFindProjector(Falcon falcon,
 					ProjectorInfo projectorInfo) {
-				getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new FalconDeviceInfo(projectorInfo));
+				getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new PigeonDeviceInfo(projectorInfo));
 			}
 			
 		});
@@ -29,7 +29,7 @@ public class FalconDeviceFinder extends DeviceFinderBase {
 	public List<DeviceInfo> getDevices() {
 		ArrayList<DeviceInfo> devices = new ArrayList<DeviceInfo>();
 		for (ProjectorInfo projectorInfo : Falcon.getInstance().getProjectors()) {
-			devices.add(new FalconDeviceInfo(projectorInfo));
+			devices.add(new PigeonDeviceInfo(projectorInfo));
 		}
 		return devices;
 	}

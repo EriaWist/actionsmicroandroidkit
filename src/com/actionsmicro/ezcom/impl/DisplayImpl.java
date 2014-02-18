@@ -1,9 +1,10 @@
 package com.actionsmicro.ezcom.impl;
 
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.actionsmicro.ezcom.Display;
+import com.actionsmicro.ezcast.DisplayApi;
 import com.actionsmicro.ezcom.Proxy;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
@@ -12,7 +13,7 @@ import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
-public class DisplayImpl implements Display, RequestHandler {
+public class DisplayImpl implements DisplayApi, RequestHandler {
 
 	private static final String PARAM_POSITION = "position";
 	private static final String PARAM_SPLIT_COUNT = "split_count";
@@ -138,5 +139,27 @@ public class DisplayImpl implements Display, RequestHandler {
 			return Role.HOST;
 		}
 		return Role.UNDEFINED;
+	}
+	@Override
+	public void connect() {
+		// TODO Auto-generated method stub
+		
+	}
+	@Override
+	public void disconnect() {
+		// TODO Auto-generated method stub
+		
+	}
+	@Override
+	public void resendLastImage() throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+	@Override
+	public void sendJpegEncodedScreenData(InputStream input, long length)
+			throws Exception {
+		if (proxy != null) {
+			proxy.sendJpegEncodedScreenData(input, length);
+		}
 	}
 }
