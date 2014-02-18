@@ -50,6 +50,8 @@ public class ImageSender {
 	public void stop() {
 		shouldStop = true;
 		// add null job to trigger stop
+		final ArrayList<Job> expiredJobs = new ArrayList<Job>();
+		pendingJobs.drainTo(expiredJobs);
 		pendingJobs.add(Job.nullJob);
 		try {
 			sendingThread.join();
