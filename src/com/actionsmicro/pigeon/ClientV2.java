@@ -14,6 +14,7 @@ import java.nio.ByteOrder;
 
 import android.os.Handler;
 
+import com.actionsmicro.ezcast.MediaPlayerApi;
 import com.actionsmicro.utils.Log;
 
 public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStreaming {
@@ -408,7 +409,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private boolean isStreamingMedia;
 	private int intResponse;
 	private int avRequestResult;
-	private PlayerState playerState = PlayerState.STOPPED;
+	private MediaPlayerApi.State playerState = MediaPlayerApi.State.STOPPED;
 	
 //	PC端在發出AV_PLAYER_SEEKPLAY後,直到收到小機的AV_PLAYER_SEEKPLAY回應之前,
 //	應忽略收到的AV_PLAYER_GET_TIME.另外,小機端收到PC端來的連續AV_PLAYER_SEEKPLAY,
@@ -429,7 +430,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		header.putInt(cmd); 
 		header.putInt(type); 
 		header.putInt(size);
-		header.putInt(AV_RESULT_OK);
+		header.putInt(MediaPlayerApi.AV_RESULT_OK);
 	}
 	private static ByteBuffer createPlayerResetPacket() {
 		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
@@ -592,8 +593,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 					break;
 				case AV_PLAYER_PAUSE:
 					Log.d(TAG, "AV_PLAYER_PAUSE:" + avRequestResult);
-					if (avRequestResult == AV_RESULT_OK) {
-						playerState = PlayerState.PAUSED;
+					if (avRequestResult == MediaPlayerApi.AV_RESULT_OK) {
+						playerState = MediaPlayerApi.State.PAUSED;
 					}
 					synchronized(avCommandPauseResponseReceivedNotificaiton) {
 						avCommandPauseResponseReceivedNotificaiton.notifyAll();
@@ -601,8 +602,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 					break;
 				case AV_PLAYER_RESUME:
 					Log.d(TAG, "AV_PLAYER_RESUME:" + avRequestResult);
-					if (avRequestResult == AV_RESULT_OK) {
-						playerState = PlayerState.PLAYING;
+					if (avRequestResult == MediaPlayerApi.AV_RESULT_OK) {
+						playerState = MediaPlayerApi.State.PLAYING;
 					}
 					synchronized(avCommandResumeResponseReceivedNotificaiton) {
 						avCommandResumeResponseReceivedNotificaiton.notifyAll();
@@ -654,10 +655,10 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		assert currentDataSource != null:"currentDataSource should not be null";
 		assert currentDataSource instanceof HttpDataSource : "currentDataSource should be HttpDataSource";
 		if (currentDataSource != null && currentDataSource instanceof HttpDataSource) {
-			if (avRequestResult != AV_RESULT_OK) {
+			if (avRequestResult != MediaPlayerApi.AV_RESULT_OK) {
 				currentDataSource.mediaStreamingDidFail(avRequestResult);
 			} else {
-				playerState = PlayerState.PLAYING;
+				playerState = MediaPlayerApi.State.PLAYING;
 				((HttpDataSource)currentDataSource).startStreaming(this);
 			}
 		}
@@ -666,12 +667,12 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private void handleHttpStop(int avRequestResult) {
 		assert currentDataSource != null:"currentDataSource should not be null";
 		isStreamingMedia = false;
-		playerState = PlayerState.STOPPED;
+		playerState = MediaPlayerApi.State.STOPPED;
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
 		}
 		sendDataToRemote(createHttpStopPacket().array());
-		if (avRequestResult != AV_RESULT_OK && currentDataSource != null) {
+		if (avRequestResult != MediaPlayerApi.AV_RESULT_OK && currentDataSource != null) {
 			currentDataSource.mediaStreamingDidFail(avRequestResult);
 		}
 	}
@@ -717,7 +718,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		}
 	}
 	private void handleFileStart(final int request_result) {
-		if (request_result != AV_RESULT_OK) {
+		if (request_result != MediaPlayerApi.AV_RESULT_OK) {
 			assert currentDataSource != null:"currentDataSource should not be null";
 			if (currentDataSource != null) {
 				currentDataSource.mediaStreamingDidFail(request_result);
@@ -726,11 +727,11 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			}						
 		} else {
 			isStreamingMedia = true;
-			playerState = PlayerState.PLAYING;
+			playerState = MediaPlayerApi.State.PLAYING;
 		}
 	}
 	private void handleFileStartAudio(final int request_result) {
-		if (request_result != AV_RESULT_OK) {
+		if (request_result != MediaPlayerApi.AV_RESULT_OK) {
 			assert currentDataSource != null:"currentDataSource should not be null";
 			if (currentDataSource != null) {
 				currentDataSource.mediaStreamingDidFail(request_result);
@@ -739,18 +740,18 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			}						
 		} else {
 			isStreamingMedia = true;
-			playerState = PlayerState.PLAYING;
+			playerState = MediaPlayerApi.State.PLAYING;
 		}
 	}
 	private void handleFileStop(final int request_result) {
 		assert currentDataSource != null:"currentDataSource should not be null";
 		isStreamingMedia = false;
-		playerState = PlayerState.STOPPED;
+		playerState = MediaPlayerApi.State.STOPPED;
 		if (currentDataSource != null) {
 			currentDataSource.stopStreamingContents();
 		}
 		sendDataToRemote(createFileStopPacket().array());
-		if (request_result != AV_RESULT_OK && currentDataSource != null) {
+		if (request_result != MediaPlayerApi.AV_RESULT_OK && currentDataSource != null) {
 			currentDataSource.mediaStreamingDidFail(request_result);
 		}
 	}
@@ -860,7 +861,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			sendDataToRemote(createHttpStopPacket().array());
 		}
 		isStreamingMedia = false;
-		playerState = PlayerState.STOPPED;
+		playerState = MediaPlayerApi.State.STOPPED;
 		waitingForSeekPlayReturn = false;
 	}
 
@@ -1039,7 +1040,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		return -1;
 	}
 	@Override
-	public PlayerState getPlayerState() {
+	public MediaPlayerApi.State getPlayerState() {
 		return playerState;
 	}
 	

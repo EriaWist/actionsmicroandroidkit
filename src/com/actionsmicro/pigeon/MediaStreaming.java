@@ -1,15 +1,8 @@
 package com.actionsmicro.pigeon;
 
-public interface MediaStreaming {
-	public static final int AV_RESULT_OK = 0;
-	public static final int AV_RESULT_ERROR_GENERIC = 1;
-	public static final int AV_RESULT_ERROR_START_INIT_FAILED = 2;
-	public static final int AV_RESULT_ERROR_START_OCCUPIED_OTHER_USER = 3;
-	public static final int AV_RESULT_ERROR_START_OCCUPIED_ALREADY_STREAMING = 4;
-	public static final int AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED = 5;
-	public static final int AV_RESULT_ERROR_STOP_ABORTED = 6;	
-	public static final int AV_RESULT_ERROR_URL_DIVERT_LINK_ERROR = 7;
+import com.actionsmicro.ezcast.MediaPlayerApi.State;
 
+public interface MediaStreaming {
 	public interface DataSource {
 		public void mediaStreamingDidFail(int resultCode);
 		public void stopStreamingContents();
@@ -43,8 +36,5 @@ public interface MediaStreaming {
 	public void sendStreamingContentsUdp(final byte[] contents, int length);
 	public void sendEofPacket();
 	public void resetPlayer();
-	public enum PlayerState {
-		STOPPED, PLAYING, PAUSED
-	};
-	public PlayerState getPlayerState();
+	public State getPlayerState();
 }
