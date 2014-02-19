@@ -37,4 +37,8 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	public void writeToParcel(Parcel dest, int flags) {
 		projectorInfo.writeToParcel(dest, flags);
 	}
+	@Override
+	public boolean supportsHttpStreaming() {
+		return projectorInfo.supportsHttpStreaming();
+	}
 }
