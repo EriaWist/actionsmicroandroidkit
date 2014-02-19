@@ -1,5 +1,7 @@
 package com.actionsmicro.ezcast.imp.ezdisplay;
 
+import java.net.InetAddress;
+
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -40,5 +42,33 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	@Override
 	public boolean supportsHttpStreaming() {
 		return projectorInfo.supportsHttpStreaming();
+	}
+	@Override
+	public InetAddress getIpAddress() {
+		return projectorInfo.getAddress();
+	}
+	@Override
+	public boolean supportsSplitScreen() {
+		return projectorInfo.supportsSplitScreen();
+	}
+	@Override
+	public boolean supportsRemoteControl() {
+		return projectorInfo.isRemoteControlEnabled();
+	}
+	@Override
+	public String getVendor() {
+		return projectorInfo.getVendor();
+	}
+	@Override
+	public String getName() {
+		return projectorInfo.getName();
+	}
+	@Override
+	public String getParameter(String key) {
+		return projectorInfo.getParameter(key);
+	}
+	@Override
+	public boolean supportsDisplay() {
+		return projectorInfo.getWifiDisplayPortNumber() != 0;
 	}
 }
