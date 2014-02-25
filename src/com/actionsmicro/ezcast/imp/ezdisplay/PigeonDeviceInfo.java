@@ -5,7 +5,15 @@ import java.net.InetAddress;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.actionsmicro.ezcast.AuthorizationApi;
+import com.actionsmicro.ezcast.AuthorizationApiBuilder;
 import com.actionsmicro.ezcast.DeviceInfo;
+import com.actionsmicro.ezcast.DisplayApi;
+import com.actionsmicro.ezcast.DisplayApiBuilder;
+import com.actionsmicro.ezcast.MediaPlayerApi;
+import com.actionsmicro.ezcast.MediaPlayerApiBuilder;
+import com.actionsmicro.ezcast.MessageApi;
+import com.actionsmicro.ezcast.MessageApiBuilder;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 
 public class PigeonDeviceInfo extends DeviceInfo {
@@ -70,5 +78,23 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	@Override
 	public boolean supportsDisplay() {
 		return projectorInfo.getWifiDisplayPortNumber() != 0;
+	}
+	@Override
+	protected MessageApi createMessageApi(MessageApiBuilder messageApiBuilder) {
+		return new PigeonMessageApi(messageApiBuilder);
+	}
+	@Override
+	protected AuthorizationApi createAuthorizationApi(
+			AuthorizationApiBuilder authorizationApiBuilder) {
+		return new PigeonAuthorizationApi(authorizationApiBuilder);
+	}
+	@Override
+	protected DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder) {
+		return new PigeonDisplayApi(displayApiBuilder);
+	}
+	@Override
+	protected MediaPlayerApi createMediaPlayerApi(
+			MediaPlayerApiBuilder mediaPlayerApiBuilder) {
+		return new PigeonMediaPlayerApi(mediaPlayerApiBuilder);
 	}
 }

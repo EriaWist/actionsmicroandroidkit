@@ -13,4 +13,8 @@ public abstract class DeviceInfo implements Parcelable {
 	public abstract String getVendor();
 	public abstract String getName();
 	public abstract String getParameter(String key);
+	protected abstract MessageApi createMessageApi(MessageApiBuilder messageApiBuilder);
+	protected abstract AuthorizationApi createAuthorizationApi(AuthorizationApiBuilder authorizationApiBuilder);
+	protected abstract DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder);
+	protected abstract MediaPlayerApi createMediaPlayerApi(MediaPlayerApiBuilder mediaPlayerApiBuilder);
 }

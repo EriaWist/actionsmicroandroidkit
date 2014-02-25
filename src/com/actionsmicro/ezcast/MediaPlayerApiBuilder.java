@@ -1,5 +1,7 @@
 package com.actionsmicro.ezcast;
 
+import android.content.Context;
+
 import com.actionsmicro.ezcast.MediaPlayerApi.MediaPlayerStateListener;
 import com.actionsmicro.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.ezcast.imp.ezdisplay.PigeonMediaPlayerApi;
@@ -16,16 +18,13 @@ public class MediaPlayerApiBuilder extends ApiBuilder<MediaPlayerApi> {
 		return this;
 	}
 
-	public MediaPlayerApiBuilder(DeviceInfo device) {
-		super(device);
+	public MediaPlayerApiBuilder(DeviceInfo device, Context context) {
+		super(device, context);
 	}
 
 	@Override
 	public MediaPlayerApi build() {
-		if (device instanceof PigeonDeviceInfo) {
-			return new PigeonMediaPlayerApi(this);
-		}
-		return null;
+		return device.createMediaPlayerApi(this);
 	}
 
 }

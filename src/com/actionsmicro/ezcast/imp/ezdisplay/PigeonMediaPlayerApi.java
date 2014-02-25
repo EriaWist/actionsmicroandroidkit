@@ -112,7 +112,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				public void medisStreamingFail(DataSource dataSource,
 						int resultCode) {
 					if (mediaPlayerStateListener != null) {
-						mediaPlayerStateListener.mediaPlayerFail(PigeonMediaPlayerApi.this, resultCode);
+						mediaPlayerStateListener.mediaPlayerDidFailed(PigeonMediaPlayerApi.this, resultCode);
 					}
 				}
 

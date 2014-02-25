@@ -1,13 +1,13 @@
 package com.actionsmicro.ezcast;
 
-import com.actionsmicro.ezcast.MessageApi.*;
-import com.actionsmicro.ezcast.imp.ezdisplay.PigeonDeviceInfo;
-import com.actionsmicro.ezcast.imp.ezdisplay.PigeonMessageApi;
+import android.content.Context;
+
+import com.actionsmicro.ezcast.MessageApi.MessageListener;
 
 public class MessageApiBuilder extends ApiBuilder<MessageApi> {
 
-	public MessageApiBuilder(DeviceInfo device) {
-		super(device);
+	public MessageApiBuilder(DeviceInfo device, Context context) {
+		super(device, context);
 	}
 	
 	private MessageListener messageListener; 
@@ -23,10 +23,7 @@ public class MessageApiBuilder extends ApiBuilder<MessageApi> {
 	
 	@Override
 	public MessageApi build() {
-		if (device instanceof PigeonDeviceInfo) {
-			return new PigeonMessageApi(this);
-		}
-		return null;
+		return device.createMessageApi(this);
 	}
 
 	public MessageApi.ConnectionManager getConnectionManager() {

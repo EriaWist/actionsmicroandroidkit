@@ -4,18 +4,23 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import android.content.Context;
+
 import com.actionsmicro.ezcast.imp.ezdisplay.FalconDeviceFinder;
+import com.actionsmicro.ezcast.imp.googlecast.GoogleCastFinder;
 
 public class DeviceFinder {
 	
 	private static DeviceFinder singleton;
-	protected DeviceFinder() {		
+	private Context context;
+	protected DeviceFinder(Context context) {		
 		singleton = this;
 		imps.add(new FalconDeviceFinder(this));
+		this.context = context;
 	}
-	static public DeviceFinder getInstance() {
+	static public DeviceFinder getInstance(Context context) {
 		if (singleton == null) {
-			singleton = new DeviceFinder();
+			singleton = new DeviceFinder(context);
 		}
 		return singleton;
 	}
@@ -74,5 +79,8 @@ public class DeviceFinder {
 		for (DeviceFinderBase deviceFinderImp : imps) {
 			deviceFinderImp.search();
 		}
+	}
+	public Context getContext() {
+		return context;
 	}
 }

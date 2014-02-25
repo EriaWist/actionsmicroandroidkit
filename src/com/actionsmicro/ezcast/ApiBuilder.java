@@ -1,9 +1,12 @@
 package com.actionsmicro.ezcast;
 
+import android.content.Context;
+
 public abstract class ApiBuilder<T> {
 
 	protected DeviceInfo device;
 	private ConnectionManager connectionManager;
+	private Context context;
 
 	public DeviceInfo getDevice() {
 		return device;
@@ -14,9 +17,10 @@ public abstract class ApiBuilder<T> {
 		return this;
 	}
 
-	public ApiBuilder(DeviceInfo device) {
+	public ApiBuilder(DeviceInfo device, Context context) {
 		super();
 		this.device = device;
+		this.setContext(context);
 	}
 
 	public ConnectionManager getConnectionManager() {
@@ -28,4 +32,12 @@ public abstract class ApiBuilder<T> {
 		return this;
 	}
 	public abstract T build();
+
+	public Context getContext() {
+		return context;
+	}
+
+	public void setContext(Context context) {
+		this.context = context;
+	}
 }

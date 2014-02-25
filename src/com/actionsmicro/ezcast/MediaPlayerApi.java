@@ -35,11 +35,11 @@ public interface MediaPlayerApi extends Api {
 
 		public abstract void mediaPlayerDidStop(MediaPlayerApi api);
 
-		public abstract void mediaPlayerFail(MediaPlayerApi api, int resultCode);
+		public abstract void mediaPlayerDidFailed(MediaPlayerApi api, int resultCode);
 
-		public abstract void mediaPlayerTimeDidChange(MediaPlayerApi api, int time);
+		public abstract void mediaPlayerTimeDidChange(MediaPlayerApi api, long time);
 
-		public abstract void mediaPlayerDurationIsReady(MediaPlayerApi apie, int duration);
+		public abstract void mediaPlayerDurationIsReady(MediaPlayerApi apie, long duration);
 
 	}
 }

@@ -95,6 +95,6 @@ public class ImageSender {
 
 	protected void handleException(Exception e) {
 		// TODO Auto-generated method stub
-		
+		Log.e(TAG, "", e);
 	}
 }
