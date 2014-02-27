@@ -6,8 +6,6 @@ import java.util.List;
 
 import android.content.Context;
 
-import com.actionsmicro.ezcast.imp.googlecast.GoogleCastFinder;
-
 public class DeviceFinder {
 	
 	private static DeviceFinder singleton;
@@ -16,7 +14,7 @@ public class DeviceFinder {
 		singleton = this;
 		this.context = context;
 	}
-	public void addDeviceFinderImp(GoogleCastFinder deviceFinderImp) {
+	public void addDeviceFinderImp(DeviceFinderBase deviceFinderImp) {
 		imps.add(deviceFinderImp);
 	}
 	static public DeviceFinder getInstance(Context context) {
