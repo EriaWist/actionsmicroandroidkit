@@ -27,7 +27,7 @@ public interface MediaPlayerApi extends Api {
 	public boolean decreaseVolume();
 	public boolean seek(int position);
 	public boolean stop();
-	public boolean play(Context context, String url, String userAgentString, Long mediaContentLength) throws Exception ;
+	public boolean play(Context context, String url, String userAgentString, Long mediaContentLength, String title) throws Exception ; //TODO encapsulate parameters as object
 	
 	public interface MediaPlayerStateListener {
 

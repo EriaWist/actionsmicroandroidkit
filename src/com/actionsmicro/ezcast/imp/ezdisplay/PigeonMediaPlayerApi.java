@@ -76,7 +76,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		return true;
 	}
 	@Override
-	public boolean play(Context context, String mediaUrl, String userAgentString, Long mediaContentLength) throws Exception {
+	public boolean play(Context context, String mediaUrl, String userAgentString, Long mediaContentLength, String title) throws Exception {
 		if (dataSource != null) {
 			dataSource.setMediaStreamingStateListener(null);
 			dataSource = null;

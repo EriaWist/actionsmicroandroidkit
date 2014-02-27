@@ -59,8 +59,8 @@ public class GoogleCastMediaPlayerApi extends GoogleCastApi implements
 
 	@Override
 	public boolean play(Context context, String url, String userAgentString,
-			Long mediaContentLength) throws Exception {
-		return googleCastClient.play(context, url, userAgentString, mediaContentLength);
+			Long mediaContentLength, String title) throws Exception {
+		return googleCastClient.play(context, url, userAgentString, mediaContentLength, title);
 	}
 	@Override
 	protected void onCreateGoogleCastClient(EZCastOverGoogleCast googleCastClient) {
