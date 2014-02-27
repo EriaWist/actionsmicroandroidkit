@@ -20,6 +20,7 @@ import android.graphics.YuvImage;
 import android.net.Uri;
 import android.os.Bundle;
 
+import com.actionsmicro.BuildConfig;
 import com.actionsmicro.ezcast.ConnectionManager;
 import com.actionsmicro.ezcast.DisplayApi;
 import com.actionsmicro.ezcast.MediaPlayerApi;
@@ -168,12 +169,14 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		isDisplaying = true;
 		connectEzCastChannel();
 		createMjpegServer();	
-		sendMessage(simpleMotionJpegHttpServer.getServerUrl());		
+		// { "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}
+		sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}");		
 	}
 
 	@Override
 	public void stopDisplaying() {
 		isDisplaying = false;
+		sendMessage("{\"jsonrpc\": \"2.0\", \"method\": \"stopDisplay\"}");
 		try {
 			disconnectEzCastChannel();
 		} catch (IOException e) {
@@ -486,8 +489,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 									PendingIntent resolution = status.getResolution();
 									Log.e(TAG, "Media loaded media failed: code"+status.getStatusCode() + ";" + status.getStatus());
 									if (mediaPlayerStateListener != null) {
-										mediaPlayerStateListener.mediaPlayerDidFailed(EZCastOverGoogleCast.this, status.getStatusCode()); //TODO do code conversion 
+										mediaPlayerStateListener.mediaPlayerDidFailed(EZCastOverGoogleCast.this, AV_RESULT_ERROR_GENERIC); //TODO do code conversion 
 									}
+									stopApplication();
+									launcheEZCastApp(isDisplaying);
 								}
 							}
 						});
@@ -608,7 +613,11 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 	}
 	private void launcheEZCastApp(final boolean startDisplaying) {
-		launcheApplication(GoogleCastFinder.CAST_APP_ID, new ResultCallback<Cast.ApplicationConnectionResult>() {
+		String castAppId = GoogleCastFinder.CAST_APP_ID;
+		if (BuildConfig.DEBUG) {
+			castAppId = GoogleCastFinder.CAST_DEV_APP_ID;
+		}
+		launcheApplication(castAppId, new ResultCallback<Cast.ApplicationConnectionResult>() {
 
 			@Override
 			public void onResult(Cast.ApplicationConnectionResult result) {
