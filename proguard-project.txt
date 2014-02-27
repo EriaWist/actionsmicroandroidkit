@@ -34,3 +34,13 @@
 -keep class com.thetransactioncompany.** { *; } -dontwarn com.thetransactioncompany.**
 
 -dontwarn org.hamcrest.**
+
+-keep class org.apache.http.entity.mime.** {
+  *;
+}
+-dontwarn org.apache.http.entity.mime.**
+
+-keep class org.apache.james.mime4j.** {
+  *;
+}
+-dontwarn org.apache.james.mime4j.**
