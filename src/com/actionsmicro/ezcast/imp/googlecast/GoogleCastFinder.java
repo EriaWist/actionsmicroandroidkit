@@ -17,6 +17,7 @@ import com.google.android.gms.cast.CastMediaControlIntent;
 public class GoogleCastFinder extends DeviceFinderBase {
 
 	public static final String CAST_APP_ID = "E3A71BDC"; //TODO move to app
+	public static final String CAST_DEV_APP_ID = "B8CFAD80"; 
 	private MediaRouter mediaRouter;
 	private Callback callback;
 	private MediaRouteSelector mediaSelector = new MediaRouteSelector.Builder()
