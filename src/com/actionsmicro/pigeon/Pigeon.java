@@ -76,12 +76,15 @@ public class Pigeon {
 		return pigeon;
 	}
 	public static void releasePigeonClient(Client pigeon) {
-		int refCount = referenceCount.get(pigeon) - 1;
-		if (refCount == 0) {
-			clients.remove(new Triode(pigeon.getVersion(), pigeon.getServerAddress(), pigeon.getPortNumber()));
-			pigeon.stop();
-		} else {
-			referenceCount.put(pigeon, refCount);
+		if (referenceCount.containsKey(pigeon)) {
+			int refCount = referenceCount.get(pigeon) - 1;
+			if (refCount == 0) {
+				clients.remove(new Triode(pigeon.getVersion(), pigeon.getServerAddress(), pigeon.getPortNumber()));
+				pigeon.stop();
+				referenceCount.remove(pigeon);
+			} else {
+				referenceCount.put(pigeon, refCount);
+			}
 		}
 	}
 }
