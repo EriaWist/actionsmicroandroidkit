@@ -195,7 +195,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		if (simpleMotionJpegHttpServer != null) {
 			final int width = yuvImage.getWidth();
 			final int height = yuvImage.getHeight();
-			Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
+			Log.d(TAG, "sentImageToServer width=" + width+",height=" + height);
 			ByteArrayOutputStream compressionBuffer = getCompressionBuffer();
 			compressionBuffer.reset();
 			Log.d(TAG, "Start compress");

@@ -59,7 +59,7 @@ public class SimpleMotionJpegHttpServer {
 					if (newSocket != null) {
 						cleanUpConnection();
 						socket = newSocket;
-						Log.i(TAG, "New connection to :" + socket.getInetAddress());
+						Log.d(TAG, "New connection to :" + socket.getInetAddress());
 						outputStream = new DataOutputStream(socket.getOutputStream());
 						outputStream.write(("HTTP/1.0 200 OK\r\n" +
 								"Server: EZCastStreamer\r\n" +
@@ -88,7 +88,7 @@ public class SimpleMotionJpegHttpServer {
 	static ByteArrayOutputStream clone = new ByteArrayOutputStream(500*1024);
 	public void sendJpegStream(InputStream jpegStream, long size) {
 		if (isConnected()) {
-			Log.i(TAG, "sendJpegStream to :" + socket.getInetAddress());
+			Log.d(TAG, "sendJpegStream to :" + socket.getInetAddress());
 			
 			try {
 				clone.reset();
@@ -112,7 +112,7 @@ public class SimpleMotionJpegHttpServer {
 //					outputStream.write(("\r\n\r\n").getBytes());
 				}
 				outputStream.flush();
-				Log.i(TAG, "sendJpegStream to :" + socket.getInetAddress() +" done");
+				Log.d(TAG, "sendJpegStream to :" + socket.getInetAddress() +" done");
 
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
