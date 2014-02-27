@@ -12,11 +12,12 @@ public class DeviceFinder {
 	
 	private static DeviceFinder singleton;
 	private Context context;
-	protected DeviceFinder(Context context) {		
+	public DeviceFinder(Context context) {		
 		singleton = this;
 		this.context = context;
-//		imps.add(new FalconDeviceFinder(this));
-		imps.add(new GoogleCastFinder(this));
+	}
+	public void addDeviceFinderImp(GoogleCastFinder deviceFinderImp) {
+		imps.add(deviceFinderImp);
 	}
 	static public DeviceFinder getInstance(Context context) {
 		if (singleton == null) {
