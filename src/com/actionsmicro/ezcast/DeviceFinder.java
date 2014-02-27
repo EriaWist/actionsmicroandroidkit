@@ -6,17 +6,16 @@ import java.util.List;
 
 import android.content.Context;
 
-import com.actionsmicro.ezcast.imp.ezdisplay.FalconDeviceFinder;
-import com.actionsmicro.ezcast.imp.googlecast.GoogleCastFinder;
-
 public class DeviceFinder {
 	
 	private static DeviceFinder singleton;
 	private Context context;
-	protected DeviceFinder(Context context) {		
+	public DeviceFinder(Context context) {		
 		singleton = this;
-		imps.add(new FalconDeviceFinder(this));
 		this.context = context;
+	}
+	public void addDeviceFinderImp(DeviceFinderBase deviceFinderImp) {
+		imps.add(deviceFinderImp);
 	}
 	static public DeviceFinder getInstance(Context context) {
 		if (singleton == null) {
