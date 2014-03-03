@@ -82,10 +82,34 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	public String getName() {
 		return castDevice.getFriendlyName();
 	}
-
+	private static final long SERVICE_PHOTO			=	0x01;
+	private static final long SERVICE_CAMERA			=   0x02;
+	private static final long SERVICE_MUSIC			=   0x04;
+	private static final long SERVICE_VIDEO			=   0x08;
+	private static final long SERVICE_DLNA 			=   0x10;
+	private static final long SERVICE_EZMIRROR		=   0x20;
+	private static final long SERVICE_DOCUMENT		=   0x40;
+	private static final long SERVICE_WEB			=   0x80;
+	private static final long SERVICE_SETTING		=  0x100;
+	private static final long SERVICE_EZAIR			=  0x200;
+	private static final long SERVICE_CLOUD_VIDEO 	=  0x400;
+	private static final long SERVICE_MAP			=  0x800;
+	private static final long SERVICE_CLOUD_STORAGE	= 0x1000;
+	private static final long SERVICE_LIVE			= 0x2000;
+	private static final long SERVICE_SPLIT_SCREEN	= 0x4000;
+	private static final long SERVICE_EZCAST			= 0x8000;
+	private static final long SERVICE_COMMENT		= 0x10000;
+	private static final long SERVICE_UPDATE			= 0x20000;
+	private static final long SERVICE_NEWS			= 0x40000;
+	private static final long SERVICE_MESSAGES		= 0x80000;
+	
 	@Override
 	public String getParameter(String key) {
 		// TODO Auto-generated method stub
+		
+		if (key.equalsIgnoreCase("ezcast.service.android")) {
+			return Long.toHexString(SERVICE_PHOTO | SERVICE_CAMERA | SERVICE_MUSIC | SERVICE_VIDEO | SERVICE_DOCUMENT | SERVICE_WEB | SERVICE_CLOUD_VIDEO | SERVICE_CLOUD_STORAGE | SERVICE_LIVE | SERVICE_EZCAST | SERVICE_COMMENT | SERVICE_UPDATE);   
+		}
 		return null;
 	}
 	@Override
