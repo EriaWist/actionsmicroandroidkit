@@ -176,6 +176,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	@Override
 	public void stopDisplaying() {
 		isDisplaying = false;
+		stopDisplayingImp();
+	}
+	private void stopDisplayingImp() {
 		sendMessage("{\"jsonrpc\": \"2.0\", \"method\": \"stopDisplay\"}");
 		try {
 			disconnectEzCastChannel();
@@ -218,7 +221,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		Log.d(TAG, EZCastOverGoogleCast.this + ": teardown");
 		stopStreamPositionTimer();
 		if (googleCastApiClient != null) {
-			stopDisplaying();
+			stopDisplayingImp();
 			stopApplication();
 			if (googleCastApiClient.isConnected()) {
 				googleCastApiClient.disconnect();
@@ -427,7 +430,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	@Override
 	public boolean play(final Context context, final String url, String userAgentString, Long mediaContentLength, final String title) throws Exception {
-		stopDisplaying();
+		stopDisplayingImp();
 		launcheApplication("D3D8AEDC", new ResultCallback<Cast.ApplicationConnectionResult>() {
 
 			@Override
