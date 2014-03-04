@@ -105,10 +105,14 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	
 	@Override
 	public String getParameter(String key) {
-		// TODO Auto-generated method stub
-		
 		if (key.equalsIgnoreCase("ezcast.service.android")) {
 			return Long.toHexString(SERVICE_PHOTO | SERVICE_CAMERA | SERVICE_MUSIC | SERVICE_VIDEO | SERVICE_DOCUMENT | SERVICE_WEB | SERVICE_CLOUD_VIDEO | SERVICE_CLOUD_STORAGE | SERVICE_LIVE | SERVICE_EZCAST | SERVICE_COMMENT | SERVICE_UPDATE);   
+		}
+		if (key.equalsIgnoreCase("deviceid")) {
+			return castDevice.getDeviceId();
+		}
+		if (key.equalsIgnoreCase("srcvers")) {
+			return castDevice.getDeviceVersion();
 		}
 		return null;
 	}
