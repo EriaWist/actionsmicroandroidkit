@@ -15,7 +15,7 @@ public class GoogleCastAuthorizationApi extends GoogleCastApi implements Authori
 
 	@Override
 	public void requestToDisplay(int splitCount, int position) {
-		if (googleCastClient.isApplicationStarted()) {
+		if (googleCastClient.isReadyToDisplay()) {
 			if (authorizationListener != null) {
 				authorizationListener.authorizationIsGranted(this, 1, 1);
 			}			
@@ -24,7 +24,7 @@ public class GoogleCastAuthorizationApi extends GoogleCastApi implements Authori
 
 				@Override
 				public void run() {
-					while (!googleCastClient.isApplicationStarted()) { // TODO use wait/notify instead of polling 
+					while (!googleCastClient.isReadyToDisplay()) { // TODO use wait/notify instead of polling 
 						try {
 							Thread.sleep(500);
 						} catch (InterruptedException e) {

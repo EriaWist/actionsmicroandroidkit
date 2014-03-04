@@ -13,6 +13,7 @@ public class GoogleCastApi implements Api{
 	protected ConnectionManager connectionManager;
 	protected EZCastOverGoogleCast googleCastClient;
 	protected Context context;
+	private ConnectionManager connectionManagerProxy;
 
 	public <T> GoogleCastApi(ApiBuilder<T> apiBuilder) {
 		context = apiBuilder.getContext();
@@ -22,7 +23,16 @@ public class GoogleCastApi implements Api{
 
 	@Override
 	public void connect() {
-		googleCastClient = EZCastOverGoogleCast.createClient(context, castDevice, connectionManager);
+		googleCastClient = EZCastOverGoogleCast.createClient(context, castDevice, connectionManagerProxy = new ConnectionManager() {
+
+			@Override
+			public void onConnectionFailed(Api api, Exception e) {
+				if (connectionManager != null) {
+					connectionManager.onConnectionFailed(GoogleCastApi.this, e);
+				}
+			}
+			
+		});
 		onCreateGoogleCastClient(googleCastClient);
 	}
 
@@ -33,7 +43,7 @@ public class GoogleCastApi implements Api{
 	public void disconnect() {
 	
 		if (googleCastClient != null) {
-			EZCastOverGoogleCast.releaseClient(googleCastClient, connectionManager);			
+			EZCastOverGoogleCast.releaseClient(googleCastClient, connectionManagerProxy);			
 		}
 	}
 
