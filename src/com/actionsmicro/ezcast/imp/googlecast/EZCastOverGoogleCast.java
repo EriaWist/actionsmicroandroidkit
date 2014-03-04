@@ -473,6 +473,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					if (title != null) {
 						mediaMetadata.putString(MediaMetadata.KEY_TITLE, title);
 					}
+					Log.d(TAG, "try to load url:"+mediaUriString);
 					MediaInfo mediaInfo = new MediaInfo.Builder(mediaUriString) //
 					.setContentType(mimeType)
 					.setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
@@ -495,7 +496,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 										mediaPlayerStateListener.mediaPlayerDurationIsReady(EZCastOverGoogleCast.this, mRemoteMediaPlayer.getStreamDuration()/1000);
 									}
 								} else {
-									Log.e(TAG, "Media loaded media failed: code"+status.getStatusCode() + ";" + status.getStatus());
+									Log.e(TAG, "Media loaded media failed: code:"+status.getStatusCode() + ";" + status.getStatus());
 									PendingIntent resolution = status.getResolution();
 									if (resolution != null) {
 										Log.d(TAG, "pending resolution:"+resolution);
