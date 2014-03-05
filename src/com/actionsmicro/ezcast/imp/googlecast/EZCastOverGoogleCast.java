@@ -180,6 +180,12 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		createMjpegServer();	
 		// { "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}
 		sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}");
+		try {
+			Thread.sleep(150);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
