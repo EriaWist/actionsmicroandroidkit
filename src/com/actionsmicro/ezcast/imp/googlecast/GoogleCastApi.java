@@ -5,10 +5,12 @@ import android.content.Context;
 import com.actionsmicro.ezcast.Api;
 import com.actionsmicro.ezcast.ApiBuilder;
 import com.actionsmicro.ezcast.ConnectionManager;
+import com.actionsmicro.utils.Log;
 import com.google.android.gms.cast.CastDevice;
 
 public class GoogleCastApi implements Api{
 
+	private static final String TAG = "GoogleCastApi";
 	protected CastDevice castDevice;
 	protected ConnectionManager connectionManager;
 	protected EZCastOverGoogleCast googleCastClient;
@@ -33,7 +35,11 @@ public class GoogleCastApi implements Api{
 			}
 			
 		});
-		onCreateGoogleCastClient(googleCastClient);
+		if (googleCastClient == null) {
+			Log.d(TAG, "googleCastClient is null");
+		} else {
+			onCreateGoogleCastClient(googleCastClient);
+		}
 	}
 
 	protected void onCreateGoogleCastClient(EZCastOverGoogleCast googleCastClient) {
@@ -43,7 +49,8 @@ public class GoogleCastApi implements Api{
 	public void disconnect() {
 	
 		if (googleCastClient != null) {
-			EZCastOverGoogleCast.releaseClient(googleCastClient, connectionManagerProxy);			
+			EZCastOverGoogleCast.releaseClient(googleCastClient, connectionManagerProxy);	
+			googleCastClient = null;
 		}
 	}
 
