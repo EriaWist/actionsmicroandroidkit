@@ -102,11 +102,12 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	private static final long SERVICE_UPDATE			= 0x20000;
 	private static final long SERVICE_NEWS			= 0x40000;
 	private static final long SERVICE_MESSAGES		= 0x80000;
+	private static final long SERVICE_SOCIAL			= 0x100000;
 	
 	@Override
 	public String getParameter(String key) {
 		if (key.equalsIgnoreCase("ezcast.service.android")) {
-			return Long.toHexString(SERVICE_PHOTO | SERVICE_CAMERA | SERVICE_MUSIC | SERVICE_VIDEO | SERVICE_DOCUMENT | SERVICE_WEB | SERVICE_CLOUD_VIDEO | SERVICE_CLOUD_STORAGE | SERVICE_LIVE | SERVICE_EZCAST | SERVICE_COMMENT | SERVICE_UPDATE);   
+			return Long.toHexString(SERVICE_PHOTO | SERVICE_CAMERA | SERVICE_MUSIC | SERVICE_VIDEO | SERVICE_DOCUMENT | SERVICE_WEB | SERVICE_CLOUD_VIDEO | SERVICE_CLOUD_STORAGE | SERVICE_LIVE | SERVICE_EZCAST | SERVICE_COMMENT | SERVICE_UPDATE | SERVICE_SOCIAL);   
 		}
 		if (key.equalsIgnoreCase("deviceid")) {
 			return castDevice.getDeviceId();
