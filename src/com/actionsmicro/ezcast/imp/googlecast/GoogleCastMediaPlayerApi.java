@@ -19,48 +19,48 @@ public class GoogleCastMediaPlayerApi extends GoogleCastApi implements
 	@Override
 	public void uploadSubtitle(InputStream is, String fileType)
 			throws Exception {
-		googleCastClient.uploadSubtitle(is, fileType);
+		getGoogleCastClient().uploadSubtitle(is, fileType);
 	}
 
 	@Override
 	public State getState() {
-		return googleCastClient.getState();
+		return getGoogleCastClient().getState();
 	}
 
 	@Override
 	public boolean pause() {
-		return googleCastClient.pause();
+		return getGoogleCastClient().pause();
 	}
 
 	@Override
 	public boolean resume() {
-		return googleCastClient.resume();
+		return getGoogleCastClient().resume();
 	}
 
 	@Override
 	public boolean increaseVolume() {
-		return googleCastClient.increaseVolume();
+		return getGoogleCastClient().increaseVolume();
 	}
 
 	@Override
 	public boolean decreaseVolume() {
-		return googleCastClient.decreaseVolume();
+		return getGoogleCastClient().decreaseVolume();
 	}
 
 	@Override
 	public boolean seek(int position) {
-		return googleCastClient.seek(position);
+		return getGoogleCastClient().seek(position);
 	}
 
 	@Override
 	public boolean stop() {
-		return googleCastClient.stop();
+		return getGoogleCastClient().stop();
 	}
 
 	@Override
 	public boolean play(Context context, String url, String userAgentString,
 			Long mediaContentLength, String title) throws Exception {
-		return googleCastClient.play(context, url, userAgentString, mediaContentLength, title);
+		return getGoogleCastClient().play(context, url, userAgentString, mediaContentLength, title);
 	}
 	@Override
 	protected void onCreateGoogleCastClient(EZCastOverGoogleCast googleCastClient) {

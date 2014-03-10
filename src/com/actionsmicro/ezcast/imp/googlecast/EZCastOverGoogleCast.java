@@ -353,7 +353,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			Log.d(TAG, EZCastOverGoogleCast.this + ": onMessageReceived: " + message);
 		}
 	}
-	public static EZCastOverGoogleCast createClient(Context context,
+	public static synchronized EZCastOverGoogleCast createClient(Context context,
 			CastDevice castDevice, ConnectionManager connectionManager) {
 		EZCastOverGoogleCast googleCastClient; 
 		if (reg.containsKey(castDevice)) {
@@ -369,7 +369,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 		return googleCastClient;
 	}
-	public static void releaseClient(EZCastOverGoogleCast googleCastClient, ConnectionManager connectionManager) {
+	public static synchronized void releaseClient(EZCastOverGoogleCast googleCastClient, ConnectionManager connectionManager) {
 		googleCastClient.removeConnectionManager(connectionManager);
 		if (referenceCount.containsKey(googleCastClient)) {
 			int refCount = referenceCount.get(googleCastClient) - 1;

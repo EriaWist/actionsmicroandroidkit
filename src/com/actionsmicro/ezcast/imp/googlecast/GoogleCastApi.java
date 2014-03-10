@@ -13,7 +13,11 @@ public class GoogleCastApi implements Api{
 	private static final String TAG = "GoogleCastApi";
 	protected CastDevice castDevice;
 	protected ConnectionManager connectionManager;
-	protected EZCastOverGoogleCast googleCastClient;
+	private EZCastOverGoogleCast googleCastClient;
+	protected synchronized EZCastOverGoogleCast getGoogleCastClient() {
+		return googleCastClient;
+	}
+
 	protected Context context;
 	private ConnectionManager connectionManagerProxy;
 
@@ -24,7 +28,7 @@ public class GoogleCastApi implements Api{
 	}
 
 	@Override
-	public void connect() {
+	public synchronized void connect() {
 		googleCastClient = EZCastOverGoogleCast.createClient(context, castDevice, connectionManagerProxy = new ConnectionManager() {
 
 			@Override
@@ -46,7 +50,7 @@ public class GoogleCastApi implements Api{
 	}
 
 	@Override
-	public void disconnect() {
+	public synchronized void disconnect() {
 	
 		if (googleCastClient != null) {
 			EZCastOverGoogleCast.releaseClient(googleCastClient, connectionManagerProxy);	

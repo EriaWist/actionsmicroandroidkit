@@ -17,29 +17,29 @@ public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 	}
 	@Override
 	public void startDisplaying() {
-		googleCastClient.startDisplaying();
+		getGoogleCastClient().startDisplaying();
 	}
 
 	@Override
 	public void stopDisplaying() {
-		googleCastClient.stopDisplaying();
+		getGoogleCastClient().stopDisplaying();
 	}
 
 	@Override
 	public void resendLastImage() throws Exception {
-		googleCastClient.resendLastImage();
+		getGoogleCastClient().resendLastImage();
 	}
 
 	@Override
 	public void sendJpegEncodedScreenData(InputStream input, long length)
 			throws Exception {
-		googleCastClient.sendJpegEncodedScreenData(input, length);		
+		getGoogleCastClient().sendJpegEncodedScreenData(input, length);		
 	}
 
 	@Override
 	public void sendYuvScreenData(YuvImage yuvImage, int quailty)
 			throws Exception {
-		googleCastClient.sendYuvScreenData(yuvImage, quailty);
+		getGoogleCastClient().sendYuvScreenData(yuvImage, quailty);
 
 	}
 }

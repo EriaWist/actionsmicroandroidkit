@@ -15,28 +15,33 @@ public class GoogleCastAuthorizationApi extends GoogleCastApi implements Authori
 
 	@Override
 	public void requestToDisplay(int splitCount, int position) {
-		if (googleCastClient.isReadyToDisplay()) {
-			if (authorizationListener != null) {
-				authorizationListener.authorizationIsGranted(this, 1, 1);
-			}			
-		} else {
-			new Thread(new Runnable() {
+		EZCastOverGoogleCast googleCastClient = getGoogleCastClient();
+		if (googleCastClient != null) {
+			if (googleCastClient.isReadyToDisplay()) {
+				if (authorizationListener != null) {
+					authorizationListener.authorizationIsGranted(this, 1, 1);
+				}			
+			} else {
+				new Thread(new Runnable() {
 
-				@Override
-				public void run() {
-					while (!googleCastClient.isReadyToDisplay()) { // TODO use wait/notify instead of polling 
-						try {
-							Thread.sleep(500);
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
+					@Override
+					public void run() {
+						EZCastOverGoogleCast googleCastClient = null;
+						while ((googleCastClient = getGoogleCastClient()) != null && 
+								!googleCastClient.isReadyToDisplay()) { // TODO use wait/notify instead of polling 
+							try {
+								Thread.sleep(500);
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
 						}
-					}
-					if (authorizationListener != null) {
-						authorizationListener.authorizationIsGranted(GoogleCastAuthorizationApi.this, 1, 1);
-					}
-				}				
-			}).start();
+						if (authorizationListener != null) {
+							authorizationListener.authorizationIsGranted(GoogleCastAuthorizationApi.this, 1, 1);
+						}
+					}				
+				}).start();
+			}
 		}
 	}
 
