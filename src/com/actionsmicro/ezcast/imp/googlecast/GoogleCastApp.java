@@ -55,7 +55,9 @@ public class GoogleCastApp {
 
 	public void stopApplication() {
 		if (googleCastApiClient != null && applicationStarted) {
-			Cast.CastApi.stopApplication(googleCastApiClient);
+			if (googleCastApiClient != null && googleCastApiClient.isConnected()) {
+				Cast.CastApi.stopApplication(googleCastApiClient);
+			}
 			applicationStarted = false;
 		}
 	}

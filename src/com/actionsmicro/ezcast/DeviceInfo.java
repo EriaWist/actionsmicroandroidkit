@@ -4,7 +4,7 @@ import java.net.InetAddress;
 
 import android.os.Parcelable;
 
-public abstract class DeviceInfo implements Parcelable {
+public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	public abstract InetAddress getIpAddress();
 	public abstract boolean supportsHttpStreaming();
 	public abstract boolean supportsSplitScreen();
@@ -17,4 +17,8 @@ public abstract class DeviceInfo implements Parcelable {
 	protected abstract AuthorizationApi createAuthorizationApi(AuthorizationApiBuilder authorizationApiBuilder);
 	protected abstract DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder);
 	protected abstract MediaPlayerApi createMediaPlayerApi(MediaPlayerApiBuilder mediaPlayerApiBuilder);
+	@Override
+	public int compareTo(DeviceInfo another) {
+		return getIpAddress().getHostAddress().compareTo(another.getIpAddress().getHostAddress());
+	}
 }

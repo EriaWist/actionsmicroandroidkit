@@ -17,7 +17,7 @@ public interface MediaPlayerApi extends Api {
 	public void uploadSubtitle(InputStream is, String fileType) throws Exception;
 	
 	public enum State {
-		STOPPED, PLAYING, PAUSED
+		UNKNOWN, STOPPED, PLAYING, PAUSED
 	};
 	public State getState();
 	
