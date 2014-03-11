@@ -5,17 +5,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
 import java.net.MalformedURLException;
-import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.URL;
-import java.util.Collections;
-import java.util.List;
 
-import org.apache.http.conn.util.InetAddressUtils;
+import android.content.Context;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
@@ -28,8 +26,10 @@ public class SimpleMotionJpegHttpServer {
 	private boolean shouldStop;
 	private Thread serverThread;
 	private ServerSocket server;
+	private Context context;
     
-	public SimpleMotionJpegHttpServer(final int port) {
+	public SimpleMotionJpegHttpServer(Context context, final int port) {
+		this.context = context;
 		try {
 			server = new ServerSocket(port);
 			server.setReuseAddress(true);
@@ -155,29 +155,19 @@ public class SimpleMotionJpegHttpServer {
 			socket = null;
 		}
 	}
-	public static String getIPAddress(boolean useIPv4) {
-        try {
-            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
-            for (NetworkInterface intf : interfaces) {
-                List<InetAddress> addrs = Collections.list(intf.getInetAddresses());
-                for (InetAddress addr : addrs) {
-                    if (!addr.isLoopbackAddress()) {
-                        String sAddr = addr.getHostAddress().toUpperCase();
-                        boolean isIPv4 = InetAddressUtils.isIPv4Address(sAddr); 
-                        if (useIPv4) {
-                            if (isIPv4) 
-                                return sAddr;
-                        } else {
-                            if (!isIPv4) {
-                                int delim = sAddr.indexOf('%'); // drop ip6 port suffix
-                                return delim<0 ? sAddr : sAddr.substring(0, delim);
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception ex) { } // for now eat exceptions
-        return "";
+	public String getIPAddress(boolean useIPv4) { //TODO  DRY
+		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+		int ip = wifiInfo.getIpAddress();
+
+		String ipString = String.format(
+				"%d.%d.%d.%d",
+				(ip & 0xff),
+				(ip >> 8 & 0xff),
+				(ip >> 16 & 0xff),
+				(ip >> 24 & 0xff));
+
+		return ipString;
     }
 	public String getServerUrl() {
 		if (server != null) {

@@ -319,7 +319,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 	}
 	private void createMjpegServer() {
-		simpleMotionJpegHttpServer = new SimpleMotionJpegHttpServer(0);
+		simpleMotionJpegHttpServer = new SimpleMotionJpegHttpServer(context, 0);
 		Log.d(TAG, EZCastOverGoogleCast.this + ": createMjpegServer");
 		
 	}
