@@ -324,7 +324,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		
 	}
 	private void sendMessage(final String message) {
-		if (googleCastApiClient != null && ezcastChannel != null) {
+		if (googleCastApiClient != null && googleCastApiClient.isConnected() && ezcastChannel != null) {
 			try {
 				Log.d(TAG, EZCastOverGoogleCast.this + ": sendMessage:"+message);
 				Cast.CastApi.sendMessage(googleCastApiClient, ezcastChannel.getNamespace(), message)
