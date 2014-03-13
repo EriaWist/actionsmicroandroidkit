@@ -20,5 +20,6 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	@Override
 	public int compareTo(DeviceInfo another) {
 		return getIpAddress().getHostAddress().compareTo(another.getIpAddress().getHostAddress());
-	}
+	}	
+	public abstract boolean supportMediaFileExtension(String fileExtension);
 }

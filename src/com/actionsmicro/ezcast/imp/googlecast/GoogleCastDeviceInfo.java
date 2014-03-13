@@ -1,6 +1,9 @@
 package com.actionsmicro.ezcast.imp.googlecast;
 
 import java.net.InetAddress;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -134,6 +137,11 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	protected MediaPlayerApi createMediaPlayerApi(
 			MediaPlayerApiBuilder mediaPlayerApiBuilder) {
 		return new GoogleCastMediaPlayerApi(mediaPlayerApiBuilder);
+	}
+	private static List<String> supportedFileExtension = Arrays.asList(new String[]{"mp4","mp3","mov"});
+	@Override
+	public boolean supportMediaFileExtension(String fileExtension) {
+		return supportedFileExtension.contains(fileExtension.toLowerCase(Locale.US));
 	}
 
 }

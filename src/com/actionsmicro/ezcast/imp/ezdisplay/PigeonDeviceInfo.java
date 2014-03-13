@@ -97,4 +97,8 @@ public class PigeonDeviceInfo extends DeviceInfo {
 			MediaPlayerApiBuilder mediaPlayerApiBuilder) {
 		return new PigeonMediaPlayerApi(mediaPlayerApiBuilder);
 	}
+	@Override
+	public boolean supportMediaFileExtension(String fileExtension) {
+		return true;
+	}
 }
