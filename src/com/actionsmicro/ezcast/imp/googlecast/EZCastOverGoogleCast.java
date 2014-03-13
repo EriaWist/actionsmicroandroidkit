@@ -99,8 +99,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					@Override
 					public void onApplicationDisconnected (int statusCode) {
 						Log.d(TAG, EZCastOverGoogleCast.this + ": onApplicationDisconnected");
-						notifyConnectionManagerDidFailed(new Exception("Google Cast API: onApplicationDisconnected : " + statusCode)); //TODO create custom exception
-						teardown();
+//						notifyConnectionManagerDidFailed(new Exception("Google Cast API: onApplicationDisconnected : " + statusCode)); //TODO create custom exception
+//						teardown();
 					}
 					@Override
 					public void onApplicationStatusChanged () {
@@ -146,6 +146,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			public void onConnectionFailed(ConnectionResult arg0) {
 				Log.d(TAG, EZCastOverGoogleCast.this + ": onConnectionFailed:");
 				notifyConnectionManagerDidFailed(new Exception("Google Cast API: onConnectionFailed : " + arg0)); //TODO create custom exception
+				teardown();
 			}
 
 		})
