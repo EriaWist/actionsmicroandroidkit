@@ -37,6 +37,8 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 
+import android.util.Log;
+
 /**
  * A simple, tiny, nicely embeddable HTTP server in Java
  * <p/>
@@ -170,6 +172,7 @@ public abstract class NanoHTTPD {
         myThread = new Thread(new Runnable() {
             @Override
             public void run() {
+            	Log.d("NanoHttpd Main Listener", "run");
                 do {
                     try {
                         final Socket finalAccept = myServerSocket.accept();
@@ -202,8 +205,10 @@ public abstract class NanoHTTPD {
                             }
                         });
                     } catch (IOException e) {
+                        Log.e("NanoHttpd Main Listener", "exception", e);
                     }
                 } while (!myServerSocket.isClosed());
+                Log.d("NanoHttpd Main Listener", "exit");
             }
         });
 //        myThread.setDaemon(true);
@@ -1002,7 +1007,11 @@ public abstract class NanoHTTPD {
                             read = in.read(pbuf);
                         }
                         postLine = postLineBuffer.toString().trim();
-                        decodeParms(postLine, parms);
+                        if ("application/json".equalsIgnoreCase(contentType)) {
+                        	parms.put(postLine, ""); //TODO resolve this tricky part
+                        } else {
+                        	decodeParms(postLine, parms);
+                        }
                     }
                 } else if (Method.PUT.equals(method)) {
                     files.put("content", saveTmpFile(fbuf, 0, fbuf.limit()));
