@@ -26,6 +26,8 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.util.EntityUtils;
 
+import android.util.Log;
+
 import com.actionsmicro.ezcom.http.AndroidHttpClient;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2ParseException;
@@ -593,7 +595,9 @@ public class JSONRPC2Session {
 				HttpEntity entity = rawResponse.getEntity();
 				if (entity != null) {
 					try {
-						response = JSONRPC2Response.parse(EntityUtils.toString(entity, DEFAULT_JSON_RPC_CONTENT_CHARSET), 
+						String responseString = EntityUtils.toString(entity, DEFAULT_JSON_RPC_CONTENT_CHARSET);
+						Log.d(TAG, "json response:"+responseString+" for request:"+request);
+						response = JSONRPC2Response.parse(responseString, 
 								options.preservesParseOrder(), 
 								options.ignoresVersion(),
 								options.parsesNonStdAttributes());
