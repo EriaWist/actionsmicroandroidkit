@@ -25,7 +25,6 @@ import com.actionsmicro.ezcast.ConnectionManager;
 import com.actionsmicro.ezcast.DisplayApi;
 import com.actionsmicro.ezcast.MediaPlayerApi;
 import com.actionsmicro.utils.Log;
-import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.actionsmicro.web.SimpleMotionJpegHttpServer;
 import com.google.android.gms.cast.Cast;
@@ -166,15 +165,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		if (simpleMotionJpegHttpServer != null) {
 			Log.d(TAG, EZCastOverGoogleCast.this + ": sendJpegEncodedScreenData");
 			simpleMotionJpegHttpServer.sendJpegStream(input, length);
-		} else {
-			ByteArrayOutputStream compressionBuffer = getCompressionBuffer();
-			compressionBuffer.reset();
-			try {
-				Utils.dump(input, compressionBuffer);
-			} catch (IOException e) {
-				e.printStackTrace();
-				compressionBuffer.reset();
-			}
 		}
 	}
 
@@ -198,17 +188,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			createMjpegServer();	
 			// { "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}
 			sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}");			
-			try {
-				Thread.sleep(150);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			ByteArrayOutputStream compressionBuffer = getCompressionBuffer();
-			if (compressionBuffer.size() > 0) {
-				sendJpegEncodedScreenData(new ByteArrayInputStream(compressionBuffer.toByteArray()), compressionBuffer.size());
-				compressionBuffer.reset();
-			}
 		}
 	}
 	private boolean isCurrentApplicationEzCast() {
@@ -320,7 +299,11 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 	}
 	private void createMjpegServer() {
-		simpleMotionJpegHttpServer = new SimpleMotionJpegHttpServer(context, 0);
+		simpleMotionJpegHttpServer = new SimpleMotionJpegHttpServer(context, 0, new SimpleMotionJpegHttpServer.OnConnectionListener() {
+			@Override
+			public void onClientConnected(SimpleMotionJpegHttpServer simpleMotionJpegHttpServer) {
+			}
+		});
 		Log.d(TAG, EZCastOverGoogleCast.this + ": createMjpegServer");
 		
 	}
