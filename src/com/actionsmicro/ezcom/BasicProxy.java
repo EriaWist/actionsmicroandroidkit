@@ -53,6 +53,7 @@ import android.os.Looper;
 import com.actionsmicro.ezcom.jsonrpc.JSONRPC2Session;
 import com.actionsmicro.ezcom.jsonrpc.Utils;
 import com.actionsmicro.utils.Log;
+import com.thetransactioncompany.jsonrpc2.JSONRPC2Message;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2ParseException;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
@@ -437,11 +438,16 @@ public class BasicProxy implements Proxy {
 								HttpEntity entity = ((HttpEntityEnclosingRequest) receivedRequest).getEntity();
 								String jsonString = EntityUtils.toString(entity, DEFAULT_JSON_RPC_CONTENT_CHARSET);
 								entity.consumeContent();
-								JSONRPC2Request req = JSONRPC2Request.parse(jsonString);
-								Log.d(TAG, "json-rpc:"+req);
-								JSONRPC2Response resp = dispatcher.process(req, null);
-								Utils.buildHttpResponse(httpResponse, resp);
-								Log.d(TAG, "httpResponse to " + receivedRequest.getRequestLine() + ":" + httpResponse.getStatusLine());
+								JSONRPC2Message message = JSONRPC2Message.parse(jsonString);
+								if (message instanceof JSONRPC2Request) {
+									Log.d(TAG, "json-rpc:"+message);
+									JSONRPC2Response resp = dispatcher.process((JSONRPC2Request)message, null);
+									Utils.buildHttpResponse(httpResponse, resp);
+									Log.d(TAG, "httpResponse to " + receivedRequest.getRequestLine() + ":" + httpResponse.getStatusLine());
+								} else if (message instanceof JSONRPC2Notification) {
+									dispatcher.process((JSONRPC2Notification)message, null);
+								}
+								
 							}
 						} catch (ParseException e) {
 							// TODO Auto-generated catch block
