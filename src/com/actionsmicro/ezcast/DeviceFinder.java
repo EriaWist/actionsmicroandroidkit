@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.List;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 public class DeviceFinder {
 	
@@ -41,23 +43,38 @@ public class DeviceFinder {
 			listeners.remove(listener);
 		}
 	}
-	public void notifyListeneroOnDeviceAdded(DeviceInfo projector) {
-		synchronized(listeners) {
-			Iterator<Listener> iterator = listeners.listIterator();
-			while (iterator.hasNext()) {
-				Listener listener = iterator.next(); 
-				listener.onDeviceAdded(this, projector);						
+	Handler mainHandler = new Handler(Looper.getMainLooper());
+	public void notifyListeneroOnDeviceAdded(final DeviceInfo projector) {
+		mainHandler.post(new Runnable() {
+
+			@Override
+			public void run() {
+				synchronized(listeners) {
+					Iterator<Listener> iterator = listeners.listIterator();
+					while (iterator.hasNext()) {
+						Listener listener = iterator.next(); 
+						listener.onDeviceAdded(DeviceFinder.this, projector);						
+					}
+				}
 			}
-		}
+			
+		});
+		
 	}
-	public void notifyListeneroOnDeviceRemoved(DeviceInfo projector) {
-		synchronized(listeners) {
-			Iterator<Listener> iterator = listeners.listIterator();
-			while (iterator.hasNext()) {
-				Listener listener = iterator.next(); 
-				listener.onDeviceRemoved(this, projector);						
-			}
-		}
+	public void notifyListeneroOnDeviceRemoved(final DeviceInfo projector) {
+		mainHandler.post(new Runnable() {
+
+			@Override
+			public void run() {
+				synchronized(listeners) {
+					Iterator<Listener> iterator = listeners.listIterator();
+					while (iterator.hasNext()) {
+						Listener listener = iterator.next(); 
+						listener.onDeviceRemoved(DeviceFinder.this, projector);						
+					}
+				}
+			}			
+		});			
 	}
 	private ArrayList<DeviceFinderBase> imps = new ArrayList<DeviceFinderBase>();
 	

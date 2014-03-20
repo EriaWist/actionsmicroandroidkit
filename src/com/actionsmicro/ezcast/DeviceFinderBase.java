@@ -12,7 +12,7 @@ public abstract class DeviceFinderBase {
 		return deviceFinderProxy;
 	}
 
-	public abstract List<DeviceInfo> getDevices();
+	public abstract List<? extends DeviceInfo> getDevices();
 
 	public abstract void stop();
 
