@@ -53,12 +53,12 @@ public class PigeonMessageApi implements MessageApi {
 
 	@Override
 	public void sendKeyAsync(int keyCode) {
-		projector.sendKey(keyCode);
+		projector.sendKeyTcp(keyCode);
 	}
 
 	@Override
 	public void sendKeySync(int keyCode) {
-		projector.sendKeyAndWait(keyCode);
+		projector.sendKeyTcpAndWait(keyCode);
 	}
 
 	@Override

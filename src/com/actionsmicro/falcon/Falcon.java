@@ -299,7 +299,7 @@ public class Falcon {
 			sendKey(1, keyCode, true, true);
 		}
 		public void sendVendorKey(final int keyCode) {
-			sendKey(10, keyCode, false);
+			sendKey(10, keyCode, false, true);
 		}
 		private void sendKey(final int commandCode, final int keyCode, final boolean wait) {
 			sendKey(commandCode, keyCode, wait, false);
