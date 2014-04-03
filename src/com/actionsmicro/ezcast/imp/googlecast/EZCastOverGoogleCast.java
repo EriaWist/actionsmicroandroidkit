@@ -252,7 +252,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			googleCastApiClient = null;
 		}
 
-		castDevice = null;
 	}
 	private void stopCurrentApplication() {
 		if (currentApplication != null) {
