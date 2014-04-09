@@ -21,7 +21,7 @@ import com.actionsmicro.utils.Log;
 public class AndroidRxFinder extends DeviceFinderBase {
 
 	private static final String TAG = "AndroidRxFinder";
-	public static final String SERVICE_TYPE = "_androidrx-actions-micro._tcp.";
+	public static final String SERVICE_TYPE = "_ezscreen._tcp.";
 	private NsdManager mNsdManager;
 	private List<AndroidRxInfo> devices = new ArrayList<AndroidRxInfo>();
 	private ResolveListener mResolveListener = new NsdManager.ResolveListener() {
