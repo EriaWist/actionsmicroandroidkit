@@ -96,30 +96,6 @@ public class AikaImpl extends Aika {
 					0, 0, mConfig);
 			mJmDNS.registerService(serviceInfo);
 			logger.log(Level.INFO, "Registered Service as " + serviceInfo);
-			
-			String macAddressWithoutCol = mDevice.getDeviceid().replace(":", "");
-			HashMap<String, String> txt = new HashMap<String, String>();					
-			txt.put("txtvers", "1");
-			txt.put("ch", "2");
-			txt.put("cn", "0,1,2,3");
-			txt.put("da", "true");
-			txt.put("et", "0,3,5");
-			txt.put("md", "0,1,2");
-			txt.put("pw", "false");
-			txt.put("sv", "false");
-			txt.put("sr", "44100");
-			txt.put("ss", "16");
-			txt.put("tp", "UDP");
-			txt.put("vn", "65537");
-			txt.put("vs", mConfig.containsKey("srcvers")?mConfig.get("srcvers"):"150.33");
-			txt.put("rmodel", mConfig.containsKey("rmodel")?mConfig.get("rmodel"):"EZAir1,1");
-			txt.put("am", mConfig.containsKey("model")?mConfig.get("model"):"AppleTV3,1");
-			txt.put("sf", "0x4");
-			serviceInfo = ServiceInfo.create("_raop._tcp.local.", macAddressWithoutCol+"@"+mName, 47000,
-					0, 0, txt);
-			
-			mJmDNS.registerService(serviceInfo);
-			logger.log(Level.INFO, "Registered Service as " + serviceInfo);
 			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
