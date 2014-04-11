@@ -22,10 +22,8 @@ public class DefaultHandler {
 	public void process() {
 		try {
 			if ("/reverse".equals(wrap.getContext())) {
-//				wrap.setReverse(true);
 				wrap.setResponseCode(101);
 			} else if ("/server-info".equals(wrap.getContext())) {
-//				wrap.setReverse(true);
 				wrap.setResponseCode(200);
 				wrap.getResponseHeads().put("Content-Type", "text/x-apple-plist+xml");
 				String res = AirplayUtil.getServerInfo(server.getDevice());
@@ -38,20 +36,12 @@ public class DefaultHandler {
 					int ratei = (int) ratef;
 					if (ratei == 1) {
 						server.getProxy().videoResume();
-						wrap.setReverse(true);
-						wrap.setReverseEvent(AirplayState.EVENT_PLAYING);
 					} else {
 						server.getProxy().videoPause();
-						wrap.setReverse(true);
-						wrap.setReverseEvent(AirplayState.EVENT_PAUSED);
 					}					
 				}
-//				String res = AirplayUtil.getServerInfo(server.getDevice());
-//				wrap.setBodys(res);
 			} else if ("/stop".equals(wrap.getContext())) {
 				server.getProxy().videoStop();
-				wrap.setReverse(true);
-				wrap.setReverseEvent(AirplayState.EVENT_STOPPED);
 			} else if ("/scrub".equals(wrap.getContext())) {
 				wrap.setResponseCode(200);
 				if ("GET".equals(wrap.getContext())) {
@@ -68,11 +58,6 @@ public class DefaultHandler {
 					String position = wrap.getRequestParameters().get("position");
 					server.getProxy().videoSeek((int)Float.valueOf(position).longValue());
 				}
-//				wrap.setReverse(true);
-//				if (server.getProxy().videoStatus() == 1
-//						|| server.getProxy().videoStatus() == 2) {
-//					wrap.setReverseEvent(AirplayState.EVENT_PLAYING);
-//				}
 			} else if ("/playback-info".equals(wrap.getContext())) {
 				playbackInfo();
 			} else if ("/play".equals(wrap.getContext())) {
@@ -117,8 +102,6 @@ public class DefaultHandler {
 					server.getProxy().video(url, rate, pos);
 					Thread.sleep(500);
 					wrap.setResponseCode(200);
-//					wrap.setReverse(true);
-//					wrap.setReverseEvent(AirplayState.EVENT_LOADING);
 				} else {
 					System.out.println("body="
 							+ wrap.getResponseBody().toString());
@@ -138,7 +121,6 @@ public class DefaultHandler {
 		try {
 			wrap.setResponseCode(200);
 			wrap.setResponse(true);
-//			wrap.setReverse(true);
 			int state = server.getProxy().videoStatus();
 			int duration = server.getProxy().videoDuration();
 			int position = server.getProxy().videoPostion();
