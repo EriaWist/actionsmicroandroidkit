@@ -1,5 +1,7 @@
 package vavi.apps.shairport;
 
+import com.actionsmicro.utils.Log;
+
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -11,6 +13,7 @@ import android.media.AudioTrack;
  * @author bencall
  */
 public class PCMPlayer extends Thread{
+	private static final String TAG = "PCMPlayer";
 	private AudioTrack track;
 	private AudioSession session;
 	private volatile long fix_volume = 0x10000;
@@ -30,13 +33,12 @@ public class PCMPlayer extends Thread{
 		                       AudioFormat.ENCODING_PCM_16BIT,
 		                       44100 * 2 * 4,
 		                       AudioTrack.MODE_STREAM);
+		Log.d(TAG, "Create AudioTrack:"+track+", state:"+track.getState());
 		track.play();
 	}
 	
 	public void run(){
-		boolean fin = stopThread;
-		
-		while(!fin){
+		while(!this.stopThread){
 			int[] buf = audioBuf.getNextFrame();
 			if(buf==null){
 				continue;
@@ -52,20 +54,23 @@ public class PCMPlayer extends Thread{
 			}
 			
 			track.write(input, 0, k * 2);
-			
-			// Stop
-			synchronized(this) {
-				Thread.yield();
-				fin = this.stopThread;
-			} 
+					
 		}
 
 		track.stop();
 		track.release();
+		Log.d(TAG, "Release AudioTrack:"+track);
+		
 	}
 	
-	public synchronized void stopThread(){
+	public void stopThread(){
 		this.stopThread = true;
+		try {
+			this.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	private int stuff_buffer(double playback_rate, int[] input, int[] output) {

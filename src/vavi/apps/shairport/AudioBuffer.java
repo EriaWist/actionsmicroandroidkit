@@ -96,7 +96,7 @@ public class AudioBuffer {
 					// We say the decoder is stopped and we wait for signal
 					Log.d("ShairPort", "Waiting");
 					decoder_isStopped = true;
-				    	lock.wait();
+				    	lock.wait(1000);
 				    decoder_isStopped = false;
 					Log.d("ShairPort", "re-starting");					
 					readIndex++;	// We read next packet
