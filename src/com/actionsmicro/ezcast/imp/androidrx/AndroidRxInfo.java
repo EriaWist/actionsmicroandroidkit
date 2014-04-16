@@ -2,6 +2,8 @@ package com.actionsmicro.ezcast.imp.androidrx;
 
 import java.net.InetAddress;
 
+import javax.jmdns.ServiceInfo;
+
 import android.annotation.TargetApi;
 import android.net.nsd.NsdServiceInfo;
 import android.os.Build;
@@ -20,16 +22,23 @@ import com.actionsmicro.ezcast.MessageApiBuilder;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class AndroidRxInfo extends DeviceInfo {
-	private NsdServiceInfo serviceInfo;
-
-	protected NsdServiceInfo getServiceInfo() {
-		return serviceInfo;
-	}
+	private int port;
+	private InetAddress address;
+	private String name;
 	public AndroidRxInfo(NsdServiceInfo serviceInfo) {
-		this.serviceInfo = serviceInfo;
+		this.port = serviceInfo.getPort();
+		this.address = serviceInfo.getHost();
+		this.name = serviceInfo.getServiceName();
 	}
 	public AndroidRxInfo(Parcel in) {
-		this.serviceInfo = NsdServiceInfo.CREATOR.createFromParcel(in);
+		port = in.readInt();
+		address = (InetAddress)in.readSerializable();
+		name = in.readString();
+	}
+	public AndroidRxInfo(ServiceInfo newService) {
+		this.port = newService.getPort();
+		this.address = newService.getInet4Address();
+		this.name = newService.getName();
 	}
 	public static final Parcelable.Creator<AndroidRxInfo> CREATOR = new Parcelable.Creator<AndroidRxInfo>() {
 		public AndroidRxInfo createFromParcel(Parcel in) {
@@ -42,17 +51,19 @@ public class AndroidRxInfo extends DeviceInfo {
 	};
 	@Override
 	public int describeContents() {
-		return serviceInfo.describeContents();
+		return 0;
 	}
 
 	@Override
-	public void writeToParcel(Parcel arg0, int arg1) {
-		serviceInfo.writeToParcel(arg0, arg1);
+	public void writeToParcel(Parcel parcel, int flags) {
+		parcel.writeInt(port);
+		parcel.writeSerializable(address);
+		parcel.writeString(name);
 	}
 
 	@Override
 	public InetAddress getIpAddress() {
-		return serviceInfo.getHost();
+		return address;
 	}
 
 	@Override
@@ -82,7 +93,7 @@ public class AndroidRxInfo extends DeviceInfo {
 
 	@Override
 	public String getName() {
-		return serviceInfo.getServiceName();
+		return name;
 	}
 
 	private static final long SERVICE_PHOTO			=	0x01;
@@ -138,7 +149,7 @@ public class AndroidRxInfo extends DeviceInfo {
 		return new AndroidRxMediaPlayerApi(mediaPlayerApiBuilder);
 	}
 	public int getPort() {
-		return serviceInfo.getPort();
+		return this.port;		
 	}
 	@Override
 	public boolean supportMediaFileExtension(String fileExtension) {

@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import javax.jmdns.JmmDNS;
+import javax.jmdns.ServiceEvent;
+import javax.jmdns.ServiceInfo;
+import javax.jmdns.ServiceListener;
+
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.net.nsd.NsdManager;
@@ -23,6 +28,7 @@ public class AndroidRxFinder extends DeviceFinderBase {
 	private static final String TAG = "AndroidRxFinder";
 	public static final String SERVICE_TYPE = "_ezscreen._tcp.";
 	private NsdManager mNsdManager;
+	private JmmDNS mDns = JmmDNS.Factory.getInstance();
 	private List<AndroidRxInfo> devices = new ArrayList<AndroidRxInfo>();
 	private ResolveListener mResolveListener = new NsdManager.ResolveListener() {
 
@@ -95,7 +101,6 @@ public class AndroidRxFinder extends DeviceFinderBase {
 	public AndroidRxFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy);
 		mNsdManager = (NsdManager)deviceFinderProxy.getContext().getSystemService(Context.NSD_SERVICE);
-
 	}
 
 	@Override
@@ -106,11 +111,39 @@ public class AndroidRxFinder extends DeviceFinderBase {
 	@Override
 	public synchronized void stop() {
 		if (searching) {
-			mNsdManager.stopServiceDiscovery(mDiscoveryListener);
+//			mNsdManager.stopServiceDiscovery(mDiscoveryListener);
+			mDns.removeServiceListener(SERVICE_TYPE+"local.", serviceListener);
 			searching = false;
 		}
 	}
+	private ServiceListener serviceListener = new ServiceListener() {
 
+		@Override
+		public void serviceAdded(ServiceEvent event) {
+			Log.d(TAG, "Service added: "  + event.getInfo() + " " + event.getName() + " " + event.getInfo().getPropertyString("passcode"));
+			event.getDNS().requestServiceInfo(event.getType(), event.getName(), true, 3 * 60*1000);
+		}
+
+		@Override
+		public void serviceRemoved(ServiceEvent event) {
+			Log.d(TAG, "Service removed: " + event.getInfo());
+			AndroidRxInfo deviceFound = getDeviceFromService(event.getInfo());
+            if (deviceFound != null) {
+            	removeDevice(deviceFound);
+                getDeviceFinderProxy().notifyListeneroOnDeviceRemoved(deviceFound);
+            }
+		}
+
+		@Override
+		public void serviceResolved(ServiceEvent event) {
+			ServiceInfo newService = event.getInfo();
+			Log.d(TAG, "Service resolved: " + newService);
+			AndroidRxInfo newDevice = new AndroidRxInfo(newService);
+			addDevice(newDevice);
+			getDeviceFinderProxy().notifyListeneroOnDeviceAdded(newDevice);
+		}
+		
+	};
 	@Override
 	public synchronized void search() {
 		if (!searching) {
@@ -118,12 +151,24 @@ public class AndroidRxFinder extends DeviceFinderBase {
 			synchronized (devices) {
 				devices.clear();
 			}
-			mNsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, mDiscoveryListener);
+//			mNsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, mDiscoveryListener);
+			mDns.addServiceListener(SERVICE_TYPE+"local.", serviceListener);
 		} else {
 			for (AndroidRxInfo device : devices) {
 				getDeviceFinderProxy().notifyListeneroOnDeviceAdded(device);
 			}			
 		}
+	}
+
+	protected AndroidRxInfo getDeviceFromService(ServiceInfo info) {
+		AndroidRxInfo deviceFound = null;
+		for (AndroidRxInfo device : devices) {
+			if (device.getName().replace("\\032", " ").equals(info.getName().replace("\\032", " "))) {
+				deviceFound = device;
+				break;
+			}
+		}
+		return deviceFound;
 	}
 
 	private void addDevice(AndroidRxInfo newDevice) {
@@ -143,7 +188,7 @@ public class AndroidRxFinder extends DeviceFinderBase {
 	private AndroidRxInfo getDeviceFromService(NsdServiceInfo service) {
 		AndroidRxInfo deviceFound = null;
 		for (AndroidRxInfo device : devices) {
-			if (device.getServiceInfo().getServiceName().replace("\\032", " ").equals(service.getServiceName().replace("\\032", " "))) {
+			if (device.getName().replace("\\032", " ").equals(service.getServiceName().replace("\\032", " "))) {
 				deviceFound = device;
 				break;
 			}
