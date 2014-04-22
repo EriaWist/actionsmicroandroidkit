@@ -107,6 +107,8 @@ LOCAL_SRC_FILES := fairplay/code1.c \
 		fairplay/code97.c \
 		fairplay/interface.c \
 		fairplay_jni.c \
+		ez_aes.c \
+		ez_aes_jni.c \
 
 LOCAL_LDLIBS    := -llog
 
