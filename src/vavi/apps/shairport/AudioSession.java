@@ -35,19 +35,21 @@ public class AudioSession {
 		this.timingPort = timingPort;
 		
 		// FMTP
-		frameSize = fmtp[1];
-		_7a = fmtp[2];
-		sampleSize = fmtp[3];
-		rice_historymult = fmtp[4];
-		rice_initialhistory = fmtp[5];
-		rice_kmodifier = fmtp[6];
-		_7f = fmtp[7];
-		_80 = fmtp[8];
-		_82 = fmtp[9];
-		_86 = fmtp[10];
-		_8a_rate = fmtp[11];
+		if (fmtp.length >= 12) {
+			frameSize = fmtp[1];
+			_7a = fmtp[2];
+			sampleSize = fmtp[3];
+			rice_historymult = fmtp[4];
+			rice_initialhistory = fmtp[5];
+			rice_kmodifier = fmtp[6];
+			_7f = fmtp[7];
+			_80 = fmtp[8];
+			_82 = fmtp[9];
+			_86 = fmtp[10];
+			_8a_rate = fmtp[11];
+			initDecoder();
+		}
 		
-		initDecoder();
 	}
 	
 	/**

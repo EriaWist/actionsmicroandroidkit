@@ -110,7 +110,11 @@ public class RTSPResponder extends Thread{
         			String[] temp = m.group(2).split(" ");
         			fmtp = new int[temp.length];
         			for (int i = 0; i< temp.length; i++){
-        				fmtp[i] = Integer.valueOf(temp[i]);
+        				try {
+        					fmtp[i] = Integer.valueOf(temp[i]);
+        				} catch (NumberFormatException e) {
+        					e.printStackTrace();
+        				}
         			}
         			
         		} else if(m.group(1).contentEquals("rsaaeskey")){
@@ -119,7 +123,7 @@ public class RTSPResponder extends Thread{
         			aesiv = Base64.decode(m.group(2), Base64.DEFAULT);
         		} else if (m.group(1).contentEquals("fpaeskey")) {
         			byte fpaeskey[] = Base64.decode(m.group(2), Base64.DEFAULT);
-        			aeskey = FairPlay.fp_decrypt(fpaeskey, fpaeskey.length);
+        			aeskey = FairPlay.decrypt(fpaeskey, fpaeskey.length);
         		}
         	}
         	
@@ -312,14 +316,14 @@ public class RTSPResponder extends Thread{
 						ByteArrayBuffer body = new ByteArrayBuffer(contentLength);
 						body.append(packageData, fply_offset, contentLength);
 						if (packageData[fply_offset+6] == 1) {
-							FairPlay.fp_setup_init();
+							FairPlay.init();
 							try {
 								Thread.sleep(100);
 							} catch (InterruptedException e) {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
-							byte responseData[] = FairPlay.fp_setup_phase1(body.buffer(), body.length(), true);
+							byte responseData[] = FairPlay.setupPhase1(body.buffer(), body.length(), true);
 							Log.d("fairplay", "responseData.length:"+responseData.length);	
 							RTSPResponse response = new RTSPResponse("RTSP/1.0 200 OK");
 							response.append("Content-Type", "application/octet-stream");
@@ -346,7 +350,7 @@ public class RTSPResponder extends Thread{
 							Log.d("ShairPort", sb.toString());
 
 						} else if (packageData[fply_offset+6] == 3) {
-							byte responseData[] = FairPlay.fp_setup_phase2(body.buffer(), body.length(), true);
+							byte responseData[] = FairPlay.setupPhase2(body.buffer(), body.length(), true);
 							RTSPResponse response = new RTSPResponse("RTSP/1.0 200 OK");
 							response.append("Content-Type", "application/octet-stream");
 							response.append("Content-Length", String.valueOf(responseData.length));
