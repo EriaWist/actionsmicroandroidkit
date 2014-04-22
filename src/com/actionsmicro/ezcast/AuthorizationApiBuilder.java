@@ -3,8 +3,6 @@ package com.actionsmicro.ezcast;
 import android.content.Context;
 
 import com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener;
-import com.actionsmicro.ezcast.imp.ezdisplay.PigeonAuthorizationApi;
-import com.actionsmicro.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 
 public class AuthorizationApiBuilder extends ApiBuilder<AuthorizationApi> {
 	private AuthorizationListener authorizationListener;
@@ -17,9 +15,6 @@ public class AuthorizationApiBuilder extends ApiBuilder<AuthorizationApi> {
 	}
 	@Override
 	public AuthorizationApi build() {
-		if (getDevice() instanceof PigeonDeviceInfo) {
-			return new PigeonAuthorizationApi(this);
-		}		
 		return getDevice().createAuthorizationApi(this);
 	}
 	public AuthorizationListener getAuthorizationListener() {
