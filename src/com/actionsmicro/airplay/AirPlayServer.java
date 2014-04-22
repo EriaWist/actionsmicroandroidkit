@@ -1,30 +1,55 @@
 package com.actionsmicro.airplay;
 
+import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceInfo;
-
-import com.yutel.silver.Aika;
-import com.yutel.silver.exception.AirplayException;
-import com.yutel.silver.vo.Device;
 
 import vavi.apps.shairport.RTSPResponder;
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import com.dd.plist.BinaryPropertyListParser;
+import com.dd.plist.NSData;
+import com.dd.plist.NSDictionary;
+import com.dd.plist.NSNumber;
+import com.dd.plist.PropertyListFormatException;
+import com.koushikdutta.async.AsyncServer;
+import com.koushikdutta.async.ByteBufferList;
+import com.koushikdutta.async.DataEmitter;
+import com.koushikdutta.async.DataEmitterReader;
+import com.koushikdutta.async.FilteredDataEmitter;
+import com.koushikdutta.async.callback.CompletedCallback;
+import com.koushikdutta.async.callback.DataCallback;
+import com.koushikdutta.async.http.body.AsyncHttpRequestBody;
+import com.koushikdutta.async.http.server.AsyncHttpServer;
+import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
+import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
+import com.koushikdutta.async.http.server.HttpServerRequestCallback;
+import com.koushikdutta.async.http.server.UnknownRequestBody;
+import com.yutel.silver.Aika;
+import com.yutel.silver.exception.AirplayException;
+import com.yutel.silver.vo.Device;
+
 public class AirPlayServer {
 	private static final String AIRPLAY_MODEL = "AppleTV3,1";
 	private static final String AIRPLAYER_VERSION_STRING = "150.33";
+	protected static final String TAG = "AirPlayServer";
 	public interface AirPlayServerDelegate {
 
 		void loadVideo(String url, float rate, float position);
@@ -52,6 +77,7 @@ public class AirPlayServer {
 	private Aika airplayService;
 	private AirPlayServerDelegate delegate;
 	protected JmDNS jmDNS;
+	private AsyncHttpServer mirrorServer;
 	public AirPlayServer(Context context, InetAddress inetAddress, String name, AirPlayServerDelegate delegate) {
 		this.context = context;
 		this.inetAddress = inetAddress;
@@ -75,17 +101,18 @@ public class AirPlayServer {
 		try {
 			init.join();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 	}
 	public void stop() {
+		if (mirrorServer != null) {
+			mirrorServer.stop();
+			mirrorServer = null;
+		}
 		if (raopThread != null) {
 			stopRaopThread = true;
 			try {
 				raopThread.join();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -95,6 +122,273 @@ public class AirPlayServer {
 		}
 	}
 	private void initAirplayService() {
+		mirrorServer = new AsyncHttpServer() {
+			@Override
+			protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+				Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+		    }
+		};
+		mirrorServer.get("/stream.xml", new HttpServerRequestCallback() {
+
+			@Override
+			public void onRequest(AsyncHttpServerRequest request,
+					AsyncHttpServerResponse response) {
+				NSDictionary dict = new NSDictionary();
+				dict.put("height", NSNumber.wrap(720));
+				dict.put("width", NSNumber.wrap(1280));
+				dict.put("version", "150.33");
+				response.send("text/x-apple-plist+xml", dict.toXMLPropertyList());
+			}
+			
+		});
+		mirrorServer.post("/fp-setup", new HttpServerRequestCallback() {
+
+			@Override
+			public void onRequest(final AsyncHttpServerRequest request,
+					final AsyncHttpServerResponse response) {
+				final int contentLength = request.getHeaders().getContentLength();
+				final byte body[] = new byte[contentLength];
+				final AsyncHttpRequestBody requestBody = request.getBody();
+				if (requestBody instanceof UnknownRequestBody) {
+					((UnknownRequestBody)requestBody).setCallbacks(new DataCallback() {
+
+						@Override
+						public void onDataAvailable(DataEmitter emitter,
+								ByteBufferList bb) {
+							Log.d(TAG, "onDataAvailable:"+bb.remaining());						
+							bb.get(body);
+						}
+						
+					}, new CompletedCallback() {
+						
+						@Override
+						public void onCompleted(Exception ex) {
+							Log.d(TAG, "onCompleted:"+body.length);						
+							EndEmitter ender = EndEmitter.create(request.getSocket().getServer(), null);
+							ender.setDataEmitter(request);
+							ender.setEndCallback((CompletedCallback)request);
+							if (body[6] == 1) {
+								FairPlay.init();
+								try {
+									Thread.sleep(100);
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
+								byte responseData[] = FairPlay.setupPhase1(body, body.length, false);
+								response.setContentType("application/octet-stream");
+								response.getHeaders().getHeaders().add("Server", "AirTunes/150.33");
+								response.sendStream(new ByteArrayInputStream(responseData), responseData.length);
+							} else if (body[6] == 3) {
+								byte responseData[] = FairPlay.setupPhase2(body, body.length, false);
+								response.setContentType("application/octet-stream");
+								response.getHeaders().getHeaders().add("Server", "AirTunes/150.33");
+								response.sendStream(new ByteArrayInputStream(responseData), responseData.length);
+							} else {
+								response.responseCode(404);
+								response.end();
+							}
+							response.setClosedCallback(new CompletedCallback() {
+
+								@Override
+								public void onCompleted(Exception ex) {
+									Log.d(TAG, "respones closed");
+								}
+								
+							});
+						}
+						
+					});
+				}
+			}
+			
+		});
+		mirrorServer.post("/stream", new HttpServerRequestCallback() {
+			private long totalRead = 0;
+			@Override
+			public void onRequest(final AsyncHttpServerRequest request,
+					final AsyncHttpServerResponse response) {
+				totalRead = 0;
+				final int contentLength = request.getHeaders().getContentLength();
+				final byte body[] = new byte[contentLength];
+				final AsyncHttpRequestBody requestBody = request.getBody();				
+				if (requestBody instanceof UnknownRequestBody) {
+					((UnknownRequestBody)requestBody).setCallbacks(new DataCallback() {
+
+
+						@Override
+						public void onDataAvailable(DataEmitter emitter,
+								ByteBufferList bb) {
+							Log.d(TAG, "onDataAvailable:"+bb.remaining());						
+							totalRead += bb.remaining();
+							bb.get(body);
+							try {
+								NSDictionary streamInfo = (NSDictionary)BinaryPropertyListParser.parse(body);
+								Log.d(TAG, streamInfo.toXMLPropertyList());
+								byte[] aesKey = ((NSData)streamInfo.get("param1")).bytes();
+								aesKey = FairPlay.decrypt(aesKey, aesKey.length);
+								byte[] iv = ((NSData)streamInfo.get("param2")).bytes();
+								EzAes.init(aesKey, iv);								
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							} catch (PropertyListFormatException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							} 
+						}
+						
+					}, new CompletedCallback() {
+						
+						private DataCallback headerCallback;
+						private FileOutputStream testFile;
+						private final boolean DUMP_H264 = false; 
+						@Override
+						public void onCompleted(Exception ex) {
+							Log.d(TAG, "onCompleted:"+totalRead);
+							final DataEmitterReader headerReader = new DataEmitterReader();
+							request.getSocket().setDataCallback(headerReader);
+							headerReader.read(128, headerCallback = new DataCallback() {
+								private ByteBuffer header = ByteBuffer.allocate(128);
+								void logBytes(String prefix, byte[] buffer) {
+									if (buffer.length >= 8) {
+										Log.d(TAG, prefix+String.format("[%02x %02x %02x %02x  %02x %02x %02x %02x]", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]));
+									} else if (buffer.length >= 4) {
+										Log.d(TAG, prefix+String.format("[%02x %02x %02x %02x]", buffer[0], buffer[1], buffer[2], buffer[3]));										
+									}
+								}
+								@Override
+								public void onDataAvailable(
+										DataEmitter emitter, ByteBufferList bb) {
+									header.position(0);
+									bb.get(header.array());
+									header.order(ByteOrder.LITTLE_ENDIAN);
+									final int payloadSize = header.getInt();
+									final int payloadType = header.getShort();
+									final int header_3 = header.getShort();
+									final long timestamp = header.getLong();
+									Log.d(TAG, "onDataAvailable:streaming:"+"payload size:"+payloadSize+", payload type:"+payloadType+", header3:"+header_3+", timestamp:"+timestamp);
+									DataEmitterReader payloadReader = new DataEmitterReader();
+									request.getSocket().setDataCallback(payloadReader);
+									payloadReader.read(payloadSize, new DataCallback() {
+										private ByteBuffer payload = ByteBuffer.allocate(64*1024);
+										private ByteBuffer h264Frame = ByteBuffer.allocate(64*1024);
+										private int numberOfSps;
+										private byte[] sps;
+										private byte numberOfPps;
+										private byte[] pps;
+										private byte[] nal = {0x00, 0x00, 0x00, 0x01};
+										@Override
+										public void onDataAvailable(
+												DataEmitter emitter,
+												ByteBufferList bb) {
+											payload.position(0);
+											bb.get(payload.array(), 0, payloadSize);
+											Log.d(TAG, "onDataAvailable:streaming:"+payloadSize+" bytes of payload read");
+											if (payloadType == 0) { // video bitstream
+												logBytes("onDataAvailable:streaming:payload:", payload.array());
+												h264Frame.position(0);			
+												EzAes.decrypt(payload.array(), payloadSize, h264Frame.array());
+												int h264FrameSize = h264Frame.position();
+												Log.d(TAG, "onDataAvailable:streaming:h.264(1) frame size:"+h264FrameSize);
+												logBytes("onDataAvailable:streaming:h.264:", h264Frame.array());
+//												h264Frame.order(ByteOrder.BIG_ENDIAN);
+												h264Frame.position(0);
+												int length = 0;
+												int offset = 0;
+												while (offset < payloadSize) {
+													length = h264Frame.getInt();
+													Log.d(TAG, String.format("onDataAvailable:streaming:h.264 frame length:%d", length));
+													if (length == 0) {
+														break;
+													}
+													h264Frame.position(h264Frame.position()-4);
+													h264Frame.put(nal);
+													h264Frame.position(h264Frame.position()+length);
+												}
+												if (testFile != null) {
+													try {
+														testFile.write(h264Frame.array(), 0, payloadSize);
+													} catch (IOException e) {
+														e.printStackTrace();
+													}
+												}
+												
+											} else if (payloadType == 1) { //codec data
+												
+												try {
+													if (testFile != null) {
+														testFile.close();
+														testFile = null;
+													}
+													if (DUMP_H264) {
+														testFile = new FileOutputStream("/sdcard/test"+".h264");
+													}
+													payload.order(ByteOrder.BIG_ENDIAN);
+													payload.position(5);
+													numberOfSps = payload.get()&0x1f;
+													short sizeOfSps = payload.getShort();
+													sps = new byte[sizeOfSps];
+													payload.get(sps);
+													if (testFile != null) {
+														testFile.write(nal);
+														testFile.write(sps);
+													}
+													Log.d(TAG, "onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
+													logBytes("onDataAvailable:streaming:sps:", sps);
+
+													numberOfPps = payload.get();
+													short sizeOfPps = payload.getShort();
+													pps = new byte[sizeOfPps];
+													payload.get(pps);
+													if (testFile != null) {
+														testFile.write(nal);
+														testFile.write(pps);
+													}
+													Log.d(TAG, "onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
+													logBytes("onDataAvailable:streaming:pps:", pps);
+												} catch (FileNotFoundException e) {
+													Log.e(TAG, "onDataAvailable:streaming:codecifo", e);
+												} catch (IOException e) {
+													Log.e(TAG, "onDataAvailable:streaming:codecifo", e);
+												}
+											} else if (payloadType == 2) { // heartbeat
+												
+											}
+											request.getSocket().setDataCallback(headerReader);
+											headerReader.read(128, headerCallback);
+										}
+										
+									});
+									
+								}
+								
+							});
+							request.getSocket().setEndCallback(new CompletedCallback() {
+
+								@Override
+								public void onCompleted(Exception ex) {
+									Log.d(TAG, "onCompleted:streaming:"+totalRead);						
+									if (testFile != null) {
+										try {
+											testFile.close();
+										} catch (IOException e) {
+											e.printStackTrace();
+										}
+										testFile = null;
+									}
+								}
+								
+							});
+						}
+						
+					});
+				}
+			}
+			
+		});
+		mirrorServer.listen(7100);
+		Log.d(TAG, "Mirror server listening on 7100");
+		
 		airplayService = Aika.create(inetAddress, 0, name);
 		Device dev = new Device();
 		dev.setDeviceid(getMacAddress());
@@ -155,7 +449,7 @@ public class AirPlayServer {
 				return delegate.getVideoDuration();
 			}
 		});
-		airplayService.start();
+		airplayService.start();		
 	}
 	private String getMacAddress() {
 		WifiManager wim= (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
@@ -173,9 +467,10 @@ public class AirPlayServer {
 				
 				ServerSocket servSock = null;
 				try {
-					servSock = new ServerSocket(RAOP_PORTNUMBER);
+					servSock = new ServerSocket();
 					servSock.setReuseAddress(true);
 					servSock.setSoTimeout(1000);
+					servSock.bind(new InetSocketAddress(RAOP_PORTNUMBER));
 					registerRaopService();
 					byte[] hwAddr = getHardwareAdress();
 					while (!stopRaopThread) {
@@ -190,6 +485,16 @@ public class AirPlayServer {
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
+				} finally {
+					jmDNS.unregisterAllServices();
+					try {
+						if (servSock != null) {
+							servSock.close();
+						}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 			private byte[] getHardwareAdress() {
@@ -252,4 +557,21 @@ public class AirPlayServer {
 			e1.printStackTrace();
 		}
 	}
+	static class EndEmitter extends FilteredDataEmitter {
+        private EndEmitter() {
+        }
+        
+        public static EndEmitter create(AsyncServer server, final Exception e) {
+            final EndEmitter ret = new EndEmitter();
+            // don't need to worry about any race conditions with post and this return value
+            // since we are in the server thread.
+            server.post(new Runnable() {
+                @Override
+                public void run() {
+                    ret.report(e);
+                }
+            });
+            return ret;
+        }
+    }
 }
