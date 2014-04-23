@@ -108,12 +108,16 @@ public class AikaImpl extends Aika {
 	public void stop() {
 		try {
 			// jmdns
-			if (mJmDNS != null) {
-				mJmDNS.unregisterAllServices();
-				mJmDNS.close();
-				mJmDNS = null;
-				logger.log(Level.INFO, "JmDNS stoped");
-			}
+			final JmDNS mJmDNS2 = mJmDNS;
+			new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					cleanUpJmDNS(mJmDNS2);					
+				}
+				
+			}).start();
+			mJmDNS = null;
 			// http
 			if (as != null) {
 				as.forceStop();
@@ -121,6 +125,19 @@ public class AikaImpl extends Aika {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+		}
+	}
+
+	private void cleanUpJmDNS(JmDNS mJmDNS2) {
+		if (mJmDNS2 != null) {
+			mJmDNS2.unregisterAllServices();
+			try {
+				mJmDNS2.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			logger.log(Level.INFO, "JmDNS stoped");
 		}
 	}
 
