@@ -38,7 +38,11 @@ import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.JpegCallback;
 import com.yutel.silver.vo.AirplayState;
 
 public class EZScreenHelper {
-	protected static final String TAG = "EZScreenHelper";
+	public interface ConnectionListener {
+		public void onConnected();
+		public void onDisconnected();
+	}
+	private static final String TAG = "EZScreenHelper";
 	private WebView webView;
 	private TextureView textureView;
 	private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -62,7 +66,7 @@ public class EZScreenHelper {
 	private AudioManager audio;
 	private Context context;
 	private String serviceName;
-
+	private ConnectionListener connectionListener;
 	public String getServiceName() {
 		return serviceName;
 	}
@@ -413,7 +417,7 @@ public class EZScreenHelper {
 		WifiManager wim= (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 		return Formatter.formatIpAddress(wim.getConnectionInfo().getIpAddress());
 	}
-	protected void playVideo(final String url, String callback) {
+	private void playVideo(final String url, String callback) {
 		if (callback != null) {
 			invokeJavascript("javascript:playVideo('"+url+"','"+callback+"');");
 		} else {
@@ -464,11 +468,17 @@ public class EZScreenHelper {
 				@Override
 				public void onDisconnected() {
 					EZScreenHelper.this.resetToStandby();
+					if (connectionListener != null) {
+						connectionListener.onConnected();
+					}
 				}
 
 				@Override
 				public void onConnected() {
 					EZScreenHelper.this.displayUrl("images/connected.jpg");	
+					if (connectionListener != null) {
+						connectionListener.onConnected();
+					}
 				}
 				
 				@Override
@@ -535,6 +545,9 @@ public class EZScreenHelper {
 					Log.d(TAG, "loadVideo.rate:"+rate);
 					Log.d(TAG, "loadVideo.position:"+position);
 					resetStates();
+					if (connectionListener != null) {
+						connectionListener.onConnected();
+					}
 					EZScreenHelper.this.setPendingStartingPosition(position);
 					playVideo(url, null, true/*rate!=0*/, 0);
 				}
@@ -564,7 +577,7 @@ public class EZScreenHelper {
 
 	}
 
-	protected void playVideo(String url, String callback, boolean autoplay, int startpos) {
+	private void playVideo(String url, String callback, boolean autoplay, int startpos) {
 		if (callback != null) {
 			invokeJavascript("javascript:playVideoImp('"+url+"','"+callback+"'"+ (autoplay?"true, ":"false, ")+ startpos+");");
 		} else {
@@ -657,5 +670,13 @@ public class EZScreenHelper {
 			this.getLock().release();
 			this.setLock(null);
 		}
+	}
+
+	public ConnectionListener getConnectionListener() {
+		return connectionListener;
+	}
+
+	public void setConnectionListener(ConnectionListener connectionListener) {
+		this.connectionListener = connectionListener;
 	}
 }
