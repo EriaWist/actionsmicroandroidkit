@@ -76,35 +76,55 @@ public class EzScreenServer {
 		
 	};
 	private JmDNS jmDNS;
+	private ServiceInfo serviceInfo;
 	private static final int HEARTBEAT_TIMEOUT = 3000;
 	public void start() {
+		Thread initThread = new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				Thread thisThread = Thread.currentThread();
+				initEzAndroidRx();	
+				synchronized (thisThread) {
+					thisThread.notifyAll();
+				}
+			}
+			
+		});
+		initThread.start();
+	}
+	public synchronized void stop() {
+		final JmDNS jmDNS2 = jmDNS;
+		final ServiceInfo serviceInfo2 = serviceInfo;
 		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
-				initEzAndroidRx();				
+				cleanUpMdns(jmDNS2, serviceInfo2);
 			}
 			
 		}).start();
-	}
-	public void stop() {
-		if (jmDNS != null) {
-			jmDNS.unregisterAllServices();
-			try {
-				jmDNS.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			jmDNS = null;
-		}
+		jmDNS = null;
 		mainHandler.removeCallbacks(resetToStandby);
 		if (jsonRpcOverHttpServer != null) {
 			jsonRpcOverHttpServer.stop();
 			jsonRpcOverHttpServer = null;
 		}
 	}
-	private void initEzAndroidRx() {
+	private void cleanUpMdns(JmDNS jmDns, ServiceInfo serviceInfo) {
+		if (jmDns != null) {
+			if (serviceInfo != null) {
+				jmDns.unregisterService(serviceInfo);
+			}
+			try {
+				jmDns.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	private synchronized void initEzAndroidRx() {
 		jsonRpcOverHttpServer = new JsonRpcOverHttpServer(context, 0) {
 			@Override 
 			public Response serve(IHTTPSession session) {
@@ -197,7 +217,7 @@ public class EzScreenServer {
 			
 			jmDNS = JmDNS.create(inetAddress);
 			HashMap<String, String> txtRecord = new HashMap<String, String>();					
-			ServiceInfo serviceInfo = ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord);
+			serviceInfo = ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord);
 			jmDNS.registerService(serviceInfo);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
