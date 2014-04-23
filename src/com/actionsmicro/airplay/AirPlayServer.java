@@ -486,7 +486,7 @@ public class AirPlayServer {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} finally {
-					jmDNS.unregisterAllServices();
+					cleanUpMdns();
 					try {
 						if (servSock != null) {
 							servSock.close();
@@ -556,6 +556,25 @@ public class AirPlayServer {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+	}
+	private void cleanUpMdns() {
+		
+		final JmDNS jmDNS2 = jmDNS;
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				jmDNS2.unregisterAllServices();
+				try {
+					jmDNS2.close();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+			
+		}).start();
+		jmDNS = null;
+		
 	}
 	static class EndEmitter extends FilteredDataEmitter {
         private EndEmitter() {
