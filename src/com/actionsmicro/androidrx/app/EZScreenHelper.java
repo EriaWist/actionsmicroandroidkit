@@ -469,7 +469,7 @@ public class EZScreenHelper {
 				public void onDisconnected() {
 					EZScreenHelper.this.resetToStandby();
 					if (connectionListener != null) {
-						connectionListener.onConnected();
+						connectionListener.onDisconnected();
 					}
 				}
 
