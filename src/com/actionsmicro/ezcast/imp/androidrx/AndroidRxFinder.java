@@ -100,7 +100,7 @@ public class AndroidRxFinder extends DeviceFinderBase {
 
 	public AndroidRxFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy);
-		mNsdManager = (NsdManager)deviceFinderProxy.getContext().getSystemService(Context.NSD_SERVICE);
+//		mNsdManager = (NsdManager)deviceFinderProxy.getContext().getSystemService(Context.NSD_SERVICE);
 	}
 
 	@Override
@@ -152,7 +152,14 @@ public class AndroidRxFinder extends DeviceFinderBase {
 				devices.clear();
 			}
 //			mNsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, mDiscoveryListener);
-			mDns.addServiceListener(SERVICE_TYPE+"local.", serviceListener);
+			new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					mDns.addServiceListener(SERVICE_TYPE+"local.", serviceListener);
+				}
+				
+			}).start();
 		} else {
 			for (AndroidRxInfo device : devices) {
 				getDeviceFinderProxy().notifyListeneroOnDeviceAdded(device);
