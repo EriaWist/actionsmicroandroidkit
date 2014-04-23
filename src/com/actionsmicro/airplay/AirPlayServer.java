@@ -560,19 +560,21 @@ public class AirPlayServer {
 	private void cleanUpMdns() {
 		
 		final JmDNS jmDNS2 = jmDNS;
-		new Thread(new Runnable() {
+		if (jmDNS2 != null) {
+			new Thread(new Runnable() {
 
-			@Override
-			public void run() {
-				jmDNS2.unregisterAllServices();
-				try {
-					jmDNS2.close();
-				} catch (IOException e1) {
-					e1.printStackTrace();
+				@Override
+				public void run() {
+					jmDNS2.unregisterAllServices();
+					try {
+						jmDNS2.close();
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
 				}
-			}
-			
-		}).start();
+
+			}).start();
+		}
 		jmDNS = null;
 		
 	}
