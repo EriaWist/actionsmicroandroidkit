@@ -285,8 +285,8 @@ public class AirPlayServer {
 									DataEmitterReader payloadReader = new DataEmitterReader();
 									request.getSocket().setDataCallback(payloadReader);
 									payloadReader.read(payloadSize, new DataCallback() {
-										private ByteBuffer payload = ByteBuffer.allocate(64*1024);
-										private ByteBuffer h264Frame = ByteBuffer.allocate(64*1024);
+										private ByteBuffer payload = ByteBuffer.allocate(500*1024);
+										private ByteBuffer h264Frame = ByteBuffer.allocate(500*1024);
 										private int numberOfSps;
 										private byte[] sps;
 										private byte numberOfPps;
@@ -296,63 +296,70 @@ public class AirPlayServer {
 										public void onDataAvailable(
 												DataEmitter emitter,
 												ByteBufferList bb) {
-											payload.position(0);
-											bb.get(payload.array(), 0, payloadSize);
-											Log.d(TAG, "onDataAvailable:streaming:"+payloadSize+" bytes of payload read");
-											if (payloadType == 0) { // video bitstream
-												logBytes("onDataAvailable:streaming:payload:", payload.array());
-												h264Frame.position(0);			
-												EzAes.decrypt(payload.array(), payloadSize, h264Frame.array());
-												logBytes("onDataAvailable:streaming:h.264:", h264Frame.array());
-												h264Frame.order(ByteOrder.BIG_ENDIAN);
-												h264Frame.position(0);
-												int length = 0;
-												int offset = 0;
-												while (offset < payloadSize-4) {
-													length = h264Frame.getInt();
-													Log.d(TAG, String.format("onDataAvailable:streaming:h.264 frame offset: %d, length:%d ", offset, length));
-													if (length == 0) {
-														break;
+											try {
+												payload.position(0);
+												bb.get(payload.array(), 0, payloadSize);
+												Log.d(TAG, "onDataAvailable:streaming:"+payloadSize+" bytes of payload read");
+												if (payloadType == 0) { // video bitstream
+													logBytes("onDataAvailable:streaming:payload:", payload.array());
+													h264Frame.position(0);			
+													EzAes.decrypt(payload.array(), payloadSize, h264Frame.array());
+													logBytes("onDataAvailable:streaming:h.264:", h264Frame.array());
+													h264Frame.order(ByteOrder.BIG_ENDIAN);
+													h264Frame.position(0);
+													int length = 0;
+													int offset = 0;
+													while (offset < payloadSize-4) {
+														length = h264Frame.getInt();
+														Log.d(TAG, String.format("onDataAvailable:streaming:h.264 frame offset: %d, length:%d ", offset, length));
+														if (length == 0) {
+															break;
+														}
+														offset += 4+length;
+														h264Frame.position(h264Frame.position()-4);
+														h264Frame.put(nal);
+														h264Frame.position(h264Frame.position()+length);
 													}
-													offset += 4+length;
-													h264Frame.position(h264Frame.position()-4);
-													h264Frame.put(nal);
-													h264Frame.position(h264Frame.position()+length);
-												}
-												if (delegate != null) {
-													delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, timestamp);
-												}
-												
-												
-											} else if (payloadType == 1) { //codec data
-												
-												payload.order(ByteOrder.BIG_ENDIAN);
-												payload.position(5);
-												numberOfSps = payload.get()&0x1f;
-												short sizeOfSps = payload.getShort();
-												sps = new byte[sizeOfSps];
-												payload.get(sps);
-												if (delegate != null) {
-													delegate.onSpsAvailable(sps);
-												}
-												Log.d(TAG, "onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
-												logBytes("onDataAvailable:streaming:sps:", sps);
+													if (delegate != null) {
+														delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, timestamp);
+													}
 
-												numberOfPps = payload.get();
-												short sizeOfPps = payload.getShort();
-												pps = new byte[sizeOfPps];
-												payload.get(pps);
-												if (delegate != null) {
-													delegate.onPpsAvailable(pps);
-												}
-												Log.d(TAG, "onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
-												logBytes("onDataAvailable:streaming:pps:", pps);
 
-											} else if (payloadType == 2) { // heartbeat
-												
+												} else if (payloadType == 1) { //codec data
+
+													payload.order(ByteOrder.BIG_ENDIAN);
+													payload.position(5);
+													numberOfSps = payload.get()&0x1f;
+													short sizeOfSps = payload.getShort();
+													sps = new byte[sizeOfSps];
+													payload.get(sps);
+													if (delegate != null) {
+														delegate.onSpsAvailable(sps);
+													}
+													Log.d(TAG, "onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
+													logBytes("onDataAvailable:streaming:sps:", sps);
+
+													numberOfPps = payload.get();
+													short sizeOfPps = payload.getShort();
+													pps = new byte[sizeOfPps];
+													payload.get(pps);
+													if (delegate != null) {
+														delegate.onPpsAvailable(pps);
+													}
+													Log.d(TAG, "onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
+													logBytes("onDataAvailable:streaming:pps:", pps);
+
+												} else if (payloadType == 2) { // heartbeat
+
+												}
+												request.getSocket().setDataCallback(headerReader);
+												headerReader.read(128, headerCallback);
+											} catch (Exception e) {
+												request.getSocket().close();
+												if (delegate != null) {
+													delegate.onStopMirroring();
+												}
 											}
-											request.getSocket().setDataCallback(headerReader);
-											headerReader.read(128, headerCallback);
 										}
 										
 									});
