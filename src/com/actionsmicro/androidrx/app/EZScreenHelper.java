@@ -20,6 +20,7 @@ import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaCodec;
+import android.media.MediaCodec.BufferInfo;
 import android.media.MediaFormat;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
@@ -97,9 +98,15 @@ public class EZScreenHelper {
 		this.servers = servers;
 		this.container = frame;
 		audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-		initWebView();
-		initMjpegView();
-		initMirrorView();
+		if (webView != null) {
+			initWebView();
+		}
+		if (mjpegView != null) {
+			initMjpegView();
+		}
+		if ((servers & SERVER_AIRPLAY) != 0) {
+			initMirrorView();
+		}
 	}
 
 	public WebView getWebView() {
@@ -214,13 +221,15 @@ public class EZScreenHelper {
 	
 	
 	private void invokeJavascript(final String javascript) {
-		this.getWebView().post(new Runnable() {
+		if (webView != null) {
+			webView.post(new Runnable() {
 
-			@Override
-			public void run() {
-				EZScreenHelper.this.getWebView().loadUrl(javascript);
-			}						
-		});
+				@Override
+				public void run() {
+					webView.loadUrl(javascript);
+				}						
+			});
+		}
 	}
 
 	private void resetStates() {
@@ -326,8 +335,12 @@ public class EZScreenHelper {
 
 	private void hideMjpegView() {
 		final int invisible = View.INVISIBLE;
-		setViewVisibility(mjpegView, invisible);
-		setViewVisibility(webView, View.VISIBLE);
+		if (mjpegView != null) {
+			setViewVisibility(mjpegView, invisible);
+		}
+		if (webView != null) {
+			setViewVisibility(webView, View.VISIBLE);
+		}
 	}
 
 	private void setViewVisibility(final View view, final int visibility) {
@@ -371,9 +384,13 @@ public class EZScreenHelper {
 	}
 
 	private void showWebView() {
-		setViewVisibility(webView, View.VISIBLE);
+		if (webView != null) {
+			setViewVisibility(webView, View.VISIBLE);
+		}
 		setViewVisibility(mirrorView, View.INVISIBLE);
-		setViewVisibility(mjpegView, View.INVISIBLE);
+		if (mjpegView != null) {
+			setViewVisibility(mjpegView, View.INVISIBLE);
+		}
 	}
 
 	private void displayMotionJpeg(final String url) {
@@ -432,8 +449,12 @@ public class EZScreenHelper {
 	}
 
 	private void showMjpegView() {
-		setViewVisibility(mjpegView, View.VISIBLE);
-		setViewVisibility(webView, View.INVISIBLE);
+		if (mjpegView != null) {
+			setViewVisibility(mjpegView, View.VISIBLE);
+		}
+		if (webView != null) {
+			setViewVisibility(webView, View.INVISIBLE);
+		}
 		setViewVisibility(mirrorView, View.INVISIBLE);		
 	}
 
@@ -533,7 +554,10 @@ public class EZScreenHelper {
 		}
 		this.getEzScreenServer().start();
 	}
-
+	private MediaCodec decoder;
+	private Thread renderThread;
+	private boolean stopRenderer = false;
+	
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void initAirplay() {
 		try {
@@ -541,9 +565,7 @@ public class EZScreenHelper {
 				final static String TAG = EZScreenHelper.TAG+".AirPlayServer";
 				private FileOutputStream testFile;
 				private final byte[] nalHeader = {0x00, 0x00, 0x00, 0x01};
-				private MediaCodec decoder;
-				private Thread renderThread;
-				private static final boolean DUMP_H264 = true;
+				private static final boolean DUMP_H264 = false;
 				@Override
 				public void stopVideo() {
 					Log.d(TAG, "stopVideo");
@@ -606,7 +628,6 @@ public class EZScreenHelper {
 					return EZScreenHelper.this.getDuration();
 				}
 				private static final String MIME_VIDEO_AVC = "video/avc";
-				private boolean stopRenderer = false;
 				private long startMs;
 				private ByteBuffer[] inputBuffers;
 				private long timestampBase;
@@ -615,7 +636,7 @@ public class EZScreenHelper {
 				public void onStartMirroring() {
 					Log.d(TAG, "onStartMirroring");
 					showMirrorView();
-					stopDecoding();
+					stopMirrorDecoding();
 					timestampBase = 0;
 					startMs = System.currentTimeMillis();
 					decoder = MediaCodec.createDecoderByType(MIME_VIDEO_AVC);
@@ -629,10 +650,9 @@ public class EZScreenHelper {
 						}
 						mirrorSurface = new Surface(mirrorSurfaceTexture);
 					}
-					decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, 100, 100), mirrorSurface, null, 0);
+					decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, 1920, 1080), mirrorSurface, null, 0);
 					decoder.start();
 					inputBuffers = decoder.getInputBuffers();
-					startRenderer();
 					
 					closeTestFile();
 					if (DUMP_H264) {
@@ -654,46 +674,21 @@ public class EZScreenHelper {
 
 						@Override
 						public void run() {
-							MediaCodec.BufferInfo bufferInfo= new MediaCodec.BufferInfo();
-							while (!stopRenderer) {
-								int outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 5000);
-								if (outputBufferIndex >= 0) {		
-									Log.d(TAG, "bufferInfo.presentationTimeUs:"+bufferInfo.presentationTimeUs);
-									Log.d(TAG, "bufferInfo.presentationTimeUs-timestampBase/1000:"+((bufferInfo.presentationTimeUs-timestampBase)/1000));
-									Log.d(TAG, "bufferInfo.System.currentTimeMillis() - startMs:"+(System.currentTimeMillis() - startMs));
-									while (((bufferInfo.presentationTimeUs-timestampBase) / 1000) > (System.currentTimeMillis() - startMs)) {
-										Log.d(TAG, "bufferInfo.presentationTimeUs-timestampBase:"+(bufferInfo.presentationTimeUs-timestampBase));
-										Log.d(TAG, "bufferInfo.System.currentTimeMillis() - startMs:"+(System.currentTimeMillis() - startMs));
-								        try {
-								          Thread.sleep(10);
-								        } catch (InterruptedException e) {
-								          e.printStackTrace();
-								          break;
-								        }
-								      }
-									decoder.releaseOutputBuffer(outputBufferIndex, ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0)?false:true);
-								} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-									decoder.getOutputBuffers();
-								} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-									MediaFormat outputFormat = decoder.getOutputFormat();
-									int width = outputFormat.getInteger(MediaFormat.KEY_WIDTH);
-									int height = outputFormat.getInteger(MediaFormat.KEY_HEIGHT);
-									final Matrix transform = new Matrix();
-									transform.setRectToRect(new RectF(0, 0, width, height), new RectF(0, 0, surfaceWidth, surfaceHeight) , Matrix.ScaleToFit.CENTER);
-									transform.preScale((float)width/(float)surfaceWidth, (float)height/(float)surfaceHeight);
-									mainHandler.post(new Runnable() {
-
-										@Override
-										public void run() {
-											mirrorView.setTransform(transform);											
-										}
-										
-									});
+							try {
+								MediaCodec.BufferInfo bufferInfo= new MediaCodec.BufferInfo();
+								while (!stopRenderer) {
+									doRender(bufferInfo);
 								}
+							} catch(Exception e) {
+								e.printStackTrace();
+								// TODO exception handling
+							} finally {
+								stopRenderer = true;
 							}
 						}
 						
 					});
+					renderThread.setName("AirPlay Mirror Decoder");
 					renderThread.start();
 				}
 
@@ -711,7 +706,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onSpsAvailable(byte[] sps) {
-					decodeByteWithPrefix(nalHeader, sps, 0, sps.length,  0);
+					decodeByteWithPrefix(nalHeader, sps, 0, sps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
@@ -725,9 +720,11 @@ public class EZScreenHelper {
 					}					
 				}
 
-				private void decodeByteWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp) {
-					if (decoder != null) {
-						int bufferIndex = decoder.dequeueInputBuffer(10000);
+				private void decodeByteWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags) {
+					if (decoder != null && length > 0) {
+						Log.d(TAG, "decodeByteWithPrefix:");
+						int bufferIndex = -1;
+						bufferIndex = decoder.dequeueInputBuffer(10000);
 						if (bufferIndex != -1) {
 							inputBuffers[bufferIndex].clear();
 							if (prefix != null) {
@@ -736,15 +733,15 @@ public class EZScreenHelper {
 							inputBuffers[bufferIndex].put(data, offset, length);
 							int totalWrite = inputBuffers[bufferIndex].position();
 							inputBuffers[bufferIndex].rewind();
-							int flags = 0;//(nalCounter<=1)?MediaCodec.BUFFER_FLAG_CODEC_CONFIG:0;
-							decoder.queueInputBuffer(bufferIndex, 0, totalWrite, timestamp, flags);							
+							decoder.queueInputBuffer(bufferIndex, 0, totalWrite, 0, flags);							
 						}
 					}
+//					doRender();
 				}
 
 				@Override
 				public void onPpsAvailable(byte[] pps) {
-					decodeByteWithPrefix(nalHeader, pps, 0, pps.length, 0);
+					decodeByteWithPrefix(nalHeader, pps, 0, pps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
@@ -794,12 +791,15 @@ public class EZScreenHelper {
 			    }
 				@Override
 				public void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp) {
+					if (renderThread == null) {
+						startRenderer();					
+					}
 					long timestampInMicroSec = getTime(timestamp)*1000;
 					if (timestampBase == 0) {
 						timestampBase = timestampInMicroSec;
 						Log.d(TAG, "bufferInfo.timestampBase:"+timestampBase);
 					}
-					decodeByteWithPrefix(null, frame, offset, size, timestampInMicroSec);
+					decodeByteWithPrefix(null, frame, offset, size, timestampInMicroSec, 0);
 					if (testFile != null) {
 						try {
 							testFile.write(frame, offset, size);
@@ -815,32 +815,60 @@ public class EZScreenHelper {
 					if (connectionListener != null) {
 						connectionListener.onDisconnected();
 					}
-					stopDecoding();
+					stopMirrorDecoding();
+					inputBuffers = null; 
 					closeTestFile();
 					hideMirrorView();
 				}
 
-				private void stopDecoding() {
-					if (renderThread != null) {
+				private void doRender(MediaCodec.BufferInfo bufferInfo) {
+					Log.d(TAG, "doRender");
+					int outputBufferIndex = -1;
+					try {
+						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000);
+					} catch(Exception e) {
+						Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
 						stopRenderer = true;
-						try {
-							renderThread.join();
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
+					} finally {
+					
+					}
+					if (outputBufferIndex >= 0) {		
+						Log.d(TAG, "bufferInfo.presentationTimeUs:"+bufferInfo.presentationTimeUs);
+						Log.d(TAG, "bufferInfo.presentationTimeUs-timestampBase/1000:"+((bufferInfo.presentationTimeUs-timestampBase)/1000));
+						Log.d(TAG, "bufferInfo.System.currentTimeMillis() - startMs:"+(System.currentTimeMillis() - startMs));
+						while (((bufferInfo.presentationTimeUs-timestampBase) / 1000) > (System.currentTimeMillis() - startMs)) {
+							Log.d(TAG, "bufferInfo.presentationTimeUs-timestampBase:"+(bufferInfo.presentationTimeUs-timestampBase));
+							Log.d(TAG, "bufferInfo.System.currentTimeMillis() - startMs:"+(System.currentTimeMillis() - startMs));
+							try {
+								Thread.sleep(10);
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+								break;
+							}
 						}
+						decoder.releaseOutputBuffer(outputBufferIndex, ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0)?false:true);
+					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+						decoder.getOutputBuffers();
+					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+						MediaFormat outputFormat = decoder.getOutputFormat();
+						int width = outputFormat.getInteger(MediaFormat.KEY_WIDTH);
+						int height = outputFormat.getInteger(MediaFormat.KEY_HEIGHT);
+						Log.d(TAG, "outputFormat width:"+width+", height:"+height);
+						final Matrix transform = new Matrix();
+						transform.setRectToRect(new RectF(0, 0, width, height), new RectF(0, 0, surfaceWidth, surfaceHeight) , Matrix.ScaleToFit.CENTER);
+						transform.preScale((float)width/(float)surfaceWidth, (float)height/(float)surfaceHeight);
+						mainHandler.post(new Runnable() {
+
+							@Override
+							public void run() {
+								mirrorView.setTransform(transform);											
+							}
+
+						});
 					}
-					if (decoder != null) {
-						decoder.stop();
-						decoder.release();
-						decoder = null;
-					}
-					if (mirrorSurface != null) {
-						mirrorSurface.release();
-						mirrorSurface = null;
-					}
-					inputBuffers = null;
 				}
+
+				
 			}));
 			this.getAirplayService().start();
 		} catch (UnknownHostException e) {
@@ -922,12 +950,18 @@ public class EZScreenHelper {
 	}
 	private void hideMirrorView() {
 		setViewVisibility(mirrorView, View.INVISIBLE);
-		setViewVisibility(webView, View.VISIBLE);
+		if (webView != null) {
+			setViewVisibility(webView, View.VISIBLE);
+		}
 	}
 	private void showMirrorView() {
 		setViewVisibility(mirrorView, View.VISIBLE);
-		setViewVisibility(webView, View.INVISIBLE);
-		setViewVisibility(mjpegView, View.INVISIBLE);
+		if (webView != null) {
+			setViewVisibility(webView, View.INVISIBLE);
+		}
+		if (mjpegView != null) {
+			setViewVisibility(mjpegView, View.INVISIBLE);
+		}
 	}
 
 	private void initMjpegView() {
@@ -983,6 +1017,7 @@ public class EZScreenHelper {
 		}
 	}
 	public void stop() {
+		stopMirrorDecoding();
 		stopMJpegClient();
 		this.getMainHandler().removeCallbacks(this.getResetToStandby());
 		resetToStandby();
@@ -999,5 +1034,27 @@ public class EZScreenHelper {
 
 	public void setConnectionListener(ConnectionListener connectionListener) {
 		this.connectionListener = connectionListener;
+	}
+	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+	private void stopMirrorDecoding() {
+		if (renderThread != null) {
+			stopRenderer = true;
+			try {
+				renderThread.join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			renderThread = null;
+		}
+		if (decoder != null) {
+			decoder.stop();
+			decoder.release();
+			decoder = null;
+		}
+		if (mirrorSurface != null) {
+			mirrorSurface.release();
+			mirrorSurface = null;
+		}
 	}
 }
