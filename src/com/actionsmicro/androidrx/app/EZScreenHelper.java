@@ -32,6 +32,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.TextureView.SurfaceTextureListener;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -53,7 +54,7 @@ public class EZScreenHelper {
 	}
 	private static final String TAG = "EZScreenHelper";
 	private WebView webView;
-	private TextureView textureView;
+	private TextureView mjpegView;
 	private Handler mainHandler = new Handler(Looper.getMainLooper());
 	private Runnable resetToStandby = new Runnable() {
 
@@ -76,32 +77,37 @@ public class EZScreenHelper {
 	private Context context;
 	private String serviceName;
 	private ConnectionListener connectionListener;
-	protected Surface surface;
+	protected Surface mirrorSurface;
 	protected int surfaceWidth;
 	protected int surfaceHeight;
 	private int servers;
+	protected SurfaceTexture mirrorSurfaceTexture;
+	private ViewGroup container;
+	private TextureView mirrorView;
 	private String getServiceName() {
 		return serviceName;
 	}
 	public static final int SERVER_EZSCREEN = 0x01<<0; 
 	public static final int SERVER_AIRPLAY = 0x01<<1; 
-	public EZScreenHelper(Context context, String serviceName, WebView webView, TextureView textureView, int servers) {
+	public EZScreenHelper(Context context, String serviceName, ViewGroup frame, WebView webView, TextureView textureView, int servers) {
 		this.context = context;
 		this.webView = webView;
-		this.textureView = textureView;
+		this.mjpegView = textureView;
 		this.serviceName = serviceName;
 		this.servers = servers;
+		this.container = frame;
 		audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 		initWebView();
-		initTextureView();
+		initMjpegView();
+		initMirrorView();
 	}
 
 	public WebView getWebView() {
 		return webView;
 	}
 
-	public TextureView getTextureView() {
-		return textureView;
+	public TextureView getMjpegView() {
+		return mjpegView;
 	}
 
 	public Handler getMainHandler() {
@@ -187,7 +193,7 @@ public class EZScreenHelper {
 	
 	private void resetToStandby() {
 		stopVideo();
-		hideTextureView();
+		showWebView();
 		displayUrl("images/standby.jpg");
 	}
 	private void stopVideo() {
@@ -318,22 +324,18 @@ public class EZScreenHelper {
 		this.setMetadataLoaded(true);		
 	}
 
-	private void hideTextureView() {
+	private void hideMjpegView() {
 		final int invisible = View.INVISIBLE;
-		setTextureViewVisibility(invisible);
+		setViewVisibility(mjpegView, invisible);
+		setViewVisibility(webView, View.VISIBLE);
 	}
 
-	private void setTextureViewVisibility(final int visibility) {
+	private void setViewVisibility(final View view, final int visibility) {
 		this.getMainHandler().post(new Runnable() {
 
 			@Override
 			public void run() {
-				EZScreenHelper.this.getTextureView().setVisibility(visibility);
-				if (visibility == View.VISIBLE) {
-					webView.setVisibility(View.INVISIBLE);
-				} else {
-					webView.setVisibility(View.VISIBLE);					
-				}
+				view.setVisibility(visibility);				
 			}
 			
 		});
@@ -341,7 +343,7 @@ public class EZScreenHelper {
 
 	private void stopDisplay() {
 		stopMJpegClient();
-		hideTextureView();
+		showWebView();
 		displayUrl("images/connected.jpg");
 	}
 	private void cleanUpServers() {
@@ -357,31 +359,37 @@ public class EZScreenHelper {
 	private void displayUrl(final String url) {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
 			invokeJavascript("javascript:updateDisplay('"+url+"');");
-			hideTextureView();
+			showWebView();
 		} else {
 			if (url.startsWith("http")) {
 				displayMotionJpeg(url);
 			} else {
 				invokeJavascript("javascript:updateDisplay('"+url+"');");
-				hideTextureView();
+				showWebView();
 			}
 		}
 	}
 
+	private void showWebView() {
+		setViewVisibility(webView, View.VISIBLE);
+		setViewVisibility(mirrorView, View.INVISIBLE);
+		setViewVisibility(mjpegView, View.INVISIBLE);
+	}
+
 	private void displayMotionJpeg(final String url) {
 		stopMJpegClient();
-		showTextureView();
+		showMjpegView();
 		try {
 			this.setmJpegClient(new SimpleMotionJpegOverHttpClient(url, new JpegCallback() {
 
 				@Override
 				public void onJpegAvaiable(byte[] jpegData, int size) {
-					if (EZScreenHelper.this.getTextureView() != null) {
+					if (EZScreenHelper.this.getMjpegView() != null) {
 						
 						Bitmap bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size);
 						if (bitmap != null) {
 //									drawOnSurface(bitmap);
-							Canvas canvas = EZScreenHelper.this.getTextureView().lockCanvas();
+							Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
 							if (canvas != null) {
 								final int savedState = canvas.save();
 								try {
@@ -397,7 +405,7 @@ public class EZScreenHelper {
 									canvas.drawBitmap(bitmap, 0, 0, null);
 								} finally {
 									canvas.restoreToCount(savedState);
-									EZScreenHelper.this.getTextureView().unlockCanvasAndPost(canvas);
+									EZScreenHelper.this.getMjpegView().unlockCanvasAndPost(canvas);
 								}
 							}
 						}
@@ -423,8 +431,10 @@ public class EZScreenHelper {
 		}
 	}
 
-	private void showTextureView() {
-		setTextureViewVisibility(View.VISIBLE);
+	private void showMjpegView() {
+		setViewVisibility(mjpegView, View.VISIBLE);
+		setViewVisibility(webView, View.INVISIBLE);
+		setViewVisibility(mirrorView, View.INVISIBLE);		
 	}
 
 	private void stopMJpegClient() {
@@ -443,7 +453,7 @@ public class EZScreenHelper {
 		} else {
 			invokeJavascript("javascript:playVideo('"+url+"', null);");			
 		}
-		hideTextureView();
+		showWebView();
 	}
 	private void initEzAndroidRx() {
 		try {
@@ -604,19 +614,22 @@ public class EZScreenHelper {
 				@Override
 				public void onStartMirroring() {
 					Log.d(TAG, "onStartMirroring");
-					showTextureView();
+					showMirrorView();
 					stopDecoding();
 					timestampBase = 0;
 					startMs = System.currentTimeMillis();
 					decoder = MediaCodec.createDecoderByType(MIME_VIDEO_AVC);
-					while (surface == null) {
-						try {
-							Thread.sleep(10);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
+					if (mirrorSurface == null) {
+						while (mirrorSurfaceTexture == null) {
+							try {
+								Thread.sleep(10);
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
 						}
+						mirrorSurface = new Surface(mirrorSurfaceTexture);
 					}
-					decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, 100, 100), surface, null, 0);
+					decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, 100, 100), mirrorSurface, null, 0);
 					decoder.start();
 					inputBuffers = decoder.getInputBuffers();
 					startRenderer();
@@ -672,7 +685,7 @@ public class EZScreenHelper {
 
 										@Override
 										public void run() {
-											textureView.setTransform(transform);											
+											mirrorView.setTransform(transform);											
 										}
 										
 									});
@@ -804,7 +817,7 @@ public class EZScreenHelper {
 					}
 					stopDecoding();
 					closeTestFile();
-					hideTextureView();
+					hideMirrorView();
 				}
 
 				private void stopDecoding() {
@@ -822,7 +835,10 @@ public class EZScreenHelper {
 						decoder.release();
 						decoder = null;
 					}
-					
+					if (mirrorSurface != null) {
+						mirrorSurface.release();
+						mirrorSurface = null;
+					}
 					inputBuffers = null;
 				}
 			}));
@@ -839,7 +855,7 @@ public class EZScreenHelper {
 		} else {
 			invokeJavascript("javascript:playVideoImp('"+url+"', null, "+ (autoplay?"true, ":"false, ")+ startpos+");");			
 		}
-		hideTextureView();
+		showWebView();
 	}
 	@SuppressLint({ "NewApi", "SetJavaScriptEnabled" })
 	private void initWebView() {
@@ -868,18 +884,60 @@ public class EZScreenHelper {
 		});
 		this.getWebView().loadUrl("file:///android_asset/display/ezcast.html");
 	}
+	private void initMirrorView() {
+		mirrorView = new TextureView(context);
+		container.addView(mirrorView);
+		hideMirrorView();
+		mirrorView.setSurfaceTextureListener(new SurfaceTextureListener() {
+			@Override
+			public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture,
+					int width, int height) {
+				Log.d(TAG, "onSurfaceTextureAvailable:"+" w:"+width+" h:"+height);
+				EZScreenHelper.this.mirrorSurfaceTexture = surfaceTexture;  
+				surfaceWidth = width;
+				surfaceHeight = height;
+			}
 
-	private void initTextureView() {
-		hideTextureView();
-		this.getTextureView().setSurfaceTextureListener(new SurfaceTextureListener() {
+			@Override
+			public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+				Log.d(TAG, "onSurfaceTextureDestroyed:");
+				return true;
+			}
+
+			@Override
+			public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
+					int width, int height) {
+				Log.d(TAG, "onSurfaceTextureSizeChanged:"+" w:"+width+" h:"+height);				
+				surfaceWidth = width;
+				surfaceHeight = height;
+			}
+
+			@Override
+			public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+				Log.d(TAG, "onSurfaceTextureUpdated:");
+				
+			}
+			
+		});
+	}
+	private void hideMirrorView() {
+		setViewVisibility(mirrorView, View.INVISIBLE);
+		setViewVisibility(webView, View.VISIBLE);
+	}
+	private void showMirrorView() {
+		setViewVisibility(mirrorView, View.VISIBLE);
+		setViewVisibility(webView, View.INVISIBLE);
+		setViewVisibility(mjpegView, View.INVISIBLE);
+	}
+
+	private void initMjpegView() {
+		hideMjpegView();
+		this.getMjpegView().setSurfaceTextureListener(new SurfaceTextureListener() {
 
 			@Override
 			public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture,
 					int width, int height) {
 				Log.d(TAG, "onSurfaceTextureAvailable:"+" w:"+width+" h:"+height);
-				surface = new Surface(surfaceTexture);
-				surfaceWidth = width;
-				surfaceHeight = height;
 			}
 
 			@Override
@@ -893,8 +951,6 @@ public class EZScreenHelper {
 			public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
 					int width, int height) {
 				Log.d(TAG, "onSurfaceTextureSizeChanged:"+" w:"+width+" h:"+height);				
-				surfaceWidth = width;
-				surfaceHeight = height;
 			}
 
 			@Override
