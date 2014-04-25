@@ -50,6 +50,7 @@ public class AirPlayServer {
 	private static final String AIRPLAY_MODEL = "AppleTV3,1";
 	private static final String AIRPLAYER_VERSION_STRING = "150.33";
 	protected static final String TAG = "AirPlayServer";
+	
 	public interface AirPlayServerDelegate {
 
 		void loadVideo(String url, float rate, float position);
@@ -67,6 +68,16 @@ public class AirPlayServer {
 		int getVideoDuration();
 
 		void pauseVideo();
+
+		void onStartMirroring();
+
+		void onSpsAvailable(byte[] sps);
+
+		void onPpsAvailable(byte[] pps);
+
+		void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp);
+
+		void onStopMirroring();
 		
 	}
 	private boolean stopRaopThread;
@@ -240,13 +251,17 @@ public class AirPlayServer {
 					}, new CompletedCallback() {
 						
 						private DataCallback headerCallback;
-						private FileOutputStream testFile;
-						private final boolean DUMP_H264 = false; 
+						private final boolean DUMP_H264 = false;
+						
 						@Override
 						public void onCompleted(Exception ex) {
 							Log.d(TAG, "onCompleted:"+totalRead);
 							final DataEmitterReader headerReader = new DataEmitterReader();
 							request.getSocket().setDataCallback(headerReader);
+							if (delegate != null) {
+								delegate.onStartMirroring();
+							}							
+							
 							headerReader.read(128, headerCallback = new DataCallback() {
 								private ByteBuffer header = ByteBuffer.allocate(128);
 								void logBytes(String prefix, byte[] buffer) {
@@ -305,52 +320,35 @@ public class AirPlayServer {
 													h264Frame.put(nal);
 													h264Frame.position(h264Frame.position()+length);
 												}
-												if (testFile != null) {
-													try {
-														testFile.write(h264Frame.array(), 0, payloadSize);
-													} catch (IOException e) {
-														e.printStackTrace();
-													}
+												if (delegate != null) {
+													delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, timestamp);
 												}
+												
 												
 											} else if (payloadType == 1) { //codec data
 												
-												try {
-													if (testFile != null) {
-														testFile.close();
-														testFile = null;
-													}
-													if (DUMP_H264) {
-														testFile = new FileOutputStream("/sdcard/test"+".h264");
-													}
-													payload.order(ByteOrder.BIG_ENDIAN);
-													payload.position(5);
-													numberOfSps = payload.get()&0x1f;
-													short sizeOfSps = payload.getShort();
-													sps = new byte[sizeOfSps];
-													payload.get(sps);
-													if (testFile != null) {
-														testFile.write(nal);
-														testFile.write(sps);
-													}
-													Log.d(TAG, "onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
-													logBytes("onDataAvailable:streaming:sps:", sps);
-
-													numberOfPps = payload.get();
-													short sizeOfPps = payload.getShort();
-													pps = new byte[sizeOfPps];
-													payload.get(pps);
-													if (testFile != null) {
-														testFile.write(nal);
-														testFile.write(pps);
-													}
-													Log.d(TAG, "onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
-													logBytes("onDataAvailable:streaming:pps:", pps);
-												} catch (FileNotFoundException e) {
-													Log.e(TAG, "onDataAvailable:streaming:codecifo", e);
-												} catch (IOException e) {
-													Log.e(TAG, "onDataAvailable:streaming:codecifo", e);
+												payload.order(ByteOrder.BIG_ENDIAN);
+												payload.position(5);
+												numberOfSps = payload.get()&0x1f;
+												short sizeOfSps = payload.getShort();
+												sps = new byte[sizeOfSps];
+												payload.get(sps);
+												if (delegate != null) {
+													delegate.onSpsAvailable(sps);
 												}
+												Log.d(TAG, "onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
+												logBytes("onDataAvailable:streaming:sps:", sps);
+
+												numberOfPps = payload.get();
+												short sizeOfPps = payload.getShort();
+												pps = new byte[sizeOfPps];
+												payload.get(pps);
+												if (delegate != null) {
+													delegate.onPpsAvailable(pps);
+												}
+												Log.d(TAG, "onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
+												logBytes("onDataAvailable:streaming:pps:", pps);
+
 											} else if (payloadType == 2) { // heartbeat
 												
 											}
@@ -367,15 +365,10 @@ public class AirPlayServer {
 
 								@Override
 								public void onCompleted(Exception ex) {
-									Log.d(TAG, "onCompleted:streaming:"+totalRead);						
-									if (testFile != null) {
-										try {
-											testFile.close();
-										} catch (IOException e) {
-											e.printStackTrace();
-										}
-										testFile = null;
-									}
+									Log.d(TAG, "onCompleted:streaming:"+totalRead);
+									if (delegate != null) {
+										delegate.onStopMirroring();
+									}									
 								}
 								
 							});
