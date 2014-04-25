@@ -202,8 +202,6 @@ public class Utils {
 		}
 	}
 	
-	
-	//vincent
     /**
      * Get a file path from a Uri. This will get the the path for Storage Access
      * Framework Documents, as well as the _data field for the MediaStore and
@@ -330,10 +328,6 @@ public class Utils {
      */
     private static boolean isMediaDocument(Uri uri) {
         return "com.android.providers.media.documents".equals(uri.getAuthority());
-    }
-    
-	//vincent
+    }	
 	
-	
-
 }
