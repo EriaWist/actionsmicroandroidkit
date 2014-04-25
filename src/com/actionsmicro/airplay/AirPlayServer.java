@@ -303,19 +303,18 @@ public class AirPlayServer {
 												logBytes("onDataAvailable:streaming:payload:", payload.array());
 												h264Frame.position(0);			
 												EzAes.decrypt(payload.array(), payloadSize, h264Frame.array());
-												int h264FrameSize = h264Frame.position();
-												Log.d(TAG, "onDataAvailable:streaming:h.264(1) frame size:"+h264FrameSize);
 												logBytes("onDataAvailable:streaming:h.264:", h264Frame.array());
-//												h264Frame.order(ByteOrder.BIG_ENDIAN);
+												h264Frame.order(ByteOrder.BIG_ENDIAN);
 												h264Frame.position(0);
 												int length = 0;
 												int offset = 0;
-												while (offset < payloadSize) {
+												while (offset < payloadSize-4) {
 													length = h264Frame.getInt();
-													Log.d(TAG, String.format("onDataAvailable:streaming:h.264 frame length:%d", length));
+													Log.d(TAG, String.format("onDataAvailable:streaming:h.264 frame offset: %d, length:%d ", offset, length));
 													if (length == 0) {
 														break;
 													}
+													offset += 4+length;
 													h264Frame.position(h264Frame.position()-4);
 													h264Frame.put(nal);
 													h264Frame.position(h264Frame.position()+length);
