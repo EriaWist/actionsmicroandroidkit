@@ -10,11 +10,11 @@ import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
 
 import android.annotation.TargetApi;
-import android.content.Context;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdManager.DiscoveryListener;
 import android.net.nsd.NsdManager.ResolveListener;
 import android.net.nsd.NsdServiceInfo;
+import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Build;
 
 import com.actionsmicro.ezcast.DeviceFinder;
@@ -111,6 +111,10 @@ public class AndroidRxFinder extends DeviceFinderBase {
 	@Override
 	public synchronized void stop() {
 		if (searching) {
+			if (multicastLock != null) {
+				multicastLock.release();
+				multicastLock = null;
+			}
 //			mNsdManager.stopServiceDiscovery(mDiscoveryListener);
 			mDns.removeServiceListener(SERVICE_TYPE+"local.", serviceListener);
 			searching = false;
@@ -144,10 +148,15 @@ public class AndroidRxFinder extends DeviceFinderBase {
 		}
 		
 	};
+	private MulticastLock multicastLock;
 	@Override
 	public synchronized void search() {
 		if (!searching) {
 			searching = true;
+			android.net.wifi.WifiManager wifi = (android.net.wifi.WifiManager)getDeviceFinderProxy().getContext().getSystemService(android.content.Context.WIFI_SERVICE);
+			multicastLock = wifi.createMulticastLock("AndroidRxFinder");
+			multicastLock.setReferenceCounted(true);
+			multicastLock.acquire();
 			synchronized (devices) {
 				devices.clear();
 			}
@@ -157,6 +166,7 @@ public class AndroidRxFinder extends DeviceFinderBase {
 				@Override
 				public void run() {
 					mDns.addServiceListener(SERVICE_TYPE+"local.", serviceListener);
+					Log.d(TAG, "addServiceListener");
 				}
 				
 			}).start();
