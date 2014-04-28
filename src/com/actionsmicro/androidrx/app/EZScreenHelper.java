@@ -20,7 +20,6 @@ import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaCodec;
-import android.media.MediaCodec.BufferInfo;
 import android.media.MediaFormat;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
@@ -387,7 +386,9 @@ public class EZScreenHelper {
 		if (webView != null) {
 			setViewVisibility(webView, View.VISIBLE);
 		}
-		setViewVisibility(mirrorView, View.INVISIBLE);
+		if (mirrorView != null) {
+			setViewVisibility(mirrorView, View.INVISIBLE);
+		}
 		if (mjpegView != null) {
 			setViewVisibility(mjpegView, View.INVISIBLE);
 		}
@@ -455,7 +456,9 @@ public class EZScreenHelper {
 		if (webView != null) {
 			setViewVisibility(webView, View.INVISIBLE);
 		}
-		setViewVisibility(mirrorView, View.INVISIBLE);		
+		if (mirrorView != null) {
+			setViewVisibility(mirrorView, View.INVISIBLE);
+		}
 	}
 
 	private void stopMJpegClient() {
@@ -949,13 +952,17 @@ public class EZScreenHelper {
 		});
 	}
 	private void hideMirrorView() {
-		setViewVisibility(mirrorView, View.INVISIBLE);
+		if (mirrorView != null) {
+			setViewVisibility(mirrorView, View.INVISIBLE);
+		}
 		if (webView != null) {
 			setViewVisibility(webView, View.VISIBLE);
 		}
 	}
 	private void showMirrorView() {
-		setViewVisibility(mirrorView, View.VISIBLE);
+		if (mirrorView != null) {
+			setViewVisibility(mirrorView, View.VISIBLE);
+		}
 		if (webView != null) {
 			setViewVisibility(webView, View.INVISIBLE);
 		}
