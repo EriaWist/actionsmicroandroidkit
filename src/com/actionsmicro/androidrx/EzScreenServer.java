@@ -5,7 +5,7 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.jmdns.JmDNS;
+import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
 
 import android.content.Context;
@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.actionsmicro.ezcast.imp.androidrx.AndroidRxFinder;
+import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
@@ -75,7 +76,7 @@ public class EzScreenServer {
 		}
 		
 	};
-	private JmDNS jmDNS;
+	private JmmDNS jmDNS;
 	private ServiceInfo serviceInfo;
 	private static final int HEARTBEAT_TIMEOUT = 3000;
 	public void start() {
@@ -94,7 +95,7 @@ public class EzScreenServer {
 		initThread.start();
 	}
 	public synchronized void stop() {
-		final JmDNS jmDNS2 = jmDNS;
+		final JmmDNS jmDNS2 = jmDNS;
 		final ServiceInfo serviceInfo2 = serviceInfo;
 		new Thread(new Runnable() {
 
@@ -111,16 +112,11 @@ public class EzScreenServer {
 			jsonRpcOverHttpServer = null;
 		}
 	}
-	private void cleanUpMdns(JmDNS jmDns, ServiceInfo serviceInfo) {
+	private void cleanUpMdns(JmmDNS jmDns, ServiceInfo serviceInfo) {
 		if (jmDns != null) {
 			if (serviceInfo != null) {
 				jmDns.unregisterService(serviceInfo);
-			}
-			try {
-				jmDns.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				Log.i(TAG, "JmDNS unregisterService:"+serviceInfo);
 			}
 		}
 	}
@@ -215,10 +211,11 @@ public class EzScreenServer {
 			});
 			jsonRpcOverHttpServer.start();
 			
-			jmDNS = JmDNS.create(inetAddress);
+			jmDNS = JmmDNS.Factory.getInstance();
 			HashMap<String, String> txtRecord = new HashMap<String, String>();					
 			serviceInfo = ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord);
 			jmDNS.registerService(serviceInfo);
+			Log.i(TAG, "Registered Service as " + serviceInfo);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

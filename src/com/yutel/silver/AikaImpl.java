@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.jmdns.JmDNS;
+import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
 
 import com.yutel.silver.exception.AirplayException;
@@ -21,7 +21,7 @@ public class AikaImpl extends Aika {
 	private static Logger logger = Logger.getLogger(AikaImpl.class.getName());
 	private int mPort;
 	private AirplayServer as;
-	private JmDNS mJmDNS;
+	private JmmDNS mJmDNS;
 	private InetAddress mInetAddress;
 	private String mType = "_airplay._tcp.local.";
 	private String mName;
@@ -29,6 +29,7 @@ public class AikaImpl extends Aika {
 	private HashMap<String, HttpHandler> mHandlers;
 	private AikaProxy mProxy;
 	private HashMap<String, String> mConfig;
+	private ServiceInfo airPlayService;
 
 	public AikaImpl(InetAddress inetAddress, int port, String name) {
 		mInetAddress = inetAddress;
@@ -90,12 +91,12 @@ public class AikaImpl extends Aika {
 			// as.setHandlers(mHandlers);
 			as.start();
 			// jmdns server
-			mJmDNS = JmDNS.create(mInetAddress);
+			mJmDNS = JmmDNS.Factory.getInstance();
 			logger.log(Level.INFO, "Opened JmDNS!");
-			ServiceInfo serviceInfo = ServiceInfo.create(mType, mName, mPort,
+			airPlayService = ServiceInfo.create(mType, mName, mPort,
 					0, 0, mConfig);
-			mJmDNS.registerService(serviceInfo);
-			logger.log(Level.INFO, "Registered Service as " + serviceInfo);
+			mJmDNS.registerService(airPlayService);
+			logger.log(Level.INFO, "Registered Service as " + airPlayService);
 			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -108,12 +109,14 @@ public class AikaImpl extends Aika {
 	public void stop() {
 		try {
 			// jmdns
-			final JmDNS mJmDNS2 = mJmDNS;
+			final JmmDNS mJmDNS2 = mJmDNS;
+			final ServiceInfo airPlayService = this.airPlayService;
+			this.airPlayService = null;
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
-					cleanUpJmDNS(mJmDNS2);					
+					cleanUpJmDNS(mJmDNS2,  airPlayService);					
 				}
 				
 			}).start();
@@ -128,16 +131,10 @@ public class AikaImpl extends Aika {
 		}
 	}
 
-	private void cleanUpJmDNS(JmDNS mJmDNS2) {
+	private void cleanUpJmDNS(JmmDNS mJmDNS2, ServiceInfo airPlayService) {
 		if (mJmDNS2 != null) {
-			mJmDNS2.unregisterAllServices();
-			try {
-				mJmDNS2.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			logger.log(Level.INFO, "JmDNS stoped");
+			mJmDNS2.unregisterService(airPlayService);
+			logger.log(Level.INFO, "JmDNS unregisterService:"+airPlayService);
 		}
 	}
 

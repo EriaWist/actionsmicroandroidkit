@@ -1,8 +1,6 @@
 package com.actionsmicro.airplay;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -16,7 +14,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
 
-import javax.jmdns.JmDNS;
+import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
 
 import vavi.apps.shairport.RTSPResponder;
@@ -87,8 +85,9 @@ public class AirPlayServer {
 	private String name;
 	private Aika airplayService;
 	private AirPlayServerDelegate delegate;
-	protected JmDNS jmDNS;
+	protected JmmDNS jmDNS;
 	private AsyncHttpServer mirrorServer;
+	private ServiceInfo raopService;
 	public AirPlayServer(Context context, InetAddress inetAddress, String name, AirPlayServerDelegate delegate) {
 		this.context = context;
 		this.inetAddress = inetAddress;
@@ -529,7 +528,7 @@ public class AirPlayServer {
 	}
 	private void registerRaopService() {
 		try {
-			jmDNS = JmDNS.create(inetAddress);					
+			jmDNS = JmmDNS.Factory.getInstance();					
 			String macAddressWithoutCol = getMacAddress().replace(":", "");
 			HashMap<String, String> txt = new HashMap<String, String>();					
 			txt.put("txtvers", "1");
@@ -548,9 +547,9 @@ public class AirPlayServer {
 			txt.put("rmodel", "EZAir1,1");
 			txt.put("am", AIRPLAY_MODEL);
 			txt.put("sf", "0x4");
-			ServiceInfo serviceInfo = ServiceInfo.create("_raop._tcp.local.", macAddressWithoutCol+"@"+name, RAOP_PORTNUMBER, 0, 0, txt);
-			jmDNS.registerService(serviceInfo);
-			
+			raopService = ServiceInfo.create("_raop._tcp.local.", macAddressWithoutCol+"@"+name, RAOP_PORTNUMBER, 0, 0, txt);
+			jmDNS.registerService(raopService);
+			Log.i(TAG, "Registered Service as " + raopService);
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -558,18 +557,16 @@ public class AirPlayServer {
 	}
 	private void cleanUpMdns() {
 		
-		final JmDNS jmDNS2 = jmDNS;
+		final JmmDNS jmDNS2 = jmDNS;
+		final ServiceInfo raopService = this.raopService;
+		this.raopService = null;
 		if (jmDNS2 != null) {
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
-					jmDNS2.unregisterAllServices();
-					try {
-						jmDNS2.close();
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					}
+					jmDNS2.unregisterService(raopService);
+					Log.i(TAG, "JmDNS unregisterService:"+raopService);
 				}
 
 			}).start();
