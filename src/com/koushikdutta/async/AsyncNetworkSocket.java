@@ -177,6 +177,7 @@ public class AsyncNetworkSocket implements AsyncSocket {
             }
         }
         catch (Exception e) {
+        	e.printStackTrace();
             closeInternal();
             reportEndPending(e);
             reportClose(e);
