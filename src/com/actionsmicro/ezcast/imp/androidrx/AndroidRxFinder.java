@@ -142,9 +142,11 @@ public class AndroidRxFinder extends DeviceFinderBase {
 		public void serviceResolved(ServiceEvent event) {
 			ServiceInfo newService = event.getInfo();
 			Log.d(TAG, "Service resolved: " + newService);
-			AndroidRxInfo newDevice = new AndroidRxInfo(newService);
-			addDevice(newDevice);
-			getDeviceFinderProxy().notifyListeneroOnDeviceAdded(newDevice);
+			if (newService.getInet4Address() != null) {
+				AndroidRxInfo newDevice = new AndroidRxInfo(newService);
+				addDevice(newDevice);
+				getDeviceFinderProxy().notifyListeneroOnDeviceAdded(newDevice);
+			}
 		}
 		
 	};
