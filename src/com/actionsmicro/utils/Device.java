@@ -8,7 +8,7 @@ import android.view.Surface;
 import android.view.WindowManager;
 
 public class Device {
-	
+
 	private static final String TAG = "Device";
 
 	static public int getDeviceNaturlOrientation(Activity activity) {
@@ -33,8 +33,46 @@ public class Device {
 	}
 
 	static public boolean isTablet(Context context) {
-	    boolean xlarge = ((context.getResources().getConfiguration().screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) == Configuration.SCREENLAYOUT_SIZE_XLARGE);
-	    boolean large = ((context.getResources().getConfiguration().screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) == Configuration.SCREENLAYOUT_SIZE_LARGE);
-	    return (xlarge || large);
+		boolean xlarge = ((context.getResources().getConfiguration().screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) == Configuration.SCREENLAYOUT_SIZE_XLARGE);
+		boolean large = ((context.getResources().getConfiguration().screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) == Configuration.SCREENLAYOUT_SIZE_LARGE);
+		return (xlarge || large);
+	}
+
+	/**
+	 * This method is used to judge whether device is tablet.
+	 *
+	 * @param context Context to get resources and device specific display metrics
+	 * @return return true if is a tablet
+	 */
+	public static String deviceType(Context context) {
+		Configuration config = context.getResources().getConfiguration();
+		DisplayMetrics metrics = new DisplayMetrics();
+		WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+		// Verifies if the Generalized Size of the device is XLARGE to be
+		// considered a Tablet
+		boolean isXLarge = ((config.screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) == Configuration.SCREENLAYOUT_SIZE_XLARGE);
+		// If xlarge, checks density should be mdpi, hdpi, xhdpi
+		if(isXLarge) {
+			wm.getDefaultDisplay().getMetrics(metrics);
+			// MDPI=160, DEFAULT=160, DENSITY_HIGH=240, DENSITY_MEDIUM=160,
+			// DENSITY_TV=213, DENSITY_XHIGH=320
+			if(metrics.densityDpi == DisplayMetrics.DENSITY_DEFAULT
+					|| metrics.densityDpi == DisplayMetrics.DENSITY_HIGH
+					|| metrics.densityDpi == DisplayMetrics.DENSITY_MEDIUM
+					|| metrics.densityDpi == DisplayMetrics.DENSITY_XHIGH) {
+				return "tablet";
+			}
+		}
+		// If large, checks density should be hdpi, tvdpi
+		boolean isLarge = ((config.screenLayout &Configuration.SCREENLAYOUT_SIZE_MASK) == Configuration.SCREENLAYOUT_SIZE_LARGE);
+		if(isLarge) {
+			if(metrics.densityDpi == DisplayMetrics.DENSITY_HIGH) {
+				return "tablet";
+			}
+			if (metrics.densityDpi == DisplayMetrics.DENSITY_TV) {
+				return "tv";
+			}
+		}
+		return "phone";
 	}
 }
