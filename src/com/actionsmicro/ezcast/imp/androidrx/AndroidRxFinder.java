@@ -1,22 +1,29 @@
 package com.actionsmicro.ezcast.imp.androidrx;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import javax.jmdns.JmmDNS;
+import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
 
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdManager.DiscoveryListener;
 import android.net.nsd.NsdManager.ResolveListener;
 import android.net.nsd.NsdServiceInfo;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Build;
+import android.text.format.Formatter;
 
+import com.actionsmicro.androidrx.Bonjour;
 import com.actionsmicro.ezcast.DeviceFinder;
 import com.actionsmicro.ezcast.DeviceFinderBase;
 import com.actionsmicro.ezcast.DeviceInfo;
@@ -28,7 +35,7 @@ public class AndroidRxFinder extends DeviceFinderBase {
 	private static final String TAG = "AndroidRxFinder";
 	public static final String SERVICE_TYPE = "_ezscreen._tcp.";
 	private NsdManager mNsdManager;
-	private JmmDNS mDns = JmmDNS.Factory.getInstance();
+	private JmDNS mDns = null;//JmmDNS.Factory.getInstance();
 	private List<AndroidRxInfo> devices = new ArrayList<AndroidRxInfo>();
 	private ResolveListener mResolveListener = new NsdManager.ResolveListener() {
 
@@ -100,6 +107,13 @@ public class AndroidRxFinder extends DeviceFinderBase {
 
 	public AndroidRxFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy);
+		try {
+			mDns = Bonjour.getInstance(InetAddress.getByName(getIpAddress()));
+		} catch (UnknownHostException e) {
+			Log.e(TAG, "Bonjour.getInstance", e);
+		} catch (IOException e) {
+			Log.e(TAG, "Bonjour.getInstance", e);
+		}
 //		mNsdManager = (NsdManager)deviceFinderProxy.getContext().getSystemService(Context.NSD_SERVICE);
 	}
 
@@ -214,5 +228,8 @@ public class AndroidRxFinder extends DeviceFinderBase {
 		}
 		return deviceFound;
 	}
-
+	private String getIpAddress() {
+		WifiManager wim= (WifiManager) getDeviceFinderProxy().getContext().getSystemService(Context.WIFI_SERVICE);
+		return Formatter.formatIpAddress(wim.getConnectionInfo().getIpAddress());
+	}
 }
