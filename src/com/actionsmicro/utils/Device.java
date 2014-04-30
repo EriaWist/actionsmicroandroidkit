@@ -3,6 +3,8 @@ package com.actionsmicro.utils;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.util.DisplayMetrics;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -74,5 +76,15 @@ public class Device {
 			}
 		}
 		return "phone";
+	}
+	public static String getAppMacAddress(Context context) {
+		WifiManager wifiMan = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+		WifiInfo wifiInf = wifiMan.getConnectionInfo();
+		return wifiInf.getMacAddress().toString();
+	}
+	public static String getEZScreenServiceName(Context context) {
+		String macAdd = getAppMacAddress(context);
+		macAdd = macAdd.replace(":", "");
+		return "EZCastScreen" + macAdd.substring(0, 3);
 	}
 }
