@@ -5,7 +5,7 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.jmdns.JmmDNS;
+import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceInfo;
 
 import android.content.Context;
@@ -76,7 +76,7 @@ public class EzScreenServer {
 		}
 		
 	};
-	private JmmDNS jmDNS;
+	private JmDNS jmDNS;
 	private ServiceInfo serviceInfo;
 	private static final int HEARTBEAT_TIMEOUT = 3000;
 	public void start() {
@@ -95,7 +95,7 @@ public class EzScreenServer {
 		initThread.start();
 	}
 	public synchronized void stop() {
-		final JmmDNS jmDNS2 = jmDNS;
+		final JmDNS jmDNS2 = jmDNS;
 		final ServiceInfo serviceInfo2 = serviceInfo;
 		new Thread(new Runnable() {
 
@@ -112,7 +112,7 @@ public class EzScreenServer {
 			jsonRpcOverHttpServer = null;
 		}
 	}
-	private void cleanUpMdns(JmmDNS jmDns, ServiceInfo serviceInfo) {
+	private void cleanUpMdns(JmDNS jmDns, ServiceInfo serviceInfo) {
 		if (jmDns != null) {
 			if (serviceInfo != null) {
 				jmDns.unregisterService(serviceInfo);
@@ -211,7 +211,7 @@ public class EzScreenServer {
 			});
 			jsonRpcOverHttpServer.start();
 			
-			jmDNS = JmmDNS.Factory.getInstance();
+			jmDNS = Bonjour.getInstance(inetAddress);
 			HashMap<String, String> txtRecord = new HashMap<String, String>();					
 			serviceInfo = ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord);
 			jmDNS.registerService(serviceInfo);

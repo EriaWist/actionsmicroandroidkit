@@ -6,9 +6,11 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.jmdns.JmDNS;
 import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
 
+import com.actionsmicro.androidrx.Bonjour;
 import com.yutel.silver.exception.AirplayException;
 import com.yutel.silver.http.AirplayServer;
 import com.yutel.silver.http.HttpProtocol;
@@ -21,7 +23,7 @@ public class AikaImpl extends Aika {
 	private static Logger logger = Logger.getLogger(AikaImpl.class.getName());
 	private int mPort;
 	private AirplayServer as;
-	private JmmDNS mJmDNS;
+	private JmDNS mJmDNS;
 	private InetAddress mInetAddress;
 	private String mType = "_airplay._tcp.local.";
 	private String mName;
@@ -91,7 +93,7 @@ public class AikaImpl extends Aika {
 			// as.setHandlers(mHandlers);
 			as.start();
 			// jmdns server
-			mJmDNS = JmmDNS.Factory.getInstance();
+			mJmDNS = Bonjour.getInstance(mInetAddress);
 			logger.log(Level.INFO, "Opened JmDNS!");
 			airPlayService = ServiceInfo.create(mType, mName, mPort,
 					0, 0, mConfig);
@@ -109,7 +111,7 @@ public class AikaImpl extends Aika {
 	public void stop() {
 		try {
 			// jmdns
-			final JmmDNS mJmDNS2 = mJmDNS;
+			final JmDNS mJmDNS2 = mJmDNS;
 			final ServiceInfo airPlayService = this.airPlayService;
 			this.airPlayService = null;
 			new Thread(new Runnable() {
@@ -131,7 +133,7 @@ public class AikaImpl extends Aika {
 		}
 	}
 
-	private void cleanUpJmDNS(JmmDNS mJmDNS2, ServiceInfo airPlayService) {
+	private void cleanUpJmDNS(JmDNS mJmDNS2, ServiceInfo airPlayService) {
 		if (mJmDNS2 != null) {
 			mJmDNS2.unregisterService(airPlayService);
 			logger.log(Level.INFO, "JmDNS unregisterService:"+airPlayService);

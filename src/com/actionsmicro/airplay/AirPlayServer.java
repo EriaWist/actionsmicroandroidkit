@@ -14,6 +14,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
 
+import javax.jmdns.JmDNS;
 import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
 
@@ -22,6 +23,7 @@ import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import com.actionsmicro.androidrx.Bonjour;
 import com.dd.plist.BinaryPropertyListParser;
 import com.dd.plist.NSData;
 import com.dd.plist.NSDictionary;
@@ -85,9 +87,15 @@ public class AirPlayServer {
 	private String name;
 	private Aika airplayService;
 	private AirPlayServerDelegate delegate;
-	protected JmmDNS jmDNS;
+	protected JmDNS jmDNS;
 	private AsyncHttpServer mirrorServer;
 	private ServiceInfo raopService;
+	private static boolean DEBUG_LOG = false;
+	private static void debugLog(String msg) {
+		if (DEBUG_LOG) {
+			Log.d(TAG, msg);
+		}
+	}
 	public AirPlayServer(Context context, InetAddress inetAddress, String name, AirPlayServerDelegate delegate) {
 		this.context = context;
 		this.inetAddress = inetAddress;
@@ -173,7 +181,7 @@ public class AirPlayServer {
 						
 						@Override
 						public void onCompleted(Exception ex) {
-							Log.d(TAG, "onCompleted:"+body.length);						
+							debugLog("onCompleted:"+body.length);						
 							EndEmitter ender = EndEmitter.create(request.getSocket().getServer(), null);
 							ender.setDataEmitter(request);
 							ender.setEndCallback((CompletedCallback)request);
@@ -228,7 +236,7 @@ public class AirPlayServer {
 						@Override
 						public void onDataAvailable(DataEmitter emitter,
 								ByteBufferList bb) {
-							Log.d(TAG, "onDataAvailable:"+bb.remaining());						
+							debugLog("onDataAvailable:"+bb.remaining());						
 							totalRead += bb.remaining();
 							bb.get(body);
 							try {
@@ -254,7 +262,6 @@ public class AirPlayServer {
 						
 						@Override
 						public void onCompleted(Exception ex) {
-							Log.d(TAG, "onCompleted:"+totalRead);
 							final DataEmitterReader headerReader = new DataEmitterReader();
 							request.getSocket().setDataCallback(headerReader);
 							if (delegate != null) {
@@ -265,9 +272,9 @@ public class AirPlayServer {
 								private ByteBuffer header = ByteBuffer.allocate(128);
 								void logBytes(String prefix, byte[] buffer) {
 									if (buffer.length >= 8) {
-										Log.d(TAG, prefix+String.format("[%02x %02x %02x %02x  %02x %02x %02x %02x]", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]));
+										debugLog(prefix+String.format("[%02x %02x %02x %02x  %02x %02x %02x %02x]", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]));
 									} else if (buffer.length >= 4) {
-										Log.d(TAG, prefix+String.format("[%02x %02x %02x %02x]", buffer[0], buffer[1], buffer[2], buffer[3]));										
+										debugLog(prefix+String.format("[%02x %02x %02x %02x]", buffer[0], buffer[1], buffer[2], buffer[3]));										
 									}
 								}
 								@Override
@@ -280,7 +287,7 @@ public class AirPlayServer {
 									final int payloadType = header.getShort();
 									final int header_3 = header.getShort();
 									final long timestamp = header.getLong();
-									Log.d(TAG, "onDataAvailable:streaming:"+"payload size:"+payloadSize+", payload type:"+payloadType+", header3:"+header_3+", timestamp:"+timestamp);
+									debugLog("onDataAvailable:streaming:"+"payload size:"+payloadSize+", payload type:"+payloadType+", header3:"+header_3+", timestamp:"+timestamp);
 									DataEmitterReader payloadReader = new DataEmitterReader();
 									request.getSocket().setDataCallback(payloadReader);
 									payloadReader.read(payloadSize, new DataCallback() {
@@ -298,7 +305,7 @@ public class AirPlayServer {
 											try {
 												payload.position(0);
 												bb.get(payload.array(), 0, payloadSize);
-												Log.d(TAG, "onDataAvailable:streaming:"+payloadSize+" bytes of payload read");
+												debugLog("onDataAvailable:streaming:"+payloadSize+" bytes of payload read");
 												if (payloadType == 0) { // video bitstream
 													logBytes("onDataAvailable:streaming:payload:", payload.array());
 													h264Frame.position(0);			
@@ -310,7 +317,7 @@ public class AirPlayServer {
 													int offset = 0;
 													while (offset < payloadSize-4) {
 														length = h264Frame.getInt();
-														Log.d(TAG, String.format("onDataAvailable:streaming:h.264 frame offset: %d, length:%d ", offset, length));
+														debugLog(String.format("onDataAvailable:streaming:h.264 frame offset: %d, length:%d ", offset, length));
 														if (length == 0) {
 															break;
 														}
@@ -335,7 +342,7 @@ public class AirPlayServer {
 													if (delegate != null) {
 														delegate.onSpsAvailable(sps);
 													}
-													Log.d(TAG, "onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
+													debugLog("onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
 													logBytes("onDataAvailable:streaming:sps:", sps);
 
 													numberOfPps = payload.get();
@@ -345,7 +352,7 @@ public class AirPlayServer {
 													if (delegate != null) {
 														delegate.onPpsAvailable(pps);
 													}
-													Log.d(TAG, "onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
+													debugLog("onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
 													logBytes("onDataAvailable:streaming:pps:", pps);
 
 												} else if (payloadType == 2) { // heartbeat
@@ -528,7 +535,7 @@ public class AirPlayServer {
 	}
 	private void registerRaopService() {
 		try {
-			jmDNS = JmmDNS.Factory.getInstance();					
+			jmDNS = Bonjour.getInstance(inetAddress);					
 			String macAddressWithoutCol = getMacAddress().replace(":", "");
 			HashMap<String, String> txt = new HashMap<String, String>();					
 			txt.put("txtvers", "1");
@@ -557,7 +564,7 @@ public class AirPlayServer {
 	}
 	private void cleanUpMdns() {
 		
-		final JmmDNS jmDNS2 = jmDNS;
+		final JmDNS jmDNS2 = jmDNS;
 		final ServiceInfo raopService = this.raopService;
 		this.raopService = null;
 		if (jmDNS2 != null) {
