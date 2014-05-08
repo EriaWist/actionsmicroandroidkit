@@ -1,4 +1,4 @@
-package com.actionsmicro.airplay;
+package com.actionsmicro.airplay.crypto;
 
 import com.actionsmicro.utils.Log;
 

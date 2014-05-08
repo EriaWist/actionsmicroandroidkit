@@ -18,7 +18,7 @@ import org.apache.http.util.ByteArrayBuffer;
 import android.util.Base64;
 import android.util.Log;
 
-import com.actionsmicro.airplay.FairPlay;
+import com.actionsmicro.airplay.crypto.FairPlay;
 
 
 /**
@@ -31,7 +31,7 @@ public class RTSPResponder extends Thread{
 	private Socket socket;					// Connected socket
 	private int[] fmtp;
 	private byte[] aesiv, aeskey;			// ANNOUNCE request infos
-	private AudioServer serv; 				// Audio listener
+	private AudioPlayer serv; 				// Audio listener
 	byte[] hwAddr;
 	private PushbackInputStream in;
 	private static final Pattern completedPacket = Pattern.compile("(.*)\r\n\r\n");
@@ -120,10 +120,12 @@ public class RTSPResponder extends Thread{
         		} else if(m.group(1).contentEquals("rsaaeskey")){
         			aeskey = this.decryptRSA(Base64.decode(m.group(2), Base64.DEFAULT));
         		} else if(m.group(1).contentEquals("aesiv")){
-        			aesiv = Base64.decode(m.group(2), Base64.DEFAULT);
+        			aesiv = Base64.decode(m.group(2), Base64.DEFAULT);        			
         		} else if (m.group(1).contentEquals("fpaeskey")) {
         			byte fpaeskey[] = Base64.decode(m.group(2), Base64.DEFAULT);
-        			aeskey = FairPlay.decrypt(fpaeskey, fpaeskey.length);
+        			aeskey = new byte[16];
+        			fpaeskey = FairPlay.decrypt(fpaeskey, fpaeskey.length);
+        			System.arraycopy(fpaeskey, 0, aeskey, 0, 16);        			
         		}
         	}
         	
@@ -150,12 +152,15 @@ public class RTSPResponder extends Thread{
             
         	// Launching audioserver
         	releaseAudioServer();
-			serv = new AudioServer(new AudioSession(aesiv, aeskey, fmtp, controlPort, timingPort));
-
-        	response.append("Transport", packet.valueOfHeader("Transport") + ";server_port=" + serv.getServerPort());
-        			
-        	// ??? Why ???
+        	//TODO depends on RTSP meta
+//			serv = new AudioServer(new AudioSession(aesiv, aeskey, fmtp, controlPort, timingPort));
+        	serv = new com.actionsmicro.airplay.airtunes.AudioPlayer(new AudioSession(aesiv, aeskey, fmtp, controlPort, timingPort));
+			// ??? Why ???
         	response.append("Session", "DEADBEEF");
+
+//        	response.append("Transport", packet.valueOfHeader("Transport") + ";server_port=" + serv.getServerPort());
+        	response.append("Transport", String.format("RTP/AVP/UDP;unicast;mode=record;timing_port=%d;events;control_port=%d;server_port=%d", timingPort, controlPort, serv.getServerPort()));
+        			
         } else if (REQ.contentEquals("RECORD")){
         	response.append("Audio-Jack-Status", "connected; type=analog");
     		
@@ -182,7 +187,7 @@ public class RTSPResponder extends Thread{
         		}
         	}
         }  else if (REQ.contentEquals("GET_PARAMETER")){
-        	
+        	response.append("volume", "0");
         }
 //        else if (REQ.contentEquals("POST") && packet.getDirectory().equals("/fp-setup")) {
 //        	String content = packet.getContent();

@@ -1,4 +1,4 @@
-package com.actionsmicro.airplay;
+package com.actionsmicro.airplay.crypto;
 
 public class EzAes {
 	static {

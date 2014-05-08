@@ -15,7 +15,6 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 
 import javax.jmdns.JmDNS;
-import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
 
 import vavi.apps.shairport.RTSPResponder;
@@ -23,6 +22,8 @@ import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import com.actionsmicro.airplay.crypto.EzAes;
+import com.actionsmicro.airplay.crypto.FairPlay;
 import com.actionsmicro.androidrx.Bonjour;
 import com.dd.plist.BinaryPropertyListParser;
 import com.dd.plist.NSData;
