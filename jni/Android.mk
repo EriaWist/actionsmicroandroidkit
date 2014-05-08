@@ -2,114 +2,28 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE    := fairplay-jni
-LOCAL_SRC_FILES := fairplay/code1.c \
-		fairplay/code10.c \
-		fairplay/code100.c \
-		fairplay/code101.c \
-		fairplay/code102.c \
-		fairplay/code103.c \
-		fairplay/code104.c \
-		fairplay/code106.c \
-		fairplay/code11.c \
-		fairplay/code12.c \
-		fairplay/code13.c \
-		fairplay/code14.c \
-		fairplay/code15.c \
-		fairplay/code16.c \
-		fairplay/code17.c \
-		fairplay/code18.c \
-		fairplay/code19.c \
-		fairplay/code2.c \
-		fairplay/code20.c \
-		fairplay/code21.c \
-		fairplay/code22.c \
-		fairplay/code23.c \
-		fairplay/code24.c \
-		fairplay/code25.c \
-		fairplay/code26.c \
-		fairplay/code27.c \
-		fairplay/code28.c \
-		fairplay/code29.c \
-		fairplay/code3.c \
-		fairplay/code30.c \
-		fairplay/code31.c \
-		fairplay/code32.c \
-		fairplay/code33.c \
-		fairplay/code34.c \
-		fairplay/code35.c \
-		fairplay/code36.c \
-		fairplay/code37.c \
-		fairplay/code38.c \
-		fairplay/code39.c \
-		fairplay/code4.c \
-		fairplay/code40.c \
-		fairplay/code41.c \
-		fairplay/code42.c \
-		fairplay/code43.c \
-		fairplay/code44.c \
-		fairplay/code45.c \
-		fairplay/code46.c \
-		fairplay/code47.c \
-		fairplay/code48.c \
-		fairplay/code49.c \
-		fairplay/code5.c \
-		fairplay/code50.c \
-		fairplay/code51.c \
-		fairplay/code52.c \
-		fairplay/code53.c \
-		fairplay/code54.c \
-		fairplay/code55.c \
-		fairplay/code56.c \
-		fairplay/code57.c \
-		fairplay/code58.c \
-		fairplay/code59.c \
-		fairplay/code6.c \
-		fairplay/code60.c \
-		fairplay/code61.c \
-		fairplay/code62.c \
-		fairplay/code63.c \
-		fairplay/code64.c \
-		fairplay/code65.c \
-		fairplay/code66.c \
-		fairplay/code67.c \
-		fairplay/code68.c \
-		fairplay/code69.c \
-		fairplay/code7.c \
-		fairplay/code70.c \
-		fairplay/code71.c \
-		fairplay/code72.c \
-		fairplay/code73.c \
-		fairplay/code74.c \
-		fairplay/code75.c \
-		fairplay/code76.c \
-		fairplay/code77.c \
-		fairplay/code78.c \
-		fairplay/code79.c \
-		fairplay/code8.c \
-		fairplay/code80.c \
-		fairplay/code81.c \
-		fairplay/code82.c \
-		fairplay/code83.c \
-		fairplay/code84.c \
-		fairplay/code85.c \
-		fairplay/code86.c \
-		fairplay/code87.c \
-		fairplay/code88.c \
-		fairplay/code89.c \
-		fairplay/code9.c \
-		fairplay/code90.c \
-		fairplay/code91.c \
-		fairplay/code92.c \
-		fairplay/code93.c \
-		fairplay/code94.c \
-		fairplay/code95.c \
-		fairplay/code97.c \
-		fairplay/interface.c \
-		fairplay_jni.c \
-		ez_aes.c \
-		ez_aes_jni.c \
+FAIRPLAY_MODULE := $(LOCAL_PATH)/fairplay_jni/Android.mk
+FDK_AAC_MODULE := $(LOCAL_PATH)/fdk-aac-master/Android.mk
+
+LOCAL_SRC_FILES := fairplay_jni/fairplay_jni.c \
+		fairplay_jni/ez_aes.c \
+		fairplay_jni/ez_aes_jni.c \
+		aaceld_jni/aac_interface.c \
+		aaceld_jni/aaceld_jni.c \
+
+LOCAL_C_INCLUDES := \
+		$(LOCAL_PATH)/fdk-aac-master/libAACdec/include \
+		$(LOCAL_PATH)/fdk-aac-master/libSys/include \
+
+
+LOCAL_STATIC_LIBRARIES := libFraunhoferAAC libFairplay
 
 LOCAL_LDLIBS    := -llog
 
+LOCAL_MODULE := fairplay-jni
+LOCAL_MODULE_FILENAME := libfairplay-jni
+
 include $(BUILD_SHARED_LIBRARY)
+
+include $(FDK_AAC_MODULE)
+include $(FAIRPLAY_MODULE)

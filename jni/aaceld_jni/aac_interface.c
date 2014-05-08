@@ -5,6 +5,14 @@
 #include "aac_interface.h"
 #include "aacdecoder_lib.h"
 
+
+#include <android/log.h>
+#define  LOG_TAG    "aac-eld"
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#define  LOGV(...)  __android_log_print(ANDROID_LOG_VERBOSE,LOG_TAG,__VA_ARGS__)
+
 static uint8_t *make_asc(int frequency, int channel, int constant_duration);
 
 
@@ -42,9 +50,14 @@ int init_aaceld_decoder(int frequency, int channel, int constant_duration)
     if (ret != AAC_DEC_OK) {
         return -4;
     }
-
+    CStreamInfo *mStreamInfo = aacDecoder_GetStreamInfo(pDecoderHandle);
+    LOGI("Initially configuring decoder: %d Hz, %d channels, frame size:%d",
+                mStreamInfo->sampleRate,
+                mStreamInfo->numChannels,
+                mStreamInfo->frameSize);
     return 0;
 }
+
 
 int deinit_aaceld_decoder()
 {
@@ -65,6 +78,8 @@ int deinit_aaceld_decoder()
 
 uint8_t *decode_aaceld_frame(uint8_t *data, int *size)
 {
+    CStreamInfo *mStreamInfo = aacDecoder_GetStreamInfo(pDecoderHandle);
+    
     UINT data_left = *size;
     UINT tmp = *size;
     int ret;
@@ -73,15 +88,19 @@ uint8_t *decode_aaceld_frame(uint8_t *data, int *size)
         UINT msize = data_left;
         ret = aacDecoder_Fill(pDecoderHandle, &mbuf, &msize, &tmp);
         if (ret != AAC_DEC_OK) {
+            LOGE("aacDecoder_Fill returns:0x%x", ret);
+    
             return NULL;
         }
         data_left = tmp;
 
         ret = aacDecoder_DecodeFrame(pDecoderHandle, decoder_output_buffer, pcm_pkt_size, 0);
         if (ret == AAC_DEC_NOT_ENOUGH_BITS) {
+            LOGD("aacDecoder_DecodeFrame AAC_DEC_NOT_ENOUGH_BITS");
             continue;
         }
         if (ret != AAC_DEC_OK) {
+            LOGE("aacDecoder_DecodeFrame returns:0x%x", ret);
             return NULL;
         }
     }
