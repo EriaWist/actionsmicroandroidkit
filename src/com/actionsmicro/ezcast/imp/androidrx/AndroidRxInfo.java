@@ -4,9 +4,6 @@ import java.net.InetAddress;
 
 import javax.jmdns.ServiceInfo;
 
-import android.annotation.TargetApi;
-import android.net.nsd.NsdServiceInfo;
-import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -20,16 +17,16 @@ import com.actionsmicro.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.ezcast.MessageApi;
 import com.actionsmicro.ezcast.MessageApiBuilder;
 
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class AndroidRxInfo extends DeviceInfo {
 	private int port;
 	private InetAddress address;
 	private String name;
-	public AndroidRxInfo(NsdServiceInfo serviceInfo) {
-		this.port = serviceInfo.getPort();
-		this.address = serviceInfo.getHost();
-		this.name = serviceInfo.getServiceName();
-	}
+//	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+//	public AndroidRxInfo(NsdServiceInfo serviceInfo) {
+//		this.port = serviceInfo.getPort();
+//		this.address = serviceInfo.getHost();
+//		this.name = serviceInfo.getServiceName();
+//	}
 	public AndroidRxInfo(Parcel in) {
 		port = in.readInt();
 		address = (InetAddress)in.readSerializable();

@@ -12,15 +12,10 @@ import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.net.nsd.NsdManager;
-import android.net.nsd.NsdManager.DiscoveryListener;
-import android.net.nsd.NsdManager.ResolveListener;
-import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
-import android.os.Build;
 import android.text.format.Formatter;
 
 import com.actionsmicro.androidrx.Bonjour;
@@ -29,80 +24,79 @@ import com.actionsmicro.ezcast.DeviceFinderBase;
 import com.actionsmicro.ezcast.DeviceInfo;
 import com.actionsmicro.utils.Log;
 
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class AndroidRxFinder extends DeviceFinderBase {
 
 	private static final String TAG = "AndroidRxFinder";
 	public static final String SERVICE_TYPE = "_ezscreen._tcp.";
-	private NsdManager mNsdManager;
+//	private NsdManager mNsdManager;
 	private JmDNS mDns = null;//JmmDNS.Factory.getInstance();
 	private List<AndroidRxInfo> devices = new ArrayList<AndroidRxInfo>();
-	private ResolveListener mResolveListener = new NsdManager.ResolveListener() {
-
-        @Override
-        public void onResolveFailed(NsdServiceInfo serviceInfo, int errorCode) {
-            // Called when the resolve fails.  Use the error code to debug.
-            Log.e(TAG, "Resolve failed:" + errorCode+"; "+serviceInfo);
-        }
-
-        @Override
-        public void onServiceResolved(NsdServiceInfo serviceInfo) {
-            Log.d(TAG, "Resolve Succeeded. " + serviceInfo);
-            AndroidRxInfo newDevice = new AndroidRxInfo(serviceInfo);
-            addDevice(newDevice);
-			getDeviceFinderProxy().notifyListeneroOnDeviceAdded(newDevice);
-        }
-    };
-	private DiscoveryListener mDiscoveryListener = new NsdManager.DiscoveryListener() {
-
-        //  Called as soon as service discovery begins.
-        @Override
-        public void onDiscoveryStarted(String regType) {
-            Log.d(TAG, "Service discovery started");
-        }
-
-        @Override
-        public void onServiceFound(NsdServiceInfo service) {
-            // A service was found!  Do something with it.
-            Log.d(TAG, "Service discovery success:" + service);
-            if (!service.getServiceType().equals(SERVICE_TYPE)) {
-                // Service type is the string containing the protocol and
-                // transport layer for this service.
-                Log.d(TAG, "Unknown Service Type: " + service.getServiceType());
-            } else {
-            	mNsdManager.resolveService(service, mResolveListener );
-            }
-        }
-
-        @Override
-        public void onServiceLost(NsdServiceInfo service) {
-            // When the network service is no longer available.
-            // Internal bookkeeping code goes here.
-            Log.d(TAG, "service lost:" + service);
-            AndroidRxInfo deviceFound = getDeviceFromService(service);
-            if (deviceFound != null) {
-            	removeDevice(deviceFound);
-                getDeviceFinderProxy().notifyListeneroOnDeviceRemoved(deviceFound);
-            }
-        }
-
-        @Override
-        public void onDiscoveryStopped(String serviceType) {
-            Log.d(TAG, "Discovery stopped: " + serviceType);
-        }
-
-        @Override
-        public void onStartDiscoveryFailed(String serviceType, int errorCode) {
-            Log.e(TAG, "onStartDiscoveryFailed failed: Error code:" + errorCode);
-            mNsdManager.stopServiceDiscovery(this);
-        }
-
-        @Override
-        public void onStopDiscoveryFailed(String serviceType, int errorCode) {
-            Log.e(TAG, "onStopDiscoveryFailed failed: Error code:" + errorCode);
-            mNsdManager.stopServiceDiscovery(this);
-        }
-    };
+//	private ResolveListener mResolveListener = new NsdManager.ResolveListener() {
+//
+//        @Override
+//        public void onResolveFailed(NsdServiceInfo serviceInfo, int errorCode) {
+//            // Called when the resolve fails.  Use the error code to debug.
+//            Log.e(TAG, "Resolve failed:" + errorCode+"; "+serviceInfo);
+//        }
+//
+//        @Override
+//        public void onServiceResolved(NsdServiceInfo serviceInfo) {
+//            Log.d(TAG, "Resolve Succeeded. " + serviceInfo);
+//            AndroidRxInfo newDevice = new AndroidRxInfo(serviceInfo);
+//            addDevice(newDevice);
+//			getDeviceFinderProxy().notifyListeneroOnDeviceAdded(newDevice);
+//        }
+//    };
+//	private DiscoveryListener mDiscoveryListener = new NsdManager.DiscoveryListener() {
+//
+//        //  Called as soon as service discovery begins.
+//        @Override
+//        public void onDiscoveryStarted(String regType) {
+//            Log.d(TAG, "Service discovery started");
+//        }
+//
+//        @Override
+//        public void onServiceFound(NsdServiceInfo service) {
+//            // A service was found!  Do something with it.
+//            Log.d(TAG, "Service discovery success:" + service);
+//            if (!service.getServiceType().equals(SERVICE_TYPE)) {
+//                // Service type is the string containing the protocol and
+//                // transport layer for this service.
+//                Log.d(TAG, "Unknown Service Type: " + service.getServiceType());
+//            } else {
+//            	mNsdManager.resolveService(service, mResolveListener );
+//            }
+//        }
+//
+//        @Override
+//        public void onServiceLost(NsdServiceInfo service) {
+//            // When the network service is no longer available.
+//            // Internal bookkeeping code goes here.
+//            Log.d(TAG, "service lost:" + service);
+//            AndroidRxInfo deviceFound = getDeviceFromService(service);
+//            if (deviceFound != null) {
+//            	removeDevice(deviceFound);
+//                getDeviceFinderProxy().notifyListeneroOnDeviceRemoved(deviceFound);
+//            }
+//        }
+//
+//        @Override
+//        public void onDiscoveryStopped(String serviceType) {
+//            Log.d(TAG, "Discovery stopped: " + serviceType);
+//        }
+//
+//        @Override
+//        public void onStartDiscoveryFailed(String serviceType, int errorCode) {
+//            Log.e(TAG, "onStartDiscoveryFailed failed: Error code:" + errorCode);
+//            mNsdManager.stopServiceDiscovery(this);
+//        }
+//
+//        @Override
+//        public void onStopDiscoveryFailed(String serviceType, int errorCode) {
+//            Log.e(TAG, "onStopDiscoveryFailed failed: Error code:" + errorCode);
+//            mNsdManager.stopServiceDiscovery(this);
+//        }
+//    };
 	private boolean searching;;
 
 	public AndroidRxFinder(DeviceFinder deviceFinderProxy) {
@@ -134,6 +128,7 @@ public class AndroidRxFinder extends DeviceFinderBase {
 			searching = false;
 		}
 	}
+	@SuppressLint("NewApi")
 	private ServiceListener serviceListener = new ServiceListener() {
 
 		@Override
@@ -218,16 +213,17 @@ public class AndroidRxFinder extends DeviceFinderBase {
 		}
 	}
 
-	private AndroidRxInfo getDeviceFromService(NsdServiceInfo service) {
-		AndroidRxInfo deviceFound = null;
-		for (AndroidRxInfo device : devices) {
-			if (device.getName().replace("\\032", " ").equals(service.getServiceName().replace("\\032", " "))) {
-				deviceFound = device;
-				break;
-			}
-		}
-		return deviceFound;
-	}
+//	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+//	private AndroidRxInfo getDeviceFromService(NsdServiceInfo service) {
+//		AndroidRxInfo deviceFound = null;
+//		for (AndroidRxInfo device : devices) {
+//			if (device.getName().replace("\\032", " ").equals(service.getServiceName().replace("\\032", " "))) {
+//				deviceFound = device;
+//				break;
+//			}
+//		}
+//		return deviceFound;
+//	}
 	private String getIpAddress() {
 		WifiManager wim= (WifiManager) getDeviceFinderProxy().getContext().getSystemService(Context.WIFI_SERVICE);
 		return Formatter.formatIpAddress(wim.getConnectionInfo().getIpAddress());
