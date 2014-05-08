@@ -26,4 +26,8 @@ public class Log {
 		}
 	}
 
+	public static void w(String tag, String string) {
+		android.util.Log.w(tag, string);
+	}
+
 }
