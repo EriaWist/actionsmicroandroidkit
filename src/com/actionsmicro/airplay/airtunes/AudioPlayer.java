@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -40,6 +41,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	private long startMs;
 	private boolean decoderThreadShouldStop;
 	private boolean playerThreadShouldStop;
+	private AudioTrack track;
 
 	public AudioPlayer(final AudioSession session) {
 		this.pureAudioBuffer = new PureAudioBuffer(new PureAudioBuffer.ResendDelegate() {
@@ -158,17 +160,18 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		decoderThread.start();
 	}
 	private void spawnPlayerThread() {
+		track = new AudioTrack(AudioManager.STREAM_MUSIC,
+				44100,
+				AudioFormat.CHANNEL_OUT_STEREO,
+				AudioFormat.ENCODING_PCM_16BIT,
+				44100 * 2 * 4,
+				AudioTrack.MODE_STREAM);
 		playerThreadShouldStop = false;
 		playerThread = new Thread(new Runnable() {
 
 			@Override
 			public void run() {
-				AudioTrack track = new AudioTrack(AudioManager.STREAM_MUSIC,
-	                       44100,
-	                       AudioFormat.CHANNEL_OUT_STEREO,
-	                       AudioFormat.ENCODING_PCM_16BIT,
-	                       44100 * 2 * 4,
-	                       AudioTrack.MODE_STREAM);
+				
 				track.play();
 				ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
 				final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
@@ -252,7 +255,6 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 			try {
 				decoderThread.join();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -274,57 +276,52 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	}
 	
 	private void initRTP() {
-		int port = 6000;
-		// TODO change to random port
-		while(true){
-			try {
-				sock = new DatagramSocket(port);
-				csock = new DatagramSocket(port+1);
-			} catch (IOException e) {
-				port = port + 2;
-				continue;
-			}
-			break;
-		}
-		
-		udpListener = new UDPListener(sock, new UDPDelegate() {
-			@Override
-			public void packetReceived(DatagramSocket socket,
-					DatagramPacket packet) {
-				rtpClient = packet.getAddress();
-				
-//				Real-Time Transport Protocol
-//			    10.. .... = Version: RFC 1889 Version (2)
-//			    ..0. .... = Padding: False
-//			    ...0 .... = Extension: False
-//			    .... 0000 = Contributing source identifiers count: 0
-//			    1... .... = Marker: True
-//			    Payload type: DynamicRTP-Type-96 (96)
-//			    Sequence number: 45457
-//			    Timestamp: 4151908034
-//			    Synchronization Source identifier: 0xe8bb6b2c (3904596780)
-//			    Payload: bb5c8e51aa7cd29600c3fd60ebae6e413138feae909b44f1...
-				
-				ByteBuffer packetBuffer = ByteBuffer.wrap(packet.getData());
-				packetBuffer.order(ByteOrder.BIG_ENDIAN);
-				packetBuffer.position(1);
-				int type = packetBuffer.get()&~0x80;
-				if (type == 0x60 || type == 0x56) { 
-					int extraOffset = 0;
-					if(type==0x56){
-						extraOffset = 4;
-					}					
-					int seqno = (packetBuffer.getShort() & 0xffff);
-					long timestamp = (packetBuffer.getInt() & 0xffffffffL);
-					packetBuffer.position(12 + extraOffset);
-					int payloadSize = packet.getLength() - extraOffset - 12;
-					byte[] pktp = new byte[payloadSize];
-					packetBuffer.get(pktp, 0, payloadSize);
-					pureAudioBuffer.putPacketInBuffer(seqno, pktp, timestamp);
+		try {
+			sock = new DatagramSocket();
+			csock = new DatagramSocket();
+			udpListener = new UDPListener(sock, new UDPDelegate() {
+				@Override
+				public void packetReceived(DatagramSocket socket,
+						DatagramPacket packet) {
+					rtpClient = packet.getAddress();
+
+					//					Real-Time Transport Protocol
+					//				    10.. .... = Version: RFC 1889 Version (2)
+					//				    ..0. .... = Padding: False
+					//				    ...0 .... = Extension: False
+					//				    .... 0000 = Contributing source identifiers count: 0
+					//				    1... .... = Marker: True
+					//				    Payload type: DynamicRTP-Type-96 (96)
+					//				    Sequence number: 45457
+					//				    Timestamp: 4151908034
+					//				    Synchronization Source identifier: 0xe8bb6b2c (3904596780)
+					//				    Payload: bb5c8e51aa7cd29600c3fd60ebae6e413138feae909b44f1...
+
+					ByteBuffer packetBuffer = ByteBuffer.wrap(packet.getData());
+					packetBuffer.order(ByteOrder.BIG_ENDIAN);
+					packetBuffer.position(1);
+					int type = packetBuffer.get()&~0x80;
+					if (type == 0x60 || type == 0x56) { 
+						int extraOffset = 0;
+						if(type==0x56){
+							extraOffset = 4;
+						}					
+						int seqno = (packetBuffer.getShort() & 0xffff);
+						long timestamp = (packetBuffer.getInt() & 0xffffffffL);
+						packetBuffer.position(12 + extraOffset);
+						int payloadSize = packet.getLength() - extraOffset - 12;
+						byte[] pktp = new byte[payloadSize];
+						packetBuffer.get(pktp, 0, payloadSize);
+						pureAudioBuffer.putPacketInBuffer(seqno, pktp, timestamp);
+					}
 				}
-			}
-			
-		});
+
+			});
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+
+
 	}
 	public void flush(){
 		if (pureAudioBuffer != null) {
@@ -333,8 +330,9 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	}
 	@Override
 	public void setVolume(double d) {
-		// TODO Auto-generated method stub
-		
+		if (track != null) {
+			track.setStereoVolume((float)d, (float)d);			
+		}
 	}
 	private void debugLog(String msg) {
 		if (DEBUG_LOG) {

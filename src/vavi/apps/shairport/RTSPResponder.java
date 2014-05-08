@@ -177,13 +177,19 @@ public class RTSPResponder extends Thread{
         	response.append("Connection", "close");
         	
         } else if (REQ.contentEquals("SET_PARAMETER")){
-        	// Timing port
-        	Pattern p = Pattern.compile("volume: (.+)");
         	if (packet.getContent() != null) {
+            	Pattern p = Pattern.compile("volume: (.+)");
         		Matcher m = p.matcher(packet.getContent());
         		if(m.find()){
-        			double volume = Math.pow(10.0,0.05*Double.parseDouble(m.group(1)));
-        			serv.setVolume(65536.0 * volume);
+        			//Audio volume can be changed using a SET_PARAMETER request. 
+        			//The volume is a float value representing the audio attenuation in dB. A value of –144 means the audio is muted. 
+        			//Then it goes from –30 to 0.
+        			double volume = Double.parseDouble(m.group(1));
+        			if (volume == -144) {
+        				serv.setVolume(0);
+        			} else {
+        				serv.setVolume((volume+30)/30);
+        			}
         		}
         	}
         }  else if (REQ.contentEquals("GET_PARAMETER")){
