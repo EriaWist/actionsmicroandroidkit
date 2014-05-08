@@ -1,24 +1,19 @@
 package com.actionsmicro.ezcast.imp.androidrx;
 
-import java.io.IOException;
-import java.math.BigInteger;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import javax.jmdns.JmDNS;
+import javax.jmdns.JmmDNS;
+import javax.jmdns.NetworkTopologyEvent;
+import javax.jmdns.NetworkTopologyListener;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
-import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 
-import com.actionsmicro.androidrx.Bonjour;
 import com.actionsmicro.ezcast.DeviceFinder;
 import com.actionsmicro.ezcast.DeviceFinderBase;
 import com.actionsmicro.ezcast.DeviceInfo;
@@ -29,7 +24,6 @@ public class AndroidRxFinder extends DeviceFinderBase {
 	private static final String TAG = "AndroidRxFinder";
 	public static final String SERVICE_TYPE = "_ezscreen._tcp.";
 //	private NsdManager mNsdManager;
-	private JmDNS mDns = null;//JmmDNS.Factory.getInstance();
 	private List<AndroidRxInfo> devices = new ArrayList<AndroidRxInfo>();
 //	private ResolveListener mResolveListener = new NsdManager.ResolveListener() {
 //
@@ -98,17 +92,24 @@ public class AndroidRxFinder extends DeviceFinderBase {
 //        }
 //    };
 	private boolean searching;;
+	private static JmmDNS bonjourBrowser = JmmDNS.Factory.getInstance();
+	private NetworkTopologyListener networkTopologyListener = new NetworkTopologyListener() {
 
-	public AndroidRxFinder(DeviceFinder deviceFinderProxy) {
-		super(deviceFinderProxy);
-		try {
-			byte[] bytes = BigInteger.valueOf(getIntIpAddress()).toByteArray();
-			mDns = Bonjour.getInstance(InetAddress.getByAddress(bytes));
-		} catch (UnknownHostException e) {
-			Log.e(TAG, "Bonjour.getInstance", e);
-		} catch (IOException e) {
-			Log.e(TAG, "Bonjour.getInstance", e);
+		@Override
+		public void inetAddressAdded(NetworkTopologyEvent event) {
+			bonjourBrowser.addServiceListener(SERVICE_TYPE+"local.", serviceListener);
 		}
+
+		@Override
+		public void inetAddressRemoved(
+				NetworkTopologyEvent event) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+	};
+	public AndroidRxFinder(DeviceFinder deviceFinderProxy) {
+		super(deviceFinderProxy);		
 //		mNsdManager = (NsdManager)deviceFinderProxy.getContext().getSystemService(Context.NSD_SERVICE);
 	}
 
@@ -125,7 +126,8 @@ public class AndroidRxFinder extends DeviceFinderBase {
 				multicastLock = null;
 			}
 //			mNsdManager.stopServiceDiscovery(mDiscoveryListener);
-			mDns.removeServiceListener(SERVICE_TYPE+"local.", serviceListener);
+			bonjourBrowser.removeNetworkTopologyListener(networkTopologyListener);
+			bonjourBrowser.removeServiceListener(SERVICE_TYPE+"local.", serviceListener);
 			searching = false;
 		}
 	}
@@ -176,8 +178,9 @@ public class AndroidRxFinder extends DeviceFinderBase {
 			new Thread(new Runnable() {
 
 				@Override
-				public void run() {
-					mDns.addServiceListener(SERVICE_TYPE+"local.", serviceListener);
+				public void run() {					
+					bonjourBrowser.addNetworkTopologyListener(networkTopologyListener);
+					bonjourBrowser.addServiceListener(SERVICE_TYPE+"local.", serviceListener);
 					Log.d(TAG, "addServiceListener");
 				}
 				
@@ -224,8 +227,4 @@ public class AndroidRxFinder extends DeviceFinderBase {
 //		}
 //		return deviceFound;
 //	}
-	private int getIntIpAddress() {
-		WifiManager wim= (WifiManager) getDeviceFinderProxy().getContext().getSystemService(Context.WIFI_SERVICE);
-		return wim.getConnectionInfo().getIpAddress();
-	}
 }
