@@ -13,7 +13,7 @@ LOCAL_SRC_FILES := fairplay_jni/fairplay_jni.c \
 
 LOCAL_C_INCLUDES := \
 		$(LOCAL_PATH)/fdk-aac-master/libAACdec/include \
-		$(LOCAL_PATH)/fdk-aac-master/libSys/include \
+		$(LOCAL_PATH)/fdk-aac-master/libSYS/include \
 
 
 LOCAL_STATIC_LIBRARIES := libFraunhoferAAC libFairplay
