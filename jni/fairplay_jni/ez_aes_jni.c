@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 JNIEXPORT jint JNICALL
-Java_com_actionsmicro_airplay_EzAes_init(JNIEnv* env, jclass clazz, jbyteArray key, jbyteArray iv) {
+Java_com_actionsmicro_airplay_crypto_EzAes_init(JNIEnv* env, jclass clazz, jbyteArray key, jbyteArray iv) {
 
 	jbyte* keyPtr = (*env)->GetByteArrayElements(env, key, NULL);
 	jbyte* ivPtr = (*env)->GetByteArrayElements(env, iv, NULL);
@@ -15,7 +15,7 @@ Java_com_actionsmicro_airplay_EzAes_init(JNIEnv* env, jclass clazz, jbyteArray k
 }
 
 JNIEXPORT jint JNICALL
-Java_com_actionsmicro_airplay_EzAes_decrypt(JNIEnv* env, jclass clazz, jbyteArray input, jint length, jbyteArray output) {
+Java_com_actionsmicro_airplay_crypto_EzAes_decrypt(JNIEnv* env, jclass clazz, jbyteArray input, jint length, jbyteArray output) {
 
 	jbyte* inputPtr = (*env)->GetByteArrayElements(env, input, NULL);
 	jbyte* outputPtr = (*env)->GetByteArrayElements(env, output, NULL);

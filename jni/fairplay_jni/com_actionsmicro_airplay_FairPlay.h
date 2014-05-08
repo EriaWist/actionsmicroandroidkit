@@ -12,7 +12,7 @@ extern "C" {
  * Method:    fp_setup_init
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1init
+JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_crypto_FairPlay_fp_1setup_1init
   (JNIEnv *, jclass);
 
 /*
@@ -20,7 +20,7 @@ JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1init
  * Method:    fp_setup_phase1
  * Signature: ([BIZ)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1phase1
+JNIEXPORT jbyteArray JNICALL Java_com_actionsmicro_airplay_crypto_FairPlay_fp_1setup_1phase1
   (JNIEnv *, jclass, jbyteArray, jint, jboolean);
 
 /*
@@ -28,7 +28,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1p
  * Method:    fp_setup_phase2
  * Signature: ([BIZ)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1phase2
+JNIEXPORT jbyteArray JNICALL Java_com_actionsmicro_airplay_crypto_FairPlay_fp_1setup_1phase2
   (JNIEnv *, jclass, jbyteArray, jint, jboolean);
 
 /*
@@ -36,7 +36,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1p
  * Method:    fp_decrypt
  * Signature: ([BI)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_com_actionsmicro_airplay_FairPlay_fp_1decrypt
+JNIEXPORT jbyteArray JNICALL Java_com_actionsmicro_airplay_crypto_FairPlay_fp_1decrypt
   (JNIEnv *, jclass, jbyteArray, jint);
 
 #ifdef __cplusplus

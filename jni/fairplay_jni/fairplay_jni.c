@@ -14,7 +14,7 @@ uint8_t *fp_decrypt(uint8_t *data, int32_t size);
 #define  LOGV(...)  __android_log_print(ANDROID_LOG_VERBOSE,LOG_TAG,__VA_ARGS__)
 
 JNIEXPORT jint JNICALL
-Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1init() {
+Java_com_actionsmicro_airplay_crypto_FairPlay_fp_1setup_1init() {
 	LOGD("fp_setup_init");
 	return fp_setup_init();
 }
@@ -25,7 +25,7 @@ void logMem(jbyte* bufferPtr, jsize len) {
 	}
 }
 JNIEXPORT jbyteArray JNICALL
-Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1phase1(JNIEnv* env, jclass clazz, jbyteArray data, jint size, jboolean isaudio) {
+Java_com_actionsmicro_airplay_crypto_FairPlay_fp_1setup_1phase1(JNIEnv* env, jclass clazz, jbyteArray data, jint size, jboolean isaudio) {
 	jbyte* bufferPtr = (*env)->GetByteArrayElements(env, data, NULL);
 	jbyteArray bArray = (*env)->NewByteArray(env, 142);
 	(*env)->SetByteArrayRegion(env, bArray, 0, 142, (jbyte*) fp_setup_phase1(bufferPtr, size, isaudio));
@@ -34,7 +34,7 @@ Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1phase1(JNIEnv* env, jclass cla
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1phase2(JNIEnv* env, jclass clazz, jbyteArray data, jint size, jboolean isaudio) {
+Java_com_actionsmicro_airplay_crypto_FairPlay_fp_1setup_1phase2(JNIEnv* env, jclass clazz, jbyteArray data, jint size, jboolean isaudio) {
 
 	jbyte* bufferPtr = (*env)->GetByteArrayElements(env, data, NULL);
 	jbyteArray bArray = (*env)->NewByteArray(env, 32);
@@ -44,7 +44,7 @@ Java_com_actionsmicro_airplay_FairPlay_fp_1setup_1phase2(JNIEnv* env, jclass cla
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_com_actionsmicro_airplay_FairPlay_fp_1decrypt(JNIEnv* env, jclass clazz, jbyteArray data, jint size) {
+Java_com_actionsmicro_airplay_crypto_FairPlay_fp_1decrypt(JNIEnv* env, jclass clazz, jbyteArray data, jint size) {
 	jbyte* bufferPtr = (*env)->GetByteArrayElements(env, data, NULL);
 	jbyteArray bArray = (*env)->NewByteArray(env, size);
 	LOGD("fp_decrypt");

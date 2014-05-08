@@ -16,7 +16,7 @@
  * Method:    init
  * Signature: (III)I
  */
- JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_init
+ JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_airtunes_AacEldDecoder_init
  (JNIEnv* env, jclass clazz, jint frequency, jint channel, jint constant_duration)
  {
  	LOGD("AacEldDecoder_init:%d, %d, %d,", frequency, channel, constant_duration);
@@ -29,7 +29,7 @@
  * Method:    decode
  * Signature: ([BI)[B
  */
-JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_decode
+JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_airtunes_AacEldDecoder_decode
 (JNIEnv* env, jclass clazz, jbyteArray data, jint length, jbyteArray out)
 {
 	jbyte* bufferPtr = (*env)->GetByteArrayElements(env, data, NULL);
@@ -50,7 +50,7 @@ JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_decode
  * Method:    release
  * Signature: ()I
  */
- JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_release
+ JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_airtunes_AacEldDecoder_release
  (JNIEnv* env, jclass clazz)
  {
  	LOGD("AacEldDecoder_release");

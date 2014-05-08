@@ -12,7 +12,7 @@ extern "C" {
  * Method:    init
  * Signature: (III)I
  */
-JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_init
+JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_airtunes_AacEldDecoder_init
   (JNIEnv *, jclass, jint, jint, jint);
 
 /*
@@ -20,7 +20,7 @@ JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_init
  * Method:    decode
  * Signature: ([BI)[B
  */
-JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_decode
+JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_airtunes_AacEldDecoder_decode
 (JNIEnv* env, jclass clazz, jbyteArray data, jint length, jbyteArray out);
 
 /*
@@ -28,7 +28,7 @@ JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_decode
  * Method:    release
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_AacEldDecoder_release
+JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_airtunes_AacEldDecoder_release
   (JNIEnv *, jclass);
 
 #ifdef __cplusplus
