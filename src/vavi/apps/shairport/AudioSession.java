@@ -35,7 +35,7 @@ public class AudioSession {
 		this.timingPort = timingPort;
 		
 		// FMTP
-		if (fmtp.length >= 12) {
+		if (fmtp != null && fmtp.length >= 12) {
 			frameSize = fmtp[1];
 			_7a = fmtp[2];
 			sampleSize = fmtp[3];
