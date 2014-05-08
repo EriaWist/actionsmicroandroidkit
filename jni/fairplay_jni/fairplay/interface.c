@@ -14,15 +14,15 @@ int fp_setup_init()
 
 uint8_t *fp_setup_phase1(uint8_t *data, int32_t size, int isaudio)
 {
-    return v5423(data, size, isaudio);
+    return (uint8_t *)v5423(data, size, isaudio);
 }
 
 uint8_t *fp_setup_phase2(uint8_t *data, int32_t size, int isaudio)
 {
-    return v5426(data, size, isaudio);
+    return (uint8_t *)v5426(data, size, isaudio);
 }
 
 uint8_t *fp_decrypt(uint8_t *data, int32_t size)
 {
-    return v6495(data, size);
+    return (uint8_t *)v6495(data, size);
 }
