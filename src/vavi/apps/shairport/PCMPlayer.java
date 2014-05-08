@@ -65,6 +65,7 @@ public class PCMPlayer extends Thread{
 	
 	public void stopThread(){
 		this.stopThread = true;
+		this.interrupt();
 		try {
 			this.join();
 		} catch (InterruptedException e) {
