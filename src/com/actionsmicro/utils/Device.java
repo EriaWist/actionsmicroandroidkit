@@ -85,6 +85,8 @@ public class Device {
 	public static String getEZScreenServiceName(Context context) {
 		String macAdd = getAppMacAddress(context);
 		macAdd = macAdd.replace(":", "");
-		return "EZCastScreen" + macAdd.substring(0, 3);
+		String mac3End = macAdd.substring(macAdd.length() - 3);
+		Integer hex = Integer.parseInt(mac3End, 16 );
+		return "EZCastScreen" + hex;
 	}
 }

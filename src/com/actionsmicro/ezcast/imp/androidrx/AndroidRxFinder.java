@@ -1,6 +1,7 @@
 package com.actionsmicro.ezcast.imp.androidrx;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -16,7 +17,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
-import android.text.format.Formatter;
 
 import com.actionsmicro.androidrx.Bonjour;
 import com.actionsmicro.ezcast.DeviceFinder;
@@ -102,7 +102,8 @@ public class AndroidRxFinder extends DeviceFinderBase {
 	public AndroidRxFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy);
 		try {
-			mDns = Bonjour.getInstance(InetAddress.getByName(getIpAddress()));
+			byte[] bytes = BigInteger.valueOf(getIntIpAddress()).toByteArray();
+			mDns = Bonjour.getInstance(InetAddress.getByAddress(bytes));
 		} catch (UnknownHostException e) {
 			Log.e(TAG, "Bonjour.getInstance", e);
 		} catch (IOException e) {
@@ -213,7 +214,6 @@ public class AndroidRxFinder extends DeviceFinderBase {
 		}
 	}
 
-//	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 //	private AndroidRxInfo getDeviceFromService(NsdServiceInfo service) {
 //		AndroidRxInfo deviceFound = null;
 //		for (AndroidRxInfo device : devices) {
@@ -224,8 +224,8 @@ public class AndroidRxFinder extends DeviceFinderBase {
 //		}
 //		return deviceFound;
 //	}
-	private String getIpAddress() {
+	private int getIntIpAddress() {
 		WifiManager wim= (WifiManager) getDeviceFinderProxy().getContext().getSystemService(Context.WIFI_SERVICE);
-		return Formatter.formatIpAddress(wim.getConnectionInfo().getIpAddress());
+		return wim.getConnectionInfo().getIpAddress();
 	}
 }
