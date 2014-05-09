@@ -78,7 +78,7 @@ public class EzScreenServer {
 	};
 	private JmDNS jmDNS;
 	private ServiceInfo serviceInfo;
-	private static final int HEARTBEAT_TIMEOUT = 3000;
+	private static final int HEARTBEAT_TIMEOUT = 13000;
 	public void start() {
 		Thread initThread = new Thread(new Runnable() {
 
