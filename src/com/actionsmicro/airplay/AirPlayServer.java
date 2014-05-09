@@ -91,6 +91,7 @@ public class AirPlayServer {
 	protected JmDNS jmDNS;
 	private AsyncHttpServer mirrorServer;
 	private ServiceInfo raopService;
+	protected ServerSocket servSock;
 	private static boolean DEBUG_LOG = false;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
@@ -129,6 +130,8 @@ public class AirPlayServer {
 		}
 		if (raopThread != null) {
 			stopRaopThread = true;
+			closeServerSocket();
+			raopThread.interrupt();
 			try {
 				raopThread.join();
 			} catch (InterruptedException e) {
@@ -465,21 +468,21 @@ public class AirPlayServer {
 	private static final int RAOP_PORTNUMBER = 47000;
 	
 	private void initRaopService() {
+		closeServerSocket();
 		stopRaopThread = false;
 		raopThread = new Thread(new Runnable() {
 
 			@Override
 			public void run() {
 				
-				ServerSocket servSock = null;
 				try {
 					servSock = new ServerSocket();
 					servSock.setReuseAddress(true);
-					servSock.setSoTimeout(1000);
+					servSock.setSoTimeout(0);
 					servSock.bind(new InetSocketAddress(RAOP_PORTNUMBER));
 					registerRaopService();
 					byte[] hwAddr = getHardwareAdress();
-					while (!stopRaopThread) {
+					while (!stopRaopThread && !Thread.currentThread().isInterrupted()) {
 						try {
 							Socket socket = servSock.accept();
 							Log.d("ShairPort", "got connection from " + socket.toString());
@@ -493,14 +496,7 @@ public class AirPlayServer {
 					e.printStackTrace();
 				} finally {
 					cleanUpMdns();
-					try {
-						if (servSock != null) {
-							servSock.close();
-						}
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+					closeServerSocket();
 				}
 			}
 			private byte[] getHardwareAdress() {
@@ -528,6 +524,17 @@ public class AirPlayServer {
 			}
 		});
 		raopThread.start();
+	}
+	private void closeServerSocket() {
+		if (servSock != null) {
+			try {
+				servSock.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			servSock = null;
+		}
 	}
 	public void sendEvent() {
 		if (airplayService != null) {

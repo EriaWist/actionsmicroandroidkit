@@ -41,6 +41,7 @@ import android.webkit.WebViewClient;
 
 import com.actionsmicro.BuildConfig;
 import com.actionsmicro.airplay.AirPlayServer;
+import com.actionsmicro.airplay.clock.SimplePlaybackClock;
 import com.actionsmicro.androidrx.EzScreenServer;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
@@ -631,17 +632,15 @@ public class EZScreenHelper {
 					return EZScreenHelper.this.getDuration();
 				}
 				private static final String MIME_VIDEO_AVC = "video/avc";
-				private long startMs;
 				private ByteBuffer[] inputBuffers;
-				private long timestampBase;
+				private SimplePlaybackClock playbackClock;
 				
 				@Override
 				public void onStartMirroring() {
 					Log.d(TAG, "onStartMirroring");
 					showMirrorView();
 					stopMirrorDecoding();
-					timestampBase = 0;
-					startMs = System.currentTimeMillis();
+					playbackClock = null;
 					decoder = MediaCodec.createDecoderByType(MIME_VIDEO_AVC);
 					if (mirrorSurface == null) {
 						while (mirrorSurfaceTexture == null) {
@@ -709,7 +708,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onSpsAvailable(byte[] sps) {
-					decodeByteWithPrefix(nalHeader, sps, 0, sps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+					decodeBytesWithPrefix(nalHeader, sps, 0, sps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
@@ -723,9 +722,8 @@ public class EZScreenHelper {
 					}					
 				}
 
-				private void decodeByteWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags) {
+				private void decodeBytesWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags) {
 					if (decoder != null && length > 0) {
-						Log.d(TAG, "decodeByteWithPrefix:");
 						int bufferIndex = -1;
 						bufferIndex = decoder.dequeueInputBuffer(10000);
 						if (bufferIndex != -1) {
@@ -736,15 +734,16 @@ public class EZScreenHelper {
 							inputBuffers[bufferIndex].put(data, offset, length);
 							int totalWrite = inputBuffers[bufferIndex].position();
 							inputBuffers[bufferIndex].rewind();
-							decoder.queueInputBuffer(bufferIndex, 0, totalWrite, 0, flags);							
+							decoder.queueInputBuffer(bufferIndex, 0, totalWrite, timestamp, flags);							
+						} else {
+							Log.w(TAG, "MediaCodec input buffer is not enough.");
 						}
 					}
-//					doRender();
 				}
 
 				@Override
 				public void onPpsAvailable(byte[] pps) {
-					decodeByteWithPrefix(nalHeader, pps, 0, pps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+					decodeBytesWithPrefix(nalHeader, pps, 0, pps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
@@ -797,12 +796,11 @@ public class EZScreenHelper {
 					if (renderThread == null) {
 						startRenderer();					
 					}
-					long timestampInMicroSec = getTime(timestamp)*1000;
-					if (timestampBase == 0) {
-						timestampBase = timestampInMicroSec;
-						Log.d(TAG, "bufferInfo.timestampBase:"+timestampBase);
+					long timestampInMilliSecond = getTime(timestamp);
+					if (playbackClock == null) {
+						playbackClock = new SimplePlaybackClock(timestampInMilliSecond, 1000, TAG);
 					}
-					decodeByteWithPrefix(null, frame, offset, size, timestampInMicroSec, 0);
+					decodeBytesWithPrefix(null, frame, offset, size, timestampInMilliSecond, 0);
 					if (testFile != null) {
 						try {
 							testFile.write(frame, offset, size);
@@ -825,7 +823,6 @@ public class EZScreenHelper {
 				}
 
 				private void doRender(MediaCodec.BufferInfo bufferInfo) {
-					Log.d(TAG, "doRender");
 					int outputBufferIndex = -1;
 					try {
 						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000);
@@ -836,20 +833,8 @@ public class EZScreenHelper {
 					
 					}
 					if (outputBufferIndex >= 0) {		
-						Log.d(TAG, "bufferInfo.presentationTimeUs:"+bufferInfo.presentationTimeUs);
-						Log.d(TAG, "bufferInfo.presentationTimeUs-timestampBase/1000:"+((bufferInfo.presentationTimeUs-timestampBase)/1000));
-						Log.d(TAG, "bufferInfo.System.currentTimeMillis() - startMs:"+(System.currentTimeMillis() - startMs));
-						while (((bufferInfo.presentationTimeUs-timestampBase) / 1000) > (System.currentTimeMillis() - startMs)) {
-							Log.d(TAG, "bufferInfo.presentationTimeUs-timestampBase:"+(bufferInfo.presentationTimeUs-timestampBase));
-							Log.d(TAG, "bufferInfo.System.currentTimeMillis() - startMs:"+(System.currentTimeMillis() - startMs));
-							try {
-								Thread.sleep(10);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-								break;
-							}
-						}
-						decoder.releaseOutputBuffer(outputBufferIndex, ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0)?false:true);
+						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
+						decoder.releaseOutputBuffer(outputBufferIndex, shouldRender);
 					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 						decoder.getOutputBuffers();
 					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
@@ -945,7 +930,7 @@ public class EZScreenHelper {
 
 			@Override
 			public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-				Log.d(TAG, "onSurfaceTextureUpdated:");
+//				Log.d(TAG, "onSurfaceTextureUpdated:");
 				
 			}
 			
@@ -1046,6 +1031,7 @@ public class EZScreenHelper {
 	private void stopMirrorDecoding() {
 		if (renderThread != null) {
 			stopRenderer = true;
+			renderThread.interrupt();
 			try {
 				renderThread.join();
 			} catch (InterruptedException e) {

@@ -1,6 +1,5 @@
 package com.actionsmicro.airplay.airtunes;
 
-import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -23,6 +22,7 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.os.Build;
 
+import com.actionsmicro.airplay.clock.SimplePlaybackClock;
 import com.actionsmicro.utils.Log;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
@@ -37,8 +37,6 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	private Thread decoderThread;
 	private MediaCodec decoder;
 	private Thread playerThread;
-	private long timestampBase;
-	private long startMs;
 	private boolean decoderThreadShouldStop;
 	private boolean playerThreadShouldStop;
 	private AudioTrack track;
@@ -49,20 +47,20 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 			@Override
 			public void request_resend(int begin, int end) {
 				Log.i(TAG, "Resend Request: " + begin + "::" + end);
-				if (end < begin) {
-					return;
-				}
-				
-				int len = end - begin + 1;
-			    byte[] request = new byte[] { (byte) 0x80, (byte) (0x55|0x80), 0x01, 0x00, (byte) ((begin & 0xFF00) >> 8), (byte) (begin & 0xFF), (byte) ((len & 0xFF00) >> 8), (byte) (len & 0xFF)};
-
-			    try {
-			    	DatagramPacket temp = new DatagramPacket(request, request.length, rtpClient, session.getControlPort());
-			    	csock.send(temp);
-
-			    } catch (IOException e) {
-			    	e.printStackTrace();
-			    }
+//				if (end < begin) {
+//					return;
+//				}
+//				
+//				int len = end - begin + 1;
+//			    byte[] request = new byte[] { (byte) 0x80, (byte) (0x55|0x80), 0x01, 0x00, (byte) ((begin & 0xFF00) >> 8), (byte) (begin & 0xFF), (byte) ((len & 0xFF00) >> 8), (byte) (len & 0xFF)};
+//
+//			    try {
+//			    	DatagramPacket temp = new DatagramPacket(request, request.length, rtpClient, session.getControlPort());
+//			    	csock.send(temp);
+//
+//			    } catch (IOException e) {
+//			    	e.printStackTrace();
+//			    }
 			}
 			
 		});
@@ -169,6 +167,8 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		playerThreadShouldStop = false;
 		playerThread = new Thread(new Runnable() {
 
+			private SimplePlaybackClock playbackClock;
+
 			@Override
 			public void run() {
 				
@@ -188,34 +188,10 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 					}
 //					Log.d(TAG, "dequeueOutputBuffer :"+outputBufferIndex);
 					if (outputBufferIndex >= 0) {		
-						if (timestampBase == 0) {
-							timestampBase = bufferInfo.presentationTimeUs;
-							startMs = System.currentTimeMillis();									
-						}						
-						
-						long timestamp = (bufferInfo.presentationTimeUs-timestampBase)*1000/44100;
-						boolean dropFrame = false;
-						if (timestamp < now()) {
-							if ((now() - timestamp) > 200) {
-								dropFrame = true;
-								Log.w(TAG, "too late for "+(now() - timestamp)+"ms, drop frame");
-							}
-						} else if ((timestamp - now()) > 10){
-							while (timestamp > now()) {
-								try {
-									long wait = timestamp - now();
-									if (wait <= 0) {
-										break;
-									}
-									debugLog("Let's wait:"+wait+"ms for "+bufferInfo.presentationTimeUs);
-									Thread.sleep(wait);
-								} catch (InterruptedException e) {
-									e.printStackTrace();
-									break;
-								}
-							}
+						if (playbackClock == null) {
+							playbackClock = new SimplePlaybackClock(bufferInfo.presentationTimeUs*1000/44100, 200, TAG);
 						}
-						if (!dropFrame) {
+						if (playbackClock.waitUntilTime(bufferInfo.presentationTimeUs*1000/44100)) {
 							ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
 							outputBuffer.position(bufferInfo.offset);
 							outputBuffer.get(packet, 0, bufferInfo.size);
@@ -234,10 +210,6 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 				track.stop();
 				track.release();
 				Log.d(TAG, playerThread.getName() + " ends");
-			}
-
-			private long now() {
-				return System.currentTimeMillis() - startMs;
 			}
 			
 		});
