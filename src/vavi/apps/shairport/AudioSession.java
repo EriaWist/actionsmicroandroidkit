@@ -1,4 +1,6 @@
 package vavi.apps.shairport;
+import java.net.InetAddress;
+
 import android.util.Log;
 
 import com.beatofthedrum.alacdecoder.AlacDecodeUtils;
@@ -159,5 +161,9 @@ public class AudioSession {
 	
 	public int getRiceKModifier(){
 		return this.rice_kmodifier;
+	}
+
+	public InetAddress getAddress() {
+		return inetAddress;
 	}
 }

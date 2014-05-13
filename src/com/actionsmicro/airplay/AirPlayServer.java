@@ -17,6 +17,8 @@ import java.util.HashMap;
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceInfo;
 
+import org.apache.commons.net.ntp.TimeStamp;
+
 import vavi.apps.shairport.RTSPResponder;
 import android.content.Context;
 import android.net.wifi.WifiManager;
@@ -30,6 +32,7 @@ import com.dd.plist.NSData;
 import com.dd.plist.NSDictionary;
 import com.dd.plist.NSNumber;
 import com.dd.plist.PropertyListFormatException;
+import com.koushikdutta.async.AsyncNetworkSocket;
 import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.ByteBufferList;
 import com.koushikdutta.async.DataEmitter;
@@ -70,7 +73,7 @@ public class AirPlayServer {
 
 		void pauseVideo();
 
-		void onStartMirroring();
+		void onStartMirroring(InetAddress remoteAddress);
 
 		void onSpsAvailable(byte[] sps);
 
@@ -269,7 +272,11 @@ public class AirPlayServer {
 							final DataEmitterReader headerReader = new DataEmitterReader();
 							request.getSocket().setDataCallback(headerReader);
 							if (delegate != null) {
-								delegate.onStartMirroring();
+								InetAddress remoteAddress = null;
+								if (request.getSocket() instanceof AsyncNetworkSocket) {
+									remoteAddress = ((AsyncNetworkSocket) request.getSocket()).getRemoteAddress().getAddress();
+								}
+								delegate.onStartMirroring(remoteAddress);
 							}							
 							
 							headerReader.read(128, headerCallback = new DataCallback() {
@@ -331,6 +338,7 @@ public class AirPlayServer {
 														h264Frame.position(h264Frame.position()+length);
 													}
 													if (delegate != null) {
+														debugLog("onH264FrameAvailable ntpTime:"+TimeStamp.getTime(timestamp));
 														delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, timestamp);
 													}
 

@@ -5,8 +5,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+
+import org.apache.commons.net.ntp.TimeStamp;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -41,7 +44,9 @@ import android.webkit.WebViewClient;
 
 import com.actionsmicro.BuildConfig;
 import com.actionsmicro.airplay.AirPlayServer;
+import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.airplay.clock.SimplePlaybackClock;
+import com.actionsmicro.airplay.mirror.MirrorClock;
 import com.actionsmicro.androidrx.EzScreenServer;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
@@ -633,14 +638,23 @@ public class EZScreenHelper {
 				}
 				private static final String MIME_VIDEO_AVC = "video/avc";
 				private ByteBuffer[] inputBuffers;
-				private SimplePlaybackClock playbackClock;
+				private PlaybackClock playbackClock;
 				
 				@Override
-				public void onStartMirroring() {
+				public void onStartMirroring(InetAddress remoteAddress) {
 					Log.d(TAG, "onStartMirroring");
 					showMirrorView();
 					stopMirrorDecoding();
-					playbackClock = null;
+					if (playbackClock != null) {
+						playbackClock.release();
+						playbackClock = null;
+					}
+					try {
+						playbackClock = new MirrorClock(remoteAddress, 7010, 200);
+					} catch (SocketException e1) {
+						e1.printStackTrace();
+					}
+					
 					decoder = MediaCodec.createDecoderByType(MIME_VIDEO_AVC);
 					if (mirrorSurface == null) {
 						while (mirrorSurfaceTexture == null) {
@@ -755,48 +769,13 @@ public class EZScreenHelper {
 
 						}
 					}				
-				}
-				/**
-			     * baseline NTP time if bit-0=0 -> 7-Feb-2036 @ 06:28:16 UTC
-			     */
-			    protected static final long msb0baseTime = 2085978496000L;
-
-			    /**
-			     *  baseline NTP time if bit-0=1 -> 1-Jan-1900 @ 01:00:00 UTC
-			     */
-			    protected static final long msb1baseTime = -2208988800000L;
-				public long getTime(long ntpTimeValue)
-			    {
-			        long seconds = (ntpTimeValue >>> 32) & 0xffffffffL;     // high-order 32-bits
-			        long fraction = ntpTimeValue & 0xffffffffL;             // low-order 32-bits
-
-			        // Use round-off on fractional part to preserve going to lower precision
-			        fraction = Math.round(1000D * fraction / 0x100000000L);
-
-			        /*
-			         * If the most significant bit (MSB) on the seconds field is set we use
-			         * a different time base. The following text is a quote from RFC-2030 (SNTP v4):
-			         *
-			         *  If bit 0 is set, the UTC time is in the range 1968-2036 and UTC time
-			         *  is reckoned from 0h 0m 0s UTC on 1 January 1900. If bit 0 is not set,
-			         *  the time is in the range 2036-2104 and UTC time is reckoned from
-			         *  6h 28m 16s UTC on 7 February 2036.
-			         */
-			        long msb = seconds & 0x80000000L;
-			        if (msb == 0) {
-			            // use base: 7-Feb-2036 @ 06:28:16 UTC
-			            return msb0baseTime + (seconds * 1000) + fraction;
-			        } else {
-			            // use base: 1-Jan-1900 @ 01:00:00 UTC
-			            return msb1baseTime + (seconds * 1000) + fraction;
-			        }
-			    }
+				}				
 				@Override
 				public void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp) {
 					if (renderThread == null) {
 						startRenderer();					
 					}
-					long timestampInMilliSecond = getTime(timestamp);
+					long timestampInMilliSecond = TimeStamp.getTime(timestamp);
 					if (playbackClock == null) {
 						playbackClock = new SimplePlaybackClock(timestampInMilliSecond, 1000, TAG);
 					}
@@ -820,6 +799,10 @@ public class EZScreenHelper {
 					inputBuffers = null; 
 					closeTestFile();
 					hideMirrorView();
+					if (playbackClock != null) {
+						playbackClock.release();
+						playbackClock = null;
+					}
 				}
 
 				private void doRender(MediaCodec.BufferInfo bufferInfo) {

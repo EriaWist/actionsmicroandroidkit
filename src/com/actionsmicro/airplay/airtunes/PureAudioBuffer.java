@@ -67,12 +67,12 @@ public class PureAudioBuffer {
 				writeIndex = seqno + 1;
 			} else if(seqno >= readIndex) {												// readIndex < seqno < writeIndex not yet played but too late. Still ok
 				if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
-					Log.w(TAG, "readIndex < seqno < writeIndex not yet played but too late. Still ok");
+					debugLogW("readIndex < seqno < writeIndex not yet played but too late. Still ok");
 					updateBuffer(seqno, data, timestamp);
 				}
 			} else {
 				if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
-					Log.w(TAG, "Late packet with seq. numb.: " + seqno + ", readIndex:" + readIndex);			// Really to late
+					debugLogW("Late packet with seq. numb.: " + seqno + ", readIndex:" + readIndex);			// Really to late
 				}
 			}
 			
@@ -105,13 +105,18 @@ public class PureAudioBuffer {
 			Log.d(TAG, msg);
 		}
 	}
+	private void debugLogW(String msg) {
+		if (DEBUG_LOG) {
+			Log.w(TAG, msg);
+		}
+	}
 	public ByteBuffer getNextBuffer(BufferInfo bufferInfo){
 	    synchronized (lock) {	    	
 			updateActualBufferSize();
 		    
 			if(actualBufSize<1 || !synced){			// If no packets more or Not synced (flush: pause)
 				if(synced){							// If it' because there is not enough packets
-					Log.w(TAG, "Underrun!!! Not enough frames in buffer!");
+					debugLogW("Underrun!!! Not enough frames in buffer!");
 				}
 				
 				try {
@@ -132,7 +137,7 @@ public class PureAudioBuffer {
 			
 			// Overrunning. Restart at a sane distance
 		    if (actualBufSize >= BUFFER_FRAMES) {   // overrunning! uh-oh. restart at a sane distance
-				Log.w(TAG, "Overrun!!! Too much frames in buffer!");
+		    	debugLogW("Overrun!!! Too much frames in buffer!");
 		        readIndex = writeIndex - START_FILL;
 		        if (readIndex < 0) {
 		        	readIndex += 65536;
@@ -149,7 +154,7 @@ public class PureAudioBuffer {
 		    AudioData buf = audioBuffer[read % BUFFER_FRAMES];
 		    
 		    if(!buf.ready){
-		    	Log.w(TAG, "Missing Frame! index:"+read);
+		    	debugLogW("Missing Frame! index:"+read);
 		    	// Set to zero then
 		    	buf.data.clear();
 		    }

@@ -33,7 +33,7 @@ import com.actionsmicro.utils.ThreadUtils;
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	private static final String TAG = "AudioPlayer";
-	private static final boolean DEBUG_LOG = true;
+	private static final boolean DEBUG_LOG = false;
 	private DatagramSocket sock;
 	private DatagramSocket csock;
 	private UDPListener udpListener;
