@@ -1,8 +1,8 @@
 package com.actionsmicro.airplay.airtunes;
 
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -10,6 +10,8 @@ import java.nio.ByteOrder;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import org.apache.commons.net.ntp.TimeStamp;
 
 import vavi.apps.shairport.AudioSession;
 import vavi.apps.shairport.UDPDelegate;
@@ -22,24 +24,31 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.os.Build;
 
+import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.airplay.clock.SimplePlaybackClock;
+import com.actionsmicro.debug.DumpBinaryFile;
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.ThreadUtils;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	private static final String TAG = "AudioPlayer";
-	private static final boolean DEBUG_LOG = false;
+	private static final boolean DEBUG_LOG = true;
 	private DatagramSocket sock;
 	private DatagramSocket csock;
 	private UDPListener udpListener;
 	private PureAudioBuffer pureAudioBuffer;
-	private InetAddress rtpClient;
 	private Thread decoderThread;
 	private MediaCodec decoder;
 	private Thread playerThread;
 	private boolean decoderThreadShouldStop;
 	private boolean playerThreadShouldStop;
 	private AudioTrack track;
+	private UDPListener controlPortListener;
+	private DumpBinaryFile debugFile;
+	private PlaybackClock playbackClock;
+	protected long rtpTimestamp;
+	protected long ntpTimestamp;
 
 	public AudioPlayer(final AudioSession session) {
 		this.pureAudioBuffer = new PureAudioBuffer(new PureAudioBuffer.ResendDelegate() {
@@ -55,7 +64,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 //			    byte[] request = new byte[] { (byte) 0x80, (byte) (0x55|0x80), 0x01, 0x00, (byte) ((begin & 0xFF00) >> 8), (byte) (begin & 0xFF), (byte) ((len & 0xFF00) >> 8), (byte) (len & 0xFF)};
 //
 //			    try {
-//			    	DatagramPacket temp = new DatagramPacket(request, request.length, rtpClient, session.getControlPort());
+//			    	DatagramPacket temp = new DatagramPacket(request, request.length, session.getAddress(), session.getControlPort());
 //			    	csock.send(temp);
 //
 //			    } catch (IOException e) {
@@ -67,7 +76,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
     	initDecoder();
 		spawnDecoderThread(session);
 		spawnPlayerThread();
-		initRTP();		
+		initRTP(session);		
 	}
 	private void initDecoder() {
 		MediaCodec mediaCodec = MediaCodec.createByCodecName("OMX.google.aac.decoder");//MediaCodec.createDecoderByType("audio/mp4a-latm");
@@ -167,7 +176,6 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		playerThreadShouldStop = false;
 		playerThread = new Thread(new Runnable() {
 
-			private SimplePlaybackClock playbackClock;
 
 			@Override
 			public void run() {
@@ -188,14 +196,17 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 					}
 //					Log.d(TAG, "dequeueOutputBuffer :"+outputBufferIndex);
 					if (outputBufferIndex >= 0) {		
-						if (playbackClock == null) {
-							playbackClock = new SimplePlaybackClock(bufferInfo.presentationTimeUs*1000/44100, 200, TAG);
-						}
-						if (playbackClock.waitUntilTime(bufferInfo.presentationTimeUs*1000/44100)) {
-							ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
-							outputBuffer.position(bufferInfo.offset);
-							outputBuffer.get(packet, 0, bufferInfo.size);
-							track.write(packet, 0, bufferInfo.size);
+						long timestamp = convertRtpTimestampToNtp(bufferInfo.presentationTimeUs);
+						if (timestamp != 0) { // timestamp convert is ready
+							if (playbackClock == null) {
+								playbackClock = new SimplePlaybackClock(timestamp, 200, TAG);
+							}
+							if (playbackClock.waitUntilTime(timestamp)) {
+								ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
+								outputBuffer.position(bufferInfo.offset);
+								outputBuffer.get(packet, 0, bufferInfo.size);
+								track.write(packet, 0, bufferInfo.size);
+							}
 						}
 						decoder.releaseOutputBuffer(outputBufferIndex, false);
 					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
@@ -217,45 +228,53 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		playerThread.start();
 	}
 	public void stop() {
+		try {
+			if (debugFile != null) {
+				debugFile.close();
+			}
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		if (playbackClock != null) {
+			playbackClock.release();
+		}
+		controlPortListener.stopThread();
 		udpListener.stopThread();
+		
+		
 		sock.close();
 		csock.close();
-
+		
 		if (decoderThread != null) {
 			decoderThreadShouldStop = true;
-			decoderThread.interrupt();
-			try {
-				decoderThread.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			ThreadUtils.stopThreadSafely(decoderThread);
+			decoderThread = null;
 		}
 		if (playerThread != null) {
 			playerThreadShouldStop = true;
-			playerThread.interrupt();
-			try {
-				playerThread.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			ThreadUtils.stopThreadSafely(playerThread);
+			playerThread = null;
 		}
 		if (decoder != null) {
 			decoder.stop();
 		}
 	}
+	
 	public int getServerPort() {
 		return sock.getLocalPort();
 	}
 	
-	private void initRTP() {
+	private void initRTP(final AudioSession session) {
 		try {
+			playbackClock = new AirTunesClock(session.getAddress(), session.getTimingPort(), 200);
+
 			sock = new DatagramSocket();
 			csock = new DatagramSocket();
 			udpListener = new UDPListener(sock, new UDPDelegate() {
 				@Override
 				public void packetReceived(DatagramSocket socket,
 						DatagramPacket packet) {
-					rtpClient = packet.getAddress();
 
 					//					Real-Time Transport Protocol
 					//				    10.. .... = Version: RFC 1889 Version (2)
@@ -272,7 +291,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 					ByteBuffer packetBuffer = ByteBuffer.wrap(packet.getData());
 					packetBuffer.order(ByteOrder.BIG_ENDIAN);
 					packetBuffer.position(1);
-					int type = packetBuffer.get()&~0x80;
+					byte type = (byte) (packetBuffer.get()&~0x80);
 					if (type == 0x60 || type == 0x56) { 
 						int extraOffset = 0;
 						if(type==0x56){
@@ -285,9 +304,44 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 						byte[] pktp = new byte[payloadSize];
 						packetBuffer.get(pktp, 0, payloadSize);
 						pureAudioBuffer.putPacketInBuffer(seqno, pktp, timestamp);
+						debugLog("server port:"+" timestamp:"+timestamp + ", correlated timestamp:"+convertRtpTimestampToNtp(timestamp));
+					} else {
+						Log.w(TAG, "server port: unhandled control packet type:"+type);
 					}
 				}
 
+			});
+//			try {
+//				debugFile = new File("/sdcard/rtp.send");
+//			} catch (FileNotFoundException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+			controlPortListener = new UDPListener(csock, new UDPDelegate() {
+
+				@Override
+				public void packetReceived(DatagramSocket socket,
+						DatagramPacket packet) {					
+					ByteBuffer packetBuffer = ByteBuffer.wrap(packet.getData());
+					packetBuffer.order(ByteOrder.BIG_ENDIAN);
+					packetBuffer.position(1);
+					byte type = (byte) (packetBuffer.get()&~0x80);
+					debugLog("control port: data type:"+type);
+					if (type == 84) { //Sync packets
+						packetBuffer.position(4);						
+						long timestamp = (packetBuffer.getInt() & 0xffffffffL);
+						long ntpTime = packetBuffer.getLong();
+						long nextTimestamp = (packetBuffer.getInt() & 0xffffffffL);
+						synchronized(AudioPlayer.this) {
+							rtpTimestamp = timestamp;
+							ntpTimestamp = TimeStamp.getTime(ntpTime);
+						}
+						debugLog("control port: timestamp:"+timestamp+", ntpTime:"+ntpTimestamp+", nextTimestamp:"+nextTimestamp);
+					} else {
+						Log.w(TAG, "control port: unhandled control packet type:"+type);
+					}
+				}
+				
 			});
 		} catch (SocketException e) {
 			e.printStackTrace();
@@ -311,5 +365,14 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 			Log.d(TAG, msg);
 		}
 	}
-	
+	@Override
+	public int getControlPort() {
+		return csock.getLocalPort();
+	}
+	private synchronized long convertRtpTimestampToNtp(long timestamp) {
+		if (ntpTimestamp == 0 && rtpTimestamp == 0) {
+			return 0;
+		}
+		return ntpTimestamp + (timestamp - rtpTimestamp)*1000/44100;
+	}
 }

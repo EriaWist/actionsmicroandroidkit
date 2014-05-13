@@ -8,7 +8,7 @@ import android.util.Log;
 
 public class PureAudioBuffer {
 
-	private static final int START_FILL = 5;		
+	private static final int START_FILL = 1;		
 	private static final int BUFFER_FRAMES = 512;	// Total buffer size (number of frame)
 	private static final String TAG = "PureAudioBuffer";
 	private static final boolean DEBUG_LOG = false;
@@ -134,6 +134,9 @@ public class PureAudioBuffer {
 		    if (actualBufSize >= BUFFER_FRAMES) {   // overrunning! uh-oh. restart at a sane distance
 				Log.w(TAG, "Overrun!!! Too much frames in buffer!");
 		        readIndex = writeIndex - START_FILL;
+		        if (readIndex < 0) {
+		        	readIndex += 65536;
+		        }
 		    }
 			// we get the value before the unlock ;-)
 		    int read = readIndex;

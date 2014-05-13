@@ -6,13 +6,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class File {
+import com.actionsmicro.BuildConfig;
+
+public class DumpBinaryFile {
 	private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
 	private FileOutputStream fileout;
-	public File(String path) throws FileNotFoundException {
-		fileout = new FileOutputStream(path);
+	public DumpBinaryFile(String path) throws FileNotFoundException {
+		if (BuildConfig.DEBUG) { // only works for debug version, just in case
+			fileout = new FileOutputStream(path);
+		}
 	}
-	public void writeToFile(int payloadSize, byte[] pktp, FileOutputStream fileout) throws IOException {
+	public void writeToFile(int payloadSize, byte[] pktp) throws IOException {
 		if (fileout == null) return;
 		lengthBuffer.order(ByteOrder.LITTLE_ENDIAN);
 		lengthBuffer.clear();

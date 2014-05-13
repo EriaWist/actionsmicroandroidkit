@@ -23,9 +23,11 @@ public class AudioSession {
 	private int _86;
 	private int _8a_rate;
 	private BiquadFilter bFilter;
+	private InetAddress inetAddress;
 	
 	
-	public AudioSession(byte[] aesiv, byte[] aeskey, int[] fmtp, int controlPort, int timingPort){	
+	public AudioSession(byte[] aesiv, byte[] aeskey, int[] fmtp, int controlPort, int timingPort, InetAddress inetAddress){	
+		this.inetAddress = inetAddress;
 		// KEYS
 		this.aesiv = aesiv;
 		this.aeskey = aeskey;

@@ -2,7 +2,7 @@ package com.actionsmicro.airplay.clock;
 
 import com.actionsmicro.utils.Log;
 
-public class SimplePlaybackClock {
+public class SimplePlaybackClock implements PlaybackClock {
 //	private static final long LATENCY_TOLERANCE = 200; //ms
 	private static final long EARLY_TOLERANCE = 10; //ms
 	private long timestampBase;
@@ -21,6 +21,7 @@ public class SimplePlaybackClock {
 		timestampBase = presentationTime;
 		systemTimeBase = System.currentTimeMillis();
 	}
+	@Override
 	public boolean waitUntilTime(long presentationTime) {
 		presentationTime = presentationTime - timestampBase;
 		if (presentationTime < now()) {
@@ -52,5 +53,10 @@ public class SimplePlaybackClock {
 		if (DEBUG_LOG) {
 			Log.d(TAG+"."+debugTag, msg);
 		}
+	}
+	@Override
+	public void release() {
+		// TODO Auto-generated method stub
+		
 	}
 }

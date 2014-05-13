@@ -154,12 +154,12 @@ public class RTSPResponder extends Thread{
         	releaseAudioServer();
         	//TODO depends on RTSP meta
 //			serv = new AudioServer(new AudioSession(aesiv, aeskey, fmtp, controlPort, timingPort));
-        	serv = new com.actionsmicro.airplay.airtunes.AudioPlayer(new AudioSession(aesiv, aeskey, fmtp, controlPort, timingPort));
+        	serv = new com.actionsmicro.airplay.airtunes.AudioPlayer(new AudioSession(aesiv, aeskey, fmtp, controlPort, timingPort, socket.getInetAddress()));
 			// ??? Why ???
         	response.append("Session", "DEADBEEF");
 
 //        	response.append("Transport", packet.valueOfHeader("Transport") + ";server_port=" + serv.getServerPort());
-        	response.append("Transport", String.format("RTP/AVP/UDP;unicast;mode=record;timing_port=%d;events;control_port=%d;server_port=%d", timingPort, controlPort, serv.getServerPort()));
+        	response.append("Transport", String.format("RTP/AVP/UDP;unicast;mode=record;events;control_port=%d;server_port=%d", serv.getControlPort(), serv.getServerPort()));
         			
         } else if (REQ.contentEquals("RECORD")){
         	response.append("Audio-Jack-Status", "connected; type=analog");
