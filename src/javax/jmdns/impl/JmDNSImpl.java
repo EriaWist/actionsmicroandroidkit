@@ -9,7 +9,9 @@ import java.net.DatagramPacket;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
+import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -460,7 +462,8 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
             }
         }
         _socket.setTimeToLive(255);
-        _socket.joinGroup(_group);
+        
+        _socket.joinGroup(new InetSocketAddress(_group, DNSConstants.MDNS_PORT), NetworkInterface.getByInetAddress(hostInfo.getInetAddress()));
     }
 
     private void closeMulticastSocket() {
