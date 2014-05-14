@@ -13,24 +13,17 @@ import org.apache.commons.net.ntp.TimeStamp;
 import vavi.apps.shairport.UDPDelegate;
 import vavi.apps.shairport.UDPListener;
 
-import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.ThreadUtils;
 
-public class AirTunesClock implements PlaybackClock {
-	private static final String TAG = "AirTunesClock";
-	private static final boolean DEBUG_LOG = false;
-	private static final long EARLY_TOLERANCE = 10; //ms
-
+public class AirTunesClock extends AirPlayPlaybackClockBase {
+	static final String TAG = "AirTunesClock";
+	static final boolean DEBUG_LOG = false;
 	private DatagramSocket tsock;
 	private UDPListener timingPortListener;
 	private Thread timingThread;
-	protected long roundTripDelay;
-	protected long clockOffset;
-	private long latencyTolerance;
-
 	public AirTunesClock(final InetAddress ntpServer, final int ntpPort, long latencyTolerance) throws SocketException {
-		this.latencyTolerance = latencyTolerance;
+		super(latencyTolerance, DEBUG_LOG, TAG);
 		tsock = new DatagramSocket();
 		timingPortListener = new UDPListener(tsock, new UDPDelegate() {
 
@@ -57,9 +50,7 @@ public class AirTunesClock implements PlaybackClock {
 					long returnTime = now();
 					debugLog("timing port: timestamp:"+timestamp+ ", originateTime:"+originateTime+", receiveTime:"+receiveTime+", transmitTime:"+transmitTime+", returnTime:"+returnTime);
 					synchronized (AirTunesClock.this) {
-						roundTripDelay = (returnTime - originateTime) - (transmitTime - receiveTime);
-						clockOffset = ((receiveTime - originateTime) + (transmitTime - returnTime))/2;
-						debugLog("timing port: roundTripDelay:"+roundTripDelay+", offset:"+clockOffset);						
+						updateSyncInfo((returnTime - originateTime) - (transmitTime - receiveTime), ((receiveTime - originateTime) + (transmitTime - returnTime))/2);
 					}
 				} else {
 					Log.w(TAG, "timing port: unhandled control packet type:"+type);
@@ -89,12 +80,12 @@ public class AirTunesClock implements PlaybackClock {
 						e.printStackTrace();
 						break;
 					} catch (InterruptedException e) {
-						e.printStackTrace();
 						break;
 					} finally {
 						
 					}
 				}
+				debugLog(Thread.currentThread().getName() + " Thread ends");
 			}
 			
 		});
@@ -102,50 +93,10 @@ public class AirTunesClock implements PlaybackClock {
 		timingThread.start();
 	}
 	@Override
-	public boolean waitUntilTime(long presentationTime) {
-		presentationTime = presentationTime - clockOffset;
-		if (presentationTime < now()) {
-			if ((now() - presentationTime) > latencyTolerance) {
-				debugLogW("presentationTime:"+presentationTime+" is too late for "+(now() - presentationTime)+"ms");
-				return false;
-			}
-		} else if ((presentationTime - now()) > EARLY_TOLERANCE) {
-			while (presentationTime > now() && !Thread.currentThread().isInterrupted()) {
-				try {
-					long wait = presentationTime - now();
-					debugLogW("presentationTime:"+presentationTime+" is too early for "+wait+"ms. let's wait");
-					if (wait <= 0) {
-						break;
-					}
-					Thread.sleep(wait);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					return false;
-				}
-			}
-		}
-		debugLog("presentationTime:"+presentationTime+" is good to go");
-		
-		return true;
-	}
-	private long now() {
-		return TimeStamp.getCurrentTime().getTime();
-	}
-	@Override
 	public void release() {
 		timingPortListener.stopThread();		
 		ThreadUtils.stopThreadSafely(timingThread);
 		timingThread = null;
 		tsock.close();
-	}
-	private void debugLog(String msg) {
-		if (DEBUG_LOG) {
-			Log.d(TAG, msg);
-		}
-	}
-	private void debugLogW(String msg) {
-		if (DEBUG_LOG) {
-			Log.w(TAG, msg);
-		}
 	}
 }

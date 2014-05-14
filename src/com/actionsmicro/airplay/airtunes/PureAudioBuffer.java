@@ -8,7 +8,7 @@ import android.util.Log;
 
 public class PureAudioBuffer {
 
-	private static final int START_FILL = 1;		
+	private static final int START_FILL = 0;		
 	private static final int BUFFER_FRAMES = 512;	// Total buffer size (number of frame)
 	private static final String TAG = "PureAudioBuffer";
 	private static final boolean DEBUG_LOG = false;

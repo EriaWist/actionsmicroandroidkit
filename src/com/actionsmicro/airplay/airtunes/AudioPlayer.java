@@ -130,7 +130,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 				final ByteBuffer[] inputBuffers = decoder.getInputBuffers();
 				final PureAudioBuffer.BufferInfo bufferInfo = new PureAudioBuffer.BufferInfo();
 				do {
-					int bufferIndex = decoder.dequeueInputBuffer(10000);
+					int bufferIndex = decoder.dequeueInputBuffer(1000);
 					if (bufferIndex != -1) {
 						do {
 							ByteBuffer data = pureAudioBuffer.getNextBuffer(bufferInfo);
@@ -187,7 +187,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 				while (!playerThreadShouldStop) {
 					int outputBufferIndex = -1;
 					try {
-						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000);
+						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 500000);
 					} catch(Exception e) {
 						Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
 						break;
@@ -267,7 +267,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	
 	private void initRTP(final AudioSession session) {
 		try {
-			playbackClock = new AirTunesClock(session.getAddress(), session.getTimingPort(), 200);
+			playbackClock = new AirTunesClock(session.getAddress(), session.getTimingPort(), 100);
 
 			sock = new DatagramSocket();
 			csock = new DatagramSocket();

@@ -650,7 +650,7 @@ public class EZScreenHelper {
 						playbackClock = null;
 					}
 					try {
-						playbackClock = new MirrorClock(remoteAddress, 7010, 200);
+						playbackClock = new MirrorClock(remoteAddress, 7010, 100);
 					} catch (SocketException e1) {
 						e1.printStackTrace();
 					}
@@ -739,7 +739,7 @@ public class EZScreenHelper {
 				private void decodeBytesWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags) {
 					if (decoder != null && length > 0) {
 						int bufferIndex = -1;
-						bufferIndex = decoder.dequeueInputBuffer(10000);
+						bufferIndex = decoder.dequeueInputBuffer(5000);
 						if (bufferIndex != -1) {
 							inputBuffers[bufferIndex].clear();
 							if (prefix != null) {
@@ -808,7 +808,7 @@ public class EZScreenHelper {
 				private void doRender(MediaCodec.BufferInfo bufferInfo) {
 					int outputBufferIndex = -1;
 					try {
-						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000);
+						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 500000);
 					} catch(Exception e) {
 						Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
 						stopRenderer = true;
