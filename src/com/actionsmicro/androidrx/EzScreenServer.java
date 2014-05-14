@@ -5,13 +5,13 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceInfo;
 
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
 import com.actionsmicro.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
@@ -76,9 +76,9 @@ public class EzScreenServer {
 		}
 		
 	};
-	private JmDNS jmDNS;
-	private ServiceInfo serviceInfo;
 	private static final int HEARTBEAT_TIMEOUT = 13000;
+	
+	private BonjourServiceAdvertiser bonjourServiceAdvertiser;
 	public void start() {
 		Thread initThread = new Thread(new Runnable() {
 
@@ -95,31 +95,23 @@ public class EzScreenServer {
 		initThread.start();
 	}
 	public synchronized void stop() {
-		final JmDNS jmDNS2 = jmDNS;
-		final ServiceInfo serviceInfo2 = serviceInfo;
+		final BonjourServiceAdvertiser bonjour = bonjourServiceAdvertiser;
 		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
-				cleanUpMdns(jmDNS2, serviceInfo2);
+				bonjour.unregister();
+				bonjour.close();
 			}
 			
 		}).start();
-		jmDNS = null;
+		bonjourServiceAdvertiser = null;
 		mainHandler.removeCallbacks(resetToStandby);
 		if (jsonRpcOverHttpServer != null) {
 			jsonRpcOverHttpServer.stop();
 			jsonRpcOverHttpServer = null;
 		}
-	}
-	private void cleanUpMdns(JmDNS jmDns, ServiceInfo serviceInfo) {
-		if (jmDns != null) {
-			if (serviceInfo != null) {
-				jmDns.unregisterService(serviceInfo);
-				Log.i(TAG, "JmDNS unregisterService:"+serviceInfo);
-			}
-		}
-	}
+	}	
 	private synchronized void initEzAndroidRx() {
 		jsonRpcOverHttpServer = new JsonRpcOverHttpServer(context, 0) {
 			@Override 
@@ -210,15 +202,12 @@ public class EzScreenServer {
 				
 			});
 			jsonRpcOverHttpServer.start();
-			
-			jmDNS = Bonjour.getInstance(inetAddress);
 			HashMap<String, String> txtRecord = new HashMap<String, String>();					
-			serviceInfo = ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord);
-			jmDNS.registerService(serviceInfo);
-			Log.i(TAG, "Registered Service as " + serviceInfo);
+			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord));
+			bonjourServiceAdvertiser.register();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			// TODO add callback;
+			Log.e(TAG, "initialize android rx failed", e);
 		}
 	}
 }

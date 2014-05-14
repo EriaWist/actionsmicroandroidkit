@@ -14,7 +14,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
 
-import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceInfo;
 
 import org.apache.commons.net.ntp.TimeStamp;
@@ -26,7 +25,7 @@ import android.util.Log;
 
 import com.actionsmicro.airplay.crypto.EzAes;
 import com.actionsmicro.airplay.crypto.FairPlay;
-import com.actionsmicro.androidrx.Bonjour;
+import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
 import com.dd.plist.BinaryPropertyListParser;
 import com.dd.plist.NSData;
 import com.dd.plist.NSDictionary;
@@ -91,10 +90,9 @@ public class AirPlayServer {
 	private String name;
 	private Aika airplayService;
 	private AirPlayServerDelegate delegate;
-	protected JmDNS jmDNS;
 	private AsyncHttpServer mirrorServer;
-	private ServiceInfo raopService;
-	protected ServerSocket servSock;
+	protected ServerSocket servSock;	
+	private BonjourServiceAdvertiser bonjourServiceAdvertiser;
 	private static boolean DEBUG_LOG = false;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
@@ -551,7 +549,6 @@ public class AirPlayServer {
 	}
 	private void registerRaopService() {
 		try {
-			jmDNS = Bonjour.getInstance(inetAddress);					
 			String macAddressWithoutCol = getMacAddress().replace(":", "");
 			HashMap<String, String> txt = new HashMap<String, String>();					
 			txt.put("txtvers", "1");
@@ -570,9 +567,8 @@ public class AirPlayServer {
 			txt.put("rmodel", "EZAir1,1");
 			txt.put("am", AIRPLAY_MODEL);
 			txt.put("sf", "0x4");
-			raopService = ServiceInfo.create("_raop._tcp.local.", macAddressWithoutCol+"@"+name, RAOP_PORTNUMBER, 0, 0, txt);
-			jmDNS.registerService(raopService);
-			Log.i(TAG, "Registered Service as " + raopService);
+			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create("_raop._tcp.local.", macAddressWithoutCol+"@"+name, RAOP_PORTNUMBER, 0, 0, txt));
+			bonjourServiceAdvertiser.register();
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -580,21 +576,19 @@ public class AirPlayServer {
 	}
 	private void cleanUpMdns() {
 		
-		final JmDNS jmDNS2 = jmDNS;
-		final ServiceInfo raopService = this.raopService;
-		this.raopService = null;
-		if (jmDNS2 != null) {
+		final BonjourServiceAdvertiser bonjour = this.bonjourServiceAdvertiser;
+		if (bonjour != null) {
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
-					jmDNS2.unregisterService(raopService);
-					Log.i(TAG, "JmDNS unregisterService:"+raopService);
+					bonjour.unregister();
+					bonjour.close();
 				}
 
 			}).start();
 		}
-		jmDNS = null;
+		bonjourServiceAdvertiser = null;
 		
 	}
 	static class EndEmitter extends FilteredDataEmitter {

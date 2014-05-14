@@ -6,11 +6,9 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.jmdns.JmDNS;
-import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
 
-import com.actionsmicro.androidrx.Bonjour;
+import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
 import com.yutel.silver.exception.AirplayException;
 import com.yutel.silver.http.AirplayServer;
 import com.yutel.silver.http.HttpProtocol;
@@ -23,7 +21,7 @@ public class AikaImpl extends Aika {
 	private static Logger logger = Logger.getLogger(AikaImpl.class.getName());
 	private int mPort;
 	private AirplayServer as;
-	private JmDNS mJmDNS;
+	private BonjourServiceAdvertiser bonjourServiceAdvertiser;
 	private InetAddress mInetAddress;
 	private String mType = "_airplay._tcp.local.";
 	private String mName;
@@ -31,7 +29,6 @@ public class AikaImpl extends Aika {
 	private HashMap<String, HttpHandler> mHandlers;
 	private AikaProxy mProxy;
 	private HashMap<String, String> mConfig;
-	private ServiceInfo airPlayService;
 
 	public AikaImpl(InetAddress inetAddress, int port, String name) {
 		mInetAddress = inetAddress;
@@ -92,13 +89,9 @@ public class AikaImpl extends Aika {
 			as.setDevice(mDevice);
 			// as.setHandlers(mHandlers);
 			as.start();
-			// jmdns server
-			mJmDNS = Bonjour.getInstance(mInetAddress);
-			logger.log(Level.INFO, "Opened JmDNS!");
-			airPlayService = ServiceInfo.create(mType, mName, mPort,
-					0, 0, mConfig);
-			mJmDNS.registerService(airPlayService);
-			logger.log(Level.INFO, "Registered Service as " + airPlayService);
+			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create(mType, mName, mPort,
+					0, 0, mConfig));
+			bonjourServiceAdvertiser.register();
 			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -110,19 +103,17 @@ public class AikaImpl extends Aika {
 	@Override
 	public void stop() {
 		try {
-			// jmdns
-			final JmDNS mJmDNS2 = mJmDNS;
-			final ServiceInfo airPlayService = this.airPlayService;
-			this.airPlayService = null;
+			final BonjourServiceAdvertiser bonjour = bonjourServiceAdvertiser;
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
-					cleanUpJmDNS(mJmDNS2,  airPlayService);					
+					bonjour.unregister();	
+					bonjour.close();
 				}
 				
 			}).start();
-			mJmDNS = null;
+			bonjourServiceAdvertiser = null;
 			// http
 			if (as != null) {
 				as.forceStop();
@@ -130,13 +121,6 @@ public class AikaImpl extends Aika {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
-	}
-
-	private void cleanUpJmDNS(JmDNS mJmDNS2, ServiceInfo airPlayService) {
-		if (mJmDNS2 != null) {
-			mJmDNS2.unregisterService(airPlayService);
-			logger.log(Level.INFO, "JmDNS unregisterService:"+airPlayService);
 		}
 	}
 
