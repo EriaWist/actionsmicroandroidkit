@@ -58,6 +58,10 @@ public class EZScreenHelper {
 		public void onConnected();
 		public void onDisconnected();
 	}
+	public interface DisplayImageInterface {
+		public String getOnConnectedDisplayImage();
+		public String getOnStopDisplayImage();
+	}
 	private static final String TAG = "EZScreenHelper";
 	private WebView webView;
 	private TextureView mjpegView;
@@ -83,6 +87,7 @@ public class EZScreenHelper {
 	private Context context;
 	private String serviceName;
 	private ConnectionListener connectionListener;
+	private DisplayImageInterface displayImageInterface;
 	protected Surface mirrorSurface;
 	protected int surfaceWidth;
 	protected int surfaceHeight;
@@ -359,10 +364,10 @@ public class EZScreenHelper {
 		});
 	}
 
-	private void stopDisplay() {
+	private void stopDisplay(String stopImage) {
 		stopMJpegClient();
 		showWebView();
-		displayUrl("images/connected.jpg");
+		displayUrl(stopImage);
 	}
 	private void cleanUpServers() {
 		if (this.getEzScreenServer() != null) {
@@ -373,7 +378,6 @@ public class EZScreenHelper {
 			this.setAirplayService(null);
 		}
 	}
-
 	private void displayUrl(final String url) {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
 			invokeJavascript("javascript:updateDisplay('"+url+"');");
@@ -496,8 +500,11 @@ public class EZScreenHelper {
 
 				@Override
 				public void stopDisplay() {
-					EZScreenHelper.this.stopDisplay();
-					
+					String stopImage = "images/connected.jpg";
+					if (displayImageInterface != null) {
+						stopImage = displayImageInterface.getOnStopDisplayImage();
+					}
+					EZScreenHelper.this.stopDisplay(stopImage);
 				}
 
 				@Override
@@ -535,7 +542,12 @@ public class EZScreenHelper {
 
 				@Override
 				public void onConnected() {
-					EZScreenHelper.this.displayUrl("images/connected.jpg");	
+					
+					String connectedImage = "images/connected.jpg";
+					if (displayImageInterface != null) {
+						connectedImage = displayImageInterface.getOnConnectedDisplayImage();
+					}
+					EZScreenHelper.this.displayUrl(connectedImage);
 					if (connectionListener != null) {
 						connectionListener.onConnected();
 					}
@@ -1009,6 +1021,9 @@ public class EZScreenHelper {
 
 	public void setConnectionListener(ConnectionListener connectionListener) {
 		this.connectionListener = connectionListener;
+	}
+	public void setDisplayImageInterface(DisplayImageInterface displayImageI) {
+		this.displayImageInterface = displayImageI;
 	}
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void stopMirrorDecoding() {
