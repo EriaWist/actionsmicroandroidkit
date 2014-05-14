@@ -82,7 +82,7 @@ public interface JmmDNS extends Closeable {
          *
          * @return new instance of JmmDNS
          */
-        protected static JmmDNS newJmmDNS() {
+        public static JmmDNS newJmmDNS() {
             JmmDNS dns = null;
             ClassDelegate delegate = _databaseClassDelegate.get();
             if (delegate != null) {
