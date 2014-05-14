@@ -70,7 +70,9 @@ public class JmmDNSImpl implements JmmDNS, NetworkTopologyListener, ServiceInfoI
         _ListenerExecutor = Executors.newSingleThreadExecutor();
         _jmDNSExecutor = Executors.newCachedThreadPool();
         _timer = new Timer("Multihommed mDNS.Timer", true);
-        (new NetworkChecker(this, NetworkTopologyDiscovery.Factory.getInstance())).start(_timer);
+        NetworkChecker networkChecker = new NetworkChecker(this, NetworkTopologyDiscovery.Factory.getInstance());
+        networkChecker.run(); // James: force to initialize mDNS synchronously
+		networkChecker.start(_timer);
     }
 
     /*
