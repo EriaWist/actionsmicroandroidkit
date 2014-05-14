@@ -87,7 +87,8 @@ public class HostInfo implements DNSStatefulObject {
                     logger.warning("Could not find any address beside the loopback.");
                 }
             } else {
-                aName = addr.getHostName();
+//                aName = addr.getHostName(); James:for performance we assume there's no name  
+            	aName = addr.getHostAddress();
             }
             if (aName.contains("in-addr.arpa") || (aName.equals(addr.getHostAddress()))) {
                 aName = ((jmdnsName != null) && (jmdnsName.length() > 0) ? jmdnsName : addr.getHostAddress());
