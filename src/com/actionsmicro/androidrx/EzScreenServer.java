@@ -211,7 +211,9 @@ public class EzScreenServer {
 				
 			});
 			jsonRpcOverHttpServer.start();
-			HashMap<String, String> txtRecord = new HashMap<String, String>();					
+			HashMap<String, String> txtRecord = new HashMap<String, String>();
+			txtRecord.put("txtvers", "20140515");
+			txtRecord.put("srcvers", "20140515");			
 			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord));
 			bonjourServiceAdvertiser.register();
 			if (ezScreenServerDelegate != null) {
