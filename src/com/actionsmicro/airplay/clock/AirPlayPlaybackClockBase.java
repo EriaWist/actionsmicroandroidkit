@@ -1,8 +1,7 @@
-package com.actionsmicro.airplay.airtunes;
+package com.actionsmicro.airplay.clock;
 
 import org.apache.commons.net.ntp.TimeStamp;
 
-import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.utils.Log;
 
 public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
