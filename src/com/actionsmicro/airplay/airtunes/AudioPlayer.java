@@ -32,6 +32,7 @@ import com.actionsmicro.utils.ThreadUtils;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
+	private static final int SAMPLE_RATE_IN_HZ = 44100;
 	private static final String TAG = "AudioPlayer";
 	private static final boolean DEBUG_LOG = false;
 	private DatagramSocket sock;
@@ -167,11 +168,12 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		decoderThread.start();
 	}
 	private void spawnPlayerThread() {
+		int minBufferSize = AudioTrack.getMinBufferSize(SAMPLE_RATE_IN_HZ, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
 		track = new AudioTrack(AudioManager.STREAM_MUSIC,
-				44100,
+				SAMPLE_RATE_IN_HZ,
 				AudioFormat.CHANNEL_OUT_STEREO,
 				AudioFormat.ENCODING_PCM_16BIT,
-				44100 * 2 * 4,
+				minBufferSize,
 				AudioTrack.MODE_STREAM);
 		playerThreadShouldStop = false;
 		playerThread = new Thread(new Runnable() {
@@ -373,6 +375,6 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		if (ntpTimestamp == 0 && rtpTimestamp == 0) {
 			return 0;
 		}
-		return ntpTimestamp + (timestamp - rtpTimestamp)*1000/44100;
+		return ntpTimestamp + (timestamp - rtpTimestamp)*1000/SAMPLE_RATE_IN_HZ;
 	}
 }
