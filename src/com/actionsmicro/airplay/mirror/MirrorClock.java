@@ -8,7 +8,7 @@ import java.net.SocketTimeoutException;
 import org.apache.commons.net.ntp.NTPUDPClient;
 import org.apache.commons.net.ntp.TimeInfo;
 
-import com.actionsmicro.airplay.airtunes.AirPlayPlaybackClockBase;
+import com.actionsmicro.airplay.clock.AirPlayPlaybackClockBase;
 import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.utils.ThreadUtils;
 

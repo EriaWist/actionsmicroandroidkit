@@ -13,12 +13,13 @@ import org.apache.commons.net.ntp.TimeStamp;
 import vavi.apps.shairport.UDPDelegate;
 import vavi.apps.shairport.UDPListener;
 
+import com.actionsmicro.airplay.clock.AirPlayPlaybackClockBase;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.ThreadUtils;
 
 public class AirTunesClock extends AirPlayPlaybackClockBase {
 	static final String TAG = "AirTunesClock";
-	static final boolean DEBUG_LOG = false;
+	private static final boolean DEBUG_LOG = false;
 	private DatagramSocket tsock;
 	private UDPListener timingPortListener;
 	private Thread timingThread;
