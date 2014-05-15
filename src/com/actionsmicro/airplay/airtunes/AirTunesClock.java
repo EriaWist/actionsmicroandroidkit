@@ -22,8 +22,8 @@ public class AirTunesClock extends AirPlayPlaybackClockBase {
 	private DatagramSocket tsock;
 	private UDPListener timingPortListener;
 	private Thread timingThread;
-	public AirTunesClock(final InetAddress ntpServer, final int ntpPort, long latencyTolerance) throws SocketException {
-		super(latencyTolerance, DEBUG_LOG, TAG);
+	public AirTunesClock(final InetAddress ntpServer, final int ntpPort, long latencyTolerance, int exceptionLimit) throws SocketException {
+		super(latencyTolerance, exceptionLimit, DEBUG_LOG, TAG);
 		tsock = new DatagramSocket();
 		timingPortListener = new UDPListener(tsock, new UDPDelegate() {
 

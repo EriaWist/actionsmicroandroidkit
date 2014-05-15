@@ -16,8 +16,8 @@ public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClo
 	private static final String TAG = "MirrorClock";
 	private static final boolean DEBUG_LOG = false;
 	private Thread timingThread;
-	public MirrorClock(final InetAddress ntpServer, final int ntpPort, long latencyTolerance) throws SocketException {
-		super(latencyTolerance, DEBUG_LOG, TAG);
+	public MirrorClock(final InetAddress ntpServer, final int ntpPort, long latencyTolerance, int exceptionLimit) throws SocketException {
+		super(latencyTolerance, exceptionLimit, DEBUG_LOG, TAG);
 		timingThread = new Thread(new Runnable() {				 
 			@Override
 			public void run() {

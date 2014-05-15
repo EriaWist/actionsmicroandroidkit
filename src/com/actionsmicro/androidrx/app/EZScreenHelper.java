@@ -662,7 +662,7 @@ public class EZScreenHelper {
 						playbackClock = null;
 					}
 					try {
-						playbackClock = new MirrorClock(remoteAddress, 7010, 100);
+						playbackClock = new MirrorClock(remoteAddress, 7010, 100, 25);
 					} catch (SocketException e1) {
 						e1.printStackTrace();
 					}

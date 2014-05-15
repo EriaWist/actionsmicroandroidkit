@@ -269,7 +269,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	
 	private void initRTP(final AudioSession session) {
 		try {
-			playbackClock = new AirTunesClock(session.getAddress(), session.getTimingPort(), 100);
+			playbackClock = new AirTunesClock(session.getAddress(), session.getTimingPort(), 200, 50);
 
 			sock = new DatagramSocket();
 			csock = new DatagramSocket();

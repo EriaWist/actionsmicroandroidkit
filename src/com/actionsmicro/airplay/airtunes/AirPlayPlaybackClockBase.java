@@ -13,12 +13,15 @@ public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
 	private long latencyTolerance;
 	private boolean debugLog;
 	private String debugPrefix;
+	private int exceptionCount;
+	private int exceptionLimit;
 
-	public AirPlayPlaybackClockBase(long latencyTolerance, boolean debugLog, String debugPrefix) {
+	public AirPlayPlaybackClockBase(long latencyTolerance, int exceptionLimit, boolean debugLog, String debugPrefix) {
 		super();
 		this.debugPrefix = debugPrefix;
 		this.debugLog = debugLog;
 		this.latencyTolerance = latencyTolerance;
+		this.exceptionLimit = exceptionLimit;
 	}
 
 	@Override
@@ -26,8 +29,14 @@ public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
 		presentationTime = presentationTime - clockOffset;
 		if (presentationTime < now()) {
 			if ((now() - presentationTime) > latencyTolerance) {
-				debugLogW("presentationTime:"+presentationTime+" is too late for "+(now() - presentationTime)+"ms");
-				return false;
+				debugLogW("presentationTime:"+presentationTime+" is too late for "+(now() - presentationTime)+"ms"+", exceptionCount:"+exceptionCount);
+				exceptionCount++;
+				if (exceptionCount > exceptionLimit) {
+					debugLogW("drop frame");
+					return false;
+				} else {
+					return true;
+				}
 			}
 		} else if ((presentationTime - now()) > EARLY_TOLERANCE) {
 			while (presentationTime > now() && !Thread.currentThread().isInterrupted()) {
@@ -48,7 +57,7 @@ public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
 			}
 		}
 		debugLog("presentationTime:"+presentationTime+" is good to go");
-		
+		exceptionCount = 0;
 		return true;
 	}
 	protected void updateSyncInfo(long roundTripDelay, long offset) {
