@@ -78,24 +78,14 @@ public class BonjourServiceAdvertiser {
 		}
 	}
 	private void registerService() {
-//		JmDNS test = JmDNS.create("192.168.203.25");
-//		Log.d(TAG, "Test Start Registered Service as " + serviceInfo.getQualifiedName());
-//		test.registerService(serviceInfo.clone());
-//		Log.d(TAG, "Test Registered Service as " + serviceInfo.getQualifiedName());
-		new Thread(new Runnable() {
-
-			@Override
-			public void run() {
-				Log.d(TAG, "Start Registered Service as " + serviceInfo.getQualifiedName());
-				try {
-					jmDNS.registerService(serviceInfo);
-				} catch (IOException e) {
-					Log.e(TAG, "Failed to register server:"+serviceInfo, e);
-				}
-				Log.d(TAG, "Registered Service as " + serviceInfo.getQualifiedName());				
-			}
-			
-		}).start();
+		Log.d(TAG, "Start Registered Service as " + serviceInfo.getQualifiedName());
+		try {
+			jmDNS.registerService(serviceInfo);
+		} catch (IOException e) {
+			//TODO add callback
+			Log.e(TAG, "Failed to register server:"+serviceInfo, e);
+		}
+		Log.d(TAG, "Registered Service as " + serviceInfo.getQualifiedName());				
 	}
 	private NetworkTopologyListener networkListener = new NetworkTopologyListener() {
 
