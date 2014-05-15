@@ -14,7 +14,7 @@ import com.actionsmicro.utils.ThreadUtils;
 
 public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClock {
 	private static final String TAG = "MirrorClock";
-	private static final boolean DEBUG_LOG = true;
+	private static final boolean DEBUG_LOG = false;
 	private Thread timingThread;
 	public MirrorClock(final InetAddress ntpServer, final int ntpPort, long latencyTolerance) throws SocketException {
 		super(latencyTolerance, DEBUG_LOG, TAG);
