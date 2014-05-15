@@ -81,6 +81,12 @@ public class AirPlayServer {
 		void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp);
 
 		void onStopMirroring();
+
+		void onInitalizationStart();
+
+		void onInitalizationFinished();
+
+		void onInitalizationFailed();
 		
 	}
 	private boolean stopRaopThread;
@@ -93,6 +99,8 @@ public class AirPlayServer {
 	private AsyncHttpServer mirrorServer;
 	protected ServerSocket servSock;	
 	private BonjourServiceAdvertiser bonjourServiceAdvertiser;
+	private boolean raopServiceReady;
+	private boolean airplayServiceReady;
 	private static boolean DEBUG_LOG = false;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
@@ -106,6 +114,9 @@ public class AirPlayServer {
 		this.delegate = delegate;
 	}
 	public void start() {
+		if (delegate != null) {
+			delegate.onInitalizationStart();
+		}
 		initRaopService();
 		initAirPlayInThread();
 	}
@@ -143,6 +154,10 @@ public class AirPlayServer {
 			airplayService.stop();
 			airplayService = null;
 		}
+		onAirPlayServiceDown();
+	}
+	private void onAirPlayServiceDown() {
+		airplayServiceReady = false;
 	}
 	private void initAirplayService() {
 		mirrorServer = new AsyncHttpServer() {
@@ -464,7 +479,21 @@ public class AirPlayServer {
 				return delegate.getVideoDuration();
 			}
 		});
-		airplayService.start();		
+		if (airplayService.start()) {
+			onAirplayServiceReady();
+		} else {
+			informDelegateInitializationFailed();
+		}
+	}
+	private void informDelegateInitializationFailed() {
+		if (delegate != null) {
+			// TODO add more precise error message
+			delegate.onInitalizationFailed();
+		}
+	}
+	private void onAirplayServiceReady() {
+		airplayServiceReady = true;
+		checkInitializationState();
 	}
 	private String getMacAddress() {
 		WifiManager wim= (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
@@ -487,6 +516,7 @@ public class AirPlayServer {
 					servSock.setSoTimeout(0);
 					servSock.bind(new InetSocketAddress(RAOP_PORTNUMBER));
 					registerRaopService();
+					onRaopServiceReady();
 					byte[] hwAddr = getHardwareAdress();
 					while (!stopRaopThread && !Thread.currentThread().isInterrupted()) {
 						try {
@@ -498,11 +528,13 @@ public class AirPlayServer {
 						}
 					}
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					if (!raopServiceReady) {
+						informDelegateInitializationFailed();
+					}
 				} finally {
 					cleanUpMdns();
 					closeServerSocket();
+					onRaopServiceDown();
 				}
 			}
 			private byte[] getHardwareAdress() {
@@ -530,6 +562,20 @@ public class AirPlayServer {
 			}
 		});
 		raopThread.start();
+	}
+	protected void onRaopServiceDown() {
+		raopServiceReady = false;
+	}
+	protected void onRaopServiceReady() {
+		raopServiceReady = true;
+		checkInitializationState();
+	}
+	private void checkInitializationState() {
+		if (raopServiceReady && airplayServiceReady) {
+			if (delegate != null) {
+				delegate.onInitalizationFinished();
+			}
+		}
 	}
 	private void closeServerSocket() {
 		if (servSock != null) {

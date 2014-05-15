@@ -62,6 +62,13 @@ public class EZScreenHelper {
 		public String getOnConnectedDisplayImage();
 		public String getOnStopDisplayImage();
 	}
+	public interface InitializationListener {
+
+		void onInitializationFailed(Exception e);
+
+		void onInitalizationFinished();
+		
+	}
 	private static final String TAG = "EZScreenHelper";
 	private WebView webView;
 	private TextureView mjpegView;
@@ -95,6 +102,7 @@ public class EZScreenHelper {
 	protected SurfaceTexture mirrorSurfaceTexture;
 	private ViewGroup container;
 	private TextureView mirrorView;
+	private InitializationListener initializationListener;
 	private String getServiceName() {
 		return serviceName;
 	}
@@ -114,9 +122,16 @@ public class EZScreenHelper {
 		if (mjpegView != null) {
 			initMjpegView();
 		}
-		if ((servers & SERVER_AIRPLAY) != 0) {
+		if (needToLoadAirPlay()) {
 			initMirrorView();
 		}
+	}
+
+	private boolean needToLoadAirPlay() {
+		return (servers & SERVER_AIRPLAY) != 0;
+	}
+	private boolean needToLoadEzScreen() {
+		return (servers & SERVER_EZSCREEN) != 0;
 	}
 
 	public WebView getWebView() {
@@ -569,6 +584,24 @@ public class EZScreenHelper {
 					audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,
 			                AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
 				}
+
+				@Override
+				public void onInitializationStart() {
+					ezScreenReady = false;
+				}
+
+				@Override
+				public void onInitializationFinished() {
+					ezScreenReady = true;
+					informInitializationListenerOnFinishedIfNeeded();
+				}
+
+				@Override
+				public void onInitializationFailed(Exception e) {
+					if (initializationListener != null) {
+						initializationListener.onInitializationFailed(e);
+					}
+				}
 			}));
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
@@ -578,6 +611,8 @@ public class EZScreenHelper {
 	private MediaCodec decoder;
 	private Thread renderThread;
 	private boolean stopRenderer = false;
+	protected boolean airplayReady;
+	private boolean ezScreenReady;
 	
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void initAirplay() {
@@ -851,6 +886,23 @@ public class EZScreenHelper {
 					}
 				}
 
+				@Override
+				public void onInitalizationStart() {
+				}
+
+				@Override
+				public void onInitalizationFinished() {
+					airplayReady = true;
+					informInitializationListenerOnFinishedIfNeeded();
+				}
+
+				@Override
+				public void onInitalizationFailed() {
+					if (initializationListener != null) {
+						initializationListener.onInitializationFailed(null);
+					}
+				}
+
 				
 			}));
 			this.getAirplayService().start();
@@ -858,6 +910,16 @@ public class EZScreenHelper {
 			e.printStackTrace();
 		}
 
+	}
+
+	protected void informInitializationListenerOnFinishedIfNeeded() {
+		if ((airplayReady || !needToLoadAirPlay()) && 
+				(ezScreenReady || !needToLoadEzScreen())) {
+			if (initializationListener != null) {
+				initializationListener.onInitalizationFinished();
+			}
+		}
+		
 	}
 
 	private void playVideo(String url, String callback, boolean autoplay, int startpos) {
@@ -1013,6 +1075,8 @@ public class EZScreenHelper {
 			this.getLock().release();
 			this.setLock(null);
 		}
+		ezScreenReady = false;
+		airplayReady = false;
 	}
 
 	public ConnectionListener getConnectionListener() {
@@ -1047,5 +1111,13 @@ public class EZScreenHelper {
 			mirrorSurface.release();
 			mirrorSurface = null;
 		}
+	}
+
+	public InitializationListener getInitializationListener() {
+		return initializationListener;
+	}
+
+	public void setInitializationListener(InitializationListener initializationListener) {
+		this.initializationListener = initializationListener;
 	}
 }

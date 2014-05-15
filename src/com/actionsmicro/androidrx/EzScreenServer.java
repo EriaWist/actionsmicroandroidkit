@@ -49,6 +49,12 @@ public class EzScreenServer {
 		void resumeVideo();
 
 		void pauseVideo();
+
+		void onInitializationStart();
+
+		void onInitializationFinished();
+
+		void onInitializationFailed(Exception e);
 		
 	}
 	protected static final String TAG = "EzScreenServer";
@@ -80,6 +86,9 @@ public class EzScreenServer {
 	
 	private BonjourServiceAdvertiser bonjourServiceAdvertiser;
 	public void start() {
+		if (ezScreenServerDelegate != null) {
+			ezScreenServerDelegate.onInitializationStart();
+		}
 		Thread initThread = new Thread(new Runnable() {
 
 			@Override
@@ -205,9 +214,14 @@ public class EzScreenServer {
 			HashMap<String, String> txtRecord = new HashMap<String, String>();					
 			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord));
 			bonjourServiceAdvertiser.register();
+			if (ezScreenServerDelegate != null) {
+				ezScreenServerDelegate.onInitializationFinished();
+			}
 		} catch (IOException e) {
-			// TODO add callback;
 			Log.e(TAG, "initialize android rx failed", e);
+			if (ezScreenServerDelegate != null) {
+				ezScreenServerDelegate.onInitializationFailed(e);
+			}
 		}
 	}
 }
