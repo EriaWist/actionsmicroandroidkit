@@ -94,6 +94,7 @@ public class AikaImpl extends Aika {
 			bonjourServiceAdvertiser.register();
 			return true;
 		} catch (IOException e) {
+			// TODO pass exception out to client
 			e.printStackTrace();
 			stop();
 			return false;
@@ -103,17 +104,19 @@ public class AikaImpl extends Aika {
 	@Override
 	public void stop() {
 		try {
-			final BonjourServiceAdvertiser bonjour = bonjourServiceAdvertiser;
-			new Thread(new Runnable() {
+			if (bonjourServiceAdvertiser != null) {
+				final BonjourServiceAdvertiser bonjour = bonjourServiceAdvertiser;
+				new Thread(new Runnable() {
 
-				@Override
-				public void run() {
-					bonjour.unregister();	
-					bonjour.close();
-				}
-				
-			}).start();
-			bonjourServiceAdvertiser = null;
+					@Override
+					public void run() {
+						bonjour.unregister();	
+						bonjour.close();
+					}
+
+				}).start();
+				bonjourServiceAdvertiser = null;
+			}
 			// http
 			if (as != null) {
 				as.forceStop();

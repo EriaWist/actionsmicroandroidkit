@@ -64,7 +64,7 @@ public class EZScreenHelper {
 	}
 	public interface InitializationListener {
 
-		void onInitializationFailed(Exception e);
+		void onInitializationFailed(int service, Exception e);
 
 		void onInitalizationFinished();
 		
@@ -599,7 +599,7 @@ public class EZScreenHelper {
 				@Override
 				public void onInitializationFailed(Exception e) {
 					if (initializationListener != null) {
-						initializationListener.onInitializationFailed(e);
+						initializationListener.onInitializationFailed(SERVER_EZSCREEN, e);
 					}
 				}
 			}));
@@ -613,6 +613,7 @@ public class EZScreenHelper {
 	private boolean stopRenderer = false;
 	protected boolean airplayReady;
 	private boolean ezScreenReady;
+	protected boolean alreadyFailed;
 	
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void initAirplay() {
@@ -897,14 +898,16 @@ public class EZScreenHelper {
 				}
 
 				@Override
-				public void onInitalizationFailed() {
-					if (initializationListener != null) {
-						initializationListener.onInitializationFailed(null);
+				public void onInitalizationFailed(Exception e) {
+					if (!alreadyFailed && initializationListener != null) {
+						initializationListener.onInitializationFailed(SERVER_AIRPLAY, e);
 					}
+					alreadyFailed = true;
 				}
 
 				
 			}));
+			alreadyFailed = false;
 			this.getAirplayService().start();
 		} catch (UnknownHostException e) {
 			e.printStackTrace();

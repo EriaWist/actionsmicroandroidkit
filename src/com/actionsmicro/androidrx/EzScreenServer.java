@@ -104,17 +104,19 @@ public class EzScreenServer {
 		initThread.start();
 	}
 	public synchronized void stop() {
-		final BonjourServiceAdvertiser bonjour = bonjourServiceAdvertiser;
-		new Thread(new Runnable() {
+		if (bonjourServiceAdvertiser != null) {
+			final BonjourServiceAdvertiser bonjour = bonjourServiceAdvertiser;
+			new Thread(new Runnable() {
 
-			@Override
-			public void run() {
-				bonjour.unregister();
-				bonjour.close();
-			}
-			
-		}).start();
-		bonjourServiceAdvertiser = null;
+				@Override
+				public void run() {
+					bonjour.unregister();
+					bonjour.close();
+				}
+
+			}).start();
+			bonjourServiceAdvertiser = null;
+		}
 		mainHandler.removeCallbacks(resetToStandby);
 		if (jsonRpcOverHttpServer != null) {
 			jsonRpcOverHttpServer.stop();

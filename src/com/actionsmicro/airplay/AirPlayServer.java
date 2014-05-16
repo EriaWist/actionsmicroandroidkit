@@ -86,7 +86,7 @@ public class AirPlayServer {
 
 		void onInitalizationFinished();
 
-		void onInitalizationFailed();
+		void onInitalizationFailed(Exception ex);
 		
 	}
 	private boolean stopRaopThread;
@@ -416,6 +416,16 @@ public class AirPlayServer {
 			}
 			
 		});
+		mirrorServer.setErrorCallback(new CompletedCallback() {
+
+			@Override
+			public void onCompleted(Exception ex) {
+				if (!airplayServiceReady) {
+					informDelegateInitializationFailed(ex);
+				}
+			}
+			
+		});
 		mirrorServer.listen(7100);
 		Log.d(TAG, "Mirror server listening on 7100");
 		
@@ -482,13 +492,13 @@ public class AirPlayServer {
 		if (airplayService.start()) {
 			onAirplayServiceReady();
 		} else {
-			informDelegateInitializationFailed();
+			// TODO add more precise error message
+			informDelegateInitializationFailed(null);
 		}
 	}
-	private void informDelegateInitializationFailed() {
+	private void informDelegateInitializationFailed(Exception e) {
 		if (delegate != null) {
-			// TODO add more precise error message
-			delegate.onInitalizationFailed();
+			delegate.onInitalizationFailed(e);
 		}
 	}
 	private void onAirplayServiceReady() {
@@ -529,7 +539,7 @@ public class AirPlayServer {
 					}
 				} catch (IOException e) {
 					if (!raopServiceReady) {
-						informDelegateInitializationFailed();
+						informDelegateInitializationFailed(e);
 					}
 				} finally {
 					cleanUpMdns();
@@ -621,9 +631,8 @@ public class AirPlayServer {
 		}
 	}
 	private void cleanUpMdns() {
-		
-		final BonjourServiceAdvertiser bonjour = this.bonjourServiceAdvertiser;
-		if (bonjour != null) {
+		if (bonjourServiceAdvertiser != null) {
+			final BonjourServiceAdvertiser bonjour = this.bonjourServiceAdvertiser;
 			new Thread(new Runnable() {
 
 				@Override
@@ -633,9 +642,8 @@ public class AirPlayServer {
 				}
 
 			}).start();
-		}
-		bonjourServiceAdvertiser = null;
-		
+			bonjourServiceAdvertiser = null;
+		}		
 	}
 	static class EndEmitter extends FilteredDataEmitter {
         private EndEmitter() {

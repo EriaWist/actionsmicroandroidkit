@@ -26,11 +26,17 @@ public class AirplayServer extends Thread {
 	private int mPort;
 
 	public static void main(String[] args) {
-		new AirplayServer(8888).start();
+		try {
+			new AirplayServer(8888).start();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
-	public AirplayServer(int port) {
+	public AirplayServer(int port) throws IOException {
 		mPort = port;
+		mServerSocket = new ServerSocket(mPort);
 	}
 
 	public Device getDevice() {
@@ -86,7 +92,6 @@ public class AirplayServer extends Thread {
 	public void run() {
 		try {
 			reverseResponse = new HashMap<String, Socket>();
-			mServerSocket = new ServerSocket(mPort);
 			logger.log(Level.INFO, "Http Server started listening:" + mPort);
 			while (true) {
 				Socket socket = mServerSocket.accept();
