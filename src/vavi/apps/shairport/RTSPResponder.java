@@ -1,13 +1,14 @@
 package vavi.apps.shairport;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.PushbackInputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,13 +34,13 @@ public class RTSPResponder extends Thread{
 	private byte[] aesiv, aeskey;			// ANNOUNCE request infos
 	private AudioPlayer serv; 				// Audio listener
 	byte[] hwAddr;
-	private PushbackInputStream in;
+	private BufferedInputStream in;
 	private static final Pattern completedPacket = Pattern.compile("(.*)\r\n\r\n");
 
 	public RTSPResponder(byte[] hwAddr, Socket socket) throws IOException {
 		this.hwAddr = hwAddr;
 		this.socket = socket;
-		in = new PushbackInputStream(socket.getInputStream());
+		in = new BufferedInputStream(socket.getInputStream());
 	}
 
 
@@ -97,8 +98,7 @@ public class RTSPResponder extends Thread{
 		String REQ = packet.getReq();
         if(REQ.contentEquals("OPTIONS")){
         	// The response field
-        	response.append("Public", "ANNOUNCE, SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS, GET_PARAMETER, SET_PARAMETER");
-
+        	response.append("Public", "ANNOUNCE, SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS, GET_PARAMETER, SET_PARAMETER, POST, GET");
         } else if (REQ.contentEquals("ANNOUNCE")){
         	response.append("Audio-Jack-Status", "connected; type=analog");
     		// Nothing to do here. Juste get the keys and values
@@ -204,7 +204,8 @@ public class RTSPResponder extends Thread{
         	Log.e("ShairPort", "REQUEST(" + REQ + "): Not Supported Yet!");
 //        	Log.d("ShairPort", packet.getRawPacket());
         }
-        
+        response.append("Server", "AirTunes/150.33");
+		
     	// We close the response
     	response.finalize();
     	return response;
@@ -260,73 +261,37 @@ public class RTSPResponder extends Thread{
 
 		return null;
 	}
-
+	private static final Pattern requestHeaderPattern = Pattern.compile("^([\\w-]+):\\W(.+)\r\n", Pattern.MULTILINE);
+    
     /**
      * Thread to listen packets
      */
 	public void run() {
 		try {
+			ByteArrayBuffer requestBodyBuffer = new ByteArrayBuffer(4096);			
 			do {
 				Log.d("ShairPort", "listening packets ... ");
-				// feed buffer until packet completed
-				StringBuffer packet = new StringBuffer();
-				ByteArrayBuffer byteArrayBuffer = new ByteArrayBuffer(4096);
-				int ret = 0;
-				int total = 0;
-				do {
-					byte[] buffer = new byte[4096];
-					ret = in.read(buffer);
-					total += ret;
-					Log.d("ShairPlay", "ret:"+ret);
-					if (ret!=-1) {
-						packet.append(new String(buffer, 0, ret));
-						byteArrayBuffer.append(buffer, 0, ret);
-					}
-				} while (ret!=-1 && !completedPacket.matcher(packet.toString()).find());
-				Log.d("ShairPlay", "total:"+total);
-				Matcher matcher = completedPacket.matcher(packet.toString());
-				if (matcher.find()) {
-					Log.d("ShairPlay", "matcher.end():"+matcher.end());
+				requestBodyBuffer.clear();
+				StringBuilder packet = new StringBuilder();
+				int ret = readRequestHeader(packet);
+				int contentLength = 0;
+				if (ret != -1) {
+					Log.d("ShairPort", "read body ... ");
+					Matcher m = requestHeaderPattern.matcher(packet.toString());
+				    contentLength = getContentLength(m);
+				    ret = readRequestBody(contentLength, packet, requestBodyBuffer);
+				} else {
+					Log.d("ShairPort", "corrupt packet:"+packet.toString());
 				}
-//				RTSPPacket test = new RTSPPacket(packet.toString());
-//				String contentLength = null;
-//				if ((contentLength = test.valueOfHeader("Content-Length")) != null) {
-//					if (test.getContent().length() < Integer.valueOf(contentLength)) {
-//						Log.d("ShairPlay", "Content-Length:"+Integer.valueOf(contentLength));
-//						Log.d("ShairPlay", "request.content.length:"+test.getContent().length());
-//						Log.d("ShairPlay", "byteArrayBuffer.length:"+byteArrayBuffer.length());
-//						int readMore = Integer.valueOf(contentLength) - test.getContent().length();
-//						Log.d("ShairPlay", "readMore:"+readMore);
-//						while (readMore > 0) {
-//							char[] buffer = new char[4096];
-//							ret = in.read(buffer, 0, readMore);
-//							if (ret!=-1) {
-//								packet.append(new String(buffer));
-//								byteArrayBuffer.append(buffer, 0, ret);
-//								readMore -= ret;
-//							} else {
-//								break;
-//							}
-//						}
-//					}
-//				}
 				if (ret!=-1) {
 					// We handle the packet
 					RTSPPacket request = new RTSPPacket(packet.toString());
+					Log.d("ShairPort", request.getRawPacket());	
 					if (request.getReq().equals("POST") && 
 							request.getDirectory().equals("/fp-setup")) {
-						Log.d("ShairPort", request.getRawPacket());	
-						Log.d("ShairPort", "request.getContent().length()"+request.getContent().length());
-						String contentLengthStr = null;
-						int contentLength = request.getContent().length();
-						if ((contentLengthStr = request.valueOfHeader("Content-Length")) != null) {
-							contentLength = Integer.valueOf(request.valueOfHeader("Content-Length"));
-						}
-						byte packageData[] = byteArrayBuffer.toByteArray();
-						int fply_offset = matcher.end();//packageData.length - request.getContent().length();
-						ByteArrayBuffer body = new ByteArrayBuffer(contentLength);
-						body.append(packageData, fply_offset, contentLength);
-						if (packageData[fply_offset+6] == 1) {
+						Log.d("ShairPort", "requestBodyBuffer.length:"+requestBodyBuffer.length());
+						byte packageData[] = requestBodyBuffer.toByteArray();
+						if (packageData[6] == 1) {
 							FairPlay.init();
 							try {
 								Thread.sleep(100);
@@ -334,7 +299,7 @@ public class RTSPResponder extends Thread{
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
-							byte responseData[] = FairPlay.setupPhase1(body.buffer(), body.length(), true);
+							byte responseData[] = FairPlay.setupPhase1(requestBodyBuffer.buffer(), requestBodyBuffer.length(), true);
 							Log.d("fairplay", "responseData.length:"+responseData.length);	
 							RTSPResponse response = new RTSPResponse("RTSP/1.0 200 OK");
 							response.append("Content-Type", "application/octet-stream");
@@ -344,14 +309,8 @@ public class RTSPResponder extends Thread{
 							response.finalize();
 							StringBuilder sb = new StringBuilder();
 							sb.append(response.getRawPacket());
-//							CharArrayBuffer responseChars = new CharArrayBuffer(responseData.length);
-//							responseChars.append(responseData, 0, responseData.length);
-//							sb.append(responseChars);
 							// Write the response to the wire
 							try {			
-//								BufferedWriter oStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-//								oStream.write(sb.toString());
-//								oStream.flush();
 								socket.getOutputStream().write(sb.toString().getBytes());
 								socket.getOutputStream().write(responseData);
 								socket.getOutputStream().flush();
@@ -360,8 +319,8 @@ public class RTSPResponder extends Thread{
 							}
 							Log.d("ShairPort", sb.toString());
 
-						} else if (packageData[fply_offset+6] == 3) {
-							byte responseData[] = FairPlay.setupPhase2(body.buffer(), body.length(), true);
+						} else if (packageData[6] == 3) {
+							byte responseData[] = FairPlay.setupPhase2(requestBodyBuffer.buffer(), requestBodyBuffer.length(), true);
 							RTSPResponse response = new RTSPResponse("RTSP/1.0 200 OK");
 							response.append("Content-Type", "application/octet-stream");
 							response.append("Content-Length", String.valueOf(responseData.length));
@@ -387,7 +346,6 @@ public class RTSPResponder extends Thread{
 							Log.d("ShairPort", sb.toString());
 						}
 					} else {
-						Log.d("ShairPort", request.getRawPacket());	
 						RTSPResponse response = this.handlePacket(request);		
 						Log.d("ShairPort", response.getRawPacket());
 
@@ -431,6 +389,52 @@ public class RTSPResponder extends Thread{
 			}
 		}
 		Log.d("ShairPort", "connection ended.");
+	}
+
+
+	private int readRequestBody(int contentLength, StringBuilder packet,
+			ByteArrayBuffer requestBodyBuffer) throws IOException {
+		requestBodyBuffer.clear();
+		int ret = 0;
+		int readMore = contentLength;
+		ByteBuffer buffer = ByteBuffer.allocate(512);
+		while (readMore > 0) {
+			buffer.clear();
+			Log.d("ShairPort", "readMore:"+readMore);
+			ret = in.read(buffer.array(), 0, Math.min(readMore, buffer.capacity()));
+			if (ret!=-1) {
+				Log.d("ShairPort", "readMore:ret:"+ret);
+				packet.append(new String(buffer.array(), 0, ret));
+				requestBodyBuffer.append(buffer.array(), 0, ret);
+				readMore -= ret;
+			} else {
+				break;
+			}
+		}
+		return ret;
+	}
+
+
+	private int getContentLength(Matcher m) {
+		int contentLength = 0;
+		while(m.find()){
+			if (m.group(1).equalsIgnoreCase("Content-Length")) {
+				contentLength = Integer.valueOf(m.group(2));
+			}
+		}
+		return contentLength;
+	}
+
+
+	private int readRequestHeader(StringBuilder packet) throws IOException {
+		int ret = 0;
+		do {
+			ret = in.read();
+			if (ret != -1) {
+				packet.append((char)ret);
+			}
+		} while (ret!=-1 && !completedPacket.matcher(packet.toString()).find());
+		return ret;
 	}
 		
 }
