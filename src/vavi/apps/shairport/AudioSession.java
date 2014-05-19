@@ -1,5 +1,7 @@
 package vavi.apps.shairport;
 import java.net.InetAddress;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.util.Log;
 
@@ -26,9 +28,10 @@ public class AudioSession {
 	private int _8a_rate;
 	private BiquadFilter bFilter;
 	private InetAddress inetAddress;
+	private String fmtpString;
 	
-	
-	public AudioSession(byte[] aesiv, byte[] aeskey, int[] fmtp, int controlPort, int timingPort, InetAddress inetAddress){	
+	public AudioSession(byte[] aesiv, byte[] aeskey, String fmtpString, int controlPort, int timingPort, InetAddress inetAddress){
+		this.fmtpString = fmtpString;
 		this.inetAddress = inetAddress;
 		// KEYS
 		this.aesiv = aesiv;
@@ -39,23 +42,68 @@ public class AudioSession {
 		this.timingPort = timingPort;
 		
 		// FMTP
-		if (fmtp != null && fmtp.length >= 12) {
-			frameSize = fmtp[1];
-			_7a = fmtp[2];
-			sampleSize = fmtp[3];
-			rice_historymult = fmtp[4];
-			rice_initialhistory = fmtp[5];
-			rice_kmodifier = fmtp[6];
-			_7f = fmtp[7];
-			_80 = fmtp[8];
-			_82 = fmtp[9];
-			_86 = fmtp[10];
-			_8a_rate = fmtp[11];
-			initDecoder();
+		if (fmtpString != null) {
+			if (isAacEldEncoding()) {
+				
+			} else if (isAacEncoding()){
+				
+			} else if (isAppleLosslessEncoding()) {
+				String[] temp = fmtpString.split(" ");
+				int[] fmtp = new int[temp.length];
+				for (int i = 0; i< temp.length; i++) {
+					try {
+						fmtp[i] = Integer.valueOf(temp[i]);
+					} catch (NumberFormatException e) {
+						e.printStackTrace();
+					}
+				}
+
+				frameSize = fmtp[1];
+				_7a = fmtp[2];
+				sampleSize = fmtp[3];
+				rice_historymult = fmtp[4];
+				rice_initialhistory = fmtp[5];
+				rice_kmodifier = fmtp[6];
+				_7f = fmtp[7];
+				_80 = fmtp[8];
+				_82 = fmtp[9];
+				_86 = fmtp[10];
+				_8a_rate = fmtp[11];
+				initDecoder();
+			}
 		}
 		
 	}
 	
+	public boolean isAppleLosslessEncoding() {
+		if (fmtpString != null && !fmtpString.contains("mode=AAC-eld")) {
+			Pattern p = Pattern.compile("^[0-9 ]*");
+			Matcher matcher = p.matcher(fmtpString);
+			if (matcher.find() && matcher.end() == fmtpString.length()) {
+				return fmtpString.split(" ").length == 12;
+			}
+		}
+		return false;
+	}
+
+	public boolean isAacEncoding() {
+		if (fmtpString != null && !fmtpString.contains("mode=AAC-eld")) {
+			Pattern p = Pattern.compile("^[0-9]*");
+			Matcher matcher = p.matcher(fmtpString);
+			if (matcher.find()) {
+				return matcher.end() == fmtpString.length();
+			}
+		}
+		return false;
+	}
+
+	public boolean isAacEldEncoding() {
+		if (fmtpString != null) {
+			return fmtpString.contains("mode=AAC-eld");
+		}
+		return false;
+	}
+
 	/**
 	 * Initiate the decoder
 	 */

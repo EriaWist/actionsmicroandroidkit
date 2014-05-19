@@ -21,6 +21,8 @@ public class AudioBuffer {
 	public static final int BUFFER_FRAMES = 512;	// Total buffer size (number of frame)
 	public static final int START_FILL = 282;		// Alac will wait till there are START_FILL frames in buffer
 	public static final int MAX_PACKET = 2048;		// Also in UDPListener (possible to merge it in one place?)
+	private static final boolean DEBUG_LOG = false;
+	private static final String TAG = "AudioBuffer";
 
 	// The lock for writing/reading concurrency
     private final Lock lock = new ReentrantLock();    
@@ -96,7 +98,7 @@ public class AudioBuffer {
 					// We say the decoder is stopped and we wait for signal
 					Log.d("AudioBuffer", "Waiting");
 					decoder_isStopped = true;
-				    	lock.wait(1000);
+				    lock.wait();
 				    decoder_isStopped = false;
 					Log.d("AudioBuffer", "re-starting");					
 					readIndex++;	// We read next packet
@@ -175,13 +177,19 @@ public class AudioBuffer {
 				outputSize = this.alac_decode(data, audioBuffer[(seqno % BUFFER_FRAMES)].data);
 				audioBuffer[(seqno % BUFFER_FRAMES)].ready = true;
 				writeIndex = seqno + 1;
-			} else if(seqno > readIndex){												// readIndex < seqno < writeIndex not yet played but too late. Still ok
-				outputSize = this.alac_decode(data, audioBuffer[(seqno % BUFFER_FRAMES)].data);
-				audioBuffer[(seqno % BUFFER_FRAMES)].ready = true;
+			} else if(seqno > readIndex){			
+				if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
+					debugLogW("readIndex < seqno < writeIndex not yet played but too late. Still ok");
+					outputSize = this.alac_decode(data, audioBuffer[(seqno % BUFFER_FRAMES)].data);
+					audioBuffer[(seqno % BUFFER_FRAMES)].ready = true;
+				}
 			} else {
-				Log.d("ShairPort", "Late packet with seq. numb.: " + seqno);			// Really to late
+				if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
+					debugLogW("Late packet with seq. numb.: " + seqno + ", readIndex:" + readIndex);			// Really to late
+				}
 			}
-			
+			debugLog("alac_decode outputSize:"+outputSize);
+			debugLog("audioBuffer.lenght:"+audioBuffer[(seqno % BUFFER_FRAMES)].data.length);
 			// The number of packet in buffer
 		    actualBufSize = writeIndex - readIndex;
 		    if(actualBufSize<0){
@@ -265,7 +273,16 @@ public class AudioBuffer {
 		return -1;
 	}
 	
-	
+	private void debugLog(String msg) {
+		if (DEBUG_LOG) {
+			Log.d(TAG, msg);
+		}
+	}
+	private void debugLogW(String msg) {
+		if (DEBUG_LOG) {
+			Log.w(TAG, msg);
+		}
+	}
 	
 
 }

@@ -1,10 +1,10 @@
 package vavi.apps.shairport;
 
-import com.actionsmicro.utils.Log;
-
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+
+import com.actionsmicro.utils.Log;
 
 
 /**
@@ -14,6 +14,7 @@ import android.media.AudioTrack;
  */
 public class PCMPlayer extends Thread{
 	private static final String TAG = "PCMPlayer";
+	private static final boolean DEBUG_LOG = false;
 	private AudioTrack track;
 	private AudioSession session;
 	private volatile long fix_volume = 0x10000;
@@ -25,7 +26,6 @@ public class PCMPlayer extends Thread{
 		super();
 		this.session = session;
 		this.audioBuf = audioBuf;
-		
 		// TODO signed big-endian
 		track = new AudioTrack(AudioManager.STREAM_MUSIC,
 		                       44100,
@@ -36,25 +36,20 @@ public class PCMPlayer extends Thread{
 		Log.d(TAG, "Create AudioTrack:"+track+", state:"+track.getState());
 		track.play();
 	}
-	
 	public void run(){
-		while(!this.stopThread){
+		short[] output = new short[session.getFrameSize()*2];
+		while(!this.stopThread && !Thread.currentThread().isInterrupted()){
 			int[] buf = audioBuf.getNextFrame();
 			if(buf==null){
 				continue;
 			}
-			
-			int[] outbuf = new int[session.OUTFRAME_BYTES()];
-			int k = stuff_buffer(session.getFilter().bf_playback_rate, buf, outbuf);
-
-			short[] input = new short[outbuf.length];
-			
-			for(int i=0; i<outbuf.length; i++){
-				input[i] = (short) outbuf[i];
+			for(int i=0; i<output.length; i++){
+				output[i] = (short) buf[i];
 			}
-			
-			track.write(input, 0, k * 2);
-					
+			int result = track.write(output, 0, output.length);
+			if (result != output.length) {
+				Log.w(TAG, "audio track write result:"+result);
+			}
 		}
 
 		track.stop();
@@ -125,4 +120,16 @@ public class PCMPlayer extends Thread{
 	    }
 	    return (short) (out>>16);
 	}
+	
+	private void debugLog(String msg) {
+		if (DEBUG_LOG) {
+			Log.d(TAG, msg);
+		}
+	}
+	private void debugLogW(String msg) {
+		if (DEBUG_LOG) {
+			Log.w(TAG, msg);
+		}
+	}
+	
 }

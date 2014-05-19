@@ -19,11 +19,13 @@ import android.util.Log;
  * 
  * @author bencall
  */
-public class AudioServer implements UDPDelegate{
+public class AudioServer implements UDPDelegate, AudioPlayer{
 	// Constantes
 	public static final int BUFFER_FRAMES = 512;	// Total buffer size (number of frame)
 	public static final int START_FILL = 282;		// Alac will wait till there are START_FILL frames in buffer
 	public static final int MAX_PACKET = 2048;		// Also in UDPListener (possible to merge it in one place?)
+	private static final boolean DEBUG_LOG = false;
+	private static final String TAG = "AudioServer";
 	
 	// Sockets
 	private DatagramSocket sock, csock;
@@ -115,12 +117,12 @@ public class AudioServer implements UDPDelegate{
 			
 			//seqno is on two byte
 			int seqno = ((packet.getData()[2+off] & 0xff)*256 + (packet.getData()[3+off] & 0xff)); 
-	
 			// + les 12 (cfr. RFC RTP: champs a ignorer)
 			byte[] pktp = new byte[packet.getLength() - off - 12];
 			for(int i=0; i<pktp.length; i++){
 				pktp[i] = packet.getData()[i+12+off];
 			}
+			debugLog("packetReceived:"+seqno+", size:"+pktp.length);
 			
 			audioBuf.putPacketInBuffer(seqno, pktp);
 		}
@@ -134,7 +136,7 @@ public class AudioServer implements UDPDelegate{
 	 * @param last
 	 */
 	public void request_resend(int first, int last) {
-		Log.d("ShairPort", "Resend Request: " + first + "::" + last);
+		debugLog("Resend Request: " + first + "::" + last);
 		if(last<first){
 			return;
 		}
@@ -158,5 +160,21 @@ public class AudioServer implements UDPDelegate{
 	 */
 	public void flush(){
 		audioBuf.flush();
+	}
+
+	@Override
+	public int getControlPort() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	private void debugLog(String msg) {
+		if (DEBUG_LOG) {
+			Log.d(TAG, msg);
+		}
+	}
+	private void debugLogW(String msg) {
+		if (DEBUG_LOG) {
+			Log.w(TAG, msg);
+		}
 	}
 }

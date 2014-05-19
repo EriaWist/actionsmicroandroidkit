@@ -30,11 +30,11 @@ import com.actionsmicro.airplay.crypto.FairPlay;
 public class RTSPResponder extends Thread{
 
 	private Socket socket;					// Connected socket
-	private int[] fmtp;
 	private byte[] aesiv, aeskey;			// ANNOUNCE request infos
 	private AudioPlayer serv; 				// Audio listener
 	byte[] hwAddr;
 	private BufferedInputStream in;
+	private String fmtpString;
 	private static final Pattern completedPacket = Pattern.compile("(.*)\r\n\r\n");
 
 	public RTSPResponder(byte[] hwAddr, Socket socket) throws IOException {
@@ -106,17 +106,7 @@ public class RTSPResponder extends Thread{
         	Matcher m = p.matcher(packet.getContent());
         	while(m.find()){
         		if(m.group(1).contentEquals("fmtp")){
-        			// Parse FMTP as array
-        			String[] temp = m.group(2).split(" ");
-        			fmtp = new int[temp.length];
-        			for (int i = 0; i< temp.length; i++){
-        				try {
-        					fmtp[i] = Integer.valueOf(temp[i]);
-        				} catch (NumberFormatException e) {
-        					e.printStackTrace();
-        				}
-        			}
-        			
+        			fmtpString = m.group(2);        			
         		} else if(m.group(1).contentEquals("rsaaeskey")){
         			aeskey = this.decryptRSA(Base64.decode(m.group(2), Base64.DEFAULT));
         		} else if(m.group(1).contentEquals("aesiv")){
@@ -153,8 +143,12 @@ public class RTSPResponder extends Thread{
         	// Launching audioserver
         	releaseAudioServer();
         	//TODO depends on RTSP meta
-//			serv = new AudioServer(new AudioSession(aesiv, aeskey, fmtp, controlPort, timingPort));
-        	serv = new com.actionsmicro.airplay.airtunes.AudioPlayer(new AudioSession(aesiv, aeskey, fmtp, controlPort, timingPort, socket.getInetAddress()));
+        	AudioSession session = new AudioSession(aesiv, aeskey, fmtpString, controlPort, timingPort, socket.getInetAddress());
+        	if (session.isAacEldEncoding()) {
+    			serv = new com.actionsmicro.airplay.airtunes.AudioPlayer(session);        		
+        	} else if (session.isAppleLosslessEncoding()) {
+        		serv = new AudioServer(session);
+        	}
 			// ??? Why ???
         	response.append("Session", "DEADBEEF");
 
