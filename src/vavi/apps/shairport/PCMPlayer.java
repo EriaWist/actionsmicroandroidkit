@@ -106,6 +106,10 @@ public class PCMPlayer extends Thread{
 	
 	public void setVolume(double vol){
 		fix_volume = (long)vol;
+		
+		if (track != null) {
+			track.setStereoVolume((float)vol, (float)vol);			
+		}
 	}
 	
 	private short dithered_vol(int sample) {
