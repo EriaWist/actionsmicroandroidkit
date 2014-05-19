@@ -164,8 +164,7 @@ public class AudioServer implements UDPDelegate, AudioPlayer{
 
 	@Override
 	public int getControlPort() {
-		// TODO Auto-generated method stub
-		return 0;
+		return csock.getLocalPort();
 	}
 	private void debugLog(String msg) {
 		if (DEBUG_LOG) {
