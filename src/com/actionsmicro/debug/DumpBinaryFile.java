@@ -31,4 +31,33 @@ public class DumpBinaryFile {
 			throw new IllegalStateException("no file out defined!");
 		}
 	}
+	public void writeToFile(int payloadSize, int[] input) throws IOException {
+		if (fileout == null) return;
+		lengthBuffer.order(ByteOrder.LITTLE_ENDIAN);
+		lengthBuffer.clear();
+		lengthBuffer.putInt(payloadSize);
+		fileout.write(lengthBuffer.array());
+		lengthBuffer.order(ByteOrder.BIG_ENDIAN);
+		ByteBuffer buffer = ByteBuffer.allocate(payloadSize * 4);
+		for (int i = 0; i < payloadSize; i++) {
+			buffer.putInt(input[i]);
+		}
+		fileout.write(buffer.array());
+	}
+	public void writeToFile(int payloadSize, short[] input) throws IOException {
+		if (fileout == null) return;
+		lengthBuffer.order(ByteOrder.LITTLE_ENDIAN);
+		lengthBuffer.clear();
+		lengthBuffer.putInt(payloadSize);
+		fileout.write(lengthBuffer.array());
+		lengthBuffer.order(ByteOrder.BIG_ENDIAN);
+		ByteBuffer buffer = ByteBuffer.allocate(payloadSize * 2);
+		for (int i = 0; i < payloadSize; i++) {
+			buffer.putShort(input[i]);
+		}
+		fileout.write(buffer.array());
+	}
+	public void writeToFile(byte[] byteArray) throws IOException {
+		writeToFile(byteArray.length, byteArray);
+	}
 }
