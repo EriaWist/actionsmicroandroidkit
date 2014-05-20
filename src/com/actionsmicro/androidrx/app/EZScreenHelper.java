@@ -352,7 +352,9 @@ public class EZScreenHelper {
 //			airplayService.sendEvent();
 //		}
 		this.setState(AirplayState.PLAYING);
-		this.getAirplayService().sendEvent();
+		if (this.getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}
 	}
 	@JavascriptInterface
 	public void onLoadedMetadata() {
