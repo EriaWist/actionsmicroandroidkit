@@ -1,16 +1,20 @@
 package com.actionsmicro.web;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
 
 import android.content.Context;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 
 import com.actionsmicro.utils.Log;
+import com.koushikdutta.async.AsyncServerSocket;
+import com.koushikdutta.async.callback.CompletedCallback;
+import com.koushikdutta.async.http.libcore.RawHeaders;
+import com.koushikdutta.async.http.server.AsyncHttpServer;
+import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
+import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
+import com.koushikdutta.async.http.server.HttpServerRequestCallback;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Message;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2ParseException;
@@ -20,69 +24,79 @@ import com.thetransactioncompany.jsonrpc2.server.Dispatcher;
 import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
-import fi.iki.elonen.NanoHTTPD;
-import fi.iki.elonen.NanoHTTPD.Response.Status;
 
-
-public class JsonRpcOverHttpServer extends NanoHTTPD {
+public class JsonRpcOverHttpServer {
 	private static final String TAG = "JsonRpcOverHttpServer";
 	private Context context;
+	private int portNumber;
+	private AsyncHttpServer httpServer;
 
-	public JsonRpcOverHttpServer(Context context, int portNumber) {
-		super(portNumber);
+	public JsonRpcOverHttpServer(Context context, int portNumber, String path) {		
 		this.context = context;
-	}
-	@Override 
-	public Response serve(IHTTPSession session) {
-		if (session.getMethod().equals(Method.OPTIONS)) {
-			Response response = new Response("");
-			response.addHeader("Access-Control-Allow-Origin", "*");
-			response.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-			response.addHeader("Access-Control-Allow-Headers", "X-Requested-With, accept, content-type");
-			return response;
-		}
-		if (session.getMethod().equals(Method.POST)) {
-			try {
-				Map<String, String> files = new HashMap<String, String>();
-				session.parseBody(files);
-				Log.d(TAG, "files:"+files);
-				String body = session.getParms().keySet().iterator().next();
-				Log.d(TAG, "body:"+body);
-				JSONRPC2Message message = JSONRPC2Message.parse(body);
+		this.portNumber = portNumber;
+		httpServer = new AsyncHttpServer() {
+			@Override
+			protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+				Log.d(TAG, "onRequest:"+request.getMethod()+" "+request.getHeaders().getHeaders().getStatusLine());
+		    }
+		};
+		httpServer.post(path, new HttpServerRequestCallback() {
+
+			@Override
+			public void onRequest(AsyncHttpServerRequest request,
+					AsyncHttpServerResponse response) {
+				try {
+				JSONRPC2Message message = JSONRPC2Message.parse(request.getBody().get().toString());
 				Log.d(TAG, "json-rpc:"+message);
 				if (message instanceof JSONRPC2Request) {
 					JSONRPC2Response resp = dispatcher.process((JSONRPC2Request)message, null);
 					if (resp != null) {
 						String jsonResponse = resp.toString();
-						Response response = new Response(Status.OK, "application/json", jsonResponse);
-						response.addHeader("Access-Control-Allow-Origin", "*");
+						response.setContentType("application/json");
+						response.getHeaders().getHeaders().add("Access-Control-Allow-Origin", "*");
+						response.send("application/json", jsonResponse);
 						Log.d(TAG, "response:"+jsonResponse);
-						return response;
 					}
 				} else if (message instanceof JSONRPC2Notification) {
 					dispatcher.process((JSONRPC2Notification) message, null);
-			        Response response = new Response("");
-					response.addHeader("Access-Control-Allow-Origin", "*");
-					return response;
+					response.responseCode(200);
+					response.getHeaders().getHeaders().add("Access-Control-Allow-Origin", "*");
+					response.end();
 				}		
-			} catch (JSONRPC2ParseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (ResponseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} finally {
-
+				} catch (JSONRPC2ParseException e) {
+					response.responseCode(400);
+					response.getHeaders().getHeaders().add("Access-Control-Allow-Origin", "*");
+					response.end();
+				} finally {
+					
+				}
 			}
-		}
-		Response response = new Response(Status.BAD_REQUEST, MIME_PLAINTEXT, "Invalid request!");
-		response.addHeader("Access-Control-Allow-Origin", "*");
-		return response;
+			
+		});
+		httpServer.setErrorCallback(new CompletedCallback() {
+
+			@Override
+			public void onCompleted(Exception ex) {
+				Log.e(TAG, "httpServer error:", ex);
+			}
+			
+		});
+		httpServer.addAction("OPTIONS", path, new HttpServerRequestCallback() {
+
+			@Override
+			public void onRequest(AsyncHttpServerRequest request,
+					AsyncHttpServerResponse response) {
+				RawHeaders headers = response.getHeaders().getHeaders();
+				headers.add("Access-Control-Allow-Origin", "*");
+				headers.add("Access-Control-Allow-Methods", "POST, OPTIONS");
+				headers.add("Access-Control-Allow-Headers", "X-Requested-With, accept, content-type");
+				response.end();
+			}
+			
+		});
 	}
 	private Dispatcher dispatcher = new Dispatcher();
+	private AsyncServerSocket serverSocket;
 	public String getServerUrl() {
 		try {
 			return new URL("http", getIPAddress(true), getListeningPort(), "").toString();
@@ -119,5 +133,14 @@ public class JsonRpcOverHttpServer extends NanoHTTPD {
 		} else {
 			throw new IllegalStateException("dispatcher is null");
 		}
+	}
+	public void start() {
+		serverSocket = httpServer.listen(portNumber);
+	}
+	public void stop() {
+		httpServer.stop();
+	}
+	public int getListeningPort() {
+		return serverSocket.getLocalPort();
 	}
 }

@@ -50,94 +50,89 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 	@Override
 	public void connect() {
 		super.connect();
-		jsonRpcOverHttpServer = new JsonRpcOverHttpServer(getContext(), 0);
-		try {
-			jsonRpcOverHttpServer.registerRpcNotificationHandler(new NotificationHandler() {
-				private static final int MEDIA_ERR_ABORTED = 1;
-				private static final int MEDIA_ERR_NETWORK = 2;
-				private static final int MEDIA_ERR_DECODE = 3;
-				private static final int MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
-				@Override
-				public String[] handledNotifications() {
-					return SUPPORTED_NOTIFICATIONS;
-				}
+		jsonRpcOverHttpServer = new JsonRpcOverHttpServer(getContext(), 0, ".*");
+		jsonRpcOverHttpServer.registerRpcNotificationHandler(new NotificationHandler() {
+			private static final int MEDIA_ERR_ABORTED = 1;
+			private static final int MEDIA_ERR_NETWORK = 2;
+			private static final int MEDIA_ERR_DECODE = 3;
+			private static final int MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
+			@Override
+			public String[] handledNotifications() {
+				return SUPPORTED_NOTIFICATIONS;
+			}
 
-				@Override
-				public void process(JSONRPC2Notification notification,
-						MessageContext arg1) {
-					Map<String, Object> namedParams = notification.getNamedParams();
-					if (EZCASTPLAYER_ONTIMEUPDATE.equals(notification.getMethod())) {
-						Log.d(TAG, EZCASTPLAYER_ONTIMEUPDATE+":"+namedParams.get("time"));
-						if (mediaPlayerStateListener != null) {
-							mediaPlayerStateListener.mediaPlayerTimeDidChange(AndroidRxMediaPlayerApi.this,  Float.valueOf(namedParams.get("time").toString()).longValue());
-						}
-					} else if (EZCASTPLAYER_ONDURATIONCHANGE.equals(notification.getMethod())) {
-						Log.d(TAG, EZCASTPLAYER_ONDURATIONCHANGE+":"+namedParams.get("duration"));
-						if (mediaPlayerStateListener != null) {
-							mediaPlayerStateListener.mediaPlayerDurationIsReady(AndroidRxMediaPlayerApi.this, Float.valueOf(namedParams.get("duration").toString()).longValue());
-						}
-					} else if (EZCASTPLAYER_ONERROR.equals(notification.getMethod())) {
-						int errorCode = convertErrorCode(Integer.valueOf(namedParams.get("error").toString()));
-						Log.d(TAG, EZCASTPLAYER_ONERROR+":"+errorCode);
-						currentState = State.STOPPED;
-						if (mediaPlayerStateListener != null) {
-							mediaPlayerStateListener.mediaPlayerDidFailed(AndroidRxMediaPlayerApi.this, errorCode);
-						}
-					} else if (EZCASTPLAYER_ONPLAY.equals(notification.getMethod())) {
-						Log.d(TAG, EZCASTPLAYER_ONPLAY+":");
-						currentState = State.PLAYING;
-					} else if (EZCASTPLAYER_ONLOADSTART.equals(notification.getMethod())) {
-						Log.d(TAG, EZCASTPLAYER_ONLOADSTART+":");
-						currentState = State.PLAYING;
-						if (mediaPlayerStateListener != null) {
-							mediaPlayerStateListener.mediaPlayerDidStart(AndroidRxMediaPlayerApi.this);
-						}
-					} else if (EZCASTPLAYER_ONENDED.equals(notification.getMethod())) {
-						Log.d(TAG, EZCASTPLAYER_ONENDED+":");
-						if (mediaPlayerStateListener != null) {
-							mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxMediaPlayerApi.this);
-						}
-						currentState = State.STOPPED;
+			@Override
+			public void process(JSONRPC2Notification notification,
+					MessageContext arg1) {
+				Map<String, Object> namedParams = notification.getNamedParams();
+				if (EZCASTPLAYER_ONTIMEUPDATE.equals(notification.getMethod())) {
+					Log.d(TAG, EZCASTPLAYER_ONTIMEUPDATE+":"+namedParams.get("time"));
+					if (mediaPlayerStateListener != null) {
+						mediaPlayerStateListener.mediaPlayerTimeDidChange(AndroidRxMediaPlayerApi.this,  Float.valueOf(namedParams.get("time").toString()).longValue());
 					}
-				}
-
-				private int convertErrorCode(int error) {
-					int errorCode = AV_RESULT_ERROR_GENERIC;
-					switch(error) {
-					case MEDIA_ERR_ABORTED:
-						errorCode = AV_RESULT_ERROR_STOP_ABORTED;
-						break;
-					case MEDIA_ERR_NETWORK:
-						errorCode = AV_RESULT_ERROR_URL_DIVERT_LINK_ERROR;
-						break;
-					case MEDIA_ERR_DECODE:
-					case MEDIA_ERR_SRC_NOT_SUPPORTED:
-						errorCode = AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED;
-						break;
+				} else if (EZCASTPLAYER_ONDURATIONCHANGE.equals(notification.getMethod())) {
+					Log.d(TAG, EZCASTPLAYER_ONDURATIONCHANGE+":"+namedParams.get("duration"));
+					if (mediaPlayerStateListener != null) {
+						mediaPlayerStateListener.mediaPlayerDurationIsReady(AndroidRxMediaPlayerApi.this, Float.valueOf(namedParams.get("duration").toString()).longValue());
 					}
-					return errorCode;
+				} else if (EZCASTPLAYER_ONERROR.equals(notification.getMethod())) {
+					int errorCode = convertErrorCode(Integer.valueOf(namedParams.get("error").toString()));
+					Log.d(TAG, EZCASTPLAYER_ONERROR+":"+errorCode);
+					currentState = State.STOPPED;
+					if (mediaPlayerStateListener != null) {
+						mediaPlayerStateListener.mediaPlayerDidFailed(AndroidRxMediaPlayerApi.this, errorCode);
+					}
+				} else if (EZCASTPLAYER_ONPLAY.equals(notification.getMethod())) {
+					Log.d(TAG, EZCASTPLAYER_ONPLAY+":");
+					currentState = State.PLAYING;
+				} else if (EZCASTPLAYER_ONLOADSTART.equals(notification.getMethod())) {
+					Log.d(TAG, EZCASTPLAYER_ONLOADSTART+":");
+					currentState = State.PLAYING;
+					if (mediaPlayerStateListener != null) {
+						mediaPlayerStateListener.mediaPlayerDidStart(AndroidRxMediaPlayerApi.this);
+					}
+				} else if (EZCASTPLAYER_ONENDED.equals(notification.getMethod())) {
+					Log.d(TAG, EZCASTPLAYER_ONENDED+":");
+					if (mediaPlayerStateListener != null) {
+						mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxMediaPlayerApi.this);
+					}
+					currentState = State.STOPPED;
 				}
-				
-			});
-			jsonRpcOverHttpServer.registerRpcRequestHandler(new RequestHandler() {
+			}
 
-				@Override
-				public String[] handledRequests() {
-					return SUPPORTED_REQUESTS;
+			private int convertErrorCode(int error) {
+				int errorCode = AV_RESULT_ERROR_GENERIC;
+				switch(error) {
+				case MEDIA_ERR_ABORTED:
+					errorCode = AV_RESULT_ERROR_STOP_ABORTED;
+					break;
+				case MEDIA_ERR_NETWORK:
+					errorCode = AV_RESULT_ERROR_URL_DIVERT_LINK_ERROR;
+					break;
+				case MEDIA_ERR_DECODE:
+				case MEDIA_ERR_SRC_NOT_SUPPORTED:
+					errorCode = AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED;
+					break;
 				}
+				return errorCode;
+			}
+			
+		});
+		jsonRpcOverHttpServer.registerRpcRequestHandler(new RequestHandler() {
 
-				@Override
-				public JSONRPC2Response process(JSONRPC2Request request,
-						MessageContext arg1) {
-					return null;
-				}
-				
-			});
-			jsonRpcOverHttpServer.start();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			@Override
+			public String[] handledRequests() {
+				return SUPPORTED_REQUESTS;
+			}
+
+			@Override
+			public JSONRPC2Response process(JSONRPC2Request request,
+					MessageContext arg1) {
+				return null;
+			}
+			
+		});
+		jsonRpcOverHttpServer.start();
 	}
 
 	@Override

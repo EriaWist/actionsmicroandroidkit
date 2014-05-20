@@ -124,16 +124,7 @@ public class EzScreenServer {
 		}
 	}	
 	private synchronized void initEzAndroidRx() {
-		jsonRpcOverHttpServer = new JsonRpcOverHttpServer(context, 0) {
-			@Override 
-			public Response serve(IHTTPSession session) {
-				
-				if (session.getUri().equalsIgnoreCase("/jsonrpc")) {
-					return super.serve(session);
-				}
-				return new Response("");
-			}
-		};
+		jsonRpcOverHttpServer = new JsonRpcOverHttpServer(context, 0, "/jsonrpc");
 		try {
 			jsonRpcOverHttpServer.registerRpcNotificationHandler(new NotificationHandler() {
 
