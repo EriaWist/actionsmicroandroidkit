@@ -19,6 +19,8 @@ import org.apache.http.util.ByteArrayBuffer;
 import android.util.Base64;
 import android.util.Log;
 
+import com.actionsmicro.airplay.airtunes.daap.DaapDataParser;
+import com.actionsmicro.airplay.airtunes.daap.Item;
 import com.actionsmicro.airplay.crypto.FairPlay;
 
 
@@ -36,6 +38,7 @@ public class RTSPResponder extends Thread{
 	private BufferedInputStream in;
 	private String fmtpString;
 	private static final Pattern completedPacket = Pattern.compile("(.*)\r\n\r\n");
+	private static final String TAG = "RTSPResponder";
 
 	public RTSPResponder(byte[] hwAddr, Socket socket) throws IOException {
 		this.hwAddr = hwAddr;
@@ -44,7 +47,7 @@ public class RTSPResponder extends Thread{
 	}
 
 
-	public RTSPResponse handlePacket(RTSPPacket packet){
+	public RTSPResponse handlePacket(RTSPPacket packet, ByteArrayBuffer requestBodyBuffer){
 		// We init the response holder
 		RTSPResponse response = new RTSPResponse("RTSP/1.0 200 OK");
 		response.append("CSeq", packet.valueOfHeader("CSeq"));
@@ -171,23 +174,32 @@ public class RTSPResponder extends Thread{
         	response.append("Connection", "close");
         	
         } else if (REQ.contentEquals("SET_PARAMETER")){
-        	if (packet.getContent() != null) {
-            	Pattern p = Pattern.compile("volume: (.+)");
-        		Matcher m = p.matcher(packet.getContent());
-        		if(m.find()){
-        			//Audio volume can be changed using a SET_PARAMETER request. 
-        			//The volume is a float value representing the audio attenuation in dB. A value of –144 means the audio is muted. 
-        			//Then it goes from –30 to 0.
-        			double volume = Double.parseDouble(m.group(1));
-        			if (volume == -144) {
-        				serv.setVolume(0);
-        			} else {
-        				serv.setVolume((volume+30)/30);
+        	String contentType = packet.valueOfHeader("Content-Type");
+        	if (contentType.equalsIgnoreCase("text/parameters")) {
+        		if (packet.getContent() != null) {
+        			Pattern p = Pattern.compile("volume: (.+)");
+        			Matcher m = p.matcher(packet.getContent());
+        			if(m.find()){
+        				//Audio volume can be changed using a SET_PARAMETER request. 
+        				//The volume is a float value representing the audio attenuation in dB. A value of –144 means the audio is muted. 
+        				//Then it goes from –30 to 0.
+        				double volume = Double.parseDouble(m.group(1));
+        				if (volume == -144) {
+        					serv.setVolume(0);
+        				} else {
+        					serv.setVolume((volume+30)/30);
+        				}
         			}
         		}
+        	} else if (contentType.equalsIgnoreCase("application/x-dmap-tagged")) {
+        		byte[] daapData = requestBodyBuffer.toByteArray();
+        		Item daapItem = DaapDataParser.parse(daapData);
+        		Log.d(TAG, "daapItem:album name:"+daapItem.getChildDataAsString(0x6173616C));
+        		Log.d(TAG, "daapItem:artist:"+daapItem.getChildDataAsString(0x61736172));
+        		Log.d(TAG, "daapItem:song name:"+daapItem.getChildDataAsString(0x6D696E6D));
         	}
         }  else if (REQ.contentEquals("GET_PARAMETER")){
-        	response.append("volume", "0");
+        	response.append("volume", "-15");
         }
 //        else if (REQ.contentEquals("POST") && packet.getDirectory().equals("/fp-setup")) {
 //        	String content = packet.getContent();
@@ -340,7 +352,7 @@ public class RTSPResponder extends Thread{
 							Log.d("ShairPort", sb.toString());
 						}
 					} else {
-						RTSPResponse response = this.handlePacket(request);		
+						RTSPResponse response = this.handlePacket(request, requestBodyBuffer);		
 						Log.d("ShairPort", response.getRawPacket());
 
 						// Write the response to the wire
