@@ -114,6 +114,9 @@ public class EZScreenHelper {
 		this.mjpegView = textureView;
 		this.serviceName = serviceName;
 		this.servers = servers;
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+			this.servers &= ~SERVER_AIRPLAY;
+		}
 		this.container = frame;
 		audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 		if (webView != null) {
