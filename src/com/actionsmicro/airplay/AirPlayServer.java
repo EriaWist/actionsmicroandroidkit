@@ -87,6 +87,15 @@ public class AirPlayServer {
 		void onInitalizationFinished();
 
 		void onInitalizationFailed(Exception ex);
+
+		void onStartAirTunes(InetAddress inetAddress);
+
+		void onStopAirTunes();
+
+		void onReceiveAirTunesMetadata(String albumName, String artist,
+				String title);
+
+		void onReceiveAirTunesCoverArt(byte[] byteArray);
 		
 	}
 	private boolean stopRaopThread;
@@ -101,6 +110,7 @@ public class AirPlayServer {
 	private BonjourServiceAdvertiser bonjourServiceAdvertiser;
 	private boolean raopServiceReady;
 	private boolean airplayServiceReady;
+	protected RTSPResponder rtspResponder;
 	private static boolean DEBUG_LOG = false;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
@@ -150,6 +160,8 @@ public class AirPlayServer {
 				e.printStackTrace();
 			}
 		}
+		stopRtspResponder();
+		
 		if (airplayService != null) {
 			airplayService.stop();
 			airplayService = null;
@@ -442,6 +454,7 @@ public class AirPlayServer {
 			@Override
 			public void video(String url, String rate, String pos)
 					throws AirplayException {
+				Log.d(TAG, "playVideo:"+url);
 				delegate.loadVideo(url, Float.valueOf(rate), Float.valueOf(pos));
 			}
 
@@ -532,7 +545,37 @@ public class AirPlayServer {
 						try {
 							Socket socket = servSock.accept();
 							Log.d("ShairPort", "got connection from " + socket.toString());
-							new RTSPResponder(hwAddr, socket).start();
+							stopRtspResponder();
+							if (delegate != null) {
+								delegate.onStartAirTunes(socket.getInetAddress());
+							}
+							rtspResponder = new RTSPResponder(hwAddr, socket);
+							rtspResponder.setAirTunesListener(new RTSPResponder.AirTunesListener() {
+
+								@Override
+								public void onDisconnected() {
+									if (delegate != null) {
+										delegate.onStopAirTunes();
+									}
+								}
+
+								@Override
+								public void onReceiveMeta(String albumName,
+										String artist, String title) {
+									if (delegate != null) {
+										delegate.onReceiveAirTunesMetadata(albumName, artist, title);
+									}
+								}
+
+								@Override
+								public void onReceiveCoverArt(byte[] byteArray) {
+									if (delegate != null) {
+										delegate.onReceiveAirTunesCoverArt(byteArray);
+									}
+								}
+								
+							});
+							rtspResponder.start();
 						} catch(SocketTimeoutException e) {
 							// ignore
 						}
@@ -644,6 +687,12 @@ public class AirPlayServer {
 			}).start();
 			bonjourServiceAdvertiser = null;
 		}		
+	}
+	private void stopRtspResponder() {
+		if (rtspResponder != null) {
+			rtspResponder.stopThread();
+			rtspResponder = null;
+		}
 	}
 	static class EndEmitter extends FilteredDataEmitter {
         private EndEmitter() {

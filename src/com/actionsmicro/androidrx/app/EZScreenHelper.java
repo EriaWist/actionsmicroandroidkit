@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.commons.net.ntp.TimeStamp;
 
+import android.R;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -41,6 +42,8 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.actionsmicro.BuildConfig;
 import com.actionsmicro.airplay.AirPlayServer;
@@ -103,13 +106,15 @@ public class EZScreenHelper {
 	private ViewGroup container;
 	private TextureView mirrorView;
 	private InitializationListener initializationListener;
+	private ViewGroup musicView;
 	private String getServiceName() {
 		return serviceName;
 	}
 	public static final int SERVER_EZSCREEN = 0x01<<0; 
 	public static final int SERVER_AIRPLAY = 0x01<<1; 
-	public EZScreenHelper(Context context, String serviceName, ViewGroup frame, WebView webView, TextureView textureView, int servers) {
+	public EZScreenHelper(Context context, String serviceName, ViewGroup frame, WebView webView, TextureView textureView, ViewGroup musicView, int servers) {
 		this.context = context;
+		this.musicView = musicView;
 		this.webView = webView;
 		this.mjpegView = textureView;
 		this.serviceName = serviceName;
@@ -374,14 +379,16 @@ public class EZScreenHelper {
 	}
 
 	private void setViewVisibility(final View view, final int visibility) {
-		this.getMainHandler().post(new Runnable() {
+		if (view != null) {
+			this.getMainHandler().post(new Runnable() {
 
-			@Override
-			public void run() {
-				view.setVisibility(visibility);				
-			}
-			
-		});
+				@Override
+				public void run() {
+					view.setVisibility(visibility);				
+				}
+
+			});
+		}
 	}
 
 	private void stopDisplay(String stopImage) {
@@ -910,6 +917,31 @@ public class EZScreenHelper {
 					alreadyFailed = true;
 				}
 
+				@Override
+				public void onStartAirTunes(InetAddress inetAddress) {
+					if (connectionListener != null) {
+						connectionListener.onConnected();
+					}
+				}
+
+				@Override
+				public void onStopAirTunes() {
+					hideMusicView();
+				}
+
+				@Override
+				public void onReceiveAirTunesMetadata(String albumName,
+						String artist, String title) {
+					showMusicView();
+					updateAirTunesMetadata(albumName, artist, title);
+				}
+
+				@Override
+				public void onReceiveAirTunesCoverArt(byte[] byteArray) {
+					showMusicView();
+					updateAirTunesCoverArt(byteArray);
+				}
+
 				
 			}));
 			alreadyFailed = false;
@@ -918,6 +950,52 @@ public class EZScreenHelper {
 			e.printStackTrace();
 		}
 
+	}
+
+	protected void updateAirTunesCoverArt(final byte[] byteArray) {
+		if (musicView != null) {
+			mainHandler.post(new Runnable() {
+
+				@Override
+				public void run() {
+					int id = context.getResources().getIdentifier("cover", "id", context.getPackageName());
+					ImageView imageView = (ImageView) musicView.findViewById(id);
+					if (imageView != null) {
+						if (byteArray != null) {
+							imageView.setImageBitmap(BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length));
+						} else {
+							// TODO we need a fallback image
+							imageView.setImageResource(context.getResources().getIdentifier("ic_launcher", "drawable", context.getPackageName()));
+						}
+					}
+				}
+
+			});
+		}
+	}
+
+	protected void showMusicView() {
+		setViewVisibility(musicView, View.VISIBLE);
+	}
+
+	protected void updateAirTunesMetadata(final String albumName, final String artist,
+			final String title) {
+		if (musicView != null) {
+			mainHandler.post(new Runnable() {
+
+				@Override
+				public void run() {
+					updateUiTextById(title, "songTitle");
+					updateUiTextById(artist, "artist");
+					updateUiTextById(albumName, "album");
+				}
+
+			});
+		}
+	}
+
+	protected void hideMusicView() {
+		setViewVisibility(musicView, View.INVISIBLE);
 	}
 
 	protected void informInitializationListenerOnFinishedIfNeeded() {
@@ -1127,5 +1205,13 @@ public class EZScreenHelper {
 
 	public void setInitializationListener(InitializationListener initializationListener) {
 		this.initializationListener = initializationListener;
+	}
+
+	private void updateUiTextById(String text, String idName) {
+		int id = context.getResources().getIdentifier(idName, "id", context.getPackageName());
+		TextView textView = (TextView) musicView.findViewById(id);
+		if (textView != null) {
+			textView.setText(text);
+		}
 	}
 }

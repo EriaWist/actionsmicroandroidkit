@@ -31,6 +31,17 @@ import com.actionsmicro.airplay.crypto.FairPlay;
  */
 public class RTSPResponder extends Thread{
 
+	public interface AirTunesListener {
+
+		void onDisconnected();
+
+		void onReceiveMeta(String albumName, String artist, String title);
+
+		void onReceiveCoverArt(byte[] byteArray);
+
+	}
+
+
 	private Socket socket;					// Connected socket
 	private byte[] aesiv, aeskey;			// ANNOUNCE request infos
 	private AudioPlayer serv; 				// Audio listener
@@ -39,7 +50,7 @@ public class RTSPResponder extends Thread{
 	private String fmtpString;
 	private static final Pattern completedPacket = Pattern.compile("(.*)\r\n\r\n");
 	private static final String TAG = "RTSPResponder";
-
+	private AirTunesListener airTunesListener;
 	public RTSPResponder(byte[] hwAddr, Socket socket) throws IOException {
 		this.hwAddr = hwAddr;
 		this.socket = socket;
@@ -194,9 +205,23 @@ public class RTSPResponder extends Thread{
         	} else if (contentType.equalsIgnoreCase("application/x-dmap-tagged")) {
         		byte[] daapData = requestBodyBuffer.toByteArray();
         		Item daapItem = DaapDataParser.parse(daapData);
-        		Log.d(TAG, "daapItem:album name:"+daapItem.getChildDataAsString(0x6173616C));
-        		Log.d(TAG, "daapItem:artist:"+daapItem.getChildDataAsString(0x61736172));
-        		Log.d(TAG, "daapItem:song name:"+daapItem.getChildDataAsString(0x6D696E6D));
+        		String albumName = daapItem.getChildDataAsString(0x6173616C);
+				Log.d(TAG, "daapItem:album name:"+albumName);
+        		String artist = daapItem.getChildDataAsString(0x61736172);
+				Log.d(TAG, "daapItem:artist:"+artist);
+        		String title = daapItem.getChildDataAsString(0x6D696E6D);
+				Log.d(TAG, "daapItem:song name:"+title);
+        		if (airTunesListener != null) {
+        			airTunesListener.onReceiveMeta(albumName, artist, title);
+        		}
+        	} else if (contentType.equalsIgnoreCase("image/jpeg")) {
+        		if (airTunesListener != null) {
+        			airTunesListener.onReceiveCoverArt(requestBodyBuffer.toByteArray());
+        		}
+        	} else if (contentType.equalsIgnoreCase("image/none")) {
+        		if (airTunesListener != null) {
+        			airTunesListener.onReceiveCoverArt(null);
+        		}
         	}
         }  else if (REQ.contentEquals("GET_PARAMETER")){
         	response.append("volume", "-15");
@@ -393,6 +418,9 @@ public class RTSPResponder extends Thread{
 					e.printStackTrace();
 				}
 			}
+			if (airTunesListener != null) {
+				airTunesListener.onDisconnected();
+			}
 		}
 		Log.d("ShairPort", "connection ended.");
 	}
@@ -441,6 +469,23 @@ public class RTSPResponder extends Thread{
 			}
 		} while (ret!=-1 && !completedPacket.matcher(packet.toString()).find());
 		return ret;
+	}
+
+
+	public void stopThread() {
+		if (socket != null) {
+			try {
+				socket.close();
+			} catch (IOException e) {
+			}
+			socket = null;
+		}
+		this.interrupt();
+	}
+
+
+	public void setAirTunesListener(RTSPResponder.AirTunesListener listener) {
+		airTunesListener = listener;
 	}
 		
 }
