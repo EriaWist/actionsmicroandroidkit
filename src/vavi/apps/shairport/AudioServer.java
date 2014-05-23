@@ -11,7 +11,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
-import android.util.Log;
+import com.actionsmicro.utils.Log;
 
 
 /**
@@ -136,7 +136,7 @@ public class AudioServer implements UDPDelegate, AudioPlayer{
 	 * @param last
 	 */
 	public void request_resend(int first, int last) {
-		debugLog("Resend Request: " + first + "::" + last);
+		Log.d(TAG, "Resend Request: " + first + "::" + last);
 		if(last<first){
 			return;
 		}
