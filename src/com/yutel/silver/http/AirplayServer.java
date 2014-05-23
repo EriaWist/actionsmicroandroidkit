@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,6 +15,13 @@ import com.yutel.silver.AikaProxy;
 import com.yutel.silver.vo.Device;
 
 public class AirplayServer extends Thread {
+	public interface ConnectionListener {
+
+		void onAirPlayStop();
+
+		void onAirPlayStart();
+		
+	}
 	private static Logger logger = Logger.getLogger(AirplayServer.class
 			.getName());
 	public int mDuration;
@@ -24,7 +33,9 @@ public class AirplayServer extends Thread {
 	private ServerSocket mServerSocket;
 	private Map<String, Socket> reverseResponse;
 	private int mPort;
-
+	private List<HttpClient> currentConnections = new ArrayList<HttpClient>();
+	private ConnectionListener connectionListener;
+	
 	public static void main(String[] args) {
 		try {
 			new AirplayServer(8888).start();
@@ -86,6 +97,7 @@ public class AirplayServer extends Thread {
 				e.printStackTrace();
 			}
 		}
+		closeCurrentConnections();
 	}
 
 	@Override
@@ -97,10 +109,32 @@ public class AirplayServer extends Thread {
 				Socket socket = mServerSocket.accept();
 				String ip = socket.getInetAddress().getHostAddress();
 				logger.log(Level.INFO, "client:" + ip + "/" + socket.getPort());
-				new HttpClient(socket, this).start();
+				synchronized (currentConnections) {
+					HttpClient httpClientConnection = new HttpClient(socket, this);
+					httpClientConnection.setName(httpClientConnection.toString());
+					httpClientConnection.start();
+					if (currentConnections.size() == 0) {
+						if (connectionListener != null) {
+							connectionListener.onAirPlayStart();
+						}
+					}
+					currentConnections.add(httpClientConnection);
+				}
 			}
 		} catch (Exception e) {
 			logger.log(Level.INFO, e.getMessage());
+		}
+		logger.log(Level.INFO, "Http Server stopped");
+	}
+
+	public synchronized void closeCurrentConnections() {
+		List<HttpClient> connections = null;
+		synchronized (currentConnections) {
+			connections  = currentConnections;
+			currentConnections.clear();
+		}
+		for (HttpClient connection : connections) {
+			connection.close();
 		}
 	}
 
@@ -118,5 +152,26 @@ public class AirplayServer extends Thread {
 
 	public void removeReverseResponse(String session) {
 		reverseResponse.remove(session);
+	}
+
+	public void onConnectionClosed(HttpClient httpClient) {
+		Socket socket = httpClient.getSocket();
+		logger.log(Level.INFO, "client closed:" + socket.getInetAddress().getHostAddress() + "/" + socket.getPort());
+		synchronized (currentConnections) {
+			if (currentConnections.contains(httpClient)) {
+				currentConnections.remove(httpClient);
+				if (currentConnections.size() == 0 && connectionListener != null) {
+					connectionListener.onAirPlayStop();
+				}
+			}
+		}
+	}
+
+	public ConnectionListener getConnectionListener() {
+		return connectionListener;
+	}
+
+	public void setConnectionListener(ConnectionListener connectionListener) {
+		this.connectionListener = connectionListener;
 	}
 }

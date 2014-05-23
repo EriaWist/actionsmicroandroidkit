@@ -63,7 +63,13 @@ public abstract class Aika {
 		public int videoPostion() throws AirplayException;
 
 		public int videoDuration() throws AirplayException;
+
+		public void onAirPlayStop();
+
+		public void onAirPlayStart();
 	}
 
 	public abstract void sendEvent();
+	
+	public abstract void closeCurrentConnection();
 }

@@ -2,8 +2,8 @@ package com.yutel.silver.http;
 
 import java.util.Map;
 
+import com.actionsmicro.utils.Log;
 import com.dd.plist.NSDictionary;
-import com.dd.plist.NSObject;
 import com.dd.plist.PropertyListParser;
 import com.yutel.silver.exception.AirplayException;
 import com.yutel.silver.util.AirplayUtil;
@@ -11,6 +11,7 @@ import com.yutel.silver.util.StringUtil;
 import com.yutel.silver.vo.AirplayState;
 
 public class DefaultHandler {
+	private static final String TAG = "HttpDefaultHandler";
 	protected AirplayServer server;
 	protected HttpWrap wrap;
 
@@ -41,6 +42,7 @@ public class DefaultHandler {
 					}					
 				}
 			} else if ("/stop".equals(wrap.getContext())) {
+				wrap.setResponseCode(200);
 				server.getProxy().videoStop();
 			} else if ("/scrub".equals(wrap.getContext())) {
 				wrap.setResponseCode(200);
@@ -64,6 +66,10 @@ public class DefaultHandler {
 				play();
 			} else if ("/setProperty".equals(wrap.getContext())) {
 				setProperty(wrap.getRequestParameters());
+			} else if ("/photo".equals(wrap.getContext())) {
+				wrap.setResponseCode(200);
+				// TODO deal with jpeg data
+				Log.d(TAG, "photo");
 			} else {
 				wrap.setReverse(false);
 				wrap.setResponseCode(404);
@@ -90,18 +96,29 @@ public class DefaultHandler {
 				if (AirplayState.binPLIST.equals(conType)) {
 					NSDictionary rootDict = (NSDictionary) PropertyListParser
 							.parse(wrap.getResponseBody());
-					String url = rootDict.objectForKey("Content-Location")
-							.toString();
-					String rate = rootDict.objectForKey("rate").toString();
-					String pos = "0f";
-					NSObject p = rootDict.objectForKey("Start-Position");
-					if (p != null) {
-						pos = p.toString();
+					String url = null;
+					if (rootDict.containsKey("Content-Location")) {
+						url = rootDict.objectForKey("Content-Location")
+								.toString();						
+					} else if (rootDict.containsKey("host")) {
+						url = "http://"+
+								rootDict.objectForKey("host").toString()+
+								rootDict.objectForKey("path").toString();
+						
 					}
-					System.out.println("rl=" + url);
-					server.getProxy().video(url, rate, pos);
-					Thread.sleep(500);
-					wrap.setResponseCode(200);
+					Log.d(TAG, "video url=" + url);
+					String rate = "0f";
+					if (rootDict.containsKey("rate")) {
+						rate = rootDict.objectForKey("rate").toString();
+					}
+					String pos = "0f";
+					if (rootDict.containsKey("Start-Position")) {
+						pos = rootDict.objectForKey("Start-Position").toString();
+					}
+					if (url != null) {
+						server.getProxy().video(url, rate, pos);
+						wrap.setResponseCode(200);
+					}
 				} else {
 					System.out.println("body="
 							+ wrap.getResponseBody().toString());

@@ -222,7 +222,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 				}
 				track.stop();
 				track.release();
-				Log.d(TAG, playerThread.getName() + " ends");
+				Log.d(TAG, Thread.currentThread().getName() + " ends");
 			}
 			
 		});

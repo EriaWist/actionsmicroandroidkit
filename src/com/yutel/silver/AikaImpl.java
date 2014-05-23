@@ -85,6 +85,19 @@ public class AikaImpl extends Aika {
 		try {
 			// http server
 			as = new AirplayServer(mPort);
+			as.setConnectionListener(new AirplayServer.ConnectionListener() {
+				
+				@Override
+				public void onAirPlayStop() {
+					
+					AikaImpl.this.getAikaProxy().onAirPlayStop();
+				}
+
+				@Override
+				public void onAirPlayStart() {
+					AikaImpl.this.getAikaProxy().onAirPlayStart();
+				}
+			});
 			as.setProxy(this.getAikaProxy());
 			as.setDevice(mDevice);
 			// as.setHandlers(mHandlers);
@@ -154,6 +167,13 @@ public class AikaImpl extends Aika {
 		} catch (AirplayException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void closeCurrentConnection() {
+		if (as != null) {
+			as.closeCurrentConnections();
 		}
 	}
 }
