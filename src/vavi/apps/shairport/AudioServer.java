@@ -10,7 +10,13 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
+import org.apache.commons.net.ntp.TimeStamp;
+
+import com.actionsmicro.debug.DumpBinaryFile;
 import com.actionsmicro.utils.Log;
 
 
@@ -40,6 +46,10 @@ public class AudioServer implements UDPDelegate, AudioPlayer{
 
     // The audio player
 	private PCMPlayer player;
+	private UDPListener controlPortListener;
+	protected long rtpTimestamp;
+	protected long ntpTimestamp;
+	private DumpBinaryFile debugFile;
     
     /**
      * Constructor. Initiate instances vars
@@ -58,16 +68,33 @@ public class AudioServer implements UDPDelegate, AudioPlayer{
 		this.initRTP();
 		player = new PCMPlayer(session, audioBuf);
 		player.start();
+//		try {
+//			debugFile = new DumpBinaryFile("/sdcard/audio.debug");
+//		} catch (FileNotFoundException e) {
+//			e.printStackTrace();
+//		}
 	}
 
 	public void stop(){
 		player.stopThread();
 		l1.stopThread();
-		//l2.stopThread();
-//		synchronized(sock){
+		if (controlPortListener != null) {
+			controlPortListener.stopThread();
+		}
+		if (sock != null) {
 			sock.close();
-//		}
-		csock.close();
+		}
+		if (csock != null) {
+			csock.close();
+		}
+		if (debugFile != null) {
+			try {
+				debugFile.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			debugFile = null;
+		}
 	}
 	
 	public void setVolume(double vol){
@@ -86,19 +113,57 @@ public class AudioServer implements UDPDelegate, AudioPlayer{
 	 * Opens the sockets and begin listening
 	 */
 	private void initRTP(){
-		int port = 6000;
-		while(true){
-			try {
-				sock = new DatagramSocket(port);
-				csock = new DatagramSocket(port+1);
-			} catch (IOException e) {
-				port = port + 2;
-				continue;
-			}
-			break;
+		try {
+			sock = new DatagramSocket();
+			l1 = new UDPListener(sock, this);
+			csock = new DatagramSocket();
+			controlPortListener = new UDPListener(csock, new UDPDelegate() {
+
+				@Override
+				public void packetReceived(DatagramSocket socket,
+						DatagramPacket packet) {					
+					ByteBuffer packetBuffer = ByteBuffer.wrap(packet.getData());
+					packetBuffer.order(ByteOrder.BIG_ENDIAN);
+					packetBuffer.position(1);
+					byte type = (byte) (packetBuffer.get()&~0x80);
+					debugLog("control port: data type:"+type);
+					if (type == 84) { //Sync packets
+						packetBuffer.position(4);						
+						long timestamp = (packetBuffer.getInt() & 0xffffffffL);
+						long ntpTime = packetBuffer.getLong();
+						long nextTimestamp = (packetBuffer.getInt() & 0xffffffffL);
+						synchronized(AudioServer.this) {
+							rtpTimestamp = timestamp;
+							ntpTimestamp = TimeStamp.getTime(ntpTime);
+						}
+						debugLog("control port: timestamp:"+timestamp+", ntpTime:"+ntpTimestamp+", nextTimestamp:"+nextTimestamp);
+					} else if (type == 86) {
+						packetBuffer.position(6);						
+						int seqno = (packetBuffer.getShort() & 0xffff);
+						int payloadSize = packet.getLength() - 16;
+						byte[] pktp = new byte[payloadSize];
+						packetBuffer.position(16);						
+						packetBuffer.get(pktp, 0, payloadSize);
+						audioBuf.putPacketInBuffer(seqno, pktp);
+						Log.d(TAG, "control port: retransmit reply: seqno:"+seqno+", remaining:"+packetBuffer.remaining());
+						if (debugFile != null) {
+							try {
+								debugFile.writeToFile(packet.getData());
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+						
+					} else {
+						Log.w(TAG, "control port: unhandled control packet type:"+type);
+					}
+				}
+				
+			});
+		} catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		
-		l1 = new UDPListener(sock, this);
 	}
 	
 	/**
@@ -116,7 +181,10 @@ public class AudioServer implements UDPDelegate, AudioPlayer{
 			}
 			
 			//seqno is on two byte
-			int seqno = ((packet.getData()[2+off] & 0xff)*256 + (packet.getData()[3+off] & 0xff)); 
+			int seqno = ((packet.getData()[2+off] & 0xff)*256 + (packet.getData()[3+off] & 0xff));
+			if (type==0x56){
+				Log.d(TAG, "retransmit reply: seqno:"+seqno);
+			}
 			// + les 12 (cfr. RFC RTP: champs a ignorer)
 			byte[] pktp = new byte[packet.getLength() - off - 12];
 			for(int i=0; i<pktp.length; i++){
