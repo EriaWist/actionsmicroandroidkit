@@ -241,13 +241,18 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		if (playbackClock != null) {
 			playbackClock.release();
 		}
-		controlPortListener.stopThread();
-		udpListener.stopThread();
-		
-		
-		sock.close();
-		csock.close();
-		
+		if (controlPortListener != null) {
+			controlPortListener.stopThread();
+		}
+		if (udpListener != null) {
+			udpListener.stopThread();
+		}		
+		if (sock != null) {
+			sock.close();
+		}
+		if (csock != null) {
+			csock.close();
+		}
 		if (decoderThread != null) {
 			decoderThreadShouldStop = true;
 			ThreadUtils.stopThreadSafely(decoderThread);
