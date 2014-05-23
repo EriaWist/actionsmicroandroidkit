@@ -66,6 +66,9 @@ public class EZScreenHelper {
 		public String getOnConnectedDisplayImage();
 		public String getOnStopDisplayImage();
 	}
+	public interface PlaybackDelegate {
+		public void onError(int code);
+	}
 	public interface InitializationListener {
 
 		void onInitializationFailed(int service, Exception e);
@@ -74,6 +77,7 @@ public class EZScreenHelper {
 		
 	}
 	private static final String TAG = "EZScreenHelper";
+	private PlaybackDelegate playbackDelegate;
 	private WebView webView;
 	private TextureView mjpegView;
 	private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -309,6 +313,9 @@ public class EZScreenHelper {
 		Log.d(TAG, "onError:"+error);
 		this.setState(AirplayState.ERROR);
 		this.getAirplayService().sendEvent();
+		if (playbackDelegate != null) {
+			playbackDelegate.onError(error);
+		}
 	}
 	@JavascriptInterface
 	public void onEnded() {
@@ -1319,5 +1326,13 @@ public class EZScreenHelper {
 			playbackClock.release();
 			playbackClock = null;
 		}
+	}
+
+	public PlaybackDelegate getPlaybackDelegate() {
+		return playbackDelegate;
+	}
+
+	public void setPlaybackDelegate(PlaybackDelegate playbackDelegate) {
+		this.playbackDelegate = playbackDelegate;
 	}
 }
