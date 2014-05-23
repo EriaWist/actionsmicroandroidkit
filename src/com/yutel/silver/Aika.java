@@ -67,6 +67,8 @@ public abstract class Aika {
 		public void onAirPlayStop();
 
 		public void onAirPlayStart();
+
+		public void setVolume(float volume);
 	}
 
 	public abstract void sendEvent();

@@ -408,13 +408,13 @@ public class EZScreenHelper {
 	}
 	private void displayUrl(final String url) {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			invokeJavascript("javascript:updateDisplay('"+url+"');");
+			invokeJavascript("javascript:updateDisplay(\""+url+"\");");
 			showWebView();
 		} else {
 			if (url.startsWith("http")) {
 				displayMotionJpeg(url);
 			} else {
-				invokeJavascript("javascript:updateDisplay('"+url+"');");
+				invokeJavascript("javascript:updateDisplay(\""+url+"\");");
 				showWebView();
 			}
 		}
@@ -511,9 +511,9 @@ public class EZScreenHelper {
 	}
 	private void playVideo(final String url, String callback) {
 		if (callback != null) {
-			invokeJavascript("javascript:playVideo('"+url+"','"+callback+"');");
+			invokeJavascript("javascript:playVideo(\""+url+"\",'"+callback+"');");
 		} else {
-			invokeJavascript("javascript:playVideo('"+url+"', null);");			
+			invokeJavascript("javascript:playVideo(\""+url+"\", null);");			
 		}
 		showWebView();
 	}
@@ -874,6 +874,11 @@ public class EZScreenHelper {
 					Log.d(TAG, "onAirPlayStop");
 					stateContext.onAirPlayStop();					
 				}
+
+				@Override
+				public void setVolume(float volume) {
+					EZScreenHelper.this.setVolume(volume);
+				}
 				
 			}));
 			alreadyFailed = false;
@@ -942,9 +947,9 @@ public class EZScreenHelper {
 
 	private void playVideo(String url, String callback, boolean autoplay, int startpos) {
 		if (callback != null) {
-			invokeJavascript("javascript:playVideoImp('"+url+"','"+callback+"'"+ (autoplay?"true, ":"false, ")+ startpos+");");
+			invokeJavascript("javascript:playVideoImp(\""+url+"\",'"+callback+"'"+ (autoplay?"true, ":"false, ")+ startpos+");");
 		} else {
-			invokeJavascript("javascript:playVideoImp('"+url+"', null, "+ (autoplay?"true, ":"false, ")+ startpos+");");			
+			invokeJavascript("javascript:playVideoImp(\""+url+"\", null, "+ (autoplay?"true, ":"false, ")+ startpos+");");			
 		}
 		showWebView();
 	}

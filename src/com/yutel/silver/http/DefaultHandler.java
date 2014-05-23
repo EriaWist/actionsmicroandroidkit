@@ -1,6 +1,11 @@
 package com.yutel.silver.http;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.actionsmicro.utils.Log;
 import com.dd.plist.NSDictionary;
@@ -70,7 +75,13 @@ public class DefaultHandler {
 				wrap.setResponseCode(200);
 				// TODO deal with jpeg data
 				Log.d(TAG, "photo");
+			} else if ("/volume".equals(wrap.getContext())) {
+				if (wrap.getRequestParameters().containsKey("volume")) {
+					server.getProxy().setVolume((float)Float.valueOf(wrap.getRequestParameters().get("volume")));
+				}
+				wrap.setResponseCode(200);				
 			} else {
+				Log.e(TAG, "unhanled request:"+wrap.getContext());
 				wrap.setReverse(false);
 				wrap.setResponseCode(404);
 			}
@@ -93,36 +104,47 @@ public class DefaultHandler {
 				String conType = wrap.getRequestHeads().get(
 						HttpProtocol.ContentType);
 				System.out.println("ContentType=" + conType);
+				String url = null;
+				String rate = "0f";
+				String pos = "0f";
 				if (AirplayState.binPLIST.equals(conType)) {
 					NSDictionary rootDict = (NSDictionary) PropertyListParser
 							.parse(wrap.getResponseBody());
-					String url = null;
 					if (rootDict.containsKey("Content-Location")) {
-						url = rootDict.objectForKey("Content-Location")
-								.toString();						
+						url = rootDict.objectForKey("Content-Location").toString();						
 					} else if (rootDict.containsKey("host")) {
-						url = "http://"+
-								rootDict.objectForKey("host").toString()+
-								rootDict.objectForKey("path").toString();
-						
+						url = "http://"+rootDict.objectForKey("host").toString()+rootDict.objectForKey("path").toString();						
 					}
-					Log.d(TAG, "video url=" + url);
-					String rate = "0f";
 					if (rootDict.containsKey("rate")) {
 						rate = rootDict.objectForKey("rate").toString();
 					}
-					String pos = "0f";
 					if (rootDict.containsKey("Start-Position")) {
 						pos = rootDict.objectForKey("Start-Position").toString();
 					}
-					if (url != null) {
-						server.getProxy().video(url, rate, pos);
-						wrap.setResponseCode(200);
-					}
 				} else {
-					System.out.println("body="
-							+ wrap.getResponseBody().toString());
+					ByteArrayInputStream bin = new ByteArrayInputStream(wrap.getResponseBody());
+					BufferedReader in = new BufferedReader(new InputStreamReader(bin));
+					Pattern headerPattern = Pattern.compile(":\\ *(.*)");
+					String line = in.readLine();
+					while (line != null && line.length()>0) {
+						Matcher matcher = headerPattern.matcher(line);
+						if (matcher.find()) {
+							if (line.startsWith("Content-Location")) {
+								url = matcher.group(1);
+							}
+							if (line.startsWith("Start-Position:")) {
+								pos = matcher.group(1);
+							}
+						}
+						line  = in.readLine();						
+					};					
 				}
+				Log.d(TAG, "video url=" + url);
+				if (url != null) {
+					server.getProxy().video(url, rate, pos);
+					wrap.setResponseCode(200);
+				}
+
 			} else {
 				System.out.println("body is null");
 			}

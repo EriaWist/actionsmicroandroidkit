@@ -111,4 +111,10 @@ public class AikaProxy implements Aika.AikaConnectListener,
 			controlListener.onAirPlayStart();
 		}
 	}
+
+	public void setVolume(float volume) {
+		if (controlListener != null) {
+			controlListener.setVolume(volume);
+		}
+	}
 }

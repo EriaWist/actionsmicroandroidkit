@@ -101,6 +101,8 @@ public class AirPlayServer {
 		void onAirPlayStop();
 
 		void onAirPlayStart();
+
+		void setVolume(float volume);
 		
 	}
 	private boolean stopRaopThread;
@@ -516,6 +518,11 @@ public class AirPlayServer {
 			@Override
 			public void onAirPlayStart() {
 				delegate.onAirPlayStart();
+			}
+
+			@Override
+			public void setVolume(float volume) {
+				delegate.setVolume(volume);
 			}
 		});
 		if (airplayService.start()) {
