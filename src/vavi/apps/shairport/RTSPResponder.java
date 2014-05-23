@@ -8,7 +8,6 @@ import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -166,9 +165,9 @@ public class RTSPResponder extends Thread{
         	}
 			// ??? Why ???
         	response.append("Session", "DEADBEEF");
-
-//        	response.append("Transport", packet.valueOfHeader("Transport") + ";server_port=" + serv.getServerPort());
-        	response.append("Transport", String.format("RTP/AVP/UDP;unicast;mode=record;events;control_port=%d;server_port=%d", serv.getControlPort(), serv.getServerPort()));
+        	if (serv != null) {
+        		response.append("Transport", String.format("RTP/AVP/UDP;unicast;mode=record;events;control_port=%d;server_port=%d", serv.getControlPort(), serv.getServerPort()));
+        	}
         			
         } else if (REQ.contentEquals("RECORD")){
         	response.append("Audio-Jack-Status", "connected; type=analog");
@@ -180,8 +179,9 @@ public class RTSPResponder extends Thread{
 //        	Note 2: Initial value for the RTP Timestamps, random 32 bit value
 
         } else if (REQ.contentEquals("FLUSH")){
-        	serv.flush();
-        
+        	if (serv != null) {
+        		serv.flush();
+        	}
         } else if (REQ.contentEquals("TEARDOWN")){
         	response.append("Connection", "close");
         	
@@ -198,9 +198,13 @@ public class RTSPResponder extends Thread{
         					//Then it goes from –30 to 0.
         					double volume = Double.parseDouble(m.group(1));
         					if (volume == -144) {
-        						serv.setVolume(0);
+        						if (serv != null) {
+        				        	serv.setVolume(0);
+        						}
         					} else {
-        						serv.setVolume((volume+30)/30);
+        						if (serv != null) {
+        				        	serv.setVolume((volume+30)/30);
+        						}
         					}
         				}
         			}
