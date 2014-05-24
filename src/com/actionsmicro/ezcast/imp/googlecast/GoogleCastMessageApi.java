@@ -26,5 +26,9 @@ public class GoogleCastMessageApi extends GoogleCastApi implements MessageApi {
 		// TODO Auto-generated method stub
 
 	}
+	
+	@Override
+	public void sendJSONRPC(String command) {
+	}
 
 }
