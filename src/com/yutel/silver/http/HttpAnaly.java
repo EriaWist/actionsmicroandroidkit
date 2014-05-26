@@ -43,11 +43,11 @@ public class HttpAnaly {
 		headers();
 		bodys();
 		if (mHttpWrap.getRequestHeads().size() > 0) {
-			logger.info("header(" + mHttpWrap.getContext() + ", parms="+parms+") parse compled:"
+			logger.info("header(" + mHttpWrap.getMothod() +" "+ mHttpWrap.getContext() + ", parms="+parms+") parse compled:"
 					+ sign + mHttpWrap.getRequestHeads().toString());
 		}
 		if (mHttpWrap.getResponseBody() != null) {
-			logger.info("body=" + mHttpWrap.getResponseBody().toString());
+			logger.info("body=" + new String(mHttpWrap.getResponseBody()));
 		}
 		return mHttpWrap;
 	}

@@ -99,4 +99,22 @@ public class AikaProxy implements Aika.AikaConnectListener,
 		}
 		return AirplayState.ERROR;
 	}
+
+	public void onAirPlayStop() {
+		if (controlListener != null) {
+			controlListener.onAirPlayStop();
+		}
+	}
+
+	public void onAirPlayStart() {
+		if (controlListener != null) {
+			controlListener.onAirPlayStart();
+		}
+	}
+
+	public void setVolume(float volume) {
+		if (controlListener != null) {
+			controlListener.setVolume(volume);
+		}
+	}
 }

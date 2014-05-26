@@ -132,7 +132,7 @@ public class AudioBuffer {
 		    AudioData buf = audioBuffer[read % BUFFER_FRAMES];
 		    
 		    if(!buf.ready){
-		    	Log.d("ShairPort", "Missing Frame!");
+		    	Log.d("ShairPort", "Missing Frame! read:" + read +", write:"+writeIndex);
 		    	// Set to zero then
 		    	for(int i=0; i<buf.data.length; i++){
 		    		buf.data[i] = 0;

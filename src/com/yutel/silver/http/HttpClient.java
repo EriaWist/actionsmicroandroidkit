@@ -1,5 +1,6 @@
 package com.yutel.silver.http;
 
+import java.io.IOException;
 import java.net.Socket;
 import java.util.logging.Logger;
 
@@ -8,6 +9,9 @@ import com.yutel.silver.util.AirplayUtil;
 public class HttpClient extends Thread {
 	private static Logger logger = Logger.getLogger(HttpClient.class.getName());
 	private Socket mSocket;
+	public Socket getSocket() {
+		return mSocket;
+	}
 	private boolean mConnect = true;
 	private String mSession;
 	private AirplayServer airplayServer;
@@ -49,12 +53,6 @@ public class HttpClient extends Thread {
 						String reverse = AirplayUtil.getEventInfo(event);
 						airplayServer.sendReverseResponse(mSession,reverse);
 					}
-					try {
-						Thread.sleep(500);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
 					logger.info("> " + hw.buildResponse());
 					
 					ha.sendResponse(hw.buildResponse());					
@@ -65,11 +63,11 @@ public class HttpClient extends Thread {
 					mConnect = false;
 					logger.info("close "+client);
 				}
-//				sleep(1000);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
+		airplayServer.onConnectionClosed(this);
 	}
 
 	@Override
@@ -82,5 +80,15 @@ public class HttpClient extends Thread {
 			e.printStackTrace();
 		}
 		mSocket = null;
+	}
+	public void close() {
+		mConnect = false;
+		try {
+			mSocket.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		this.interrupt();
 	}
 }

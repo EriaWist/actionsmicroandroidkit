@@ -8,7 +8,6 @@ import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,6 +50,7 @@ public class RTSPResponder extends Thread{
 	private static final Pattern completedPacket = Pattern.compile("(.*)\r\n\r\n");
 	private static final String TAG = "RTSPResponder";
 	private AirTunesListener airTunesListener;
+	private boolean shouldStop;
 	public RTSPResponder(byte[] hwAddr, Socket socket) throws IOException {
 		this.hwAddr = hwAddr;
 		this.socket = socket;
@@ -165,9 +165,9 @@ public class RTSPResponder extends Thread{
         	}
 			// ??? Why ???
         	response.append("Session", "DEADBEEF");
-
-//        	response.append("Transport", packet.valueOfHeader("Transport") + ";server_port=" + serv.getServerPort());
-        	response.append("Transport", String.format("RTP/AVP/UDP;unicast;mode=record;events;control_port=%d;server_port=%d", serv.getControlPort(), serv.getServerPort()));
+        	if (serv != null) {
+        		response.append("Transport", String.format("RTP/AVP/UDP;unicast;mode=record;events;control_port=%d;server_port=%d", serv.getControlPort(), serv.getServerPort()));
+        	}
         			
         } else if (REQ.contentEquals("RECORD")){
         	response.append("Audio-Jack-Status", "connected; type=analog");
@@ -179,48 +179,55 @@ public class RTSPResponder extends Thread{
 //        	Note 2: Initial value for the RTP Timestamps, random 32 bit value
 
         } else if (REQ.contentEquals("FLUSH")){
-        	serv.flush();
-        
+        	if (serv != null) {
+        		serv.flush();
+        	}
         } else if (REQ.contentEquals("TEARDOWN")){
         	response.append("Connection", "close");
         	
         } else if (REQ.contentEquals("SET_PARAMETER")){
         	String contentType = packet.valueOfHeader("Content-Type");
-        	if (contentType.equalsIgnoreCase("text/parameters")) {
-        		if (packet.getContent() != null) {
-        			Pattern p = Pattern.compile("volume: (.+)");
-        			Matcher m = p.matcher(packet.getContent());
-        			if(m.find()){
-        				//Audio volume can be changed using a SET_PARAMETER request. 
-        				//The volume is a float value representing the audio attenuation in dB. A value of –144 means the audio is muted. 
-        				//Then it goes from –30 to 0.
-        				double volume = Double.parseDouble(m.group(1));
-        				if (volume == -144) {
-        					serv.setVolume(0);
-        				} else {
-        					serv.setVolume((volume+30)/30);
+        	if (contentType != null) {
+        		if (contentType.equalsIgnoreCase("text/parameters")) {
+        			if (packet.getContent() != null) {
+        				Pattern p = Pattern.compile("volume: (.+)");
+        				Matcher m = p.matcher(packet.getContent());
+        				if(m.find()){
+        					//Audio volume can be changed using a SET_PARAMETER request. 
+        					//The volume is a float value representing the audio attenuation in dB. A value of –144 means the audio is muted. 
+        					//Then it goes from –30 to 0.
+        					double volume = Double.parseDouble(m.group(1));
+        					if (volume == -144) {
+        						if (serv != null) {
+        				        	serv.setVolume(0);
+        						}
+        					} else {
+        						if (serv != null) {
+        				        	serv.setVolume((volume+30)/30);
+        						}
+        					}
         				}
         			}
-        		}
-        	} else if (contentType.equalsIgnoreCase("application/x-dmap-tagged")) {
-        		byte[] daapData = requestBodyBuffer.toByteArray();
-        		Item daapItem = DaapDataParser.parse(daapData);
-        		String albumName = daapItem.getChildDataAsString(0x6173616C);
-				Log.d(TAG, "daapItem:album name:"+albumName);
-        		String artist = daapItem.getChildDataAsString(0x61736172);
-				Log.d(TAG, "daapItem:artist:"+artist);
-        		String title = daapItem.getChildDataAsString(0x6D696E6D);
-				Log.d(TAG, "daapItem:song name:"+title);
-        		if (airTunesListener != null) {
-        			airTunesListener.onReceiveMeta(albumName, artist, title);
-        		}
-        	} else if (contentType.equalsIgnoreCase("image/jpeg")) {
-        		if (airTunesListener != null) {
-        			airTunesListener.onReceiveCoverArt(requestBodyBuffer.toByteArray());
-        		}
-        	} else if (contentType.equalsIgnoreCase("image/none")) {
-        		if (airTunesListener != null) {
-        			airTunesListener.onReceiveCoverArt(null);
+        		} else if (contentType.equalsIgnoreCase("application/x-dmap-tagged")) {
+        			byte[] daapData = requestBodyBuffer.toByteArray();
+        			Item daapItem = DaapDataParser.parse(daapData);
+        			String albumName = daapItem.getChildDataAsString(0x6173616C);
+        			Log.d(TAG, "daapItem:album name:"+albumName);
+        			String artist = daapItem.getChildDataAsString(0x61736172);
+        			Log.d(TAG, "daapItem:artist:"+artist);
+        			String title = daapItem.getChildDataAsString(0x6D696E6D);
+        			Log.d(TAG, "daapItem:song name:"+title);
+        			if (airTunesListener != null) {
+        				airTunesListener.onReceiveMeta(albumName, artist, title);
+        			}
+        		} else if (contentType.equalsIgnoreCase("image/jpeg")) {
+        			if (airTunesListener != null) {
+        				airTunesListener.onReceiveCoverArt(requestBodyBuffer.toByteArray());
+        			}
+        		} else if (contentType.equalsIgnoreCase("image/none")) {
+        			if (airTunesListener != null) {
+        				airTunesListener.onReceiveCoverArt(null);
+        			}
         		}
         	}
         }  else if (REQ.contentEquals("GET_PARAMETER")){
@@ -299,7 +306,7 @@ public class RTSPResponder extends Thread{
      */
 	public void run() {
 		try {
-			ByteArrayBuffer requestBodyBuffer = new ByteArrayBuffer(4096);			
+			ByteArrayBuffer requestBodyBuffer = new ByteArrayBuffer(655360);			
 			do {
 				Log.d("ShairPort", "listening packets ... ");
 				requestBodyBuffer.clear();
@@ -347,6 +354,7 @@ public class RTSPResponder extends Thread{
 								socket.getOutputStream().flush();
 							} catch (IOException e) {
 								e.printStackTrace();
+								shouldStop = true;
 							}
 							Log.d("ShairPort", sb.toString());
 
@@ -372,7 +380,8 @@ public class RTSPResponder extends Thread{
 								socket.getOutputStream().write(responseData);
 								socket.getOutputStream().flush();
 							} catch (IOException e) {
-								e.printStackTrace();
+								e.printStackTrace();	    			
+								shouldStop = true;
 							}
 							Log.d("ShairPort", sb.toString());
 						}
@@ -393,13 +402,15 @@ public class RTSPResponder extends Thread{
 							releaseAudioServer();
 							socket.close();
 							socket = null;
+			    			shouldStop = true;
 						}
 					}
 				} else {
 	    			socket.close();
 	    			socket = null;
+	    			shouldStop = true;
 				}
-			} while (socket!=null);
+			} while (!shouldStop);
 			
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -425,21 +436,20 @@ public class RTSPResponder extends Thread{
 		Log.d("ShairPort", "connection ended.");
 	}
 
+	private final byte[] readBuffer = new byte[100*1024];
 
 	private int readRequestBody(int contentLength, StringBuilder packet,
 			ByteArrayBuffer requestBodyBuffer) throws IOException {
 		requestBodyBuffer.clear();
 		int ret = 0;
 		int readMore = contentLength;
-		ByteBuffer buffer = ByteBuffer.allocate(512);
 		while (readMore > 0) {
-			buffer.clear();
 			Log.d("ShairPort", "readMore:"+readMore);
-			ret = in.read(buffer.array(), 0, Math.min(readMore, buffer.capacity()));
+			ret = in.read(readBuffer, 0, Math.min(readMore, readBuffer.length));
 			if (ret!=-1) {
 				Log.d("ShairPort", "readMore:ret:"+ret);
-				packet.append(new String(buffer.array(), 0, ret));
-				requestBodyBuffer.append(buffer.array(), 0, ret);
+				packet.append(new String(readBuffer, 0, ret));
+				requestBodyBuffer.append(readBuffer, 0, ret);
 				readMore -= ret;
 			} else {
 				break;
@@ -473,12 +483,12 @@ public class RTSPResponder extends Thread{
 
 
 	public void stopThread() {
+		shouldStop = true;
 		if (socket != null) {
 			try {
 				socket.close();
 			} catch (IOException e) {
 			}
-			socket = null;
 		}
 		this.interrupt();
 	}

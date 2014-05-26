@@ -10,5 +10,6 @@ public interface MessageApi extends Api {
 	public void sendKeyAsync(int keyCode);
 	public void sendKeySync(int keyCode);
 	public void sendVendorKey(int keyCode);
+	public void sendJSONRPC(String command);
 	
 }

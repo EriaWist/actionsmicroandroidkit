@@ -50,6 +50,7 @@ import com.yutel.silver.exception.AirplayException;
 import com.yutel.silver.vo.Device;
 
 public class AirPlayServer {
+	private static final int AIRPLAY_MIRROR_STREAM_PORT_NUMBER = 7100;
 	private static final String AIRPLAY_MODEL = "AppleTV3,1";
 	private static final String AIRPLAYER_VERSION_STRING = "150.33";
 	protected static final String TAG = "AirPlayServer";
@@ -96,6 +97,12 @@ public class AirPlayServer {
 				String title);
 
 		void onReceiveAirTunesCoverArt(byte[] byteArray);
+
+		void onAirPlayStop();
+
+		void onAirPlayStart();
+
+		void setVolume(float volume);
 		
 	}
 	private boolean stopRaopThread;
@@ -438,8 +445,8 @@ public class AirPlayServer {
 			}
 			
 		});
-		mirrorServer.listen(7100);
-		Log.d(TAG, "Mirror server listening on 7100");
+		mirrorServer.listen(AIRPLAY_MIRROR_STREAM_PORT_NUMBER);
+		Log.d(TAG, "Mirror server listening on "+AIRPLAY_MIRROR_STREAM_PORT_NUMBER);
 		
 		airplayService = Aika.create(inetAddress, 0, name);
 		Device dev = new Device();
@@ -500,6 +507,22 @@ public class AirPlayServer {
 			@Override
 			public int videoDuration() throws AirplayException {
 				return delegate.getVideoDuration();
+			}
+
+			@Override
+			public void onAirPlayStop() {
+				delegate.onAirPlayStop();
+				
+			}
+
+			@Override
+			public void onAirPlayStart() {
+				delegate.onAirPlayStart();
+			}
+
+			@Override
+			public void setVolume(float volume) {
+				delegate.setVolume(volume);
 			}
 		});
 		if (airplayService.start()) {
@@ -711,4 +734,16 @@ public class AirPlayServer {
             return ret;
         }
     }
+	public void closeAirTunesConnection() {
+		stopRtspResponder();
+	}
+	public void closeAirPlayConnection() {
+		if (airplayService != null) {
+			airplayService.closeCurrentConnection();
+		}
+		if (mirrorServer != null) {
+			mirrorServer.stop();
+			mirrorServer.listen(AIRPLAY_MIRROR_STREAM_PORT_NUMBER);
+		}
+	}
 }

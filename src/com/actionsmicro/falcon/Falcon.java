@@ -301,6 +301,38 @@ public class Falcon {
 		public void sendVendorKey(final int keyCode) {
 			sendKey(10, keyCode, false, true);
 		}
+		public void sendJSONRPC(final String command){
+			sendJSONRPC(6,command);
+		}
+		
+		private void sendJSONRPC(final int commandCode , final String command){
+			new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					try {
+						final byte[] data = (""+6+":"+command).getBytes(REMOTE_CONTROL_MESSGAE_CHARSET);
+						Falcon.getInstance().sendTcpRemoteControlData(data, ipAddress, remoteControlPortNumber);
+					} catch (IOException e) {
+						Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
+						Falcon.getInstance().dispatchExceptionOnMain(ipAddress, e);
+					} finally {
+						synchronized (ProjectorInfo.this) {
+							ProjectorInfo.this.notify();	
+						}
+					}
+				}
+				
+			}).start();
+			synchronized(this) {
+				try {
+					this.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
 		private void sendKey(final int commandCode, final int keyCode, final boolean wait) {
 			sendKey(commandCode, keyCode, wait, false);
 		}
@@ -1064,7 +1096,7 @@ public class Falcon {
 		} else if (receiveString.startsWith("EZREMOTE:")) {
 			parseRemoteControlResponseString(receiveString, projectorInfo);
 			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
-		} else if (receiveString.startsWith("STANDARD:")) {	//小機送給App的message (公板用)
+		} else if (receiveString.startsWith("STANDARD:")) {	//小�??�給App?�message (?�板??
 			mainThreadHandler.post(new Runnable() {
 
 				@Override
@@ -1074,12 +1106,21 @@ public class Falcon {
 				
 			});
 			
-		} else if (receiveString.startsWith("CUSTOMER")) {	//小機送給App的message (客戶案用)
+		} else if (receiveString.startsWith("CUSTOMER")) {	//小�??�給App?�message (客戶案用)
 			mainThreadHandler.post(new Runnable() {
 
 				@Override
 				public void run() {
 					dispatchMessage(projectorInfo, parseMessageString(receiveString));
+				}
+				
+			});
+		} else if(receiveString.startsWith("JSONRPC")){//dispatch JSON message
+			mainThreadHandler.post(new Runnable() {
+
+				@Override
+				public void run() {
+					dispatchMessage(projectorInfo, receiveString);
 				}
 				
 			});

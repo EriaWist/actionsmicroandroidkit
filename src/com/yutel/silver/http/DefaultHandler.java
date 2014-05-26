@@ -1,9 +1,14 @@
 package com.yutel.silver.http;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import com.actionsmicro.utils.Log;
 import com.dd.plist.NSDictionary;
-import com.dd.plist.NSObject;
 import com.dd.plist.PropertyListParser;
 import com.yutel.silver.exception.AirplayException;
 import com.yutel.silver.util.AirplayUtil;
@@ -11,6 +16,7 @@ import com.yutel.silver.util.StringUtil;
 import com.yutel.silver.vo.AirplayState;
 
 public class DefaultHandler {
+	private static final String TAG = "HttpDefaultHandler";
 	protected AirplayServer server;
 	protected HttpWrap wrap;
 
@@ -41,6 +47,7 @@ public class DefaultHandler {
 					}					
 				}
 			} else if ("/stop".equals(wrap.getContext())) {
+				wrap.setResponseCode(200);
 				server.getProxy().videoStop();
 			} else if ("/scrub".equals(wrap.getContext())) {
 				wrap.setResponseCode(200);
@@ -64,7 +71,17 @@ public class DefaultHandler {
 				play();
 			} else if ("/setProperty".equals(wrap.getContext())) {
 				setProperty(wrap.getRequestParameters());
+			} else if ("/photo".equals(wrap.getContext())) {
+				wrap.setResponseCode(200);
+				// TODO deal with jpeg data
+				Log.d(TAG, "photo");
+			} else if ("/volume".equals(wrap.getContext())) {
+				if (wrap.getRequestParameters().containsKey("volume")) {
+					server.getProxy().setVolume((float)Float.valueOf(wrap.getRequestParameters().get("volume")));
+				}
+				wrap.setResponseCode(200);				
 			} else {
+				Log.e(TAG, "unhanled request:"+wrap.getContext());
 				wrap.setReverse(false);
 				wrap.setResponseCode(404);
 			}
@@ -87,25 +104,47 @@ public class DefaultHandler {
 				String conType = wrap.getRequestHeads().get(
 						HttpProtocol.ContentType);
 				System.out.println("ContentType=" + conType);
+				String url = null;
+				String rate = "0f";
+				String pos = "0f";
 				if (AirplayState.binPLIST.equals(conType)) {
 					NSDictionary rootDict = (NSDictionary) PropertyListParser
 							.parse(wrap.getResponseBody());
-					String url = rootDict.objectForKey("Content-Location")
-							.toString();
-					String rate = rootDict.objectForKey("rate").toString();
-					String pos = "0f";
-					NSObject p = rootDict.objectForKey("Start-Position");
-					if (p != null) {
-						pos = p.toString();
+					if (rootDict.containsKey("Content-Location")) {
+						url = rootDict.objectForKey("Content-Location").toString();						
+					} else if (rootDict.containsKey("host")) {
+						url = "http://"+rootDict.objectForKey("host").toString()+rootDict.objectForKey("path").toString();						
 					}
-					System.out.println("rl=" + url);
-					server.getProxy().video(url, rate, pos);
-					Thread.sleep(500);
-					wrap.setResponseCode(200);
+					if (rootDict.containsKey("rate")) {
+						rate = rootDict.objectForKey("rate").toString();
+					}
+					if (rootDict.containsKey("Start-Position")) {
+						pos = rootDict.objectForKey("Start-Position").toString();
+					}
 				} else {
-					System.out.println("body="
-							+ wrap.getResponseBody().toString());
+					ByteArrayInputStream bin = new ByteArrayInputStream(wrap.getResponseBody());
+					BufferedReader in = new BufferedReader(new InputStreamReader(bin));
+					Pattern headerPattern = Pattern.compile(":\\ *(.*)");
+					String line = in.readLine();
+					while (line != null && line.length()>0) {
+						Matcher matcher = headerPattern.matcher(line);
+						if (matcher.find()) {
+							if (line.startsWith("Content-Location")) {
+								url = matcher.group(1);
+							}
+							if (line.startsWith("Start-Position:")) {
+								pos = matcher.group(1);
+							}
+						}
+						line  = in.readLine();						
+					};					
 				}
+				Log.d(TAG, "video url=" + url);
+				if (url != null) {
+					server.getProxy().video(url, rate, pos);
+					wrap.setResponseCode(200);
+				}
+
 			} else {
 				System.out.println("body is null");
 			}

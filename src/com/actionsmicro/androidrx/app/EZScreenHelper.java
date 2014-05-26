@@ -11,7 +11,6 @@ import java.nio.ByteBuffer;
 
 import org.apache.commons.net.ntp.TimeStamp;
 
-import android.R;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -51,6 +50,8 @@ import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.airplay.clock.SimplePlaybackClock;
 import com.actionsmicro.airplay.mirror.MirrorClock;
 import com.actionsmicro.androidrx.EzScreenServer;
+import com.actionsmicro.androidrx.app.state.IdleState;
+import com.actionsmicro.androidrx.app.state.StateContext;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.JpegCallback;
@@ -65,6 +66,9 @@ public class EZScreenHelper {
 		public String getOnConnectedDisplayImage();
 		public String getOnStopDisplayImage();
 	}
+	public interface PlaybackDelegate {
+		public void onError(int code);
+	}
 	public interface InitializationListener {
 
 		void onInitializationFailed(int service, Exception e);
@@ -73,6 +77,7 @@ public class EZScreenHelper {
 		
 	}
 	private static final String TAG = "EZScreenHelper";
+	private PlaybackDelegate playbackDelegate;
 	private WebView webView;
 	private TextureView mjpegView;
 	private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -308,6 +313,9 @@ public class EZScreenHelper {
 		Log.d(TAG, "onError:"+error);
 		this.setState(AirplayState.ERROR);
 		this.getAirplayService().sendEvent();
+		if (playbackDelegate != null) {
+			playbackDelegate.onError(error);
+		}
 	}
 	@JavascriptInterface
 	public void onEnded() {
@@ -407,13 +415,13 @@ public class EZScreenHelper {
 	}
 	private void displayUrl(final String url) {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			invokeJavascript("javascript:updateDisplay('"+url+"');");
+			invokeJavascript("javascript:updateDisplay(\""+url+"\");");
 			showWebView();
 		} else {
 			if (url.startsWith("http")) {
 				displayMotionJpeg(url);
 			} else {
-				invokeJavascript("javascript:updateDisplay('"+url+"');");
+				invokeJavascript("javascript:updateDisplay(\""+url+"\");");
 				showWebView();
 			}
 		}
@@ -510,9 +518,9 @@ public class EZScreenHelper {
 	}
 	private void playVideo(final String url, String callback) {
 		if (callback != null) {
-			invokeJavascript("javascript:playVideo('"+url+"','"+callback+"');");
+			invokeJavascript("javascript:playVideo(\""+url+"\",'"+callback+"');");
 		} else {
-			invokeJavascript("javascript:playVideo('"+url+"', null);");			
+			invokeJavascript("javascript:playVideo(\""+url+"\", null);");			
 		}
 		showWebView();
 	}
@@ -561,23 +569,12 @@ public class EZScreenHelper {
 
 				@Override
 				public void onDisconnected() {
-					EZScreenHelper.this.resetToStandby();
-					if (connectionListener != null) {
-						connectionListener.onDisconnected();
-					}
+					stateContext.onEzScreenClientDisconnected();
 				}
 
 				@Override
 				public void onConnected() {
-					
-					String connectedImage = "images/connected.jpg";
-					if (displayImageInterface != null) {
-						connectedImage = displayImageInterface.getOnConnectedDisplayImage();
-					}
-					EZScreenHelper.this.displayUrl(connectedImage);
-					if (connectionListener != null) {
-						connectionListener.onConnected();
-					}
+					stateContext.onEzScreenClientConnected();
 				}
 				
 				@Override
@@ -626,19 +623,17 @@ public class EZScreenHelper {
 	protected boolean airplayReady;
 	private boolean ezScreenReady;
 	protected boolean alreadyFailed;
+	private StateContext stateContext;
 	
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void initAirplay() {
 		try {
 			this.setAirplayService(new AirPlayServer(context, InetAddress.getByName(getIpAddress()), getServiceName(), new AirPlayServer.AirPlayServerDelegate() {
 				final static String TAG = EZScreenHelper.TAG+".AirPlayServer";
-				private FileOutputStream testFile;
-				private final byte[] nalHeader = {0x00, 0x00, 0x00, 0x01};
-				private static final boolean DUMP_H264 = false;
 				@Override
 				public void stopVideo() {
 					Log.d(TAG, "stopVideo");
-					EZScreenHelper.this.stopVideo();
+					stateContext.onStopAirPlayVideo();
 				}
 				
 				@Override
@@ -651,13 +646,13 @@ public class EZScreenHelper {
 				public void resumeVideo() {
 					Log.d(TAG, "resumeVideo");
 					EZScreenHelper.this.resumeVideo();
-					while (EZScreenHelper.this.getState() != AirplayState.PLAYING) {
-						try {
-							Thread.sleep(500);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-					}
+//					while (EZScreenHelper.this.getState() != AirplayState.PLAYING) {
+//						try {
+//							Thread.sleep(500);
+//						} catch (InterruptedException e) {
+//							e.printStackTrace();
+//						}
+//					}
 				}
 				
 				@Override
@@ -671,12 +666,8 @@ public class EZScreenHelper {
 					Log.d(TAG, "loadVideo:"+url);
 					Log.d(TAG, "loadVideo.rate:"+rate);
 					Log.d(TAG, "loadVideo.position:"+position);
-					resetStates();
-					if (connectionListener != null) {
-						connectionListener.onConnected();
-					}
-					EZScreenHelper.this.setPendingStartingPosition(position);
-					playVideo(url, null, true/*rate!=0*/, 0);
+					
+					stateContext.onLoadAirPlayVideo(url, rate, position);
 				}
 				
 				@Override
@@ -696,52 +687,12 @@ public class EZScreenHelper {
 					Log.d(TAG, "getVideoDuration:"+EZScreenHelper.this.getDuration());
 					return EZScreenHelper.this.getDuration();
 				}
-				private static final String MIME_VIDEO_AVC = "video/avc";
-				private ByteBuffer[] inputBuffers;
-				private PlaybackClock playbackClock;
-				
 				@Override
 				public void onStartMirroring(InetAddress remoteAddress) {
 					Log.d(TAG, "onStartMirroring");
-					showMirrorView();
-					stopMirrorDecoding();
-					if (playbackClock != null) {
-						playbackClock.release();
-						playbackClock = null;
-					}
-					try {
-						playbackClock = new MirrorClock(remoteAddress, 7010, 100, 25);
-					} catch (SocketException e1) {
-						e1.printStackTrace();
-					}
-					
-					decoder = MediaCodec.createDecoderByType(MIME_VIDEO_AVC);
-					if (mirrorSurface == null) {
-						while (mirrorSurfaceTexture == null) {
-							try {
-								Thread.sleep(10);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}
-						mirrorSurface = new Surface(mirrorSurfaceTexture);
-					}
-					decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, 1920, 1080), mirrorSurface, null, 0);
-					decoder.start();
-					inputBuffers = decoder.getInputBuffers();
-					
-					closeTestFile();
-					if (DUMP_H264) {
-						try {
-							testFile = new FileOutputStream("/sdcard/test"+".h264");
-						} catch (FileNotFoundException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
-					if (connectionListener != null) {
-						connectionListener.onConnected();
-					}
+					stateContext.onStartMirroring(remoteAddress);
+					doAirPlayMirror(remoteAddress);
+					informDelegateConnected();
 				}
 
 				private void startRenderer() {
@@ -768,17 +719,7 @@ public class EZScreenHelper {
 					renderThread.start();
 				}
 
-				private void closeTestFile() {
-					if (testFile != null) {
-						try {
-							testFile.close();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-						testFile = null;
-					}
-				}
+				
 
 				@Override
 				public void onSpsAvailable(byte[] sps) {
@@ -852,17 +793,7 @@ public class EZScreenHelper {
 				@Override
 				public void onStopMirroring() {
 					Log.d(TAG, "onStopMirroring");
-					if (connectionListener != null) {
-						connectionListener.onDisconnected();
-					}
-					stopMirrorDecoding();
-					inputBuffers = null; 
-					closeTestFile();
-					hideMirrorView();
-					if (playbackClock != null) {
-						playbackClock.release();
-						playbackClock = null;
-					}
+					stateContext.onStopMirroring();
 				}
 
 				private void doRender(MediaCodec.BufferInfo bufferInfo) {
@@ -919,29 +850,42 @@ public class EZScreenHelper {
 
 				@Override
 				public void onStartAirTunes(InetAddress inetAddress) {
-					if (connectionListener != null) {
-						connectionListener.onConnected();
-					}
+					stateContext.onStartAirTunes(inetAddress);
 				}
 
 				@Override
 				public void onStopAirTunes() {
-					hideMusicView();
+					stateContext.onStopAirTunes();
 				}
 
 				@Override
 				public void onReceiveAirTunesMetadata(String albumName,
 						String artist, String title) {
-					showMusicView();
-					updateAirTunesMetadata(albumName, artist, title);
+					stateContext.onReceiveAirTunesMetadata(albumName, artist, title);
 				}
 
 				@Override
 				public void onReceiveAirTunesCoverArt(byte[] byteArray) {
-					showMusicView();
-					updateAirTunesCoverArt(byteArray);
+					stateContext.onReceiveAirTunesCoverArt(byteArray);
 				}
 
+				@Override
+				public void onAirPlayStart() {
+					// TODO Auto-generated method stub
+					Log.d(TAG, "onAirPlayStart");
+					
+				}
+
+				@Override
+				public void onAirPlayStop() {
+					Log.d(TAG, "onAirPlayStop");
+					stateContext.onAirPlayStop();					
+				}
+
+				@Override
+				public void setVolume(float volume) {
+					EZScreenHelper.this.setVolume(volume);
+				}
 				
 			}));
 			alreadyFailed = false;
@@ -1010,9 +954,9 @@ public class EZScreenHelper {
 
 	private void playVideo(String url, String callback, boolean autoplay, int startpos) {
 		if (callback != null) {
-			invokeJavascript("javascript:playVideoImp('"+url+"','"+callback+"'"+ (autoplay?"true, ":"false, ")+ startpos+");");
+			invokeJavascript("javascript:playVideoImp(\""+url+"\",'"+callback+"'"+ (autoplay?"true, ":"false, ")+ startpos+");");
 		} else {
-			invokeJavascript("javascript:playVideoImp('"+url+"', null, "+ (autoplay?"true, ":"false, ")+ startpos+");");			
+			invokeJavascript("javascript:playVideoImp(\""+url+"\", null, "+ (autoplay?"true, ":"false, ")+ startpos+");");			
 		}
 		showWebView();
 	}
@@ -1131,6 +1075,79 @@ public class EZScreenHelper {
 		});
 	}
 	public void start() {
+		stateContext = new StateContext(new IdleState()) {
+			@Override
+			protected void showConnectedIndicator() {
+				EZScreenHelper.this.showConnectedIndicator();
+			}
+
+			@Override
+			protected void informDelegateConnected() {
+				EZScreenHelper.this.informDelegateConnected();
+			}
+
+			@Override
+			protected void resetToStandby() {
+				EZScreenHelper.this.resetToStandby();
+			}
+
+			@Override
+			protected void informDelegateDisconnected() {
+				EZScreenHelper.this.informDelegateDisconnected();
+			}
+
+			@Override
+			protected void loadVideo(String url, float rate, float position) {
+				EZScreenHelper.this.loadAirPlayVideo(url, rate, position);
+			}
+
+			@Override
+			protected void showMusicView() {
+				EZScreenHelper.this.showMusicView();
+			}
+
+			@Override
+			protected void hideMusicView() {
+				EZScreenHelper.this.hideMusicView();
+			}
+
+			@Override
+			protected void updateAirTunesMetadata(String albumName,
+					String artist, String title) {
+				EZScreenHelper.this.updateAirTunesMetadata(albumName, artist, title);
+			}
+
+			@Override
+			protected void stopVideo() {
+				EZScreenHelper.this.stopVideo();
+			}
+
+			@Override
+			protected void updateAirTunesCoverArt(byte[] byteArray) {
+				EZScreenHelper.this.updateAirTunesCoverArt(byteArray);
+			}
+
+			@Override
+			protected void doAirPlayMirror(InetAddress remoteAddress) {
+				EZScreenHelper.this.doAirPlayMirror(remoteAddress);
+			}
+
+			@Override
+			protected void stopMirror() {
+				EZScreenHelper.this.stopMirror();
+			}
+
+			@Override
+			protected void stopMusic() {
+				// TODO force to disconnect from client
+				EZScreenHelper.this.hideMusicView();
+			}
+
+			@Override
+			protected void showMirrorView() {
+				EZScreenHelper.this.showMirrorView();
+			}
+		};
 		android.net.wifi.WifiManager wifi =
 				(android.net.wifi.WifiManager)
 				context.getSystemService(android.content.Context.WIFI_SERVICE);
@@ -1213,5 +1230,109 @@ public class EZScreenHelper {
 		if (textView != null) {
 			textView.setText(text);
 		}
+	}
+
+	private void showConnectedIndicator() {
+		String connectedImage = "images/connected.jpg";
+		if (displayImageInterface != null) {
+			connectedImage = displayImageInterface.getOnConnectedDisplayImage();
+		}
+		EZScreenHelper.this.displayUrl(connectedImage);
+	}
+
+	private void informDelegateConnected() {
+		if (connectionListener != null) {
+			connectionListener.onConnected();
+		}
+	}
+
+	private void informDelegateDisconnected() {
+		if (connectionListener != null) {
+			connectionListener.onDisconnected();
+		}
+	}
+
+	private void loadAirPlayVideo(String url, float rate, float position) {
+		resetStates();
+		EZScreenHelper.this.setPendingStartingPosition(position);
+		playVideo(url, null, true/*rate!=0*/, 0);
+	}
+
+	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+	private void doAirPlayMirror(InetAddress remoteAddress) {
+		showMirrorView();
+		stopMirrorDecoding();
+		if (playbackClock != null) {
+			playbackClock.release();
+			playbackClock = null;
+		}
+		try {
+			playbackClock = new MirrorClock(remoteAddress, 7010, 100, 25);
+		} catch (SocketException e1) {
+			e1.printStackTrace();
+		}
+		
+		decoder = MediaCodec.createDecoderByType(MIME_VIDEO_AVC);
+		if (mirrorSurface == null) {
+			while (mirrorSurfaceTexture == null) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			mirrorSurface = new Surface(mirrorSurfaceTexture);
+		}
+		decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, 1920, 1080), mirrorSurface, null, 0);
+		decoder.start();
+		inputBuffers = decoder.getInputBuffers();
+		
+		closeTestFile();
+		if (DUMP_H264) {
+			try {
+				testFile = new FileOutputStream("/sdcard/test"+".h264");
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	private FileOutputStream testFile;
+	private static final byte[] nalHeader = {0x00, 0x00, 0x00, 0x01};
+	private static final boolean DUMP_H264 = false;
+	private static final String MIME_VIDEO_AVC = "video/avc";
+	private ByteBuffer[] inputBuffers;
+	private PlaybackClock playbackClock;
+	
+	private void closeTestFile() {
+		if (testFile != null) {
+			try {
+				testFile.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			testFile = null;
+		}
+	}
+
+	private void stopMirror() {
+		// TODO to disconnect from client as well
+		stopMirrorDecoding();
+		inputBuffers = null; 
+		closeTestFile();
+		hideMirrorView();
+		if (playbackClock != null) {
+			playbackClock.release();
+			playbackClock = null;
+		}
+	}
+
+	public PlaybackDelegate getPlaybackDelegate() {
+		return playbackDelegate;
+	}
+
+	public void setPlaybackDelegate(PlaybackDelegate playbackDelegate) {
+		this.playbackDelegate = playbackDelegate;
 	}
 }
