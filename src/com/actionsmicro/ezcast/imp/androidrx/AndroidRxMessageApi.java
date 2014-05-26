@@ -37,4 +37,9 @@ public class AndroidRxMessageApi extends AndroidRxApi implements MessageApi {
 		this.sendRpcNotification("disconnect", 3000);
 		super.disconnect();
 	}
+	
+	@Override
+	public void sendJSONRPC(String command) {
+	}
+
 }

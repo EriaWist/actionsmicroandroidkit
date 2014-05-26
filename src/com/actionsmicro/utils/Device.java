@@ -1,10 +1,14 @@
 package com.actionsmicro.utils;
 
+import java.util.UUID;
+
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -82,11 +86,24 @@ public class Device {
 		WifiInfo wifiInf = wifiMan.getConnectionInfo();
 		return wifiInf.getMacAddress().toString();
 	}
-	public static String getEZScreenServiceName(Context context) {
-		String macAdd = getAppMacAddress(context);
-		macAdd = macAdd.replace(":", "");
-		String mac3End = macAdd.substring(macAdd.length() - 3);
-		Integer hex = Integer.parseInt(mac3End, 16 );
-		return "EZCastScreen" + hex;
+	public static String getEZScreenServiceName(Context context, String preferenceKey) {
+//		String macAdd = getAppMacAddress(context);
+//		macAdd = macAdd.replace(":", "");
+//		String mac3End = macAdd.substring(macAdd.length() - 3);
+//		Integer hex = Integer.parseInt(mac3End, 16 );
+//		return "EZCastScreen" + hex;
+		String uuid = getUUID(context, preferenceKey);
+		return "EZCastScreen-" + uuid.substring(uuid.length()-3);
+	}
+	private static String getUUID(Context context, String preferenceKey) {
+		String uuidString = PreferenceManager.getDefaultSharedPreferences(context).getString(preferenceKey, ""); 
+		if (uuidString.isEmpty()) {
+			UUID uuid = UUID.randomUUID();
+			uuidString = uuid.toString();
+	        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(context).edit();
+			editor.putString(preferenceKey, uuidString);
+			editor.commit();
+		}
+        return uuidString;
 	}
 }

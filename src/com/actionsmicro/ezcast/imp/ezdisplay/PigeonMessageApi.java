@@ -66,4 +66,9 @@ public class PigeonMessageApi implements MessageApi {
 		projector.sendVendorKey(keyCode);
 	}
 
+	@Override
+	public void sendJSONRPC(String command) {
+		projector.sendJSONRPC(command);
+	}
+
 }
