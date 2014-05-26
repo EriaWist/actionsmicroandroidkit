@@ -265,6 +265,8 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		}
 		if (decoder != null) {
 			decoder.stop();
+			decoder.release();
+			decoder = null;
 		}
 	}
 	
