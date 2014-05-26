@@ -32,7 +32,7 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 
 	public static final int PORT = 8182;
 	public static final String KeyAES = "28906462822699798631919982357480";
-	private static final String ANDROIDRX_SCHEMA_UUID_PREFERENCE_KEY = "com.actionsmicro.iezvu.schema.schema_uuid";
+	public static final String ANDROIDRX_SCHEMA_UUID_PREFERENCE_KEY = "com.actionsmicro.iezvu.schema.schema_uuid";
 	
 	private String schemaJSONString;
 	
