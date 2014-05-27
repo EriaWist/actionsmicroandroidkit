@@ -8,6 +8,8 @@ import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.net.ntp.TimeStamp;
 
@@ -81,14 +83,6 @@ public class EZScreenHelper {
 	private WebView webView;
 	private TextureView mjpegView;
 	private Handler mainHandler = new Handler(Looper.getMainLooper());
-	private Runnable resetToStandby = new Runnable() {
-
-		@Override
-		public void run() {
-			resetToStandby();
-		}
-		
-	};
 	private AirPlayServer airplayService;
 	private MulticastLock lock;
 	private float pendingStartingPosition = -1;
@@ -116,7 +110,8 @@ public class EZScreenHelper {
 		return serviceName;
 	}
 	public static final int SERVER_EZSCREEN = 0x01<<0; 
-	public static final int SERVER_AIRPLAY = 0x01<<1; 
+	public static final int SERVER_AIRPLAY = 0x01<<1;
+	private List<View> allViews = new ArrayList<View>();
 	public EZScreenHelper(Context context, String serviceName, ViewGroup frame, WebView webView, TextureView textureView, ViewGroup musicView, int servers) {
 		this.context = context;
 		this.musicView = musicView;
@@ -129,17 +124,25 @@ public class EZScreenHelper {
 		}
 		this.container = frame;
 		audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+		addView(musicView);
 		if (webView != null) {
 			initWebView();
+			addView(webView);
 		}
 		if (mjpegView != null) {
 			initMjpegView();
+			addView(mjpegView);
 		}
 		if (needToLoadAirPlay()) {
 			initMirrorView();
+			addView(mirrorView);
 		}
 	}
-
+	private void addView(View view) {
+		if (view != null && !allViews.contains(view)) {
+			allViews.add(view);
+		}
+	}
 	private boolean needToLoadAirPlay() {
 		return (servers & SERVER_AIRPLAY) != 0;
 	}
@@ -157,11 +160,6 @@ public class EZScreenHelper {
 
 	public Handler getMainHandler() {
 		return mainHandler;
-	}
-
-
-	public Runnable getResetToStandby() {
-		return resetToStandby;
 	}
 
 	public AirPlayServer getAirplayService() {
@@ -379,7 +377,7 @@ public class EZScreenHelper {
 	private void hideMjpegView() {
 		final int invisible = View.INVISIBLE;
 		if (mjpegView != null) {
-			setViewVisibility(mjpegView, invisible);
+			setViewVisibility(mjpegView, invisible);			
 		}
 		if (webView != null) {
 			setViewVisibility(webView, View.VISIBLE);
@@ -388,6 +386,11 @@ public class EZScreenHelper {
 
 	private void setViewVisibility(final View view, final int visibility) {
 		if (view != null) {
+			if (view == mjpegView && 
+					visibility != View.VISIBLE && 
+					mjpegView.getVisibility() != visibility) {
+				clearMjpegView();
+			}
 			this.getMainHandler().post(new Runnable() {
 
 				@Override
@@ -396,6 +399,13 @@ public class EZScreenHelper {
 				}
 
 			});
+		}
+	}
+	private void clearMjpegView() {
+		Canvas canvas = mjpegView.lockCanvas();
+		if (canvas != null) {
+			canvas.drawARGB(0xff, 0, 0, 0);
+			mjpegView.unlockCanvasAndPost(canvas);
 		}
 	}
 
@@ -430,12 +440,7 @@ public class EZScreenHelper {
 	private void showWebView() {
 		if (webView != null) {
 			setViewVisibility(webView, View.VISIBLE);
-		}
-		if (mirrorView != null) {
-			setViewVisibility(mirrorView, View.INVISIBLE);
-		}
-		if (mjpegView != null) {
-			setViewVisibility(mjpegView, View.INVISIBLE);
+			hideAllViewsExcept(webView);
 		}
 	}
 
@@ -497,12 +502,7 @@ public class EZScreenHelper {
 	private void showMjpegView() {
 		if (mjpegView != null) {
 			setViewVisibility(mjpegView, View.VISIBLE);
-		}
-		if (webView != null) {
-			setViewVisibility(webView, View.INVISIBLE);
-		}
-		if (mirrorView != null) {
-			setViewVisibility(mirrorView, View.INVISIBLE);
+			hideAllViewsExcept(mjpegView);
 		}
 	}
 
@@ -555,6 +555,7 @@ public class EZScreenHelper {
 				@Override
 				public void resetToStandby() {
 					EZScreenHelper.this.resetToStandby();
+					informDelegateDisconnected();
 				}
 
 				@Override
@@ -919,7 +920,10 @@ public class EZScreenHelper {
 	}
 
 	protected void showMusicView() {
-		setViewVisibility(musicView, View.VISIBLE);
+		if (musicView != null) {
+			setViewVisibility(musicView, View.VISIBLE);
+			hideAllViewsExcept(musicView);
+		}
 	}
 
 	protected void updateAirTunesMetadata(final String albumName, final String artist,
@@ -1023,6 +1027,13 @@ public class EZScreenHelper {
 			
 		});
 	}
+	private void hideAllViewsExcept(View exception) {
+		for (View view : allViews) {
+			if (view != exception) {
+				setViewVisibility(view, View.INVISIBLE);
+			}
+		}
+	}
 	private void hideMirrorView() {
 		if (mirrorView != null) {
 			setViewVisibility(mirrorView, View.INVISIBLE);
@@ -1034,12 +1045,7 @@ public class EZScreenHelper {
 	private void showMirrorView() {
 		if (mirrorView != null) {
 			setViewVisibility(mirrorView, View.VISIBLE);
-		}
-		if (webView != null) {
-			setViewVisibility(webView, View.INVISIBLE);
-		}
-		if (mjpegView != null) {
-			setViewVisibility(mjpegView, View.INVISIBLE);
+			hideAllViewsExcept(mirrorView);
 		}
 	}
 
@@ -1171,7 +1177,6 @@ public class EZScreenHelper {
 	public void stop() {
 		stopMirrorDecoding();
 		stopMJpegClient();
-		this.getMainHandler().removeCallbacks(this.getResetToStandby());
 		resetToStandby();
 		cleanUpServers();
 		if (this.getLock() != null) {
