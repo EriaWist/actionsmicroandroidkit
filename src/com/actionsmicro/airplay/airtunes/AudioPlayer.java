@@ -56,21 +56,21 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 
 			@Override
 			public void request_resend(int begin, int end) {
+				if (end < begin) {
+					return;
+				}
 				Log.i(TAG, "Resend Request: " + begin + "::" + end);
-//				if (end < begin) {
-//					return;
-//				}
-//				
-//				int len = end - begin + 1;
-//			    byte[] request = new byte[] { (byte) 0x80, (byte) (0x55|0x80), 0x01, 0x00, (byte) ((begin & 0xFF00) >> 8), (byte) (begin & 0xFF), (byte) ((len & 0xFF00) >> 8), (byte) (len & 0xFF)};
-//
-//			    try {
-//			    	DatagramPacket temp = new DatagramPacket(request, request.length, session.getAddress(), session.getControlPort());
-//			    	csock.send(temp);
-//
-//			    } catch (IOException e) {
-//			    	e.printStackTrace();
-//			    }
+				
+				int len = end - begin + 1;
+			    byte[] request = new byte[] { (byte) 0x80, (byte) (0x55|0x80), 0x01, 0x00, (byte) ((begin & 0xFF00) >> 8), (byte) (begin & 0xFF), (byte) ((len & 0xFF00) >> 8), (byte) (len & 0xFF)};
+
+			    try {
+			    	DatagramPacket temp = new DatagramPacket(request, request.length, session.getAddress(), session.getControlPort());
+			    	csock.send(temp);
+
+			    } catch (IOException e) {
+			    	e.printStackTrace();
+			    }
 			}
 			
 		});
@@ -150,6 +150,9 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 								inputBuffers[bufferIndex].clear();
 								inputBuffers[bufferIndex].put(packet, 0, data.position());
 								inputBuffers[bufferIndex].rewind();
+								long timestamp = convertRtpTimestampToNtp(bufferInfo.timestamp);
+								if (playbackClock.waitUntilTime(timestamp)) {
+								}
 								decoder.queueInputBuffer(bufferIndex, 0, data.position(), bufferInfo.timestamp, 0);
 								break;
 							} else {
@@ -312,10 +315,11 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 						int payloadSize = packet.getLength() - extraOffset - 12;
 						byte[] pktp = new byte[payloadSize];
 						packetBuffer.get(pktp, 0, payloadSize);
+						debugLog("server port:"+"receive packet seqno:"+seqno);
 						pureAudioBuffer.putPacketInBuffer(seqno, pktp, timestamp);
 						debugLog("server port:"+" timestamp:"+timestamp + ", correlated timestamp:"+convertRtpTimestampToNtp(timestamp));
 					} else {
-						Log.w(TAG, "server port: unhandled control packet type:"+type);
+						debugLog("server port: unhandled control packet type:"+type);
 					}
 				}
 
@@ -346,6 +350,20 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 							ntpTimestamp = TimeStamp.getTime(ntpTime);
 						}
 						debugLog("control port: timestamp:"+timestamp+", ntpTime:"+ntpTimestamp+", nextTimestamp:"+nextTimestamp);
+					} else if (type == 86) {
+						packetBuffer.position(6);						
+						int seqno = (packetBuffer.getShort() & 0xffff);
+						long timestamp = (packetBuffer.getInt() & 0xffffffffL);
+						int payloadSize = packet.getLength() - 16;
+						if (payloadSize > 0) {
+							byte[] pktp = new byte[payloadSize];
+							packetBuffer.position(16);						
+							packetBuffer.get(pktp, 0, payloadSize);
+							debugLog("control port: retransmit reply: seqno:"+seqno+", timestamp:"+timestamp+", remaining:"+packetBuffer.remaining());
+							pureAudioBuffer.putPacketInBuffer(seqno, pktp, timestamp);
+						} else {
+							Log.w(TAG, "control port: wrong payload size:"+payloadSize);
+						}
 					} else {
 						Log.w(TAG, "control port: unhandled control packet type:"+type);
 					}
