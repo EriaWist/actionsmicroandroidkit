@@ -166,17 +166,25 @@ public class AudioBuffer {
 				synced = true;
 			}
 	
-			@SuppressWarnings("unused")
 			int outputSize = 0;
 			if (seqno == writeIndex){													// Packet we expected
 				outputSize = this.alac_decode(data, audioBuffer[(seqno % BUFFER_FRAMES)].data);		// With (seqno % BUFFER_FRAMES) we loop from 0 to BUFFER_FRAMES
 				audioBuffer[(seqno % BUFFER_FRAMES)].ready = true;
 				writeIndex++;
 			} else if(seqno > writeIndex){												// Too early, did we miss some packet between writeIndex and seqno?
-				server.request_resend(writeIndex, seqno);
-				outputSize = this.alac_decode(data, audioBuffer[(seqno % BUFFER_FRAMES)].data);
-				audioBuffer[(seqno % BUFFER_FRAMES)].ready = true;
-				writeIndex = seqno + 1;
+				if (seqno - writeIndex > 65000 && seqno >= readIndex) {
+					debugLogW("readIndex < seqno not yet played but too late. Still ok");
+					outputSize = this.alac_decode(data, audioBuffer[(seqno % BUFFER_FRAMES)].data);
+					audioBuffer[(seqno % BUFFER_FRAMES)].ready = true;
+
+				} else {
+					server.request_resend(writeIndex, seqno - 1);
+					if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {					
+						outputSize = this.alac_decode(data, audioBuffer[(seqno % BUFFER_FRAMES)].data);
+						audioBuffer[(seqno % BUFFER_FRAMES)].ready = true;
+						writeIndex = seqno + 1;
+					}
+				}
 			} else if(seqno > readIndex){			
 				if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
 					debugLogW("readIndex < seqno < writeIndex not yet played but too late. Still ok");
