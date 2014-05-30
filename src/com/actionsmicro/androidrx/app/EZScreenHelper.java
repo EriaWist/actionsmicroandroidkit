@@ -1080,6 +1080,10 @@ public class EZScreenHelper {
 			
 		});
 	}
+	public void start(int servers) {
+		this.servers = servers;
+		start();
+	}
 	public void start() {
 		stateContext = new StateContext(new IdleState()) {
 			@Override
