@@ -15,6 +15,10 @@ import android.view.WindowManager;
 
 public class Device {
 
+	public static final String DEVICE_TYPE_PHONE = "phone";
+	public static final String DEVICE_TYPE_PAD = "pad";
+	public static final String DEVICE_TYPE_TV = "tv";
+	
 	private static final String TAG = "Device";
 
 	static public int getDeviceNaturlOrientation(Activity activity) {
@@ -44,12 +48,6 @@ public class Device {
 		return (xlarge || large);
 	}
 
-	/**
-	 * This method is used to judge whether device is tablet.
-	 *
-	 * @param context Context to get resources and device specific display metrics
-	 * @return return true if is a tablet
-	 */
 	public static String deviceType(Context context) {
 		Configuration config = context.getResources().getConfiguration();
 		DisplayMetrics metrics = new DisplayMetrics();
@@ -66,20 +64,20 @@ public class Device {
 					|| metrics.densityDpi == DisplayMetrics.DENSITY_HIGH
 					|| metrics.densityDpi == DisplayMetrics.DENSITY_MEDIUM
 					|| metrics.densityDpi == DisplayMetrics.DENSITY_XHIGH) {
-				return "tablet";
+				return DEVICE_TYPE_PAD;
 			}
 		}
 		// If large, checks density should be hdpi, tvdpi
 		boolean isLarge = ((config.screenLayout &Configuration.SCREENLAYOUT_SIZE_MASK) == Configuration.SCREENLAYOUT_SIZE_LARGE);
 		if(isLarge) {
 			if(metrics.densityDpi == DisplayMetrics.DENSITY_HIGH) {
-				return "tablet";
+				return DEVICE_TYPE_PAD;
 			}
 			if (metrics.densityDpi == DisplayMetrics.DENSITY_TV) {
-				return "tv";
+				return DEVICE_TYPE_TV;
 			}
 		}
-		return "phone";
+		return DEVICE_TYPE_PHONE;
 	}
 	public static String getAppMacAddress(Context context) {
 		WifiManager wifiMan = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
