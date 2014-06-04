@@ -4,6 +4,7 @@ import com.actionsmicro.utils.Log;
 import com.google.android.gms.cast.ApplicationMetadata;
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 
@@ -53,12 +54,19 @@ public class GoogleCastApp {
 		}
 	}
 
-	public void stopApplication() {
+	public void stopApplication(ResultCallback<Status> resultCallback) {
 		if (googleCastApiClient != null && applicationStarted) {
-			if (googleCastApiClient != null && googleCastApiClient.isConnected()) {
-				Cast.CastApi.stopApplication(googleCastApiClient);
-			}
 			applicationStarted = false;
+			if (googleCastApiClient != null && googleCastApiClient.isConnected()) {
+				PendingResult<Status> pendingResult = Cast.CastApi.stopApplication(googleCastApiClient);
+				if (resultCallback != null) {
+					pendingResult.setResultCallback(resultCallback);
+					return;
+				}
+			}
+		}
+		if (resultCallback != null) {
+			resultCallback.onResult(null);
 		}
 	}
 
