@@ -3,7 +3,8 @@
 	<!-- The local.properties file is created and updated by the 'android' tool.
          It contains the path to the SDK. It should *NOT* be checked into
          Version Control Systems. -->
-	<property file="local.properties" />
+	<property environment="env" />
+    <property file="local.properties" />
 
 	<!-- quick check on sdk.dir -->
     <fail
@@ -21,7 +22,7 @@
                 <include name="imp/androidrx/AndroidRxFinder.java"/>
                 <include name="imp/googlecast/GoogleCastFinder.java"/>
             </fileset>
-            <bottom><![CDATA[SDK v{SDK_VERSION_STRING} ©{BUILD_YEAR} Actions-Micro. All rights reserved. {BUILD_DATE}]]></bottom>
+            <bottom><![CDATA[SDK v${env.SDK_VERSION_STRING} ©${env.BUILD_YEAR} Actions-Micro. All rights reserved. ${env.BUILD_DATE}]]></bottom>
         </javadoc>
     </target>
 </project>
