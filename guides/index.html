@@ -58,8 +58,8 @@
         </h2>
         <h3>Authorization</h3>
         <p>
-Before sending image to the device, client needs to ask for permission via AuthenticationApi.
-You need to use AuthorizationApiBuilder to create AuthorizationApi instance and ask permission to display contents via requestToDisplay. There are bunch of callbacks, which are also setting up via AuthorizationApiBuilder.setAuthorizationListener.            
+Before sending image to the device, client needs to ask for permission via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApi.html">AuthenticationApi</a>.
+You need to use <a href="../doc/com/actionsmicro/ezcast/AuthorizationApiBuilder.html">AuthorizationApiBuilder</a> to create AuthorizationApi instance and ask permission to display contents via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApi.html#requestToDisplay(int,%20int)">requestToDisplay</a>. There are bunch of callbacks, which are also setting up via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApiBuilder.html#setAuthorizationListener(com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener)">AuthorizationApiBuilder.setAuthorizationListener</a>.
         </p>
 
 <pre class="prettyprint">
@@ -101,7 +101,7 @@ protected void onPause() {
         
         <h3>Display Image</h3>
         <p>
-        After the permission has been granted,  client then can display contents via DisplayApi. To connect to display API, you need to use DisplayApiBuilder. There are callbacks regarding to display as well which of those are setup via DisplayApiBuilder. These callbacks are DisplayListener and ConnectionManager. Before displaying anything client also needs to call startDisplaying.    
+        After the permission has been granted,  client then can display contents via <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html">DisplayApi</a>. To connect to display API, you need to use <a href="../doc/com/actionsmicro/ezcast/DisplayApiBuilder.html">DisplayApiBuilder</a>. There are callbacks regarding to display as well which of those are setup via DisplayApiBuilder. These callbacks are <a href="../doc/com/actionsmicro/ezcast/DisplayApi.DisplayListener.html">DisplayListener</a> and <a href="../doc/com/actionsmicro/ezcast/ConnectionManager.html">ConnectionManager</a>. Before displaying anything client also needs to call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#startDisplaying()">startDisplaying</a>.    
         </p>
         
 <pre class="prettyprint">
@@ -155,7 +155,7 @@ displayApi.connect();
 displayApi.startDisplaying();
 </pre>
         <p>
-        To send image data to the device, client should call sendJpegEncodedScreenData
+        To send image data to the device, client should call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#sendJpegEncodedScreenData(java.io.InputStream,%20long)">sendJpegEncodedScreenData</a>
         and the data must be encoded as JPEG. 
         </p>
         
@@ -172,7 +172,7 @@ try {
 }
 </pre>
         <p>
-        To stop displaying image, client can call stopDisplaying. Client should
+        To stop displaying image, client can call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#stopDisplaying()">stopDisplaying</a>. Client should
         disconnect from DisplayApi when DisplayApi is no longer needed to release the
         resources obtained by the api instance.
         </p>
@@ -198,7 +198,7 @@ protected void onPause() {
         </p>
         <h3>Create an Android Activity</h3>
         <p>
-        Just as a normal Android activity, you need to create a subclass of Activity and modify the menifest.xml as documented in Android's guides and documents.
+        Just as a normal Android activity, you need to create a subclass of Activity and modify the AndroidManifest.xml as documented in <a href="http://developer.android.com/reference/android/app/Activity.html">Android's guides and documents</a>.
         </p>
         <h3>Change the Intent</h3>
         <p>
@@ -220,7 +220,7 @@ protected void onListItemClick (ListView l, View v, int position, long id) {
         
         <h3>DeviceInfo</h3>
         <p>
-        To obtain the DeviceInfo, you can get it from the intent extra. The extra name is "com.actionsmicro.ezcast.device_info".    
+        To obtain the <a href="../doc/com/actionsmicro/ezcast/DeviceInfo.html">DeviceInfo</a>, you can get it from the intent extra. The extra name is <em>"com.actionsmicro.ezcast.device_info"</em>.    
         </p>
         
 <pre class="prettyprint">
@@ -235,6 +235,10 @@ protected void onCreate(Bundle savedInstanceState) {
         <p>
         And then you are good to go to play with AuthenticationApi and DisplayApi which are mentioned in previous sections.    
         </p>
+        <h2>See Also</h2>
+        
+        <p><a href="../doc/index.html">EZCast SDK References</a></p>
+
         <h5>Enjoy It!</h5>
         </div>
         <div class="span4"> 
