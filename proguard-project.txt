@@ -64,3 +64,11 @@
 -keep public class com.actionsmicro.ezcast.imp.googlecast.GoogleCastFinder {
 	public *;
 }
+
+-keep class android.** {
+  *;
+}
+
+-keep class com.android.** {
+  *;
+}
