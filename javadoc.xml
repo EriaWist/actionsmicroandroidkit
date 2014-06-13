@@ -24,7 +24,7 @@
                 <include name="imp/androidrx/AndroidRxFinder.java"/>
                 <include name="imp/googlecast/GoogleCastFinder.java"/>
             </fileset>
-            <bottom><![CDATA[SDK v${env.SDK_VERSION_STRING} ©${env.BUILD_YEAR} Actions-Micro. All rights reserved. ${env.BUILD_DATE}]]></bottom>
+            <bottom><![CDATA[SDK v${env.SDK_VERSION_STRING}. ©${env.BUILD_YEAR} Actions-Micro. All rights reserved. ${env.BUILD_DATE}]]></bottom>
         </javadoc>
     </target>
 </project>

@@ -18,6 +18,10 @@ ant -buildfile build.xml clean release
 echo rename jar file with version string
 mv bin/proguard/obfuscated.jar bin/proguard/$1_$2.jar
 
+export SDK_VERSION_STRING=${BUILD_VERSION_STRING}
+export BUILD_YEAR=`date +'%Y'`
+export BUILD_DATE="`date `"
+
 echo generate Javadoc
 ant -buildfile javadoc.xml javadoc
 
