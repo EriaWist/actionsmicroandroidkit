@@ -118,10 +118,7 @@ public class EZScreenHelper {
 		this.webView = webView;
 		this.mjpegView = textureView;
 		this.serviceName = serviceName;
-		this.servers = servers;
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-			this.servers &= ~SERVER_AIRPLAY;
-		}
+		updateServerBits(servers);
 		this.container = frame;
 		audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 		addView(musicView);
@@ -597,12 +594,12 @@ public class EZScreenHelper {
 
 				@Override
 				public void onInitializationStart() {
-					ezScreenReady = false;
+					ezScreenInitialized = false;
 				}
 
 				@Override
 				public void onInitializationFinished() {
-					ezScreenReady = true;
+					ezScreenInitialized = true;
 					informInitializationListenerOnFinishedIfNeeded();
 				}
 
@@ -621,8 +618,8 @@ public class EZScreenHelper {
 	private MediaCodec decoder;
 	private Thread renderThread;
 	private boolean stopRenderer = false;
-	protected boolean airplayReady;
-	private boolean ezScreenReady;
+	protected boolean airplayInitialized;
+	private boolean ezScreenInitialized;
 	protected boolean alreadyFailed;
 	private StateContext stateContext;
 	
@@ -837,7 +834,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onInitalizationFinished() {
-					airplayReady = true;
+					airplayInitialized = true;
 					informInitializationListenerOnFinishedIfNeeded();
 				}
 
@@ -947,8 +944,8 @@ public class EZScreenHelper {
 	}
 
 	protected void informInitializationListenerOnFinishedIfNeeded() {
-		if ((airplayReady || !needToLoadAirPlay()) && 
-				(ezScreenReady || !needToLoadEzScreen())) {
+		if ((airplayInitialized || !needToLoadAirPlay()) && 
+				(ezScreenInitialized || !needToLoadEzScreen())) {
 			if (initializationListener != null) {
 				initializationListener.onInitalizationFinished();
 			}
@@ -1081,8 +1078,14 @@ public class EZScreenHelper {
 		});
 	}
 	public void start(int servers) {
-		this.servers = servers;
+		updateServerBits(servers);
 		start();
+	}
+	private void updateServerBits(int servers) {
+		this.servers = servers;
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+			this.servers &= ~SERVER_AIRPLAY;
+		}
 	}
 	public void start() {
 		stateContext = new StateContext(new IdleState()) {
@@ -1187,8 +1190,8 @@ public class EZScreenHelper {
 			this.getLock().release();
 			this.setLock(null);
 		}
-		ezScreenReady = false;
-		airplayReady = false;
+		ezScreenInitialized = false;
+		airplayInitialized = false;
 	}
 
 	public ConnectionListener getConnectionListener() {
