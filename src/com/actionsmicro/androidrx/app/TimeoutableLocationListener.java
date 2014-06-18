@@ -67,8 +67,10 @@ public class TimeoutableLocationListener implements LocationListener {
  
     private void stopLocationUpdateAndTimer() {
         locaMan.removeUpdates(this);
-        timerTimeout.cancel();
-        timerTimeout.purge();
-        timerTimeout = null;
+        if (timerTimeout != null) {
+        	timerTimeout.cancel();
+        	timerTimeout.purge();
+        	timerTimeout = null;
+        }
     }
 }
