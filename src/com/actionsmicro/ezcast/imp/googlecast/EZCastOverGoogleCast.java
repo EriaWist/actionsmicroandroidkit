@@ -389,12 +389,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	@Override
 	public boolean pause() {
 		if (mRemoteMediaPlayer != null) {
-			try {
-				mRemoteMediaPlayer.pause(googleCastApiClient);
-			} catch (IOException e) {
-				e.printStackTrace();
-				return false;
-			}
+			mRemoteMediaPlayer.pause(googleCastApiClient);
 			return true;
 		}
 		return false;
@@ -402,12 +397,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	@Override
 	public boolean resume() {
 		if (mRemoteMediaPlayer != null) {
-			try {
-				mRemoteMediaPlayer.play(googleCastApiClient);
-			} catch (IOException e) {
-				e.printStackTrace();
-				return false;
-			}
+			mRemoteMediaPlayer.play(googleCastApiClient);
 			return true;
 		}
 		return false;
@@ -458,14 +448,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	public boolean stop() {
 		if (mRemoteMediaPlayer != null &&
 				playerState != State.STOPPED) {
-			try {
-				mRemoteMediaPlayer.stop(googleCastApiClient);
-				playerState = State.STOPPED;
-				handleMediaPlayerStop();
-			} catch (IOException e) {
-				e.printStackTrace();
-				return false;
-			}
+			mRemoteMediaPlayer.stop(googleCastApiClient);
+			playerState = State.STOPPED;
+			handleMediaPlayerStop();
 			return true;
 		}
 		return false;
