@@ -26,6 +26,7 @@ import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Build;
@@ -57,6 +58,8 @@ import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.JpegCallback;
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
 import com.yutel.silver.vo.AirplayState;
 
 public class EZScreenHelper {
@@ -106,6 +109,13 @@ public class EZScreenHelper {
 	private TextureView mirrorView;
 	private InitializationListener initializationListener;
 	private ViewGroup musicView;
+	private Tracker gaTracker;
+	public Tracker getGaTracker() {
+		return gaTracker;
+	}
+	public void setGaTracker(Tracker tracker) {
+		this.gaTracker = tracker;
+	}
 	private String getServiceName() {
 		return serviceName;
 	}
@@ -235,6 +245,7 @@ public class EZScreenHelper {
 		stopVideo();
 		showWebView();
 		displayUrl("images/standby.jpg");
+		trackScreenHit("home");
 	}
 	private void stopVideo() {
 		invokeJavascript("javascript:stopVideo();");
@@ -557,6 +568,13 @@ public class EZScreenHelper {
 
 				@Override
 				public void playVideo(String url, String callback) {
+					try {
+						Uri uri = Uri.parse(url);
+						trackScreenHit("ezcastrx.media", 1, uri.getHost());
+					} catch (Exception e) {
+						trackScreenHit("ezcastrx.media");						
+					}
+
 					EZScreenHelper.this.playVideo(url, callback);
 				}
 
@@ -577,6 +595,7 @@ public class EZScreenHelper {
 				
 				@Override
 				public void displayUrl(String url) {
+					trackScreenHit("ezcastrx.mirror");
 					EZScreenHelper.this.displayUrl(url);
 				}
 				
@@ -664,7 +683,12 @@ public class EZScreenHelper {
 					Log.d(TAG, "loadVideo:"+url);
 					Log.d(TAG, "loadVideo.rate:"+rate);
 					Log.d(TAG, "loadVideo.position:"+position);
-					
+					try {
+						Uri uri = Uri.parse(url);
+						trackScreenHit("airplay.video", 1, uri.getHost());
+					} catch (Exception e) {
+						trackScreenHit("airplay.video");						
+					}
 					stateContext.onLoadAirPlayVideo(url, rate, position);
 				}
 				
@@ -688,6 +712,7 @@ public class EZScreenHelper {
 				@Override
 				public void onStartMirroring(InetAddress remoteAddress) {
 					Log.d(TAG, "onStartMirroring");
+					trackScreenHit("airplay.mirror");
 					stateContext.onStartMirroring(remoteAddress);
 					doAirPlayMirror(remoteAddress);
 					informDelegateConnected();
@@ -859,6 +884,7 @@ public class EZScreenHelper {
 				@Override
 				public void onReceiveAirTunesMetadata(String albumName,
 						String artist, String title) {
+					trackScreenHit("airplay.music");
 					stateContext.onReceiveAirTunesMetadata(albumName, artist, title);
 				}
 
@@ -1346,5 +1372,18 @@ public class EZScreenHelper {
 
 	public void setPlaybackDelegate(PlaybackDelegate playbackDelegate) {
 		this.playbackDelegate = playbackDelegate;
+	}
+	
+	private void trackScreenHit(String screenName) {
+		if (gaTracker != null) {
+			gaTracker.setScreenName(screenName);
+			gaTracker.send(new HitBuilders.AppViewBuilder().build());
+		}
+	}
+	private void trackScreenHit(String screenName, int customDimensionIndex, String dimension) {
+		if (gaTracker != null) {
+			gaTracker.setScreenName(screenName);
+			gaTracker.send(new HitBuilders.AppViewBuilder().setCustomDimension(customDimensionIndex, dimension).build());
+		}
 	}
 }
