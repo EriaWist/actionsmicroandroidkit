@@ -288,8 +288,9 @@ public class EZScreenHelper {
 	public void onDurationChange(int seconds) {
 		Log.d(TAG, "onDurationChange:"+seconds);
 		if (this.isMetadataLoaded()) {
-			this.getAirplayService().sendEvent();
-
+			if (getAirplayService() != null) {
+				this.getAirplayService().sendEvent();
+			}
 			this.setDuration(seconds);
 			if (this.getPendingStartingPosition() != -1 && this.getPendingStartingPosition() != 0) {
 				long seekTo = (long)(this.getDuration()*this.getPendingStartingPosition());
@@ -318,7 +319,9 @@ public class EZScreenHelper {
 	public void onError(int error) {
 		Log.d(TAG, "onError:"+error);
 		this.setState(AirplayState.ERROR);
-		this.getAirplayService().sendEvent();
+		if (getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}
 		if (playbackDelegate != null) {
 			playbackDelegate.onError(error);
 		}
@@ -336,7 +339,9 @@ public class EZScreenHelper {
 	public void onPaused() {
 		Log.d(TAG, "onPaused:");
 		this.setState(AirplayState.PAUSING);
-		this.getAirplayService().sendEvent();
+		if (getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}
 //		if (!initializing) {
 //			if (state != AirplayState.STOPPED) {
 //				state = AirplayState.PAUSING;
@@ -350,7 +355,9 @@ public class EZScreenHelper {
 	public void onWaiting() {
 		Log.d(TAG, "onWaiting:");
 		this.setState(AirplayState.CACHING);
-		this.getAirplayService().sendEvent();
+		if (getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}
 	}
 	@JavascriptInterface
 	public void onSeeked() {
