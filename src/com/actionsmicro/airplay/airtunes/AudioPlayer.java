@@ -130,39 +130,43 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 				byte[] packet = new byte[2048];
 				final ByteBuffer[] inputBuffers = decoder.getInputBuffers();
 				final PureAudioBuffer.BufferInfo bufferInfo = new PureAudioBuffer.BufferInfo();
-				do {
-					int bufferIndex = decoder.dequeueInputBuffer(1000);
-					if (bufferIndex != -1) {
-						do {
-							ByteBuffer data = pureAudioBuffer.getNextBuffer(bufferInfo);
-							if (data != null && data.position() > 0) {
-								int i = 0;
-								initAES();
-								for (i=0; i+16<=data.position(); i += 16){
-									// Decrypt
-									decryptAES(data.array(), i, 16, packet, i);
-								}							    
-							    // The rest of the packet is unencrypted
-							    for (int k = 0; k<(data.position() % 16); k++){
-							    	packet[i+k] = data.array()[i+k];
-							    }
-								
-								inputBuffers[bufferIndex].clear();
-								inputBuffers[bufferIndex].put(packet, 0, data.position());
-								inputBuffers[bufferIndex].rewind();
-								long timestamp = convertRtpTimestampToNtp(bufferInfo.timestamp);
-								if (playbackClock.waitUntilTime(timestamp)) {
+				try {
+					do {
+						int bufferIndex = decoder.dequeueInputBuffer(1000);
+						if (bufferIndex != -1) {
+							do {
+								ByteBuffer data = pureAudioBuffer.getNextBuffer(bufferInfo);
+								if (data != null && data.position() > 0) {
+									int i = 0;
+									initAES();
+									for (i=0; i+16<=data.position(); i += 16){
+										// Decrypt
+										decryptAES(data.array(), i, 16, packet, i);
+									}							    
+									// The rest of the packet is unencrypted
+									for (int k = 0; k<(data.position() % 16); k++){
+										packet[i+k] = data.array()[i+k];
+									}
+
+									inputBuffers[bufferIndex].clear();
+									inputBuffers[bufferIndex].put(packet, 0, data.position());
+									inputBuffers[bufferIndex].rewind();
+									long timestamp = convertRtpTimestampToNtp(bufferInfo.timestamp);
+									if (playbackClock.waitUntilTime(timestamp)) {
+									}
+									decoder.queueInputBuffer(bufferIndex, 0, data.position(), bufferInfo.timestamp, 0);
+									break;
+								} else {
+									Log.w(TAG, "getNextBuffer no data");
 								}
-								decoder.queueInputBuffer(bufferIndex, 0, data.position(), bufferInfo.timestamp, 0);
-								break;
-							} else {
-								Log.w(TAG, "getNextBuffer no data");
-							}
-						} while (!decoderThreadShouldStop);
-					} else {
-						debugLog("dequeueInputBuffer:-1 buffer under-run ");						
-					}
-				} while (!decoderThreadShouldStop);
+							} while (!decoderThreadShouldStop);
+						} else {
+							debugLog("dequeueInputBuffer:-1 buffer under-run ");						
+						}
+					} while (!decoderThreadShouldStop);
+				} catch (IllegalStateException e) {
+					
+				}
 				Log.d(TAG, decoderThread.getName() + " ends");
 			}
 			
@@ -186,42 +190,46 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 			public void run() {
 				
 				track.play();
-				ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
-				final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-				final byte[] packet = new byte[2048];
-				while (!playerThreadShouldStop) {
-					int outputBufferIndex = -1;
-					try {
-						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 500000);
-					} catch(Exception e) {
-						Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
-						break;
-					} finally {
-					
-					}
-//					Log.d(TAG, "dequeueOutputBuffer :"+outputBufferIndex);
-					if (outputBufferIndex >= 0) {		
-						long timestamp = convertRtpTimestampToNtp(bufferInfo.presentationTimeUs);
-						if (timestamp != 0) { // timestamp convert is ready
-							if (playbackClock == null) {
-								playbackClock = new SimplePlaybackClock(timestamp, 200, TAG);
-							}
-							if (playbackClock.waitUntilTime(timestamp)) {
-								ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
-								outputBuffer.position(bufferInfo.offset);
-								outputBuffer.get(packet, 0, bufferInfo.size);
-								track.write(packet, 0, bufferInfo.size);
-							}
+				try {
+					ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
+					final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+					final byte[] packet = new byte[2048];
+					while (!playerThreadShouldStop) {
+						int outputBufferIndex = -1;
+						try {
+							outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 500000);
+						} catch(Exception e) {
+							Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
+							break;
+						} finally {
+
 						}
-						decoder.releaseOutputBuffer(outputBufferIndex, false);
-					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-						outputBuffers = decoder.getOutputBuffers();
-						
-					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-						MediaFormat outputFormat = decoder.getOutputFormat();
-						Log.d(TAG, "outputFormat :"+outputFormat);
-						
+						//					Log.d(TAG, "dequeueOutputBuffer :"+outputBufferIndex);
+						if (outputBufferIndex >= 0) {		
+							long timestamp = convertRtpTimestampToNtp(bufferInfo.presentationTimeUs);
+							if (timestamp != 0) { // timestamp convert is ready
+								if (playbackClock == null) {
+									playbackClock = new SimplePlaybackClock(timestamp, 200, TAG);
+								}
+								if (playbackClock.waitUntilTime(timestamp)) {
+									ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
+									outputBuffer.position(bufferInfo.offset);
+									outputBuffer.get(packet, 0, bufferInfo.size);
+									track.write(packet, 0, bufferInfo.size);
+								}
+							}
+							decoder.releaseOutputBuffer(outputBufferIndex, false);
+						} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+							outputBuffers = decoder.getOutputBuffers();
+
+						} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+							MediaFormat outputFormat = decoder.getOutputFormat();
+							Log.d(TAG, "outputFormat :"+outputFormat);
+
+						}
 					}
+				} catch (IllegalStateException e) {
+					
 				}
 				track.stop();
 				track.release();
