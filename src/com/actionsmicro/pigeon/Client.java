@@ -582,7 +582,12 @@ public class Client {
 		}
 	}
 	// TODO move to ClientV2
-	protected Observable onNotificationObservable = new Observable();
+	protected Observable onNotificationObservable = new Observable() {
+		@Override
+		public boolean hasChanged() {
+			return true;
+		}
+	};
 	class RemoteRequestToChangePostionNotification {
 		public final int numberOfWindows;
 		public final int position;
