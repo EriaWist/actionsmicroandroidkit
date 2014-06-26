@@ -44,7 +44,11 @@ public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
 					if (wait <= 0) {
 						break;
 					} else if (wait > 1000) {//exception
-						Log.e(TAG, "presentationTime:"+presentationTime+" is way too early for "+wait+"ms. let's skip");
+						if (clockOffset == 0) { // clock is not synced yet
+							debugLogW("presentationTime:"+presentationTime+" is way too early for "+wait+"ms. but clock is not synced yet, let it pass, now is "+now());
+							break;
+						}
+						Log.e(TAG+"."+debugPrefix, "presentationTime:"+presentationTime+" is way too early for "+wait+"ms. let's skip, now is "+now());
 						return false;
 					}
 					debugLogW("presentationTime:"+presentationTime+" is too early for "+wait+"ms. let's wait");
@@ -55,7 +59,7 @@ public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
 				}
 			}
 		}
-		debugLog("presentationTime:"+presentationTime+" is good to go");
+		debugLog("presentationTime:"+presentationTime+" is good to go, now is "+now());
 		exceptionCount = 0;
 		return true;
 	}

@@ -11,8 +11,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.net.ntp.TimeStamp;
-
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -721,8 +719,6 @@ public class EZScreenHelper {
 					Log.d(TAG, "onStartMirroring");
 					trackScreenHit("airplay.mirror");
 					stateContext.onStartMirroring(remoteAddress);
-					doAirPlayMirror(remoteAddress);
-					informDelegateConnected();
 				}
 
 				private void startRenderer() {
@@ -753,7 +749,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onSpsAvailable(byte[] sps) {
-					decodeBytesWithPrefix(nalHeader, sps, 0, sps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+					decodeBytesWithPrefix(nalHeader, sps, 0, sps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG, -1);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
@@ -767,11 +763,12 @@ public class EZScreenHelper {
 					}					
 				}
 
-				private void decodeBytesWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags) {
+				private void decodeBytesWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags, long timeoutUs) {
 					if (decoder != null && length > 0) {
 						int bufferIndex = -1;
-						bufferIndex = decoder.dequeueInputBuffer(5000);
+						bufferIndex = decoder.dequeueInputBuffer(timeoutUs);
 						if (bufferIndex != -1) {
+							Log.d(TAG, "dequeueInputBuffer ("+prefix+"):"+bufferIndex);
 							inputBuffers[bufferIndex].clear();
 							if (prefix != null) {
 								inputBuffers[bufferIndex].put(prefix);
@@ -788,7 +785,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onPpsAvailable(byte[] pps) {
-					decodeBytesWithPrefix(nalHeader, pps, 0, pps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+					decodeBytesWithPrefix(nalHeader, pps, 0, pps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG, -1);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
@@ -806,11 +803,10 @@ public class EZScreenHelper {
 					if (renderThread == null) {
 						startRenderer();					
 					}
-					long timestampInMilliSecond = TimeStamp.getTime(timestamp);
 					if (playbackClock == null) {
-						playbackClock = new SimplePlaybackClock(timestampInMilliSecond, 1000, TAG);
+						playbackClock = new SimplePlaybackClock(timestamp, 1000, TAG);
 					}
-					decodeBytesWithPrefix(null, frame, offset, size, timestampInMilliSecond, 0);
+					decodeBytesWithPrefix(null, frame, offset, size, timestamp, 0, 5000);
 					if (testFile != null) {
 						try {
 							testFile.write(frame, offset, size);

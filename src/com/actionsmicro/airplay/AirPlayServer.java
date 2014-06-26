@@ -371,7 +371,7 @@ public class AirPlayServer {
 													}
 													if (delegate != null) {
 														debugLog("onH264FrameAvailable ntpTime:"+TimeStamp.getTime(timestamp));
-														delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, timestamp);
+														delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, TimeStamp.getTime(timestamp));
 													}
 
 
