@@ -30,11 +30,11 @@
  * Signature: ([BI)[B
  */
 JNIEXPORT jint JNICALL Java_com_actionsmicro_airplay_airtunes_AacEldDecoder_decode
-(JNIEnv* env, jclass clazz, jbyteArray data, jint length, jbyteArray out)
+(JNIEnv* env, jclass clazz, jbyteArray data, jint offset, jint length, jbyteArray out)
 {
 	jbyte* bufferPtr = (*env)->GetByteArrayElements(env, data, NULL);
 	int size = length;
-	uint8_t * pcm = decode_aaceld_frame(bufferPtr, &size);
+	uint8_t * pcm = decode_aaceld_frame(bufferPtr+offset, &size);
 	(*env)->ReleaseByteArrayElements(env, data, bufferPtr, 0);
 	if (pcm != NULL) {
 		jbyte* outbufferPtr = (*env)->GetByteArrayElements(env, out, NULL);

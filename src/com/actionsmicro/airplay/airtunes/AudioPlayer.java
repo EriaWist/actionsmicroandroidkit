@@ -40,7 +40,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	private UDPListener udpListener;
 	private PureAudioBuffer pureAudioBuffer;
 	private Thread decoderThread;
-	private MediaCodec decoder;
+	private IAacEldEncoder decoder;
 	private Thread playerThread;
 	private boolean decoderThreadShouldStop;
 	private boolean playerThreadShouldStop;
@@ -80,13 +80,12 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		initRTP(session);		
 	}
 	private void initDecoder() {
-		MediaCodec mediaCodec = MediaCodec.createByCodecName("OMX.google.aac.decoder");//MediaCodec.createDecoderByType("audio/mp4a-latm");
-    	MediaFormat mediaFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 0, 0);
-    	byte[] bytes = new byte[]{(byte) 0xF8, (byte) 0xE8, 0x50, 0x00};
-        ByteBuffer bb = ByteBuffer.wrap(bytes);
-        mediaFormat.setByteBuffer("csd-0", bb);
-    	mediaCodec.configure(mediaFormat, null, null, 0);
-    	decoder = mediaCodec;
+		if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR1) {
+			decoder = new NativeAacEldDecoder();
+		} else {
+			decoder = new AndroidAacEldEncoder();
+		}
+		decoder.init();
     	decoder.start();
 	}
 	private void spawnDecoderThread(final AudioSession session) {
@@ -226,6 +225,8 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 							MediaFormat outputFormat = decoder.getOutputFormat();
 							Log.d(TAG, "outputFormat :"+outputFormat);
 
+						} else if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+							debugLog("dequeueOutputBuffer:-1 buffer under-run ");						
 						}
 					}
 				} catch (IllegalStateException e) {
