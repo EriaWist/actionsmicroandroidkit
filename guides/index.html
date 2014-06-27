@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EZCast SDK Programming Guide for Android</title>
+    <!-- Bootstrap -->
+    <!-- <link href="bootstrap-3.1.1-dist/css/bootstrap.min.css" rel="stylesheet"> -->
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link rel="stylesheet" href="google-code-prettify/prettify.css">
+    <script src="google-code-prettify/prettify.js"></script>
+    
+    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/black-tie/jquery-ui.css" rel="stylesheet">
+    <link type="text/css" rel="stylesheet" href="css/jquery.tocify.css" />
+    <style>
+    body {
+      padding-top: 60px;
+      padding-bottom: 60px;
+    }
+    .prettyprint.prettyprinted {
+        padding: 20px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+    }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="navbar navbar-fixed-top">
+            <div class="navbar-inner">
+                <p class="brand" style="float: none; text-align: center;">EZCast SDK Programming Guide for Android</p>
+            </div>
+        </div>
+        <div class="row-fluid">
+        
+        <div class="span8">
+        <h2>System Requirements</h2>
+        <p>
+            Android 4.0 and later.
+        </p>
+        <h2>
+            Install the Library
+        </h2>
+        <p>
+            Copy the jar file (for example, ez_cast_sdk_v_2.0.12.jar) to the libs folder under your project root.             
+            <p><img src="images/libs.png" class="img-polaroid"></p>
+        </p>
+        <p>
+            <h5>Add jar to the <i>library project</i> if needed - Eclipse</h5>
+            <div class="alert"><strong>Note:</strong> To run the sample project, you can skip this step since the project has been setup for you. To develop your own application in another library project, you should add EZCast SDK jar to your library project.
+            </div>
+            Open project properties panel and click "Add JARs...".
+            <img src="images/add_jar_1.png">
+            Choose the EZCast SDK jar file, such as ez_cast_sdk_v_2.0.12.jar.
+            <img src="images/add_jar_2.png">
+        </p>
+        <h2>
+            Getting Started            
+        </h2>
+        <h3>Authorization</h3>
+        <p>
+Before sending image to the device, client needs to ask for permission via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApi.html">AuthenticationApi</a>.
+You need to use <a href="../doc/com/actionsmicro/ezcast/AuthorizationApiBuilder.html">AuthorizationApiBuilder</a> to create AuthorizationApi instance and ask permission to display contents via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApi.html#requestToDisplay(int,%20int)">requestToDisplay</a>. There are bunch of callbacks, which are also setting up via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApiBuilder.html#setAuthorizationListener(com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener)">AuthorizationApiBuilder.setAuthorizationListener</a>.
+        </p>
+
+<pre class="prettyprint">
+@Override
+protected void onResume() {
+    super.onResume();
+    authorizationApi = new AuthorizationApiBuilder(deviceInfo, this)
+    .setAuthorizationListener(new AuthorizationListener() {
+        @Override
+        public void authorizationIsDenied(AuthorizationApi arg0, DeniedReason arg1) {
+                
+        }
+        @Override
+        public void authorizationIsGranted(AuthorizationApi arg0, int arg1, int arg2) {
+                
+        }
+                    
+    }).build();
+    authorizationApi.connect();
+    authorizationApi.requestToDisplay(0, 0);
+}
+</pre>
+        
+        
+        <p>
+        Client needs to disconnect from AuthorizationApi in order to release resources obtained by it.    
+        </p>
+        
+<pre class="prettyprint">
+@Override
+protected void onPause() {
+    authorizationApi.cancelPendingRequest();
+    authorizationApi.disconnect();
+    authorizationApi = null;
+    super.onPause();		
+}
+</pre>
+        
+        
+        <h3>Display Image</h3>
+        <p>
+        After the permission has been granted,  client then can display contents via <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html">DisplayApi</a>. To connect to display API, you need to use <a href="../doc/com/actionsmicro/ezcast/DisplayApiBuilder.html">DisplayApiBuilder</a>. There are callbacks regarding to display as well which of those are setup via DisplayApiBuilder. These callbacks are <a href="../doc/com/actionsmicro/ezcast/DisplayApi.DisplayListener.html">DisplayListener</a> and <a href="../doc/com/actionsmicro/ezcast/ConnectionManager.html">ConnectionManager</a>. Before displaying anything client also needs to call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#startDisplaying()">startDisplaying</a>.    
+        </p>
+        
+<pre class="prettyprint">
+displayApi = new DisplayApiBuilder(deviceInfo, ExampleActivity.this)
+    .setDisplayListener(new DisplayListener() {
+
+        @Override
+        public void positionDidChange(DisplayApi arg0, int arg1,
+                        int arg2) {
+            // TODO Auto-generated method stub
+                                        
+        }
+
+        @Override
+        public void remoteRequestToDisconnect(DisplayApi arg0) {
+            // TODO Auto-generated method stub
+                                        
+        }
+
+        @Override
+        public void remoteRequestToStartDisplaying(DisplayApi arg0,
+                        int arg1, int arg2) {
+            // TODO Auto-generated method stub
+                                        
+        }
+
+        @Override
+        public void remoteRequestToStopDisplaying(DisplayApi arg0) {
+            // TODO Auto-generated method stub
+                                        
+        }
+
+        @Override
+        public void roleDidChange(DisplayApi arg0, Role arg1) {
+            // TODO Auto-generated method stub
+                                        
+        }
+                                    
+    })
+    .setConnectionManager(new ConnectionManager() {
+
+        @Override
+        public void onConnectionFailed(Api arg0, Exception arg1) {
+            // TODO Auto-generated method stub
+                                        
+        }
+                            
+    }).build();
+
+displayApi.connect();
+displayApi.startDisplaying();
+</pre>
+        <p>
+        To send image data to the device, client should call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#sendJpegEncodedScreenData(java.io.InputStream,%20long)">sendJpegEncodedScreenData</a>
+        and the data must be encoded as JPEG. 
+        </p>
+        
+<pre class="prettyprint">
+Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
+icon.compress(CompressFormat.JPEG, 100, outBuffer);
+try {
+    displayApi.sendJpegEncodedScreenData(new ByteArrayInputStream(outBuffer.toByteArray()), 
+                                                   outBuffer.size());
+} catch (Exception e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+}
+</pre>
+        <p>
+        To stop displaying image, client can call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#stopDisplaying()">stopDisplaying</a>. Client should
+        disconnect from DisplayApi when DisplayApi is no longer needed to release the
+        resources obtained by the api instance.
+        </p>
+<pre class="prettyprint">
+@Override
+protected void onPause() {
+    authorizationApi.cancelPendingRequest();
+    authorizationApi.disconnect();
+    authorizationApi = null;
+
+    if (displayApi != null) {
+        displayApi.stopDisplaying();
+        displayApi.disconnect();
+        displayApi = null;
+    }
+    super.onPause();		
+}
+</pre>
+        
+        <h2>Quick Start - Override the Sample Program</h2>
+        <p>
+        The fastest way to develop an EZCast is override the sample program.
+        </p>
+        <h3>Create an Android Activity</h3>
+        <p>
+        Just as a normal Android activity, you need to create a subclass of Activity and modify the AndroidManifest.xml as documented in <a href="http://developer.android.com/reference/android/app/Activity.html">Android's guides and documents</a>.
+        </p>
+        <h3>Change the Intent</h3>
+        <p>
+        In DeviceListActivity.java, you can find a snippet of code like this:
+        </p>
+<pre class="prettyprint">
+@Override
+protected void onListItemClick (ListView l, View v, int position, long id) {
+    DeviceInfoFormater selectedItem = adapter.getItem(position);
+    Intent startSomething = new Intent(this, com.ezcast.example.ezcastsdkclient.ExampleActivity.class); 
+    startSomething.putExtra("com.actionsmicro.ezcast.device_info", selectedItem.deviceInfo);
+    startActivity(startSomething);
+}
+</pre>
+        
+        <p>
+        You just need to change the class, com.ezcast.example.ezcastsdkclient.ExampleActivity.class, to your activity.
+        </p>
+        
+        <h3>DeviceInfo</h3>
+        <p>
+        To obtain the <a href="../doc/com/actionsmicro/ezcast/DeviceInfo.html">DeviceInfo</a>, you can get it from the intent extra. The extra name is <em>"com.actionsmicro.ezcast.device_info"</em>.    
+        </p>
+        
+<pre class="prettyprint">
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_example);
+    deviceInfo = (DeviceInfo)this.getIntent().getExtras().get("com.actionsmicro.ezcast.device_info");
+    this.setTitle(deviceInfo.getName());
+}
+</pre>
+        <p>
+        And then you are good to go to play with AuthenticationApi and DisplayApi which are mentioned in previous sections.    
+        </p>
+        <h2>See Also</h2>
+        
+        <p><a href="../doc/index.html">EZCast SDK References</a></p>
+
+        <h5>Enjoy It!</h5>
+        </div>
+        <div class="span4"> 
+            <div id="toc">
+            </div>
+        </div>
+    </div>
+        <div class="navbar navbar-fixed-bottom">
+            <div class="navbar-inner">
+                <p class="pull-left" style="margin: 10px;">Copyright © 2014 Actions-Micro Inc. All Rights Reserved.</p>
+                <p class="pull-right" style="margin: 10px;">Updated: 2014-7-12</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/jquery-1.8.3.min.js"></script>
+    <script src="js/jquery-ui-1.9.1.custom.min.js"></script>
+    
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>-->
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <!--<script src="bootstrap-3.1.1-dist/js/bootstrap.min.js"></script>-->
+    <script src="js/bootstrap.js"></script>
+    <script src="js/jquery.tocify.min.js"></script>
+
+    <script>
+        !function ($) {
+            $(function(){
+              window.prettyPrint && prettyPrint()
+            })
+        }(window.jQuery)
+    </script>
+    <script>
+        $(function() {
+
+            var toc = $("#toc").tocify({
+              selectors: "h2,h3,h4"
+            }).data("toc-tocify");
+        });
+    </script>
+</body>
+</html>

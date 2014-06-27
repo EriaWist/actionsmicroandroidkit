@@ -25,12 +25,6 @@
 -renamesourcefileattribute SourceFile
 -keepattributes Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,*Annotation*,EnclosingMethod
 
--keep public class com.actionsmicro.falcon.Falcon {
-	public *;
-}
--keep public class com.actionsmicro.falcon.Falcon$* {
-	public *;
-}
 -keep class com.thetransactioncompany.** { *; } -dontwarn com.thetransactioncompany.**
 
 -dontwarn org.hamcrest.**
@@ -44,3 +38,37 @@
   *;
 }
 -dontwarn org.apache.james.mime4j.**
+
+
+-keep public class com.actionsmicro.ezcast.* {
+	public *;
+}
+
+
+-keep public class com.actionsmicro.ezcast.* {
+	public *;
+}
+
+-keep public class com.actionsmicro.ezcast.helper.ImageSender {
+	public *;
+}
+
+-keep public class com.actionsmicro.ezcast.imp.ezdisplay.FalconDeviceFinder {
+	public *;
+}
+
+-keep public class com.actionsmicro.ezcast.imp.androidrx.AndroidRxFinder {
+	public *;
+}
+
+-keep public class com.actionsmicro.ezcast.imp.googlecast.GoogleCastFinder {
+	public *;
+}
+
+-keep class android.** {
+  *;
+}
+
+-keep class com.android.** {
+  *;
+}

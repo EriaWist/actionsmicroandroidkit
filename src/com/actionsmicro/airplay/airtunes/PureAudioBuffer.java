@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import android.util.Log;
+import com.actionsmicro.utils.Log;
 
 public class PureAudioBuffer {
 
@@ -56,26 +56,38 @@ public class PureAudioBuffer {
 				synced = true;
 			}
 	
-			@SuppressWarnings("unused")
-			int outputSize = 0;
 			if (seqno == writeIndex) {													// Packet we expected
 				updateBuffer(seqno, data, timestamp);
 				writeIndex++;
-			} else if(seqno > writeIndex) {												// Too early, did we miss some packet between writeIndex and seqno?
-				server.request_resend(writeIndex, seqno);
-				updateBuffer(seqno, data, timestamp);
-				writeIndex = seqno + 1;
+			} else if(seqno > writeIndex) {										// Too early, did we miss some packet between writeIndex and seqno?
+				if (seqno - writeIndex > 65000 && seqno >= readIndex) {
+					// it's too late? we assume it's rolled over situation
+					if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
+						debugLog("readIndex < seqno not yet played but too late. Still ok");
+						updateBuffer(seqno, data, timestamp);
+					}
+				} else {
+					if ((seqno - readIndex) > 5) { // enough time gap to receive retransmit replies
+						server.request_resend(writeIndex, seqno - 1);
+					} else {
+						debugLogW("not enough time to request resend; seqno:"+seqno);
+					}
+					if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
+						updateBuffer(seqno, data, timestamp);
+						writeIndex = seqno + 1;
+					}
+				}
 			} else if(seqno >= readIndex) {												// readIndex < seqno < writeIndex not yet played but too late. Still ok
 				if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
-					debugLogW("readIndex < seqno < writeIndex not yet played but too late. Still ok");
+					debugLog("readIndex < seqno < writeIndex not yet played but too late. Still ok");
 					updateBuffer(seqno, data, timestamp);
 				}
 			} else {
 				if (!audioBuffer[(seqno % BUFFER_FRAMES)].ready) {
-					debugLogW("Late packet with seq. numb.: " + seqno + ", readIndex:" + readIndex);			// Really to late
+					debugLogW("Late packet with seq. numb.: " + seqno + ", readIndex:" + readIndex +", distance:"+(readIndex-seqno));			// Really to late
 				}
 			}
-			
+			debugLog("writeIndex:"+writeIndex);
 			updateActualBufferSize();
 		    
 		    if (decoder_isStopped && actualBufSize > START_FILL) {

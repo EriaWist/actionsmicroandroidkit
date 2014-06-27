@@ -21,6 +21,8 @@ public class DownloadHttpContentToCacheFolderTask extends AsyncTask<Void, Void, 
 	private Context context;
 	private String preferenceName;
 	private URL source;
+	private int downloadTimeout = 2000;
+	private int connectTimeout = 2000;
 	private static final HashSet<URL> downloadingTasks = new HashSet<URL>();
 	private static final String TAG = "DownloadHttpContentToCacheFolderTask";
 	public static boolean isScheduledToDownloadUrl(URL source) {
@@ -56,12 +58,12 @@ public class DownloadHttpContentToCacheFolderTask extends AsyncTask<Void, Void, 
 		boolean success = false;
 		try {
 			if (source.getHost() != null) {
-				Reachability.resolveAddressByName(source.getHost(), 1000);
+				Reachability.resolveAddressByName(source.getHost(), 2000);
 			}
 			os = new FileOutputStream(localFile);
 			URLConnection con = source.openConnection();
-			con.setConnectTimeout(1000);
-			con.setReadTimeout(1000);
+			con.setConnectTimeout(connectTimeout);
+			con.setReadTimeout(downloadTimeout);
 			is = con.getInputStream();
 			com.actionsmicro.utils.Utils.dump(is, os);
 			success = true;
@@ -99,5 +101,11 @@ public class DownloadHttpContentToCacheFolderTask extends AsyncTask<Void, Void, 
 			Log.d(TAG, "download "+source+" falied");
 		}
 		downloadingTasks.remove(source);
-	}		
+	}
+	public void setDownloadTimeout(int timeout) {
+		this.downloadTimeout = timeout;
+	}
+	public void setConnectTimeout(int timeout) {
+		this.connectTimeout = timeout;
+	}
 }

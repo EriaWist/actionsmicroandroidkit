@@ -24,6 +24,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.YuvImage;
 
+import com.actionsmicro.ezcast.helper.ImageSender.BitmapManager;
 import com.actionsmicro.utils.Log;
 
 /**
@@ -48,17 +49,7 @@ public class Client {
 		public void onException(Client client, Exception e);
 	}
 	protected OnExceptionListener onExceptionListener;
-	/**
-	 * BitmapManager defines interface for asynchronous mode clients to manage buffer life-cycle.
-	 *
-	 * @see Client#sendImageToServerAsync
-	 * @see Client#setBitmapManager 
-	 * @see Client#getBitmapManager
-	 */
-	public interface BitmapManager {
-		public boolean onProcessBitmapBegin(Client client, Bitmap bitmap);
-		public void onProcessBitmapEnd(Client client, Bitmap bitmap);
-	}
+	
 	private BitmapManager bitmapManager;
 	
 	public interface OnNotificationListener {
@@ -591,7 +582,12 @@ public class Client {
 		}
 	}
 	// TODO move to ClientV2
-	protected Observable onNotificationObservable = new Observable();
+	protected Observable onNotificationObservable = new Observable() {
+		@Override
+		public boolean hasChanged() {
+			return true;
+		}
+	};
 	class RemoteRequestToChangePostionNotification {
 		public final int numberOfWindows;
 		public final int position;

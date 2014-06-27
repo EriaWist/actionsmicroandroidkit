@@ -6,10 +6,10 @@ import java.io.InputStream;
 import java.util.HashMap;
 
 import android.graphics.YuvImage;
-import android.util.Log;
 
 import com.actionsmicro.ezcast.DisplayApi;
 import com.actionsmicro.ezcast.DisplayApiBuilder;
+import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.SimpleMotionJpegHttpServer;
 
 public class AndroidRxDisplayApi extends AndroidRxApi implements DisplayApi {

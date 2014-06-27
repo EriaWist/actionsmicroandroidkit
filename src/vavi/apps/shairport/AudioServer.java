@@ -141,11 +141,15 @@ public class AudioServer implements UDPDelegate, AudioPlayer{
 						packetBuffer.position(6);						
 						int seqno = (packetBuffer.getShort() & 0xffff);
 						int payloadSize = packet.getLength() - 16;
-						byte[] pktp = new byte[payloadSize];
-						packetBuffer.position(16);						
-						packetBuffer.get(pktp, 0, payloadSize);
-						audioBuf.putPacketInBuffer(seqno, pktp);
-						Log.d(TAG, "control port: retransmit reply: seqno:"+seqno+", remaining:"+packetBuffer.remaining());
+						if (payloadSize > 0) {
+							byte[] pktp = new byte[payloadSize];
+							packetBuffer.position(16);						
+							packetBuffer.get(pktp, 0, payloadSize);
+							Log.d(TAG, "control port: retransmit reply: seqno:"+seqno+", remaining:"+packetBuffer.remaining());
+							audioBuf.putPacketInBuffer(seqno, pktp);
+						} else {
+							Log.w(TAG, "control port: wrong payload size:"+payloadSize);
+						}
 						if (debugFile != null) {
 							try {
 								debugFile.writeToFile(packet.getData());

@@ -32,15 +32,15 @@ public class AsyncDataFromHttp extends AsyncTask<String, String, String>{
 	@Override
     protected String doInBackground(String... uri) {
 		final HttpParams httpParams = new BasicHttpParams();
-	    HttpConnectionParams.setConnectionTimeout(httpParams, 1000);
-	    HttpConnectionParams.setSoTimeout(httpParams, 1000);
+	    HttpConnectionParams.setConnectionTimeout(httpParams, 2000);
+	    HttpConnectionParams.setSoTimeout(httpParams, 2000);
 		HttpClient httpclient = new DefaultHttpClient(httpParams);
         HttpResponse response;
         String responseString = null;
         try {
         	URI theUri = new URI(uri[0]);
         	if (theUri.getHost() != null) {
-        		Reachability.resolveAddressByName(theUri.getHost(), 1000);
+        		Reachability.resolveAddressByName(theUri.getHost(), 2000);
         	}
             response = httpclient.execute(new HttpGet(uri[0]));
             StatusLine statusLine = response.getStatusLine();

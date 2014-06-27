@@ -1096,7 +1096,7 @@ public class Falcon {
 		} else if (receiveString.startsWith("EZREMOTE:")) {
 			parseRemoteControlResponseString(receiveString, projectorInfo);
 			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
-		} else if (receiveString.startsWith("STANDARD:")) {	//小�??�給App?�message (?�板??
+		} else if (receiveString.startsWith("STANDARD:")) {	//小機發給App的message (公版）
 			mainThreadHandler.post(new Runnable() {
 
 				@Override
@@ -1106,7 +1106,7 @@ public class Falcon {
 				
 			});
 			
-		} else if (receiveString.startsWith("CUSTOMER")) {	//小�??�給App?�message (客戶案用)
+		} else if (receiveString.startsWith("CUSTOMER")) {	//小機發給App的message (客戶案用)
 			mainThreadHandler.post(new Runnable() {
 
 				@Override

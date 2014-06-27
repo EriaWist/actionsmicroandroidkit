@@ -22,7 +22,7 @@ public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClo
 			@Override
 			public void run() {
 				NTPUDPClient ntpClient = new NTPUDPClient();
-				ntpClient.setDefaultTimeout(10000);
+				ntpClient.setDefaultTimeout(5000);
 				try {
 					ntpClient.open();
 					while (!Thread.currentThread().isInterrupted()) {

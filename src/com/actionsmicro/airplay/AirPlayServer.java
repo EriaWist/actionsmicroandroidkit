@@ -21,11 +21,11 @@ import org.apache.commons.net.ntp.TimeStamp;
 import vavi.apps.shairport.RTSPResponder;
 import android.content.Context;
 import android.net.wifi.WifiManager;
-import android.util.Log;
 
 import com.actionsmicro.airplay.crypto.EzAes;
 import com.actionsmicro.airplay.crypto.FairPlay;
 import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
+import com.actionsmicro.utils.Log;
 import com.dd.plist.BinaryPropertyListParser;
 import com.dd.plist.NSData;
 import com.dd.plist.NSDictionary;
@@ -371,7 +371,7 @@ public class AirPlayServer {
 													}
 													if (delegate != null) {
 														debugLog("onH264FrameAvailable ntpTime:"+TimeStamp.getTime(timestamp));
-														delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, timestamp);
+														delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, TimeStamp.getTime(timestamp));
 													}
 
 

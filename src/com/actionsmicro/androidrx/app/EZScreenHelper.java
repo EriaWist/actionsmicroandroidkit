@@ -11,8 +11,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.net.ntp.TimeStamp;
-
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -26,13 +24,13 @@ import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.format.Formatter;
-import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.TextureView.SurfaceTextureListener;
@@ -54,9 +52,12 @@ import com.actionsmicro.airplay.mirror.MirrorClock;
 import com.actionsmicro.androidrx.EzScreenServer;
 import com.actionsmicro.androidrx.app.state.IdleState;
 import com.actionsmicro.androidrx.app.state.StateContext;
+import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.JpegCallback;
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
 import com.yutel.silver.vo.AirplayState;
 
 public class EZScreenHelper {
@@ -106,6 +107,13 @@ public class EZScreenHelper {
 	private TextureView mirrorView;
 	private InitializationListener initializationListener;
 	private ViewGroup musicView;
+	private Tracker gaTracker;
+	public Tracker getGaTracker() {
+		return gaTracker;
+	}
+	public void setGaTracker(Tracker tracker) {
+		this.gaTracker = tracker;
+	}
 	private String getServiceName() {
 		return serviceName;
 	}
@@ -118,10 +126,7 @@ public class EZScreenHelper {
 		this.webView = webView;
 		this.mjpegView = textureView;
 		this.serviceName = serviceName;
-		this.servers = servers;
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-			this.servers &= ~SERVER_AIRPLAY;
-		}
+		updateServerBits(servers);
 		this.container = frame;
 		audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 		addView(musicView);
@@ -238,6 +243,7 @@ public class EZScreenHelper {
 		stopVideo();
 		showWebView();
 		displayUrl("images/standby.jpg");
+		trackScreenHit("home");
 	}
 	private void stopVideo() {
 		invokeJavascript("javascript:stopVideo();");
@@ -280,8 +286,9 @@ public class EZScreenHelper {
 	public void onDurationChange(int seconds) {
 		Log.d(TAG, "onDurationChange:"+seconds);
 		if (this.isMetadataLoaded()) {
-			this.getAirplayService().sendEvent();
-
+			if (getAirplayService() != null) {
+				this.getAirplayService().sendEvent();
+			}
 			this.setDuration(seconds);
 			if (this.getPendingStartingPosition() != -1 && this.getPendingStartingPosition() != 0) {
 				long seekTo = (long)(this.getDuration()*this.getPendingStartingPosition());
@@ -310,7 +317,9 @@ public class EZScreenHelper {
 	public void onError(int error) {
 		Log.d(TAG, "onError:"+error);
 		this.setState(AirplayState.ERROR);
-		this.getAirplayService().sendEvent();
+		if (getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}
 		if (playbackDelegate != null) {
 			playbackDelegate.onError(error);
 		}
@@ -328,7 +337,9 @@ public class EZScreenHelper {
 	public void onPaused() {
 		Log.d(TAG, "onPaused:");
 		this.setState(AirplayState.PAUSING);
-		this.getAirplayService().sendEvent();
+		if (getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}
 //		if (!initializing) {
 //			if (state != AirplayState.STOPPED) {
 //				state = AirplayState.PAUSING;
@@ -342,7 +353,9 @@ public class EZScreenHelper {
 	public void onWaiting() {
 		Log.d(TAG, "onWaiting:");
 		this.setState(AirplayState.CACHING);
-		this.getAirplayService().sendEvent();
+		if (getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}
 	}
 	@JavascriptInterface
 	public void onSeeked() {
@@ -565,6 +578,13 @@ public class EZScreenHelper {
 
 				@Override
 				public void playVideo(String url, String callback) {
+					try {
+						Uri uri = Uri.parse(url);
+						trackScreenHit("ezcastrx.media", 1, uri.getHost());
+					} catch (Exception e) {
+						trackScreenHit("ezcastrx.media");						
+					}
+
 					EZScreenHelper.this.playVideo(url, callback);
 				}
 
@@ -585,6 +605,7 @@ public class EZScreenHelper {
 				
 				@Override
 				public void displayUrl(String url) {
+					trackScreenHit("ezcastrx.mirror");
 					EZScreenHelper.this.displayUrl(url);
 				}
 				
@@ -602,12 +623,12 @@ public class EZScreenHelper {
 
 				@Override
 				public void onInitializationStart() {
-					ezScreenReady = false;
+					ezScreenInitialized = false;
 				}
 
 				@Override
 				public void onInitializationFinished() {
-					ezScreenReady = true;
+					ezScreenInitialized = true;
 					informInitializationListenerOnFinishedIfNeeded();
 				}
 
@@ -626,8 +647,8 @@ public class EZScreenHelper {
 	private MediaCodec decoder;
 	private Thread renderThread;
 	private boolean stopRenderer = false;
-	protected boolean airplayReady;
-	private boolean ezScreenReady;
+	protected boolean airplayInitialized;
+	private boolean ezScreenInitialized;
 	protected boolean alreadyFailed;
 	private StateContext stateContext;
 	
@@ -672,7 +693,12 @@ public class EZScreenHelper {
 					Log.d(TAG, "loadVideo:"+url);
 					Log.d(TAG, "loadVideo.rate:"+rate);
 					Log.d(TAG, "loadVideo.position:"+position);
-					
+					try {
+						Uri uri = Uri.parse(url);
+						trackScreenHit("airplay.video", 1, uri.getHost());
+					} catch (Exception e) {
+						trackScreenHit("airplay.video");						
+					}
 					stateContext.onLoadAirPlayVideo(url, rate, position);
 				}
 				
@@ -696,9 +722,8 @@ public class EZScreenHelper {
 				@Override
 				public void onStartMirroring(InetAddress remoteAddress) {
 					Log.d(TAG, "onStartMirroring");
+					trackScreenHit("airplay.mirror");
 					stateContext.onStartMirroring(remoteAddress);
-					doAirPlayMirror(remoteAddress);
-					informDelegateConnected();
 				}
 
 				private void startRenderer() {
@@ -729,7 +754,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onSpsAvailable(byte[] sps) {
-					decodeBytesWithPrefix(nalHeader, sps, 0, sps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+					decodeBytesWithPrefix(nalHeader, sps, 0, sps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG, -1);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
@@ -743,11 +768,12 @@ public class EZScreenHelper {
 					}					
 				}
 
-				private void decodeBytesWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags) {
+				private void decodeBytesWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags, long timeoutUs) {
 					if (decoder != null && length > 0) {
 						int bufferIndex = -1;
-						bufferIndex = decoder.dequeueInputBuffer(5000);
+						bufferIndex = decoder.dequeueInputBuffer(timeoutUs);
 						if (bufferIndex != -1) {
+							Log.d(TAG, "dequeueInputBuffer ("+prefix+"):"+bufferIndex);
 							inputBuffers[bufferIndex].clear();
 							if (prefix != null) {
 								inputBuffers[bufferIndex].put(prefix);
@@ -764,7 +790,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onPpsAvailable(byte[] pps) {
-					decodeBytesWithPrefix(nalHeader, pps, 0, pps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+					decodeBytesWithPrefix(nalHeader, pps, 0, pps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG, -1);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
@@ -782,11 +808,10 @@ public class EZScreenHelper {
 					if (renderThread == null) {
 						startRenderer();					
 					}
-					long timestampInMilliSecond = TimeStamp.getTime(timestamp);
 					if (playbackClock == null) {
-						playbackClock = new SimplePlaybackClock(timestampInMilliSecond, 1000, TAG);
+						playbackClock = new SimplePlaybackClock(timestamp, 1000, TAG);
 					}
-					decodeBytesWithPrefix(null, frame, offset, size, timestampInMilliSecond, 0);
+					decodeBytesWithPrefix(null, frame, offset, size, timestamp, 0, 5000);
 					if (testFile != null) {
 						try {
 							testFile.write(frame, offset, size);
@@ -842,7 +867,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onInitalizationFinished() {
-					airplayReady = true;
+					airplayInitialized = true;
 					informInitializationListenerOnFinishedIfNeeded();
 				}
 
@@ -867,6 +892,7 @@ public class EZScreenHelper {
 				@Override
 				public void onReceiveAirTunesMetadata(String albumName,
 						String artist, String title) {
+					trackScreenHit("airplay.music");
 					stateContext.onReceiveAirTunesMetadata(albumName, artist, title);
 				}
 
@@ -952,8 +978,8 @@ public class EZScreenHelper {
 	}
 
 	protected void informInitializationListenerOnFinishedIfNeeded() {
-		if ((airplayReady || !needToLoadAirPlay()) && 
-				(ezScreenReady || !needToLoadEzScreen())) {
+		if ((airplayInitialized || !needToLoadAirPlay()) && 
+				(ezScreenInitialized || !needToLoadEzScreen())) {
 			if (initializationListener != null) {
 				initializationListener.onInitalizationFinished();
 			}
@@ -1085,6 +1111,16 @@ public class EZScreenHelper {
 			
 		});
 	}
+	public void start(int servers) {
+		updateServerBits(servers);
+		start();
+	}
+	private void updateServerBits(int servers) {
+		this.servers = servers;
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+			this.servers &= ~SERVER_AIRPLAY;
+		}
+	}
 	public void start() {
 		stateContext = new StateContext(new IdleState()) {
 			@Override
@@ -1188,8 +1224,8 @@ public class EZScreenHelper {
 			this.getLock().release();
 			this.setLock(null);
 		}
-		ezScreenReady = false;
-		airplayReady = false;
+		ezScreenInitialized = false;
+		airplayInitialized = false;
 	}
 
 	public ConnectionListener getConnectionListener() {
@@ -1344,5 +1380,18 @@ public class EZScreenHelper {
 
 	public void setPlaybackDelegate(PlaybackDelegate playbackDelegate) {
 		this.playbackDelegate = playbackDelegate;
+	}
+	
+	private void trackScreenHit(String screenName) {
+		if (gaTracker != null) {
+			gaTracker.setScreenName(screenName);
+			gaTracker.send(new HitBuilders.AppViewBuilder().build());
+		}
+	}
+	private void trackScreenHit(String screenName, int customDimensionIndex, String dimension) {
+		if (gaTracker != null) {
+			gaTracker.setScreenName(screenName);
+			gaTracker.send(new HitBuilders.AppViewBuilder().setCustomDimension(customDimensionIndex, dimension).build());
+		}
 	}
 }

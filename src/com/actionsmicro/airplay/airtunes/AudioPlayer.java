@@ -40,7 +40,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	private UDPListener udpListener;
 	private PureAudioBuffer pureAudioBuffer;
 	private Thread decoderThread;
-	private MediaCodec decoder;
+	private IAacEldEncoder decoder;
 	private Thread playerThread;
 	private boolean decoderThreadShouldStop;
 	private boolean playerThreadShouldStop;
@@ -56,21 +56,21 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 
 			@Override
 			public void request_resend(int begin, int end) {
+				if (end < begin) {
+					return;
+				}
 				Log.i(TAG, "Resend Request: " + begin + "::" + end);
-//				if (end < begin) {
-//					return;
-//				}
-//				
-//				int len = end - begin + 1;
-//			    byte[] request = new byte[] { (byte) 0x80, (byte) (0x55|0x80), 0x01, 0x00, (byte) ((begin & 0xFF00) >> 8), (byte) (begin & 0xFF), (byte) ((len & 0xFF00) >> 8), (byte) (len & 0xFF)};
-//
-//			    try {
-//			    	DatagramPacket temp = new DatagramPacket(request, request.length, session.getAddress(), session.getControlPort());
-//			    	csock.send(temp);
-//
-//			    } catch (IOException e) {
-//			    	e.printStackTrace();
-//			    }
+				
+				int len = end - begin + 1;
+			    byte[] request = new byte[] { (byte) 0x80, (byte) (0x55|0x80), 0x01, 0x00, (byte) ((begin & 0xFF00) >> 8), (byte) (begin & 0xFF), (byte) ((len & 0xFF00) >> 8), (byte) (len & 0xFF)};
+
+			    try {
+			    	DatagramPacket temp = new DatagramPacket(request, request.length, session.getAddress(), session.getControlPort());
+			    	csock.send(temp);
+
+			    } catch (IOException e) {
+			    	e.printStackTrace();
+			    }
 			}
 			
 		});
@@ -80,13 +80,12 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		initRTP(session);		
 	}
 	private void initDecoder() {
-		MediaCodec mediaCodec = MediaCodec.createByCodecName("OMX.google.aac.decoder");//MediaCodec.createDecoderByType("audio/mp4a-latm");
-    	MediaFormat mediaFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 0, 0);
-    	byte[] bytes = new byte[]{(byte) 0xF8, (byte) 0xE8, 0x50, 0x00};
-        ByteBuffer bb = ByteBuffer.wrap(bytes);
-        mediaFormat.setByteBuffer("csd-0", bb);
-    	mediaCodec.configure(mediaFormat, null, null, 0);
-    	decoder = mediaCodec;
+		if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR1) {
+			decoder = new NativeAacEldDecoder();
+		} else {
+			decoder = new AndroidAacEldEncoder();
+		}
+		decoder.init();
     	decoder.start();
 	}
 	private void spawnDecoderThread(final AudioSession session) {
@@ -130,36 +129,43 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 				byte[] packet = new byte[2048];
 				final ByteBuffer[] inputBuffers = decoder.getInputBuffers();
 				final PureAudioBuffer.BufferInfo bufferInfo = new PureAudioBuffer.BufferInfo();
-				do {
-					int bufferIndex = decoder.dequeueInputBuffer(1000);
-					if (bufferIndex != -1) {
-						do {
-							ByteBuffer data = pureAudioBuffer.getNextBuffer(bufferInfo);
-							if (data != null && data.position() > 0) {
-								int i = 0;
-								initAES();
-								for (i=0; i+16<=data.position(); i += 16){
-									// Decrypt
-									decryptAES(data.array(), i, 16, packet, i);
-								}							    
-							    // The rest of the packet is unencrypted
-							    for (int k = 0; k<(data.position() % 16); k++){
-							    	packet[i+k] = data.array()[i+k];
-							    }
-								
-								inputBuffers[bufferIndex].clear();
-								inputBuffers[bufferIndex].put(packet, 0, data.position());
-								inputBuffers[bufferIndex].rewind();
-								decoder.queueInputBuffer(bufferIndex, 0, data.position(), bufferInfo.timestamp, 0);
-								break;
-							} else {
-								Log.w(TAG, "getNextBuffer no data");
-							}
-						} while (!decoderThreadShouldStop);
-					} else {
-						debugLog("dequeueInputBuffer:-1 buffer under-run ");						
-					}
-				} while (!decoderThreadShouldStop);
+				try {
+					do {
+						int bufferIndex = decoder.dequeueInputBuffer(1000);
+						if (bufferIndex != -1) {
+							do {
+								ByteBuffer data = pureAudioBuffer.getNextBuffer(bufferInfo);
+								if (data != null && data.position() > 0) {
+									int i = 0;
+									initAES();
+									for (i=0; i+16<=data.position(); i += 16){
+										// Decrypt
+										decryptAES(data.array(), i, 16, packet, i);
+									}							    
+									// The rest of the packet is unencrypted
+									for (int k = 0; k<(data.position() % 16); k++){
+										packet[i+k] = data.array()[i+k];
+									}
+
+									inputBuffers[bufferIndex].clear();
+									inputBuffers[bufferIndex].put(packet, 0, data.position());
+									inputBuffers[bufferIndex].rewind();
+									long timestamp = convertRtpTimestampToNtp(bufferInfo.timestamp);
+									if (playbackClock.waitUntilTime(timestamp)) {
+									}
+									decoder.queueInputBuffer(bufferIndex, 0, data.position(), bufferInfo.timestamp, 0);
+									break;
+								} else {
+									Log.w(TAG, "getNextBuffer no data");
+								}
+							} while (!decoderThreadShouldStop);
+						} else {
+							debugLog("dequeueInputBuffer:-1 buffer under-run ");						
+						}
+					} while (!decoderThreadShouldStop);
+				} catch (IllegalStateException e) {
+					
+				}
 				Log.d(TAG, decoderThread.getName() + " ends");
 			}
 			
@@ -183,42 +189,48 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 			public void run() {
 				
 				track.play();
-				ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
-				final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-				final byte[] packet = new byte[2048];
-				while (!playerThreadShouldStop) {
-					int outputBufferIndex = -1;
-					try {
-						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 500000);
-					} catch(Exception e) {
-						Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
-						break;
-					} finally {
-					
-					}
-//					Log.d(TAG, "dequeueOutputBuffer :"+outputBufferIndex);
-					if (outputBufferIndex >= 0) {		
-						long timestamp = convertRtpTimestampToNtp(bufferInfo.presentationTimeUs);
-						if (timestamp != 0) { // timestamp convert is ready
-							if (playbackClock == null) {
-								playbackClock = new SimplePlaybackClock(timestamp, 200, TAG);
-							}
-							if (playbackClock.waitUntilTime(timestamp)) {
-								ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
-								outputBuffer.position(bufferInfo.offset);
-								outputBuffer.get(packet, 0, bufferInfo.size);
-								track.write(packet, 0, bufferInfo.size);
-							}
+				try {
+					ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
+					final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+					final byte[] packet = new byte[2048];
+					while (!playerThreadShouldStop) {
+						int outputBufferIndex = -1;
+						try {
+							outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 500000);
+						} catch(Exception e) {
+							Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
+							break;
+						} finally {
+
 						}
-						decoder.releaseOutputBuffer(outputBufferIndex, false);
-					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-						outputBuffers = decoder.getOutputBuffers();
-						
-					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-						MediaFormat outputFormat = decoder.getOutputFormat();
-						Log.d(TAG, "outputFormat :"+outputFormat);
-						
+						//					Log.d(TAG, "dequeueOutputBuffer :"+outputBufferIndex);
+						if (outputBufferIndex >= 0) {		
+							long timestamp = convertRtpTimestampToNtp(bufferInfo.presentationTimeUs);
+							if (timestamp != 0) { // timestamp convert is ready
+								if (playbackClock == null) {
+									playbackClock = new SimplePlaybackClock(timestamp, 200, TAG);
+								}
+								if (playbackClock.waitUntilTime(timestamp)) {
+									ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
+									outputBuffer.position(bufferInfo.offset);
+									outputBuffer.get(packet, 0, bufferInfo.size);
+									track.write(packet, 0, bufferInfo.size);
+								}
+							}
+							decoder.releaseOutputBuffer(outputBufferIndex, false);
+						} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+							outputBuffers = decoder.getOutputBuffers();
+
+						} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+							MediaFormat outputFormat = decoder.getOutputFormat();
+							Log.d(TAG, "outputFormat :"+outputFormat);
+
+						} else if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+							debugLog("dequeueOutputBuffer:-1 buffer under-run ");						
+						}
 					}
+				} catch (IllegalStateException e) {
+					
 				}
 				track.stop();
 				track.release();
@@ -312,10 +324,11 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 						int payloadSize = packet.getLength() - extraOffset - 12;
 						byte[] pktp = new byte[payloadSize];
 						packetBuffer.get(pktp, 0, payloadSize);
+						debugLog("server port:"+"receive packet seqno:"+seqno);
 						pureAudioBuffer.putPacketInBuffer(seqno, pktp, timestamp);
 						debugLog("server port:"+" timestamp:"+timestamp + ", correlated timestamp:"+convertRtpTimestampToNtp(timestamp));
 					} else {
-						Log.w(TAG, "server port: unhandled control packet type:"+type);
+						debugLog("server port: unhandled control packet type:"+type);
 					}
 				}
 
@@ -346,6 +359,20 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 							ntpTimestamp = TimeStamp.getTime(ntpTime);
 						}
 						debugLog("control port: timestamp:"+timestamp+", ntpTime:"+ntpTimestamp+", nextTimestamp:"+nextTimestamp);
+					} else if (type == 86) {
+						packetBuffer.position(6);						
+						int seqno = (packetBuffer.getShort() & 0xffff);
+						long timestamp = (packetBuffer.getInt() & 0xffffffffL);
+						int payloadSize = packet.getLength() - 16;
+						if (payloadSize > 0) {
+							byte[] pktp = new byte[payloadSize];
+							packetBuffer.position(16);						
+							packetBuffer.get(pktp, 0, payloadSize);
+							debugLog("control port: retransmit reply: seqno:"+seqno+", timestamp:"+timestamp+", remaining:"+packetBuffer.remaining());
+							pureAudioBuffer.putPacketInBuffer(seqno, pktp, timestamp);
+						} else {
+							Log.w(TAG, "control port: wrong payload size:"+payloadSize);
+						}
 					} else {
 						Log.w(TAG, "control port: unhandled control packet type:"+type);
 					}
