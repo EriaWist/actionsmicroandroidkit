@@ -9,10 +9,10 @@ import java.util.Map;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
-import android.util.Log;
 
 import com.actionsmicro.ezcast.MediaPlayerApi;
 import com.actionsmicro.ezcast.MediaPlayerApiBuilder;
+import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;

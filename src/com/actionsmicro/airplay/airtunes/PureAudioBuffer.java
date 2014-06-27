@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import android.util.Log;
+import com.actionsmicro.utils.Log;
 
 public class PureAudioBuffer {
 

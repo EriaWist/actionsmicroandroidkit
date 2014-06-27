@@ -21,11 +21,11 @@ import org.apache.commons.net.ntp.TimeStamp;
 import vavi.apps.shairport.RTSPResponder;
 import android.content.Context;
 import android.net.wifi.WifiManager;
-import android.util.Log;
 
 import com.actionsmicro.airplay.crypto.EzAes;
 import com.actionsmicro.airplay.crypto.FairPlay;
 import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
+import com.actionsmicro.utils.Log;
 import com.dd.plist.BinaryPropertyListParser;
 import com.dd.plist.NSData;
 import com.dd.plist.NSDictionary;

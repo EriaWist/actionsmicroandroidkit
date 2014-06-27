@@ -8,12 +8,12 @@ import java.util.HashMap;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import com.actionsmicro.ezcast.Api;
 import com.actionsmicro.ezcast.ApiBuilder;
 import com.actionsmicro.ezcast.ConnectionManager;
 import com.actionsmicro.ezcom.jsonrpc.JSONRPC2Session;
+import com.actionsmicro.utils.Log;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
 import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;

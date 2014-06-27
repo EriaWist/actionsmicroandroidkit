@@ -7,11 +7,11 @@ import android.support.v7.media.MediaRouteSelector;
 import android.support.v7.media.MediaRouter;
 import android.support.v7.media.MediaRouter.Callback;
 import android.support.v7.media.MediaRouter.RouteInfo;
-import android.util.Log;
 
 import com.actionsmicro.ezcast.DeviceFinder;
 import com.actionsmicro.ezcast.DeviceFinderBase;
 import com.actionsmicro.ezcast.DeviceInfo;
+import com.actionsmicro.utils.Log;
 import com.google.android.gms.cast.CastMediaControlIntent;
 
 public class GoogleCastFinder extends DeviceFinderBase {

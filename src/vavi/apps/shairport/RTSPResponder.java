@@ -16,11 +16,11 @@ import javax.crypto.Cipher;
 import org.apache.http.util.ByteArrayBuffer;
 
 import android.util.Base64;
-import android.util.Log;
 
 import com.actionsmicro.airplay.airtunes.daap.DaapDataParser;
 import com.actionsmicro.airplay.airtunes.daap.Item;
 import com.actionsmicro.airplay.crypto.FairPlay;
+import com.actionsmicro.utils.Log;
 
 
 /**
