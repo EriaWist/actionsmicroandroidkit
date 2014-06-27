@@ -21,6 +21,7 @@ public class AndroidRxInfo extends DeviceInfo {
 	private int port;
 	private InetAddress address;
 	private String name;
+	private String deviceID;
 //	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 //	public AndroidRxInfo(NsdServiceInfo serviceInfo) {
 //		this.port = serviceInfo.getPort();
@@ -31,11 +32,13 @@ public class AndroidRxInfo extends DeviceInfo {
 		port = in.readInt();
 		address = (InetAddress)in.readSerializable();
 		name = in.readString();
+		deviceID = in.readString();
 	}
 	public AndroidRxInfo(ServiceInfo newService) {
 		this.port = newService.getPort();
 		this.address = newService.getInet4Address();
 		this.name = newService.getName();
+		this.deviceID = newService.getPropertyString("deviceid");
 	}
 	public static final Parcelable.Creator<AndroidRxInfo> CREATOR = new Parcelable.Creator<AndroidRxInfo>() {
 		public AndroidRxInfo createFromParcel(Parcel in) {
@@ -56,6 +59,7 @@ public class AndroidRxInfo extends DeviceInfo {
 		parcel.writeInt(port);
 		parcel.writeSerializable(address);
 		parcel.writeString(name);
+		parcel.writeString(deviceID);
 	}
 
 	@Override
@@ -119,6 +123,8 @@ public class AndroidRxInfo extends DeviceInfo {
 	public String getParameter(String key) {
 		if (key.equalsIgnoreCase("ezcast.service.android")) {
 			return Long.toHexString(SERVICE_PHOTO | SERVICE_CAMERA | SERVICE_MUSIC | SERVICE_VIDEO | SERVICE_DOCUMENT | SERVICE_WEB | SERVICE_CLOUD_VIDEO | SERVICE_CLOUD_STORAGE | SERVICE_LIVE | SERVICE_EZCAST | SERVICE_COMMENT | SERVICE_UPDATE | SERVICE_SOCIAL);   
+		} else if (key.equals("deviceid")) {
+			return deviceID;
 		}
 		return null;	
 	}

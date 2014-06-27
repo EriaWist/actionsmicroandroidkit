@@ -63,12 +63,14 @@ public class EzScreenServer {
 	private Context context;
 	private JsonRpcOverHttpServer jsonRpcOverHttpServer;
 	private InetAddress inetAddress;
+	private String deviceID;
 	
-	public EzScreenServer(Context context, InetAddress inetAddress, String name, EzScreenServerDelegate delegate) {
+	public EzScreenServer(Context context, InetAddress inetAddress, String name, String deviceID, EzScreenServerDelegate delegate) {
 		this.name = name;
 		this.context = context;
 		this.inetAddress = inetAddress;
 		this.ezScreenServerDelegate = delegate;
+		this.deviceID = deviceID;
 	}
 	public String getName() {
 		return name;
@@ -206,7 +208,8 @@ public class EzScreenServer {
 			jsonRpcOverHttpServer.start();
 			HashMap<String, String> txtRecord = new HashMap<String, String>();
 			txtRecord.put("txtvers", "20140515");
-			txtRecord.put("srcvers", "20140515");			
+			txtRecord.put("srcvers", "20140515");
+			txtRecord.put("deviceid", deviceID);
 			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord));
 			bonjourServiceAdvertiser.register();
 			if (ezScreenServerDelegate != null) {

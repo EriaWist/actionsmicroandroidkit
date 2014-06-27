@@ -149,7 +149,7 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 		}
 		
 	}
-	private String getUUID(Context context) {
+	public static String getUUID(Context context) {
 		String uuidString = PreferenceManager.getDefaultSharedPreferences(context).getString(ANDROIDRX_SCHEMA_UUID_PREFERENCE_KEY, ""); 
 		if (uuidString.isEmpty()) {
 			UUID uuid = UUID.randomUUID();
@@ -184,6 +184,9 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 	}
 	public static String getAppMacAddress(Context context) {
 		WifiManager wifiMan = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+		if (wifiMan == null) {
+			return "";
+		}
 		WifiInfo wifiInf = wifiMan.getConnectionInfo();
 		return wifiInf.getMacAddress().toString();
 	}

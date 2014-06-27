@@ -526,7 +526,12 @@ public class EZScreenHelper {
 	}
 	private void initEzAndroidRx() {
 		try {
-			this.setEzScreenServer(new EzScreenServer(context, InetAddress.getByName(getIpAddress()), getServiceName(), new EzScreenServer.EzScreenServerDelegate() {
+			String deviceID;
+			deviceID = AndroidRxSchemaServer.getAppMacAddress(context);
+			if (deviceID.isEmpty()) {
+				deviceID = AndroidRxSchemaServer.getUUID(context);
+			}
+			this.setEzScreenServer(new EzScreenServer(context, InetAddress.getByName(getIpAddress()), getServiceName(), deviceID, new EzScreenServer.EzScreenServerDelegate() {
 
 				@Override
 				public void stopVideo() {
