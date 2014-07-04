@@ -22,8 +22,8 @@ public class EZCastStartingMusicThread {
 
 		});
 	}
-	public void play() {
-		uiThreadHanlder.postDelayed(thread, 500);
+	public void play(int delay) {
+		uiThreadHanlder.postDelayed(thread, delay);
 	}
 
 }
