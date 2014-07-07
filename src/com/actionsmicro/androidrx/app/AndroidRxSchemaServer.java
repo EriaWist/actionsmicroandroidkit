@@ -3,6 +3,7 @@ package com.actionsmicro.androidrx.app;
 import java.io.UnsupportedEncodingException;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -11,6 +12,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.location.Location;
 import android.location.LocationListener;
@@ -19,6 +21,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.util.Base64;
 import android.util.DisplayMetrics;
@@ -33,15 +36,36 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 	public static final int PORT = 8182;
 	public static final String KeyAES = "28906462822699798631919982357480";
 	public static final String ANDROIDRX_SCHEMA_UUID_PREFERENCE_KEY = "com.actionsmicro.iezvu.schema.schema_uuid";
+	public static final String ANDROIDRX_SCHEMA_PREFERENCE_KEY = "com.actionsmicro.iezvu.schema.schema_uuid";
+	
+	public enum RxFunction{
+		EZCAST("com.actionsmicro.androidrx.AndroidRxSchemaServer.EZCAST", 0),
+		EZAIR("com.actionsmicro.androidrx.AndroidRxSchemaServer.EZAIR", 1),
+		EZAIR_MIRROR("com.actionsmicro.androidrx.AndroidRxSchemaServer.EZAIR_MIRROR", 2);
+		
+		private String sValue;
+		private int iValue;
+		private RxFunction(String sValue, int iValue) {
+			this.sValue = sValue;
+			this.iValue = iValue;
+		}
+		
+		@Override
+		public String toString() {
+			return sValue;
+		}
+	}
 	
 	private String schemaJSONString;
+	private Context context;
 	
 	public AndroidRxSchemaServer(Context context) {
 		super(PORT);
-		createAndroidRxSchema(context);
+		this.context = context;
+		createAndroidRxSchema();
 	}
 	
-	private void createAndroidRxSchema(Context context) {
+	private void createAndroidRxSchema() {
 		
 		DisplayMetrics displayMetrics = new DisplayMetrics();
 		WindowManager wm = (WindowManager) context.getApplicationContext().getSystemService(Context.WINDOW_SERVICE); // the results will be higher than using the activity context object or the getWindowManager() shortcut
@@ -79,6 +103,12 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 				locationJSONObject.put("longitude", longitude);
 			jsonObject.put("location", locationJSONObject);
 			jsonObject.put("language", Locale.getDefault().toString());
+				JSONObject useTimeJSONObject = new JSONObject();
+				useTimeJSONObject.put("ezcast", getFunctionUsedTime(RxFunction.EZCAST));
+				useTimeJSONObject.put("ezair", getFunctionUsedTime(RxFunction.EZAIR));
+				useTimeJSONObject.put("ezair_mirror", getFunctionUsedTime(RxFunction.EZAIR_MIRROR));
+			jsonObject.put("use_time", useTimeJSONObject);
+			
 			
 		} catch (JSONException e) {
 			e.printStackTrace();
@@ -198,6 +228,40 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 			e.printStackTrace();
 		}
 		return appVersion;
+	}
+	private RxFunction currentFunc = null;
+	private Long startAt;
+	public void startFunction(RxFunction func) {
+		currentFunc = func;
+		startAt = TimeUnit.MILLISECONDS.toSeconds(SystemClock.elapsedRealtime());
+	}
+	public void stopFunction() {
+		saveUsedTime();
+	}
+	private void saveUsedTime() {
+		if (currentFunc == null)
+			return;
+		SharedPreferences prefs;
+		prefs = context.getSharedPreferences(ANDROIDRX_SCHEMA_PREFERENCE_KEY, 0);
+		SharedPreferences.Editor editor = prefs.edit();
+		String functionKey = currentFunc.toString();
+		if (startAt > 0L) {
+			Long usedTime;
+			Long lastUsedTime;
+			Long totalUseTime;
+			usedTime = TimeUnit.MILLISECONDS.toSeconds(SystemClock.elapsedRealtime()) - startAt;
+			lastUsedTime = prefs.getLong(functionKey, 0);
+			totalUseTime = usedTime + lastUsedTime;
+			editor.putLong(functionKey, totalUseTime);
+			editor.commit();
+			startAt = 0L;
+		}
+
+	}
+	private Long getFunctionUsedTime(RxFunction func) {
+		SharedPreferences prefs;
+		prefs = context.getSharedPreferences(ANDROIDRX_SCHEMA_PREFERENCE_KEY, 0);
+		return prefs.getLong(func.toString(), 0);
 	}
 
 }
