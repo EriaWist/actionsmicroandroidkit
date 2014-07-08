@@ -556,10 +556,8 @@ public class EZScreenHelper {
 	private void initEzAndroidRx() {
 		try {
 			String deviceID;
-			deviceID = AndroidRxSchemaServer.getAppMacAddress(context);
-			if (deviceID.isEmpty()) {
-				deviceID = AndroidRxSchemaServer.getUUID(context);
-			}
+			deviceID = AndroidRxSchemaServer.getUUID(context);
+			
 			this.setEzScreenServer(new EzScreenServer(context, InetAddress.getByName(getIpAddress()), getServiceName(), deviceID, new EzScreenServer.EzScreenServerDelegate() {
 
 				@Override
