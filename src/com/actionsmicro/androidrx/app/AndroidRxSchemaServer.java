@@ -2,7 +2,6 @@ package com.actionsmicro.androidrx.app;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Locale;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Cipher;
@@ -22,7 +21,6 @@ import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.SystemClock;
-import android.preference.PreferenceManager;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
@@ -209,12 +207,7 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 		}
 	}
 	public static String getAppMacAddress(Context context) {
-		WifiManager wifiMan = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-		if (wifiMan == null) {
-			return "";
-		}
-		WifiInfo wifiInf = wifiMan.getConnectionInfo();
-		return wifiInf.getMacAddress().toString();
+		return Device.getAppMacAddress(context);
 	}
 	public static String getAppVersion(Context context) {
 		String appVersion = "";
