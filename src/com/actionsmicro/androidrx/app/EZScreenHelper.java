@@ -107,6 +107,7 @@ public class EZScreenHelper {
 	private ViewGroup container;
 	private TextureView mirrorView;
 	private InitializationListener initializationListener;
+	private AndroidRxSchemaServer androidRxSchemaServer;
 	private ViewGroup musicView;
 	private Tracker gaTracker;
 	public Tracker getGaTracker() {
@@ -147,6 +148,12 @@ public class EZScreenHelper {
 			container.addView(photoView);
 			hidePhotoView();
 			addView(photoView);
+		}
+		androidRxSchemaServer = new AndroidRxSchemaServer(context);
+		try {
+			androidRxSchemaServer.start();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 	private void hidePhotoView() {
@@ -605,11 +612,13 @@ public class EZScreenHelper {
 				@Override
 				public void onDisconnected() {
 					stateContext.onEzScreenClientDisconnected();
+					androidRxSchemaServer.stopFunction();
 				}
 
 				@Override
 				public void onConnected() {
 					stateContext.onEzScreenClientConnected();
+					androidRxSchemaServer.startFunction(AndroidRxSchemaServer.RxFunction.EZCAST);
 				}
 				
 				@Override
@@ -670,6 +679,7 @@ public class EZScreenHelper {
 				public void stopVideo() {
 					Log.d(TAG, "stopVideo");
 					stateContext.onStopAirPlayVideo();
+					androidRxSchemaServer.stopFunction();
 				}
 				
 				@Override
@@ -709,6 +719,7 @@ public class EZScreenHelper {
 						trackScreenHit("airplay.video");						
 					}
 					stateContext.onLoadAirPlayVideo(url, rate, position);
+					androidRxSchemaServer.startFunction(AndroidRxSchemaServer.RxFunction.EZAIR);
 				}
 				
 				@Override
@@ -733,6 +744,7 @@ public class EZScreenHelper {
 					Log.d(TAG, "onStartMirroring");
 					trackScreenHit("airplay.mirror");
 					stateContext.onStartMirroring(remoteAddress);
+					androidRxSchemaServer.startFunction(AndroidRxSchemaServer.RxFunction.EZAIR_MIRROR);
 				}
 
 				private void startRenderer() {
@@ -834,6 +846,7 @@ public class EZScreenHelper {
 				public void onStopMirroring() {
 					Log.d(TAG, "onStopMirroring");
 					stateContext.onStopMirroring();
+					androidRxSchemaServer.stopFunction();
 				}
 
 				private void doRender(MediaCodec.BufferInfo bufferInfo) {
@@ -891,11 +904,13 @@ public class EZScreenHelper {
 				@Override
 				public void onStartAirTunes(InetAddress inetAddress) {
 					stateContext.onStartAirTunes(inetAddress);
+					androidRxSchemaServer.startFunction(AndroidRxSchemaServer.RxFunction.EZAIR);
 				}
 
 				@Override
 				public void onStopAirTunes() {
 					stateContext.onStopAirTunes();
+					androidRxSchemaServer.stopFunction();
 				}
 
 				@Override
@@ -1295,6 +1310,7 @@ public class EZScreenHelper {
 			this.getLock().release();
 			this.setLock(null);
 		}
+		androidRxSchemaServer.stop();
 		ezScreenInitialized = false;
 		airplayInitialized = false;
 	}
