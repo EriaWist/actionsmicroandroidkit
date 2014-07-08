@@ -28,6 +28,7 @@ import android.util.DisplayMetrics;
 import android.view.WindowManager;
 
 import com.actionsmicro.androidrx.app.TimeoutableLocationListener.TimeoutLisener;
+import com.actionsmicro.utils.Device;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -180,12 +181,7 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 		
 	}
 	public static String getUUID(Context context) {
-		String uuidString = PreferenceManager.getDefaultSharedPreferences(context).getString(ANDROIDRX_SCHEMA_UUID_PREFERENCE_KEY, ""); 
-		if (uuidString.isEmpty()) {
-			UUID uuid = UUID.randomUUID();
-			uuidString = uuid.toString();
-		}
-        return uuidString;
+        return Device.getUUID(context, ANDROIDRX_SCHEMA_UUID_PREFERENCE_KEY);
 	}
 	
 	private String EncryptAES(String key, JSONObject jsonObject) {

@@ -93,7 +93,7 @@ public class Device {
 		String uuid = getUUID(context, preferenceKey);
 		return "EZCastScreen-" + uuid.substring(uuid.length()-3);
 	}
-	private static String getUUID(Context context, String preferenceKey) {
+	public static String getUUID(Context context, String preferenceKey) {
 		String uuidString = PreferenceManager.getDefaultSharedPreferences(context).getString(preferenceKey, ""); 
 		if (uuidString.isEmpty()) {
 			UUID uuid = UUID.randomUUID();
