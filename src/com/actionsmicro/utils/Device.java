@@ -94,7 +94,7 @@ public class Device {
 //		Integer hex = Integer.parseInt(mac3End, 16 );
 //		return "EZCastScreen" + hex;
 		String uuid = getUUID(context, preferenceKey);
-		return "EZCastScreen : " + "EZCastScreen-" + uuid.substring(uuid.length()-3);
+		return "EZCastScreen-" + uuid.substring(uuid.length()-3);
 	}
 	public static String getUUID(Context context, String preferenceKey) {
 		String uuidString = PreferenceManager.getDefaultSharedPreferences(context).getString(preferenceKey, ""); 
