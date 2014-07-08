@@ -102,4 +102,27 @@ public class IdleState implements State {
 	public State onAirPlayStop(StateContext stateContext) {
 		return null;
 	}
+
+	@Override
+	public State displayPhoto(StateContext stateContext, byte[] jpeg, String assetKey,
+			String transition) {
+		stateContext.informDelegateConnected();
+		stateContext.displayPhoto(jpeg, assetKey, transition);
+		return new AirPlayPhotoState();
+	}
+
+	@Override
+	public State cachePhoto(StateContext stateContext, String assetKey,
+			byte[] jpeg) {
+		stateContext.cacheImage(assetKey, jpeg);
+		return null;
+	}
+
+	@Override
+	public State displayCached(StateContext stateContext, String assetKey,
+			String transition, Boolean result) {		
+		result = stateContext.displayCached(assetKey, transition);
+		stateContext.informDelegateConnected();
+		return new AirPlayPhotoState();
+	}
 }

@@ -75,4 +75,25 @@ public class AirPlayPlayVideoState implements State {
 		return new IdleState();
 	}
 
+	@Override
+	public State displayPhoto(StateContext stateContext, byte[] jpeg, String assetKey,
+			String transition) {
+		stateContext.displayPhoto(jpeg, assetKey, transition);
+		return new AirPlayPhotoState();
+	}
+
+	@Override
+	public State cachePhoto(StateContext stateContext, String assetKey,
+			byte[] jpeg) {
+		stateContext.cacheImage(assetKey, jpeg);
+		return null;
+	}
+
+	@Override
+	public State displayCached(StateContext stateContext, String assetKey,
+			String transition, Boolean result) {
+		result = stateContext.displayCached(assetKey, transition);
+		return new AirPlayPhotoState();
+	}
+
 }

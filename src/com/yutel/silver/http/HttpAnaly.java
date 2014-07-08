@@ -46,8 +46,8 @@ public class HttpAnaly {
 			logger.info("header(" + mHttpWrap.getMothod() +" "+ mHttpWrap.getContext() + ", parms="+parms+") parse compled:"
 					+ sign + mHttpWrap.getRequestHeads().toString());
 		}
-		if (mHttpWrap.getResponseBody() != null) {
-			logger.info("body=" + new String(mHttpWrap.getResponseBody()));
+		if (mHttpWrap.getRequestBody() != null) {
+			logger.info("body=(size:" + mHttpWrap.getRequestBody().length +") " + new String(mHttpWrap.getRequestBody()));
 		}
 		return mHttpWrap;
 	}
@@ -106,8 +106,18 @@ public class HttpAnaly {
 				int len = StringUtil.toInteger(body);
 				if (len > 0) {
 					byte[] data = new byte[len];
-					mInputStream.read(data);
-					mHttpWrap.setResponseBody(data);
+					
+					int remain = len;
+					int read = 0;
+					while (remain > 0) {
+						read = mInputStream.read(data, len - remain, remain);
+						if (read != -1) {
+							remain -= read;
+						} else {
+							break;
+						}
+					}
+					mHttpWrap.setRequestBody(data);
 				}
 			}
 		} catch (IOException e) {

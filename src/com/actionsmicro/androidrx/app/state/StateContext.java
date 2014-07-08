@@ -76,4 +76,23 @@ public abstract class StateContext {
 		Log.d(TAG, "onAirPlayStop");
 		setCurrentState(currentState.onAirPlayStop(this));
 	}
+	public void onDisplayPhoto(byte[] jpeg, String assetKey, String transition) {
+		Log.d(TAG, "onDisplayPhoto");
+		setCurrentState(currentState.displayPhoto(this, jpeg, assetKey, transition));
+	}
+	public boolean onDisplayCached(String assetKey, String transition) {
+		Log.d(TAG, "onDisplayCached");
+		Boolean result = false;
+		setCurrentState(currentState.displayCached(this, assetKey, transition, result));
+		return result;
+	}
+	public void onCachePhoto(String assetKey, byte[] jpeg) {
+		Log.d(TAG, "onCachePhoto");
+		setCurrentState(currentState.cachePhoto(this, assetKey, jpeg));
+	}
+	protected abstract void displayPhoto(byte[] jpeg, String assetKey, String transition);
+	protected abstract void cacheImage(String assetKey, byte[] jpeg);
+	protected abstract boolean displayCached(String assetKey, String transition);
+	protected abstract void hidePhotoView();
+	
 }

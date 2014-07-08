@@ -103,6 +103,12 @@ public class AirPlayServer {
 		void onAirPlayStart();
 
 		void setVolume(float volume);
+
+		void displayPhoto(byte[] jpeg, String assetKey, String transition);
+
+		boolean displayCached(String assetKey, String transition);
+
+		void cachePhoto(String assetKey, byte[] jpeg);
 		
 	}
 	private boolean stopRaopThread;
@@ -523,6 +529,21 @@ public class AirPlayServer {
 			@Override
 			public void setVolume(float volume) {
 				delegate.setVolume(volume);
+			}
+
+			@Override
+			public void displayPhoto(byte[] jpeg, String assetKey, String transition) {
+				delegate.displayPhoto(jpeg, assetKey, transition);
+			}
+
+			@Override
+			public boolean displayCached(String assetKey, String transition) {
+				return delegate.displayCached(assetKey, transition);
+			}
+
+			@Override
+			public void cachePhoto(String assetKey, byte[] jpeg) {
+				delegate.cachePhoto(assetKey, jpeg);
 			}
 		});
 		if (airplayService.start()) {

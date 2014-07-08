@@ -28,4 +28,10 @@ public interface State {
 
 	State onAirPlayStop(StateContext stateContext);
 
+	State displayPhoto(StateContext stateContext, byte[] jpeg, String assetKey, String transition);
+
+	State cachePhoto(StateContext stateContext, String assetKey, byte[] jpeg);
+
+	State displayCached(StateContext stateContext, String assetKey, String transition, Boolean result);
+
 }

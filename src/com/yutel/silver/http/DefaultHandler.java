@@ -72,9 +72,22 @@ public class DefaultHandler {
 			} else if ("/setProperty".equals(wrap.getContext())) {
 				setProperty(wrap.getRequestParameters());
 			} else if ("/photo".equals(wrap.getContext())) {
-				wrap.setResponseCode(200);
-				// TODO deal with jpeg data
 				Log.d(TAG, "photo");
+				String assetKey = wrap.getRequestHeads().get("X-Apple-AssetKey");				
+				String action = wrap.getRequestHeads().get("X-Apple-AssetAction");
+				String transition = wrap.getRequestHeads().get("X-Apple-Transition");
+				wrap.setResponseCode(200);
+				if (action == null) {
+					server.getProxy().displayPhoto(wrap.getRequestBody(), assetKey, transition);
+				} else if (action.equalsIgnoreCase("cacheOnly")) {
+					server.getProxy().cachePhoto(assetKey, wrap.getRequestBody());					
+				} else if (action.equalsIgnoreCase("displayCached")) {
+					if (!server.getProxy().displayCached(assetKey, transition)) {
+						wrap.setResponseCode(412); //Precondition Failed
+					}
+				} else {
+					Log.e(TAG, "unhanled photo action:" + assetKey);					
+				}
 			} else if ("/volume".equals(wrap.getContext())) {
 				if (wrap.getRequestParameters().containsKey("volume")) {
 					server.getProxy().setVolume((float)Float.valueOf(wrap.getRequestParameters().get("volume")));
@@ -99,8 +112,8 @@ public class DefaultHandler {
 
 	private void play() {
 		try {
-			if (wrap.getResponseBody() != null
-					&& wrap.getResponseBody().length > 0) {
+			if (wrap.getRequestBody() != null
+					&& wrap.getRequestBody().length > 0) {
 				String conType = wrap.getRequestHeads().get(
 						HttpProtocol.ContentType);
 				System.out.println("ContentType=" + conType);
@@ -109,7 +122,7 @@ public class DefaultHandler {
 				String pos = "0f";
 				if (AirplayState.binPLIST.equals(conType)) {
 					NSDictionary rootDict = (NSDictionary) PropertyListParser
-							.parse(wrap.getResponseBody());
+							.parse(wrap.getRequestBody());
 					if (rootDict.containsKey("Content-Location")) {
 						url = rootDict.objectForKey("Content-Location").toString();						
 					} else if (rootDict.containsKey("host")) {
@@ -122,7 +135,7 @@ public class DefaultHandler {
 						pos = rootDict.objectForKey("Start-Position").toString();
 					}
 				} else {
-					ByteArrayInputStream bin = new ByteArrayInputStream(wrap.getResponseBody());
+					ByteArrayInputStream bin = new ByteArrayInputStream(wrap.getRequestBody());
 					BufferedReader in = new BufferedReader(new InputStreamReader(bin));
 					Pattern headerPattern = Pattern.compile(":\\ *(.*)");
 					String line = in.readLine();

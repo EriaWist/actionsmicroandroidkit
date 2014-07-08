@@ -12,7 +12,7 @@ public class HttpWrap {
 	private Map<String, String> requestParameters = new HashMap<String, String>();
 	private Map<String, String> requestHeads = new HashMap<String, String>();
 	private Map<String, String> responseHeads = new HashMap<String, String>();
-	private byte[] responseBody;
+	private byte[] requestBody;
 	private boolean response;
 	private boolean reverse;
 	private String bodys;
@@ -95,12 +95,12 @@ public class HttpWrap {
 		this.responseHeads = responseHeads;
 	}
 
-	public byte[] getResponseBody() {
-		return responseBody;
+	public byte[] getRequestBody() {
+		return requestBody;
 	}
 
-	public void setResponseBody(byte[] responseBody) {
-		this.responseBody = responseBody;
+	public void setRequestBody(byte[] requestBody) {
+		this.requestBody = requestBody;
 	}
 
 	public boolean isResponse() {

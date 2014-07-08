@@ -32,6 +32,7 @@ public class HttpProtocol {
 		resposes.put(401, "HTTP/1.1 401 Unauthorized" + CRLF);
 		resposes.put(404, "HTTP/1.1 404 Not Found" + CRLF);
 		resposes.put(405, "HTTP/1.1 405 Method Not Allowed" + CRLF);
+		resposes.put(412, "HTTP/1.1 412 Precondition Failed" + CRLF);
 		gmtFrmt = new java.text.SimpleDateFormat(
 				"E, d MMM yyyy HH:mm:ss 'GMT'", Locale.US);
 		gmtFrmt.setTimeZone(TimeZone.getTimeZone("GMT"));

@@ -66,4 +66,25 @@ public class EzScreenConnectedState implements State {
 	public State onAirPlayStop(StateContext stateContext) {
 		return null;
 	}
+
+	@Override
+	public State displayPhoto(StateContext stateContext, byte[] jpeg, String assetKey,
+			String transition) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public State cachePhoto(StateContext stateContext, String assetKey,
+			byte[] jpeg) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public State displayCached(StateContext stateContext, String assetKey,
+			String transition, Boolean result) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

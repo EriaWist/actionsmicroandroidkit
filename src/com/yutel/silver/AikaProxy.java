@@ -117,4 +117,24 @@ public class AikaProxy implements Aika.AikaConnectListener,
 			controlListener.setVolume(volume);
 		}
 	}
+
+	public void displayPhoto(byte[] jpeg, String assetKey, String transition) {
+		if (controlListener != null) {
+			controlListener.displayPhoto(jpeg, assetKey, transition);
+		}
+	}
+
+	public void cachePhoto(String assetKey, byte[] jpeg) {
+		if (controlListener != null) {
+			controlListener.cachePhoto(assetKey, jpeg);
+		}
+	}
+
+	public boolean displayCached(String assetKey, String transition) {
+		if (controlListener != null) {
+			return controlListener.displayCached(assetKey, transition);
+		}
+		return false;
+	}
+
 }

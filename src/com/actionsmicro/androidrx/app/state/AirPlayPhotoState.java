@@ -2,95 +2,99 @@ package com.actionsmicro.androidrx.app.state;
 
 import java.net.InetAddress;
 
-public class AirPlayMirrorState implements State {
+public class AirPlayPhotoState implements State {
 
 	@Override
 	public State onEzScreenClientConnected(StateContext stateContext) {
-		stateContext.stopMirror();
-		stateContext.showConnectedIndicator();
-		return new EzScreenConnectedState();
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	@Override
 	public State onEzScreenClientDisconnected(StateContext stateContext) {
+		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public State onLoadAirPlayVideo(StateContext stateContext, String url,
 			float rate, float position) {
+		stateContext.hidePhotoView();
 		stateContext.loadVideo(url, rate, position);
-		return new AirPlayPlayVideoWhenMirrorState();
+		return new AirPlayPlayVideoState();
 	}
 
 	@Override
 	public State onStartAirTunes(StateContext stateContext,
 			InetAddress inetAddress) {
+		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public State onStopAirTunes(StateContext stateContext) {
+		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public State onReceiveAirTunesMetadata(StateContext stateContext,
 			String albumName, String artist, String title) {
-		stateContext.showMusicView();
-		stateContext.updateAirTunesMetadata(albumName, artist, title);
-		return new AirTunesPlayMusicWhenMirrorState();
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	@Override
 	public State onReceiveAirTunesCoverArt(StateContext stateContext,
 			byte[] byteArray) {
-		stateContext.updateAirTunesCoverArt(byteArray);
+		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public State onStartMirroring(StateContext stateContext,
 			InetAddress remoteAddress) {
+		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public State onStopMirroring(StateContext stateContext) {
-		stateContext.stopMirror();
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public State onStopAirPlayVideo(StateContext stateContext) {
+		stateContext.hidePhotoView();
+		stateContext.informDelegateDisconnected();
+		return new IdleState();	}
+
+	@Override
+	public State onAirPlayStop(StateContext stateContext) {
+		stateContext.hidePhotoView();
 		stateContext.informDelegateDisconnected();
 		return new IdleState();
 	}
 
 	@Override
-	public State onStopAirPlayVideo(StateContext stateContext) {
-		return null;
-	}
-
-	@Override
-	public State onAirPlayStop(StateContext stateContext) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
 	public State displayPhoto(StateContext stateContext, byte[] jpeg, String assetKey,
 			String transition) {
-		// TODO Auto-generated method stub
+		stateContext.displayPhoto(jpeg, assetKey, transition);
 		return null;
 	}
 
 	@Override
 	public State cachePhoto(StateContext stateContext, String assetKey,
 			byte[] jpeg) {
-		// TODO Auto-generated method stub
+		stateContext.cacheImage(assetKey, jpeg);
 		return null;
 	}
 
 	@Override
 	public State displayCached(StateContext stateContext, String assetKey,
 			String transition, Boolean result) {
-		// TODO Auto-generated method stub
+		result = stateContext.displayCached(assetKey, transition);
 		return null;
 	}
 

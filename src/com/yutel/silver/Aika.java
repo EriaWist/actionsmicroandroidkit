@@ -69,6 +69,12 @@ public abstract class Aika {
 		public void onAirPlayStart();
 
 		public void setVolume(float volume);
+
+		public void displayPhoto(byte[] jpeg, String assetKey, String transition);
+
+		public boolean displayCached(String assetKey, String transition);
+
+		public void cachePhoto(String assetKey, byte[] jpeg);
 	}
 
 	public abstract void sendEvent();

@@ -1,5 +1,6 @@
 package com.actionsmicro.androidrx.app;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -120,6 +121,7 @@ public class EZScreenHelper {
 	public static final int SERVER_EZSCREEN = 0x01<<0; 
 	public static final int SERVER_AIRPLAY = 0x01<<1;
 	private List<View> allViews = new ArrayList<View>();
+	private ImageView photoView;
 	public EZScreenHelper(Context context, String serviceName, ViewGroup frame, WebView webView, TextureView textureView, ViewGroup musicView, int servers) {
 		this.context = context;
 		this.musicView = musicView;
@@ -141,7 +143,14 @@ public class EZScreenHelper {
 		if (needToLoadAirPlay()) {
 			initMirrorView();
 			addView(mirrorView);
+			photoView = new ImageView(context);
+			container.addView(photoView);
+			hidePhotoView();
+			addView(photoView);
 		}
+	}
+	private void hidePhotoView() {
+		setViewVisibility(photoView, View.INVISIBLE);
 	}
 	private void addView(View view) {
 		if (view != null && !allViews.contains(view)) {
@@ -918,6 +927,24 @@ public class EZScreenHelper {
 				public void setVolume(float volume) {
 					EZScreenHelper.this.setVolume(volume);
 				}
+
+				@Override
+				public void displayPhoto(byte[] jpeg, String assetKey, String transition) {
+					Log.d(TAG, "displayPhoto:"+assetKey+" size:"+ jpeg.length + " with:"+transition);
+					stateContext.onDisplayPhoto(jpeg, assetKey, transition);
+				}
+
+				@Override
+				public boolean displayCached(String assetKey, String transition) {
+					Log.d(TAG, "displayCached:"+ assetKey + " with:"+transition);
+					return stateContext.onDisplayCached(assetKey, transition);
+				}
+
+				@Override
+				public void cachePhoto(String assetKey, byte[] jpeg) {
+					Log.d(TAG, "cachePhoto:" + assetKey + " size:"+ jpeg.length);
+					stateContext.onCachePhoto(assetKey, jpeg);
+				}
 				
 			}));
 			alreadyFailed = false;
@@ -1194,6 +1221,50 @@ public class EZScreenHelper {
 			protected void showMirrorView() {
 				EZScreenHelper.this.showMirrorView();
 			}
+
+			@Override
+			protected void displayPhoto(final byte[] jpeg, String assetKey, final String transition) {
+				showPhotoView();
+				cacheImage(assetKey, jpeg);
+				displayCached(assetKey, transition);
+			}
+
+			@Override
+			protected void cacheImage(String assetKey, byte[] jpeg) {
+				try {
+					final File cacheFile = new File(context.getCacheDir(), assetKey+".jpg");
+					FileOutputStream cacheFileOutput = new FileOutputStream(cacheFile);
+					cacheFileOutput.write(jpeg);
+					cacheFileOutput.close();					
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				
+			}
+
+			@Override
+			protected boolean displayCached(String assetKey, String transition) {
+				showPhotoView();
+				final File cacheFile = new File(context.getCacheDir(), assetKey+".jpg");
+				if (cacheFile.exists()) {
+					mainHandler.post(new Runnable() {
+
+						@Override
+						public void run() {
+							photoView.setImageURI(Uri.fromFile(cacheFile));						
+						}
+
+					});
+					return true;
+				} else {
+					return false;
+				}
+			}
+
+			@Override
+			protected void hidePhotoView() {
+				EZScreenHelper.this.hidePhotoView();
+			}
 		};
 		android.net.wifi.WifiManager wifi =
 				(android.net.wifi.WifiManager)
@@ -1392,6 +1463,12 @@ public class EZScreenHelper {
 		if (gaTracker != null) {
 			gaTracker.setScreenName(screenName);
 			gaTracker.send(new HitBuilders.AppViewBuilder().setCustomDimension(customDimensionIndex, dimension).build());
+		}
+	}
+	protected void showPhotoView() {
+		if (photoView != null) {
+			setViewVisibility(photoView, View.VISIBLE);
+			hideAllViewsExcept(photoView);
 		}
 	}
 }
