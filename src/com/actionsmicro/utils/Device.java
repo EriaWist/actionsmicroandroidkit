@@ -81,11 +81,16 @@ public class Device {
 	}
 	public static String getAppMacAddress(Context context) {
 		WifiManager wifiMan = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-		if (wifiMan == null) {
-			return "";
+		if (wifiMan != null) {
+			WifiInfo wifiInf = wifiMan.getConnectionInfo();
+			if (wifiInf != null) {
+				String macAddress = wifiInf.getMacAddress();
+				if (macAddress != null) {
+					return macAddress;
+				}
+			}
 		}
-		WifiInfo wifiInf = wifiMan.getConnectionInfo();
-		return wifiInf.getMacAddress().toString();
+		return "01:23:45:67:89:ab";
 	}
 	public static String getEZScreenServiceName(Context context, String preferenceKey) {
 //		String macAdd = getAppMacAddress(context);
@@ -94,7 +99,7 @@ public class Device {
 //		Integer hex = Integer.parseInt(mac3End, 16 );
 //		return "EZCastScreen" + hex;
 		String uuid = getUUID(context, preferenceKey);
-		return "EZCastScreen : " + "EZCastScreen-" + uuid.substring(uuid.length()-3);
+		return "EZCastScreen-" + uuid.substring(uuid.length()-3);
 	}
 	public static String getUUID(Context context, String preferenceKey) {
 		String uuidString = PreferenceManager.getDefaultSharedPreferences(context).getString(preferenceKey, ""); 

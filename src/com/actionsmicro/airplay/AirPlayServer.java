@@ -562,10 +562,8 @@ public class AirPlayServer {
 		airplayServiceReady = true;
 		checkInitializationState();
 	}
-	private String getMacAddress() {
-		WifiManager wim= (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-		String macAddresss = wim.getConnectionInfo().getMacAddress().toUpperCase();
-		return macAddresss;
+	private String getMacAddress() {		
+		return com.actionsmicro.utils.Device.getAppMacAddress(context);
 	}
 	private static final int RAOP_PORTNUMBER = 47000;
 	
@@ -642,13 +640,16 @@ public class AirPlayServer {
 					local = InetAddress.getLocalHost();
 					NetworkInterface ni = NetworkInterface.getByInetAddress(local);
 					if (ni != null) {
-						WifiManager wim= (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-						String[] as = wim.getConnectionInfo().getMacAddress().split(":");
-		                hwAddr = new byte[as.length];
-		                int i = 0;
-		                for (String a : as) {
-		                    hwAddr[i++] = Integer.valueOf(a, 16).byteValue();
-		                }
+		                try {
+		                	String[] as = com.actionsmicro.utils.Device.getAppMacAddress(context).split(":");
+			                hwAddr = new byte[as.length];
+			                int i = 0;
+			                for (String a : as) {
+			                    hwAddr[i++] = Integer.valueOf(a, 16).byteValue();
+			                }
+			            } catch (Exception e) {
+			            	e.printStackTrace();
+						}
 					}
 				} catch (UnknownHostException e) {
 					e.printStackTrace();
