@@ -1,5 +1,7 @@
 package com.yutel.silver.http;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.logging.Logger;
@@ -29,8 +31,8 @@ public class HttpClient extends Thread {
 				// 读取HTTP请求信息
 				String client = mSocket.getInetAddress().getHostAddress()+":"+mSocket.getPort();
 				logger.info("try to read from " + client);
-				HttpAnaly ha = new HttpAnaly(mSocket.getInputStream(),
-						mSocket.getOutputStream());
+				HttpAnaly ha = new HttpAnaly(new BufferedInputStream(mSocket.getInputStream()),
+						new BufferedOutputStream(mSocket.getOutputStream()));
 				HttpWrap hw = ha.parse(mSocket.getPort());
 				if (hw.getRequestHeads().size() > 0) {
 					if (mSession == null || "".equals(mSession)) {
