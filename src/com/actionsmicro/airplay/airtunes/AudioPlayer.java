@@ -166,7 +166,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 				} catch (IllegalStateException e) {
 					
 				}
-				Log.d(TAG, decoderThread.getName() + " ends");
+				Log.d(TAG, Thread.currentThread().getName() + " ends");
 			}
 			
 		});

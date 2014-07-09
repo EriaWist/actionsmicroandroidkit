@@ -54,6 +54,7 @@ import com.actionsmicro.androidrx.EzScreenServer;
 import com.actionsmicro.androidrx.app.state.IdleState;
 import com.actionsmicro.androidrx.app.state.StateContext;
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.JpegCallback;
@@ -1245,7 +1246,7 @@ public class EZScreenHelper {
 			@Override
 			protected void cacheImage(String assetKey, byte[] jpeg) {
 				try {
-					final File cacheFile = new File(context.getCacheDir(), assetKey+".jpg");
+					final File cacheFile = new File(getAirPlayCacheDir(), assetKey+".jpg");
 					FileOutputStream cacheFileOutput = new FileOutputStream(cacheFile);
 					cacheFileOutput.write(jpeg);
 					cacheFileOutput.close();					
@@ -1258,7 +1259,7 @@ public class EZScreenHelper {
 			@Override
 			protected boolean displayCached(String assetKey, String transition) {
 				showPhotoView();
-				final File cacheFile = new File(context.getCacheDir(), assetKey+".jpg");
+				final File cacheFile = new File(getAirPlayCacheDir(), assetKey+".jpg");
 				if (cacheFile.exists()) {
 					mainHandler.post(new Runnable() {
 
@@ -1311,8 +1312,12 @@ public class EZScreenHelper {
 		androidRxSchemaServer.stop();
 		ezScreenInitialized = false;
 		airplayInitialized = false;
+		cleanUpAirPlayCache();
 	}
 
+	private void cleanUpAirPlayCache() {
+		Utils.deleteFolder(getAirPlayCacheDir());
+	}
 	public ConnectionListener getConnectionListener() {
 		return connectionListener;
 	}
@@ -1484,5 +1489,12 @@ public class EZScreenHelper {
 			setViewVisibility(photoView, View.VISIBLE);
 			hideAllViewsExcept(photoView);
 		}
+	}
+	private File getAirPlayCacheDir() {
+		File airPlayCacheDir = new File(context.getCacheDir(), "AirPlay");
+		if (!airPlayCacheDir.exists()) {
+			airPlayCacheDir.mkdirs();
+		}
+		return airPlayCacheDir;
 	}
 }
