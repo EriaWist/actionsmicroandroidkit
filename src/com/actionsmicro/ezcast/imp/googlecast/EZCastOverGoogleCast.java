@@ -252,8 +252,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 				@Override
 				public void onResult(Status arg0) {
-					Log.d(TAG, "stopApplication:" + currentApplication.getAppId());
-					currentApplication = null;
+					if(currentApplication != null){
+						Log.d(TAG, "stopApplication:" + currentApplication.getAppId());
+						currentApplication = null;
+					}
 				}
 				
 			});
