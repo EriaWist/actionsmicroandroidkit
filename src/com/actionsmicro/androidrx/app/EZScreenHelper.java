@@ -945,12 +945,14 @@ public class EZScreenHelper {
 				@Override
 				public void displayPhoto(byte[] jpeg, String assetKey, String transition) {
 					Log.d(TAG, "displayPhoto:"+assetKey+" size:"+ jpeg.length + " with:"+transition);
+					trackScreenHit("airplay.photo");
 					stateContext.onDisplayPhoto(jpeg, assetKey, transition);
 				}
 
 				@Override
 				public boolean displayCached(String assetKey, String transition) {
 					Log.d(TAG, "displayCached:"+ assetKey + " with:"+transition);
+					trackScreenHit("airplay.photo");
 					return stateContext.onDisplayCached(assetKey, transition);
 				}
 
