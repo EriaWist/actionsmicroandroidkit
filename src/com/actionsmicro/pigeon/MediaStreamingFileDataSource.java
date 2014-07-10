@@ -26,7 +26,7 @@ public class MediaStreamingFileDataSource extends MediaStreamingFileBaseDataSour
 		Log.d(TAG, "getContentLength:" + mediaFile.length());
 		return mediaFile.length();
 	}
-	private static final List<String> SUPPORTED_VIDEO_FILE_EXTENSIONS = Arrays.asList("avi", "divx", "xvid", "mp4", "mov", "vob", "dat", "ts", "m2ts", "mts", "mkv", "rmvb", "rm", "mpg", "mpeg", "wmv", "m4v", "3gp", "asf", "flv"); //"aac", "wav", "ogg", 
+	private static final List<String> SUPPORTED_VIDEO_FILE_EXTENSIONS = Arrays.asList("avi", "divx", "xvid", "mp4", "mov", "vob", "dat", "ts", "m2ts", "mts", "mkv", "rmvb", "rm", "mpg", "mpeg", "wmv", "m4v", "3gp", "asf", "flv", "m3u8"); //"aac", "wav", "ogg", 
 	private static final List<String> SUPPORTED_AUDIO_FILE_EXTENSIONS = Arrays.asList("ape", "flac", "ogg", "mp3", "wma", "wav", "rm", "m4a", "aac", "drs", "ac3", "ra", "aif", "aiff", "m4a", "mka", "dts");
 	private static List<String> SUPPORTED_FILE_EXTENSIONS = null;
 	static {
