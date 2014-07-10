@@ -13,6 +13,7 @@ import java.util.Formatter;
 import java.util.List;
 import java.util.Locale;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.FragmentManager;
 import android.content.ContentUris;
@@ -211,7 +212,8 @@ public class Utils {
      * @param uri The Uri to query.
      * @return file path
      */
-    private static String getPath(final Context context, final Uri uri) {
+    @SuppressLint("NewApi")
+	private static String getPath(final Context context, final Uri uri) {
 
         final boolean isKitKat = Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;
 
