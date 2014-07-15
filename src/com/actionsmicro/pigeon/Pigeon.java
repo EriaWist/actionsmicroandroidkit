@@ -10,11 +10,7 @@ public class Pigeon {
 		private String serverAddress;
 		private int portNumber;
 		Triode(final String version, final String serverAddress, int portNumber) {
-			if(version == null){
-				this.version = "1";
-			}else{
-				this.version = version;
-			}
+			this.version = version;
 			this.serverAddress = serverAddress;
 			this.portNumber = portNumber;
 		}
