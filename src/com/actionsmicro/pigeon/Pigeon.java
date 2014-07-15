@@ -10,7 +10,11 @@ public class Pigeon {
 		private String serverAddress;
 		private int portNumber;
 		Triode(final String version, final String serverAddress, int portNumber) {
-			this.version = version;
+			if(version == null){
+				this.version = "1";
+			}else{
+				this.version = version;
+			}
 			this.serverAddress = serverAddress;
 			this.portNumber = portNumber;
 		}
@@ -68,7 +72,8 @@ public class Pigeon {
 			if (pigeon == null) {
 				pigeon = new Client(serverAddress, portNumber);
 			}
-			clients.put(triode, pigeon);
+			clients.put(new Triode(pigeon.getVersion(), pigeon.getServerAddress(), pigeon.getPortNumber()), pigeon);
+			//clients.put(triode, pigeon);
 			referenceCount.put(pigeon, 1);
 		} else {
 			referenceCount.put(pigeon, referenceCount.get(pigeon) + 1);
