@@ -7,8 +7,8 @@ import java.net.URL;
 
 import android.graphics.YuvImage;
 
-import com.actionsmicro.ezcast.AuthorizationApi;
-import com.actionsmicro.ezcast.DisplayApi;
+import com.actionsmicro.androidkit.ezcast.AuthorizationApi;
+import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.ezcom.impl.AuthorizerImpl;
 import com.actionsmicro.ezcom.impl.DisplayImpl;
 import com.actionsmicro.ezcom.impl.ModeratorImpl;

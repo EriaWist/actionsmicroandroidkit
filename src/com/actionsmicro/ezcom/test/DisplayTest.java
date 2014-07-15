@@ -7,9 +7,9 @@ import junit.framework.TestCase;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 
-import com.actionsmicro.ezcast.DisplayApi;
-import com.actionsmicro.ezcast.DisplayApi.DisplayListener;
-import com.actionsmicro.ezcast.DisplayApi.Role;
+import com.actionsmicro.androidkit.ezcast.DisplayApi;
+import com.actionsmicro.androidkit.ezcast.DisplayApi.DisplayListener;
+import com.actionsmicro.androidkit.ezcast.DisplayApi.Role;
 import com.actionsmicro.ezcom.Proxy;
 import com.actionsmicro.ezcom.impl.DisplayImpl;
 import com.actionsmicro.ezcom.test.mock.JSONRPCExpectations;

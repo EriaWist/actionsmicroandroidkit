@@ -14,7 +14,7 @@ import java.nio.ByteOrder;
 
 import android.os.Handler;
 
-import com.actionsmicro.ezcast.MediaPlayerApi;
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.utils.Log;
 
 public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStreaming {

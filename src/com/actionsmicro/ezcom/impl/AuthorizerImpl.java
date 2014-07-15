@@ -3,8 +3,8 @@ package com.actionsmicro.ezcom.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.actionsmicro.ezcast.AuthorizationApi;
-import com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener.DeniedReason;
+import com.actionsmicro.androidkit.ezcast.AuthorizationApi;
+import com.actionsmicro.androidkit.ezcast.AuthorizationApi.AuthorizationListener.DeniedReason;
 import com.actionsmicro.ezcom.Proxy;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
