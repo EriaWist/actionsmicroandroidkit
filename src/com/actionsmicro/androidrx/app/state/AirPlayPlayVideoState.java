@@ -95,5 +95,10 @@ public class AirPlayPlayVideoState implements State {
 		result = stateContext.displayCached(assetKey, transition);
 		return new AirPlayPhotoState();
 	}
-
+	@Override
+	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.stopVideo();
+		stateContext.displayUrl(url);
+		return new EzScreenConnectedState();
+	}
 }

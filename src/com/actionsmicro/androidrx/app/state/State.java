@@ -34,4 +34,6 @@ public interface State {
 
 	State displayCached(StateContext stateContext, String assetKey, String transition, Boolean result);
 
+	State onDisplayUrl(StateContext stateContext, String url);
+
 }

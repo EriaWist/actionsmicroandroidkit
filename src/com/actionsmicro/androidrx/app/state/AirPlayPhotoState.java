@@ -6,8 +6,9 @@ public class AirPlayPhotoState implements State {
 
 	@Override
 	public State onEzScreenClientConnected(StateContext stateContext) {
-		// TODO Auto-generated method stub
-		return null;
+		stateContext.hidePhotoView();
+		stateContext.showConnectedIndicator();
+		return new EzScreenConnectedState();
 	}
 
 	@Override
@@ -98,4 +99,10 @@ public class AirPlayPhotoState implements State {
 		return null;
 	}
 
+	@Override
+	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.hidePhotoView();
+		stateContext.displayUrl(url);
+		return new EzScreenConnectedState();
+	}
 }

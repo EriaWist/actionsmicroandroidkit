@@ -94,5 +94,11 @@ public class AirPlayPlayVideoWhenMirrorState implements State {
 		// TODO Auto-generated method stub
 		return null;
 	}
-
+	
+	@Override
+	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.stopVideo();
+		stateContext.displayUrl(url);
+		return new EzScreenConnectedState();
+	}
 }

@@ -623,7 +623,7 @@ public class EZScreenHelper {
 				@Override
 				public void displayUrl(String url) {
 					trackScreenHit("ezcastrx.mirror");
-					EZScreenHelper.this.displayUrl(url);
+					stateContext.onDisplayUrl(url);
 				}
 				
 				@Override
@@ -1280,6 +1280,12 @@ public class EZScreenHelper {
 			@Override
 			protected void hidePhotoView() {
 				EZScreenHelper.this.hidePhotoView();
+			}
+
+			@Override
+			protected void displayUrl(String url) {
+				EZScreenHelper.this.displayUrl(url);
+				
 			}
 		};
 		android.net.wifi.WifiManager wifi =

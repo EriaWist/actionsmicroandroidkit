@@ -87,4 +87,10 @@ public class EzScreenConnectedState implements State {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.displayUrl(url);
+		return null;
+	}
 }

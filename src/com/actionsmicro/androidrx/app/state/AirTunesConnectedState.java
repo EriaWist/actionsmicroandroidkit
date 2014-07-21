@@ -92,4 +92,9 @@ public class AirTunesConnectedState implements State {
 		return null;
 	}
 
+	@Override
+	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.displayUrl(url);
+		return new EzScreenConnectedState();
+	}
 }

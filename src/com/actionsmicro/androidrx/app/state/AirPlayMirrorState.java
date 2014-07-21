@@ -94,4 +94,11 @@ public class AirPlayMirrorState implements State {
 		return null;
 	}
 
+	@Override
+	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.stopMirror();
+		stateContext.displayUrl(url);
+		return new EzScreenConnectedState();
+	}
+
 }

@@ -125,4 +125,11 @@ public class IdleState implements State {
 		stateContext.informDelegateConnected();
 		return new AirPlayPhotoState();
 	}
+
+	@Override
+	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.informDelegateConnected();
+		stateContext.displayUrl(url);
+		return new EzScreenConnectedState();
+	}
 }

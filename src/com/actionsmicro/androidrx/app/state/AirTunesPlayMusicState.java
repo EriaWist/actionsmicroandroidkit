@@ -95,4 +95,11 @@ public class AirTunesPlayMusicState implements State {
 		// TODO Auto-generated method stub
 		return null;
 	}
+	@Override
+	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.stopMusic();
+		stateContext.hideMusicView();
+		stateContext.displayUrl(url);
+		return new EzScreenConnectedState();
+	}
 }

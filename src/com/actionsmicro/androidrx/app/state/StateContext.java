@@ -94,5 +94,10 @@ public abstract class StateContext {
 	protected abstract void cacheImage(String assetKey, byte[] jpeg);
 	protected abstract boolean displayCached(String assetKey, String transition);
 	protected abstract void hidePhotoView();
+	public void onDisplayUrl(String url) {
+		Log.d(TAG, "onDisplayUrl");
+		setCurrentState(currentState.onDisplayUrl(this, url));
+	}
+	protected abstract void displayUrl(String url);
 	
 }
