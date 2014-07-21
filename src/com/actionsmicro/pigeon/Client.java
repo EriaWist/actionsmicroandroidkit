@@ -24,7 +24,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.YuvImage;
 
-import com.actionsmicro.ezcast.helper.ImageSender.BitmapManager;
+import com.actionsmicro.androidkit.ezcast.helper.ImageSender.BitmapManager;
 import com.actionsmicro.utils.Log;
 
 /**

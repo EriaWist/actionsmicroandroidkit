@@ -68,7 +68,8 @@ public class Pigeon {
 			if (pigeon == null) {
 				pigeon = new Client(serverAddress, portNumber);
 			}
-			clients.put(triode, pigeon);
+			clients.put(new Triode(pigeon.getVersion(), pigeon.getServerAddress(), pigeon.getPortNumber()), pigeon);
+			//clients.put(triode, pigeon);
 			referenceCount.put(pigeon, 1);
 		} else {
 			referenceCount.put(pigeon, referenceCount.get(pigeon) + 1);

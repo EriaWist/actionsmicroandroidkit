@@ -1,6 +1,6 @@
 package com.actionsmicro.pigeon;
 
-import com.actionsmicro.ezcast.MediaPlayerApi.State;
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.State;
 
 public interface MediaStreaming {
 	public interface DataSource {

@@ -14,7 +14,7 @@ import java.nio.ByteOrder;
 
 import android.os.Handler;
 
-import com.actionsmicro.ezcast.MediaPlayerApi;
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.utils.Log;
 
 public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStreaming {
@@ -939,6 +939,17 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		}
 		return true;
 	}
+	
+	private boolean sendAVCommand(final byte commandPacket[]){
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				sendDataToRemote(commandPacket);
+			}			
+		}).start();
+		return true;
+	}
+	
 	private static ByteBuffer createPlayerGetLengthPacket() {
 		final ByteBuffer packet = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE + AV_SIZE_INT32);
 		packet.order(ByteOrder.LITTLE_ENDIAN);
@@ -1020,10 +1031,12 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public int increaseVolume() {
-		if (sendAVCommandAndWaitForResponse(createPlayerIncreaseVolumePacket().array(), avCommandVolumeResponseReceivedNotificaiton)) {
-			return avRequestResult;
-		}
-		return -1;
+//		if (sendAVCommandAndWaitForResponse(createPlayerIncreaseVolumePacket().array(), avCommandVolumeResponseReceivedNotificaiton)) {
+//			return avRequestResult;
+//		}
+//		return -1;
+		sendAVCommand(createPlayerIncreaseVolumePacket().array());
+		return 0;
 	}
 
 	private static ByteBuffer createPlayerDecreaseVolumePacket() {
@@ -1034,10 +1047,12 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public int decreaseVolume() {
-		if (sendAVCommandAndWaitForResponse(createPlayerDecreaseVolumePacket().array(), avCommandVolumeResponseReceivedNotificaiton)) {
-			return avRequestResult;
-		}
-		return -1;
+//		if (sendAVCommandAndWaitForResponse(createPlayerDecreaseVolumePacket().array(), avCommandVolumeResponseReceivedNotificaiton)) {
+//			return avRequestResult;
+//		}
+//		return -1;
+		sendAVCommand(createPlayerDecreaseVolumePacket().array());
+		return 0;
 	}
 	@Override
 	public MediaPlayerApi.State getPlayerState() {

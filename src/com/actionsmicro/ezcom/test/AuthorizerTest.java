@@ -7,9 +7,9 @@ import junit.framework.TestCase;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 
-import com.actionsmicro.ezcast.AuthorizationApi;
-import com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener;
-import com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener.DeniedReason;
+import com.actionsmicro.androidkit.ezcast.AuthorizationApi;
+import com.actionsmicro.androidkit.ezcast.AuthorizationApi.AuthorizationListener;
+import com.actionsmicro.androidkit.ezcast.AuthorizationApi.AuthorizationListener.DeniedReason;
 import com.actionsmicro.ezcom.Proxy;
 import com.actionsmicro.ezcom.impl.AuthorizerImpl;
 import com.actionsmicro.ezcom.test.mock.JSONRPCExpectations;

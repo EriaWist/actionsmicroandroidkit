@@ -6,7 +6,7 @@ import java.util.Map;
 
 import android.graphics.YuvImage;
 
-import com.actionsmicro.ezcast.DisplayApi;
+import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.ezcom.Proxy;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;

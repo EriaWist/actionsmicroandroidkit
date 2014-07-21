@@ -905,6 +905,7 @@ public class Falcon {
 				projectorInfo.name = keyValuePairs.get("hostname");
 			}
 			projectorInfo.keyValuePairs.putAll(keyValuePairs);
+			projectorInfo.osVerion = parameters[1];
 		}
 	}
 	private ProjectorInfo getProjectorInfoWithAddress(InetAddress address) {

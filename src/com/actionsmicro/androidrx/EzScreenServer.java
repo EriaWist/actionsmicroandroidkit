@@ -11,8 +11,8 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
-import com.actionsmicro.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
