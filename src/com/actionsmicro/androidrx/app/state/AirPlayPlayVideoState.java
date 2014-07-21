@@ -64,8 +64,8 @@ public class AirPlayPlayVideoState implements State {
 	@Override
 	public State onStopAirPlayVideo(StateContext stateContext) {
 		stateContext.stopVideo();
-		
-		return null;
+		stateContext.informDelegateDisconnected();
+		return new IdleState();
 	}
 
 	@Override
