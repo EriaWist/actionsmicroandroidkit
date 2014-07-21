@@ -17,7 +17,7 @@
             splitindex="true" use="true" version="true" docencoding="UTF-8" charset="UTF-8" encoding="UTF-8"
             stylesheetfile="javadoc.css"
             >
-            <fileset dir="src/com/actionsmicro/ezcast/" casesensitive="yes">
+            <fileset dir="src/com/actionsmicro/androidkit/ezcast/" casesensitive="yes">
                 <include name="*.java"/>
                 <include name="helper/*.java"/>
                 <include name="imp/ezdisplay/FalconDeviceFinder.java"/>
