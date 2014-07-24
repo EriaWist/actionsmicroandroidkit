@@ -2,10 +2,11 @@ package com.actionsmicro.androidrx.app.state;
 
 import java.net.InetAddress;
 
-public class AirPlayMirrorState implements State {
+public class AirPlayPhotoWhenMirrorState implements State {
 
 	@Override
 	public State onEzScreenClientConnected(StateContext stateContext) {
+		stateContext.hidePhotoView();
 		stateContext.stopMirror();
 		stateContext.showConnectedIndicator();
 		return new EzScreenConnectedState();
@@ -19,8 +20,7 @@ public class AirPlayMirrorState implements State {
 	@Override
 	public State onLoadAirPlayVideo(StateContext stateContext, String url,
 			float rate, float position) {
-		stateContext.loadVideo(url, rate, position);
-		return new AirPlayPlayVideoWhenMirrorState();
+		return null;
 	}
 
 	@Override
@@ -37,15 +37,12 @@ public class AirPlayMirrorState implements State {
 	@Override
 	public State onReceiveAirTunesMetadata(StateContext stateContext,
 			String albumName, String artist, String title) {
-		stateContext.showMusicView();
-		stateContext.updateAirTunesMetadata(albumName, artist, title);
-		return new AirTunesPlayMusicWhenMirrorState();
+		return null;
 	}
 
 	@Override
 	public State onReceiveAirTunesCoverArt(StateContext stateContext,
 			byte[] byteArray) {
-		stateContext.updateAirTunesCoverArt(byteArray);
 		return null;
 	}
 
@@ -58,44 +55,45 @@ public class AirPlayMirrorState implements State {
 	@Override
 	public State onStopMirroring(StateContext stateContext) {
 		stateContext.stopMirror();
-		stateContext.informDelegateDisconnected();
-		return new IdleState();
+		return new AirPlayPhotoState();
 	}
 
 	@Override
 	public State onStopAirPlayVideo(StateContext stateContext) {
-		return null;
+		stateContext.hidePhotoView();
+		stateContext.showMirrorView();
+		return new AirPlayMirrorState();
 	}
 
 	@Override
 	public State onAirPlayStop(StateContext stateContext) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public State displayPhoto(StateContext stateContext, byte[] jpeg, String assetKey,
-			String transition) {
+	public State displayPhoto(StateContext stateContext, byte[] jpeg,
+			String assetKey, String transition) {
 		stateContext.displayPhoto(jpeg, assetKey, transition);
-		return new AirPlayPhotoWhenMirrorState();
+		return null;
 	}
 
 	@Override
 	public State cachePhoto(StateContext stateContext, String assetKey,
 			byte[] jpeg) {
 		stateContext.cacheImage(assetKey, jpeg);
-		return new AirPlayPhotoWhenMirrorState();
+		return null;
 	}
 
 	@Override
 	public State displayCached(StateContext stateContext, String assetKey,
 			String transition, Boolean result) {
 		result = stateContext.displayCached(assetKey, transition);
-		return new AirPlayPhotoWhenMirrorState();
+		return null;
 	}
 
 	@Override
 	public State onDisplayUrl(StateContext stateContext, String url) {
+		stateContext.hidePhotoView();
 		stateContext.stopMirror();
 		stateContext.displayUrl(url);
 		return new EzScreenConnectedState();
