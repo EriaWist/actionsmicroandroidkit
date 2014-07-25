@@ -141,10 +141,10 @@ public class MediaStreamingFileDataSource implements FileDataSource {
 		return SUPPORTED_FILE_EXTENSIONS;
 	}
 	public static boolean supportsFileExt(String ext) {
-		return SUPPORTED_FILE_EXTENSIONS.contains(ext);
+		return SUPPORTED_FILE_EXTENSIONS.contains(ext.toLowerCase());
 	}
 	public static boolean isAudioFileExt(String ext) {
-		return SUPPORTED_AUDIO_FILE_EXTENSIONS.contains(ext);
+		return SUPPORTED_AUDIO_FILE_EXTENSIONS.contains(ext.toLowerCase());
 	}
 	@Override
 	public boolean isAudio() {
