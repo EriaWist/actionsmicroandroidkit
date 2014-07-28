@@ -316,21 +316,22 @@ public class Falcon {
 					} catch (IOException e) {
 						Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
 						Falcon.getInstance().dispatchExceptionOnMain(ipAddress, e);
-					} finally {
-						synchronized (ProjectorInfo.this) {
-							ProjectorInfo.this.notify();	
-						}
-					}
+					} 
+//					finally {
+//						synchronized (ProjectorInfo.this) {
+//							ProjectorInfo.this.notify();	
+//						}
+//					}
 				}
 				
 			}).start();
-			synchronized(this) {
-				try {
-					this.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
+//			synchronized(this) {
+//				try {
+//					this.wait();
+//				} catch (InterruptedException e) {
+//					e.printStackTrace();
+//				}
+//			}
 		}
 		
 		private void sendKey(final int commandCode, final int keyCode, final boolean wait) {
