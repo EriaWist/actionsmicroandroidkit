@@ -482,7 +482,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void onJpegAvaiable(byte[] jpegData, int size) {
-					if (EZScreenHelper.this.getMjpegView() != null) {
+					if (EZScreenHelper.this.getMjpegView() != null && jpegData != null) {
 						
 						Bitmap bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size);
 						if (bitmap != null) {
