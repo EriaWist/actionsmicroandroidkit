@@ -28,8 +28,6 @@ public class EzScreenServer {
 
 		void displayUrl(String url);
 
-		void resetToStandby();
-
 		void onConnected();
 
 		void onDisconnected();
@@ -80,7 +78,7 @@ public class EzScreenServer {
 
 		@Override
 		public void run() {
-			ezScreenServerDelegate.resetToStandby();
+			ezScreenServerDelegate.onDisconnected();
 		}
 		
 	};

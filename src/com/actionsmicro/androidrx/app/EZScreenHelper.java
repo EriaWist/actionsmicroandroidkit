@@ -586,12 +586,6 @@ public class EZScreenHelper {
 				}
 
 				@Override
-				public void resetToStandby() {
-					EZScreenHelper.this.resetToStandby();
-					informDelegateDisconnected();
-				}
-
-				@Override
 				public void playVideo(String url, String callback) {
 					try {
 						Uri uri = Uri.parse(url);
