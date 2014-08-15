@@ -87,8 +87,7 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 	@Override
 	protected MediaPlayerApi createMediaPlayerApi(
 			MediaPlayerApiBuilder mediaPlayerApiBuilder) {
-		// TODO Auto-generated method stub
-		return null;
+		return new AirPlayMediaPlayerApi(mediaPlayerApiBuilder);
 	}
 
 	@Override
