@@ -41,23 +41,25 @@ public class HttpClient extends Thread {
 						logger.info("init:port=" + mSocket.getPort()
 								+ ",mSession=" + mSession);
 					}
-					DefaultHandler dhh = new DefaultHandler(airplayServer, hw);
-					dhh.process();
-					if (hw.getResponseCode() == 101) {
-						airplayServer.addReverseResponse(hw.getRequestHeads()
-								.get(HttpProtocol.AIRPLAY_SESSION), mSocket);
-						isReverse = true;
-						// mConnect=false;
+					if (!isReverse) { 
+						DefaultHandler dhh = new DefaultHandler(airplayServer, hw);
+						dhh.process();
+						if (hw.getResponseCode() == 101) {
+							airplayServer.addReverseResponse(hw.getRequestHeads()
+									.get(HttpProtocol.AIRPLAY_SESSION), mSocket);
+							isReverse = true;
+							// mConnect=false;
+						}
+						if (hw.isReverse()) {
+							String event = HttpProtocol.getEvent(hw
+									.getReverseEvent());
+							String reverse = AirplayUtil.getEventInfo(event);
+							airplayServer.sendReverseResponse(mSession,reverse);
+						}
+						logger.info("> " + hw.buildResponse());
+
+						ha.sendResponse(hw.buildResponse());	
 					}
-					if (hw.isReverse()) {
-						String event = HttpProtocol.getEvent(hw
-								.getReverseEvent());
-						String reverse = AirplayUtil.getEventInfo(event);
-						airplayServer.sendReverseResponse(mSession,reverse);
-					}
-					logger.info("> " + hw.buildResponse());
-					
-					ha.sendResponse(hw.buildResponse());					
 				} else {
 					if (isReverse && mSession != null) {
 						airplayServer.removeReverseResponse(mSession);
