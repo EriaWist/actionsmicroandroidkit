@@ -77,7 +77,15 @@ public class AirplayServer extends Thread {
 				System.out.println("EVENT:" + body);
 				OutputStream os = s.getOutputStream();
 				os.flush();
-				os.write(body.getBytes());
+				
+				StringBuffer sb = new StringBuffer();
+				sb.append("POST /event HTTP/1.1").append(HttpAnaly.CR).append(HttpAnaly.LF);
+				sb.append("Content-Type: application/x-apple-plist").append(HttpAnaly.CR).append(HttpAnaly.LF);
+				sb.append("Content-Length: ").append(body.getBytes().length).append(HttpAnaly.CR).append(HttpAnaly.LF);
+				sb.append("X-Apple-Session-ID: ").append(sessionid).append(HttpAnaly.CR).append(HttpAnaly.LF);
+				sb.append(HttpAnaly.CR).append(HttpAnaly.LF);
+				sb.append(body);
+				os.write(sb.toString().getBytes());
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
