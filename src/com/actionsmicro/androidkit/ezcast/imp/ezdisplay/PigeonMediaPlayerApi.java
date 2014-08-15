@@ -48,27 +48,46 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 	}
 	@Override
 	public State getState() {
-		return mediaStreaming.getPlayerState();
+		if(mediaStreaming != null){
+			return mediaStreaming.getPlayerState();
+		}
+		return State.UNKNOWN;
+		
 	}
 	@Override
 	public boolean pause() {
-		return mediaStreaming.pauseMediaStreaming() == 0;
+		if(mediaStreaming != null){
+			return mediaStreaming.pauseMediaStreaming() == 0;
+		}
+		return true;
 	}
 	@Override
 	public boolean resume() {
-		return mediaStreaming.resumeMediaStreaming() == 0;
+		if(mediaStreaming != null){
+			return mediaStreaming.resumeMediaStreaming() == 0;
+		}
+		return true;
 	}
 	@Override
 	public boolean increaseVolume() {
-		return mediaStreaming.increaseVolume() == 0;
+		if(mediaStreaming != null){
+			return mediaStreaming.increaseVolume() == 0;
+		}
+		return true;
 	}
 	@Override
 	public boolean decreaseVolume() {
-		return mediaStreaming.decreaseVolume() == 0;
+		if(mediaStreaming != null){
+			return mediaStreaming.decreaseVolume() == 0;
+		}
+		return true;
 	}
 	@Override
 	public boolean seek(int position) {
-		return mediaStreaming.seekTo(position) == 0;
+		if(mediaStreaming != null){
+			return mediaStreaming.seekTo(position) == 0;
+		}
+		return true;
 	}
 	@Override
 	public boolean stop() {
@@ -135,7 +154,9 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				}
 				
 			});
-			mediaStreaming.startMediaStreaming(dataSource);
+			if(mediaStreaming != null){
+				mediaStreaming.startMediaStreaming(dataSource);
+			}
 		}
 		return true;
 	}
