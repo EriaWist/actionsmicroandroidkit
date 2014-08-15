@@ -1,5 +1,18 @@
 package com.koushikdutta.async.http.server;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Hashtable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.net.ssl.SSLContext;
+
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.text.TextUtils;
@@ -25,24 +38,6 @@ import com.koushikdutta.async.http.body.AsyncHttpRequestBody;
 import com.koushikdutta.async.http.libcore.IoUtils;
 import com.koushikdutta.async.http.libcore.RawHeaders;
 import com.koushikdutta.async.http.libcore.RequestHeaders;
-import com.koushikdutta.async.util.StreamUtility;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Enumeration;
-import java.util.Hashtable;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
-
-import javax.net.ssl.SSLContext;
 
 public class AsyncHttpServer {
     ArrayList<AsyncServerSocket> mListeners = new ArrayList<AsyncServerSocket>();
@@ -64,140 +59,7 @@ public class AsyncHttpServer {
     ListenCallback mListenCallback = new ListenCallback() {
         @Override
         public void onAccepted(final AsyncSocket socket) {
-            AsyncHttpServerRequestImpl req = new AsyncHttpServerRequestImpl() {
-                Pair match;
-                String fullPath;
-                String path;
-                boolean responseComplete;
-                boolean requestComplete;
-                AsyncHttpServerResponseImpl res;
-                boolean hasContinued;
-
-                @Override
-                protected AsyncHttpRequestBody onUnknownBody(RawHeaders headers) {
-                    return AsyncHttpServer.this.onUnknownBody(headers);
-                }
-
-                @Override
-                protected void onHeadersReceived() {
-                    RawHeaders headers = getRawHeaders();
-
-                    // should the negotiation of 100 continue be here, or in the request impl?
-                    // probably here, so AsyncResponse can negotiate a 100 continue.
-                    if (!hasContinued && "100-continue".equals(headers.get("Expect"))) {
-                        pause();
-//                        System.out.println("continuing...");
-                        Util.writeAll(mSocket, "HTTP/1.1 100 Continue\r\n\r\n".getBytes(), new CompletedCallback() {
-                            @Override
-                            public void onCompleted(Exception ex) {
-                                resume();
-                                if (ex != null) {
-                                    report(ex);
-                                    return;
-                                }
-                                hasContinued = true;
-                                onHeadersReceived();
-                            }
-                        });
-                        return;
-                    }
-//                    System.out.println(headers.toHeaderString());
-                    
-                    String statusLine = headers.getStatusLine();
-                    String[] parts = statusLine.split(" ");
-                    fullPath = parts[1];
-                    path = fullPath.split("\\?")[0];
-                    method = parts[0];
-                    synchronized (mActions) {
-                        ArrayList<Pair> pairs = mActions.get(method);
-                        if (pairs != null) {
-                            for (Pair p: pairs) {
-                                Matcher m = p.regex.matcher(path);
-                                if (m.matches()) {
-                                    mMatcher = m;
-                                    match = p;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    res = new AsyncHttpServerResponseImpl(socket, this) {
-                        @Override
-                        protected void onEnd() {
-                            super.onEnd();
-                            mSocket.setEndCallback(null);
-                            responseComplete = true;
-                            // reuse the socket for a subsequent request.
-                            handleOnCompleted();
-                        }
-                    };
-                    
-                    onRequest(this, res);
-                    
-                    if (match == null) {
-                        res.responseCode(404);
-                        res.end();
-                        return;
-                    }
-
-                    if (!getBody().readFullyOnRequest()) {
-                        match.callback.onRequest(this, res);
-                    }
-                    else if (requestComplete) {
-                        match.callback.onRequest(this, res);
-                    }
-                }
-
-                @Override
-                public void onCompleted(Exception e) {
-                    // if the protocol was switched off http, ignore this request/response.
-                    if (res.getHeaders().getHeaders().getResponseCode() == 101)
-                        return;
-                    requestComplete = true;
-                    super.onCompleted(e);
-                    // no http pipelining, gc trashing if the socket dies
-                    // while the request is being sent and is paused or something
-                    mSocket.setDataCallback(new NullDataCallback() {
-                        @Override
-                        public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
-                            super.onDataAvailable(emitter, bb);
-                            mSocket.close();
-                        }
-                    });
-                    handleOnCompleted();
-
-                    if (getBody().readFullyOnRequest()) {
-                        if (match != null)
-                            match.callback.onRequest(this, res);
-                    }
-                }
-                
-                private void handleOnCompleted() {
-                    if (requestComplete && responseComplete) {
-                        if (HttpUtil.isKeepAlive(getHeaders().getHeaders())) {
-                            onAccepted(socket);
-                        }
-                        else {
-                            socket.close();
-                        }
-                    }
-                }
-
-                @Override
-                public String getPath() {
-                    return path;
-                }
-
-                @Override
-                public Multimap getQuery() {
-                    String[] parts = fullPath.split("\\?", 2);
-                    if (parts.length < 2)
-                        return new Multimap();
-                    return Multimap.parseQuery(parts[1]);
-                }
-            };
-            req.setSocket(socket);
-            socket.resume();
+            establishConnection(socket);
         }
 
         @Override
@@ -474,7 +336,144 @@ public class AsyncHttpServer {
         });
     }
     
-    private static Hashtable<Integer, String> mCodes = new Hashtable<Integer, String>();
+    public void establishConnection(final AsyncSocket socket) {
+		AsyncHttpServerRequestImpl req = new AsyncHttpServerRequestImpl() {
+		    Pair match;
+		    String fullPath;
+		    String path;
+		    boolean responseComplete;
+		    boolean requestComplete;
+		    AsyncHttpServerResponseImpl res;
+		    boolean hasContinued;
+
+		    @Override
+		    protected AsyncHttpRequestBody onUnknownBody(RawHeaders headers) {
+		        return AsyncHttpServer.this.onUnknownBody(headers);
+		    }
+
+		    @Override
+		    protected void onHeadersReceived() {
+		        RawHeaders headers = getRawHeaders();
+
+		        // should the negotiation of 100 continue be here, or in the request impl?
+		        // probably here, so AsyncResponse can negotiate a 100 continue.
+		        if (!hasContinued && "100-continue".equals(headers.get("Expect"))) {
+		            pause();
+//                        System.out.println("continuing...");
+		            Util.writeAll(mSocket, "HTTP/1.1 100 Continue\r\n\r\n".getBytes(), new CompletedCallback() {
+		                @Override
+		                public void onCompleted(Exception ex) {
+		                    resume();
+		                    if (ex != null) {
+		                        report(ex);
+		                        return;
+		                    }
+		                    hasContinued = true;
+		                    onHeadersReceived();
+		                }
+		            });
+		            return;
+		        }
+//                    System.out.println(headers.toHeaderString());
+		        
+		        String statusLine = headers.getStatusLine();
+		        String[] parts = statusLine.split(" ");
+		        fullPath = parts[1];
+		        path = fullPath.split("\\?")[0];
+		        method = parts[0];
+		        synchronized (mActions) {
+		            ArrayList<Pair> pairs = mActions.get(method);
+		            if (pairs != null) {
+		                for (Pair p: pairs) {
+		                    Matcher m = p.regex.matcher(path);
+		                    if (m.matches()) {
+		                        mMatcher = m;
+		                        match = p;
+		                        break;
+		                    }
+		                }
+		            }
+		        }
+		        res = new AsyncHttpServerResponseImpl(socket, this) {
+		            @Override
+		            protected void onEnd() {
+		                super.onEnd();
+		                mSocket.setEndCallback(null);
+		                responseComplete = true;
+		                // reuse the socket for a subsequent request.
+		                handleOnCompleted();
+		            }
+		        };
+		        
+		        onRequest(this, res);
+		        
+		        if (match == null) {
+		            res.responseCode(404);
+		            res.end();
+		            return;
+		        }
+
+		        if (!getBody().readFullyOnRequest()) {
+		            match.callback.onRequest(this, res);
+		        }
+		        else if (requestComplete) {
+		            match.callback.onRequest(this, res);
+		        }
+		    }
+
+		    @Override
+		    public void onCompleted(Exception e) {
+		        // if the protocol was switched off http, ignore this request/response.
+		        if (res.getHeaders().getHeaders().getResponseCode() == 101)
+		            return;
+		        requestComplete = true;
+		        super.onCompleted(e);
+		        // no http pipelining, gc trashing if the socket dies
+		        // while the request is being sent and is paused or something
+		        mSocket.setDataCallback(new NullDataCallback() {
+		            @Override
+		            public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
+		                super.onDataAvailable(emitter, bb);
+		                mSocket.close();
+		            }
+		        });
+		        handleOnCompleted();
+
+		        if (getBody().readFullyOnRequest()) {
+		            if (match != null)
+		                match.callback.onRequest(this, res);
+		        }
+		    }
+		    
+		    private void handleOnCompleted() {
+		        if (requestComplete && responseComplete) {
+		            if (HttpUtil.isKeepAlive(getHeaders().getHeaders())) {
+		            	establishConnection(socket);
+		            }
+		            else {
+		                socket.close();
+		            }
+		        }
+		    }
+
+		    @Override
+		    public String getPath() {
+		        return path;
+		    }
+
+		    @Override
+		    public Multimap getQuery() {
+		        String[] parts = fullPath.split("\\?", 2);
+		        if (parts.length < 2)
+		            return new Multimap();
+		        return Multimap.parseQuery(parts[1]);
+		    }
+		};
+		req.setSocket(socket);
+		socket.resume();
+	}
+
+	private static Hashtable<Integer, String> mCodes = new Hashtable<Integer, String>();
     static {
         mCodes.put(200, "OK");
         mCodes.put(206, "Partial Content");
