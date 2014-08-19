@@ -55,6 +55,8 @@ public class AirPlayClient {
 
 		void onTimeChanged(float position);
 
+		void onVideoError(int errorCode);
+
 	}
 	private static final String USER_AGENT_STRING = "MediaControl/1.0";
 	private static final String TAG = "AirPlayClient";
@@ -146,7 +148,40 @@ public class AirPlayClient {
 					final AsyncHttpServerResponse response) {
 				try {
 					NSDictionary event = (NSDictionary)XMLPropertyListParser.parse(request.getBody().get().toString().getBytes());
-					Log.d(TAG, "Event:"+event.toXMLPropertyList());
+					Log.d(TAG, "Event\n:"+event.toXMLPropertyList());
+					if (event.containsKey("category")) {
+						if (event.get("category").toString().equals("video")) {
+							if (event.containsKey("state")) {
+								String state = event.get("state").toString();
+								Log.d(TAG, "Event state:"+state);
+								// maintain a state machine to distinguish play and resume
+								if (state.equals("playing")) {
+									if (videoStateListener != null) {
+										videoStateListener.onVideoResumed();
+									}
+								} else if (state.equals("paused")) {
+									if (videoStateListener != null) {
+										videoStateListener.onVideoPaused();
+									}
+								} else if (state.equals("stopped")) {
+									if (videoStateListener != null) {
+										videoStateListener.onVideoStopped();
+									}
+								}
+							}
+							if (event.containsKey("error")) {
+								NSDictionary error = (NSDictionary)event.get("error");
+								if (error.containsKey("code")) {
+									int errorCode = ((NSNumber)error.get("code")).intValue();
+									if (errorCode != 361) { // not a general error
+										if (videoStateListener != null) {
+											videoStateListener.onVideoError(errorCode);
+										}
+									}
+								}
+							}
+						}
+					}
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
