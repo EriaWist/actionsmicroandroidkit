@@ -1,5 +1,6 @@
 package com.actionsmicro.airplay;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
@@ -11,12 +12,15 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
+import android.content.ContentResolver;
 import android.content.Context;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
 
 import com.actionsmicro.airplay.http.PlistBody;
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.dd.plist.NSDictionary;
 import com.dd.plist.NSNumber;
 import com.dd.plist.PropertyListFormatException;
@@ -71,7 +75,12 @@ public class AirPlayClient {
 	private VideoStateListener videoStateListener;
 	private String sessionId = UUID.randomUUID().toString();
 	private AsyncHttpClient asyncHttpClient;
+	
+	private SimpleContentUriHttpFileServer simpleHttpFileServer;
+	private Context context;
+	
 	public AirPlayClient(Context context, InetAddress inetAddress) {
+		this.context = context;
 		this.serverAddress = inetAddress;
 		reverseConnection.run(true, true);
 		inqueryServerInfo();
@@ -188,12 +197,36 @@ public class AirPlayClient {
 		}
 	}
 	private String getSessionId() {
-		return sessionId;//"368e90a4-5de6-4196-9e58-9917bdd4ffd7"; //TODO replace with random UUID 
+		return sessionId;//"368e90a4-5de6-4196-9e58-9917bdd4ffd7";
 	}
 	public void playVideo(String url, VideoStateListener videoStateListener) {
+		stopHttpFileServer();		
+		
 		duration = -1;
 		position = 0;
 		rate = 0;
+		
+		Uri mediaUri = null;
+		try {
+			mediaUri = Uri.parse(url);
+			if (mediaUri.getScheme() == null) {
+				mediaUri = mediaUri.buildUpon().scheme("file").build();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			mediaUri = Uri.fromFile(new File(url));
+		}
+		String mediaUriString = url;
+		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
+				mediaUri.getScheme().equalsIgnoreCase("file")) {
+			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			try {
+				simpleHttpFileServer.start();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			mediaUriString = simpleHttpFileServer.getServerUrl();
+		}
 		this.videoStateListener = videoStateListener;
 		try {
 			RawHeaders headers = new RawHeaders();
@@ -201,7 +234,7 @@ public class AirPlayClient {
 			headers.add("X-Apple-Session-ID", getSessionId());
 			AsyncHttpPost playVideo = new AsyncHttpPost(getServerUri("/play"), headers);
 			NSDictionary playbackInfo = new NSDictionary();
-			playbackInfo.put("Content-Location", url);
+			playbackInfo.put("Content-Location", mediaUriString);
 			playbackInfo.put("Start-Position", 0.0);
 			StringBody body = new PlistBody(playbackInfo.toXMLPropertyList());
 			playVideo.setBody(body);
@@ -234,9 +267,13 @@ public class AirPlayClient {
 			reverseConnection.stop();
 		}
 		stopPeriodicalPoller();
+		stopHttpFileServer();
+		if (asyncHttpClient != null) {
+			asyncHttpClient.getServer().stop();
+		}
 	}
 	private void stopPeriodicalPoller() {
-		if (timerThread != null) {			
+		if (timerThread != null) {
 			timerThread.quit();
 			timerThread = null;
 		}
@@ -267,6 +304,8 @@ public class AirPlayClient {
 		RawHeaders headers = new RawHeaders();
 		headers.add("User-Agent", USER_AGENT_STRING);
 		headers.add("Content-Lengthe", "0");
+		final SimpleContentUriHttpFileServer detachedFileServer = simpleHttpFileServer; // since it's asynchronous, we need to detach the file server first to prevent stop wrong file server.
+		simpleHttpFileServer = null;
 		try {
 			AsyncHttpPost stop = new AsyncHttpPost(getServerUri("/stop"));
 			getHttpClient().executeString(stop, new StringCallback() {
@@ -277,6 +316,9 @@ public class AirPlayClient {
 			            return;
 			        }
 			        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
+			        if (detachedFileServer != null) {
+			        	detachedFileServer.stop();			        	
+			        }
 			        if (videoStateListener != null) {
 			        	videoStateListener.onVideoStopped();
 			        }
@@ -414,16 +456,6 @@ public class AirPlayClient {
 						boolean readyToPlay = false;
 						if (playbackInfo.containsKey("readyToPlay")) {
 							readyToPlay = ((NSNumber)playbackInfo.get("readyToPlay")).boolValue();
-							if (!readyToPlay && !playbackInfo.containsKey("duration")) { // we assume it's stopped
-								if (videoStateListener != null) {
-									videoStateListener.onVideoStopped();
-								}
-							}
-						} else {
-							// We assume it was stopped.
-							if (videoStateListener != null) {
-								videoStateListener.onVideoStopped();
-							}
 						}
 						Log.d(TAG, "playback-info: readyToPlay:" +(readyToPlay?"true":"false")+", duration:"+duration+", position:"+position+", rate:"+rate);
 						
@@ -453,5 +485,10 @@ public class AirPlayClient {
 			e.printStackTrace();
 		}
 	}
-	
+	private void stopHttpFileServer() {
+		if (simpleHttpFileServer != null) {
+			simpleHttpFileServer.stop();
+			simpleHttpFileServer = null;
+		}
+	}
 }
