@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.ParseException;
+import java.util.UUID;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -24,6 +25,7 @@ import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncSocket;
 import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpClient.StringCallback;
+import com.koushikdutta.async.http.AsyncHttpGet;
 import com.koushikdutta.async.http.AsyncHttpPost;
 import com.koushikdutta.async.http.AsyncHttpResponse;
 import com.koushikdutta.async.http.body.AsyncHttpRequestBody;
@@ -67,16 +69,66 @@ public class AirPlayClient {
 	private HandlerThread timerThread;
 	private Handler timerHandler;
 	private VideoStateListener videoStateListener;
+	private String sessionId = UUID.randomUUID().toString();
+	private AsyncHttpClient asyncHttpClient;
 	public AirPlayClient(Context context, InetAddress inetAddress) {
 		this.serverAddress = inetAddress;
 		reverseConnection.run(true, true);
-		
+		inqueryServerInfo();
 		prepareEventServer();
 		establishReverseHttpConnection();
+	}
+	private void inqueryServerInfo() {
+		RawHeaders headers = new RawHeaders();
+		headers.add("Content-Lengthe", "0");
+		headers.add("User-Agent", USER_AGENT_STRING);
+		headers.add("X-Apple-Session-ID", getSessionId());
+		try {
+			AsyncHttpGet serverInfo = new AsyncHttpGet(getServerUri("/server-info"), headers);
+			getHttpClient().executeString(serverInfo, new StringCallback() {
+
+				@Override
+				public void onCompleted(Exception e, AsyncHttpResponse source,
+						String result) {
+					if (e != null) {
+			            e.printStackTrace();
+			            return;
+			        }
+					Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
+					try {
+						NSDictionary serverInfo = (NSDictionary)XMLPropertyListParser.parse(result.getBytes());
+					} catch (ParserConfigurationException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (ParseException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (SAXException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (PropertyListFormatException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				}
+				
+			});
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
-		timerThread = new HandlerThread("AirPlayTimerThread");
-		timerThread.start();
-		timerHandler = new Handler(timerThread.getLooper());
+	}
+	
+	private AsyncHttpClient getHttpClient() {
+		if (asyncHttpClient == null) {
+			asyncHttpClient = new AsyncHttpClient(new AsyncServer());
+			asyncHttpClient.getSocketMiddleware().setMaxConnectionCount(1);
+		}
+		return asyncHttpClient;
 	}
 	private void prepareEventServer() {
 		eventServer.post("/event", new HttpServerRequestCallback() {
@@ -136,7 +188,7 @@ public class AirPlayClient {
 		}
 	}
 	private String getSessionId() {
-		return "368e90a4-5de6-4196-9e58-9917bdd4ffd7"; //TODO replace with random UUID 
+		return sessionId;//"368e90a4-5de6-4196-9e58-9917bdd4ffd7"; //TODO replace with random UUID 
 	}
 	public void playVideo(String url, VideoStateListener videoStateListener) {
 		duration = -1;
@@ -153,7 +205,7 @@ public class AirPlayClient {
 			playbackInfo.put("Start-Position", 0.0);
 			StringBody body = new PlistBody(playbackInfo.toXMLPropertyList());
 			playVideo.setBody(body);
-			AsyncHttpClient.getDefaultInstance().executeString(playVideo, new StringCallback() {
+			getHttpClient().executeString(playVideo, new StringCallback() {
 			    @Override
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 			        if (e != null) {
@@ -164,7 +216,7 @@ public class AirPlayClient {
 			        if (AirPlayClient.this.videoStateListener != null) {
 			        	AirPlayClient.this.videoStateListener.onVideoPlayed();
 			        }
-			        startPlaybackInfoPoller();
+			        startPeriodicalPoller();
 			    }
 			});
 		} catch (URISyntaxException e) {
@@ -181,9 +233,9 @@ public class AirPlayClient {
 		if (reverseConnection != null) {
 			reverseConnection.stop();
 		}
-		stopPlaybackInfoPoller();
+		stopPeriodicalPoller();
 	}
-	private void stopPlaybackInfoPoller() {
+	private void stopPeriodicalPoller() {
 		if (timerThread != null) {			
 			timerThread.quit();
 			timerThread = null;
@@ -195,7 +247,7 @@ public class AirPlayClient {
 		headers.add("Content-Lengthe", "0");
 		try {
 			AsyncHttpPost scrub = new AsyncHttpPost(getServerUri("/scrub", "position="+position));
-			AsyncHttpClient.getDefaultInstance().executeString(scrub, new StringCallback() {
+			getHttpClient().executeString(scrub, new StringCallback() {
 			    @Override
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 			        if (e != null) {
@@ -217,7 +269,7 @@ public class AirPlayClient {
 		headers.add("Content-Lengthe", "0");
 		try {
 			AsyncHttpPost stop = new AsyncHttpPost(getServerUri("/stop"));
-			AsyncHttpClient.getDefaultInstance().executeString(stop, new StringCallback() {
+			getHttpClient().executeString(stop, new StringCallback() {
 			    @Override
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 			        if (e != null) {
@@ -234,7 +286,7 @@ public class AirPlayClient {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		stopPlaybackInfoPoller();
+		stopPeriodicalPoller();
 	}
 	public void resumeVideo() {
 		setVideoRate(1, new StringCallback() {
@@ -272,7 +324,7 @@ public class AirPlayClient {
 		headers.add("Content-Lengthe", "0");
 		try {
 			AsyncHttpPost scrub = new AsyncHttpPost(getServerUri("/rate", "value="+rate));
-			AsyncHttpClient.getDefaultInstance().executeString(scrub, callback);
+			getHttpClient().executeString(scrub, callback);
 		} catch (URISyntaxException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -281,74 +333,18 @@ public class AirPlayClient {
 	private float duration = -1;
 	private float position;
 	private float rate;
-	private void startPlaybackInfoPoller() {
+	private void startPeriodicalPoller() {
+		timerThread = new HandlerThread("AirPlayTimerThread");
+		timerThread.start();
+		timerHandler = new Handler(timerThread.getLooper());
+		schedulePlaybackInfoPoller();
+	}
+	private void schedulePlaybackInfoPoller() {
 		timerHandler.postDelayed(new Runnable() {
 
 			@Override
 			public void run() {
-				try {
-					AsyncHttpClient.getDefaultInstance().getString(getServerUri("/playback-info").toASCIIString(), new StringCallback() {
-
-
-						@Override
-						public void onCompleted(Exception e,
-								AsyncHttpResponse source, String result) {
-							if (e != null) {
-					            e.printStackTrace();
-					            return;
-					        }
-							Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
-							try {
-								NSDictionary playbackInfo = (NSDictionary)XMLPropertyListParser.parse(result.getBytes());
-								if (playbackInfo.containsKey("duration")) {
-									final float duration = ((NSNumber)playbackInfo.get("duration")).floatValue();
-									setDuration(duration);
-								}
-								if (playbackInfo.containsKey("position")) {
-									final float position = ((NSNumber)playbackInfo.get("position")).floatValue();
-									setPosition(position);
-								}
-								if (playbackInfo.containsKey("rate")) {
-									final float rate = ((NSNumber)playbackInfo.get("rate")).floatValue();
-									setRate(rate);
-								}
-								boolean readyToPlay = false;
-								if (playbackInfo.containsKey("readyToPlay")) {
-									readyToPlay = ((NSNumber)playbackInfo.get("rate")).boolValue();
-								} else {
-									if (videoStateListener != null) {
-										// We assume it was stopped.
-										videoStateListener.onVideoStopped();
-									}
-								}
-								Log.d(TAG, "playback-info: readyToPlay:" +(readyToPlay?"true":"false")+", duration:"+duration+", position:"+position+", rate:"+rate);
-								
-							} catch (ParserConfigurationException e1) {
-								// TODO Auto-generated catch block
-								e1.printStackTrace();
-							} catch (ParseException e1) {
-								// TODO Auto-generated catch block
-								e1.printStackTrace();
-							} catch (SAXException e1) {
-								// TODO Auto-generated catch block
-								e1.printStackTrace();
-							} catch (PropertyListFormatException e1) {
-								// TODO Auto-generated catch block
-								e1.printStackTrace();
-							} catch (IOException e1) {
-								// TODO Auto-generated catch block
-								e1.printStackTrace();
-							}
-							
-						}
-
-						
-					});
-				} catch (URISyntaxException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				timerHandler.postDelayed(this, 1000);
+				inqueryPlaybackInfo();
 			}
 			
 		}, 1000);
@@ -381,6 +377,80 @@ public class AirPlayClient {
 			if (videoStateListener != null) {
 				videoStateListener.onTimeChanged(position);
 			}	
+		}
+	}
+	private void inqueryPlaybackInfo() {
+		try {
+			RawHeaders headers = new RawHeaders();
+			headers.add("Content-Lengthe", "0");
+			headers.add("User-Agent", USER_AGENT_STRING);
+			headers.add("X-Apple-Session-ID", getSessionId());
+			AsyncHttpGet playbackInfo = new AsyncHttpGet(getServerUri("/playback-info"), headers);
+			getHttpClient().executeString(playbackInfo, new StringCallback() {
+
+				@Override
+				public void onCompleted(Exception e,
+						AsyncHttpResponse source, String result) {
+					schedulePlaybackInfoPoller();
+					if (e != null) {
+			            e.printStackTrace();
+			            return;
+			        }
+					Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
+					try {
+						NSDictionary playbackInfo = (NSDictionary)XMLPropertyListParser.parse(result.getBytes());
+						if (playbackInfo.containsKey("duration")) {
+							final float duration = ((NSNumber)playbackInfo.get("duration")).floatValue();
+							setDuration(duration);
+						}
+						if (playbackInfo.containsKey("position")) {
+							final float position = ((NSNumber)playbackInfo.get("position")).floatValue();
+							setPosition(position);
+						}
+						if (playbackInfo.containsKey("rate")) {
+							final float rate = ((NSNumber)playbackInfo.get("rate")).floatValue();
+							setRate(rate);
+						}
+						boolean readyToPlay = false;
+						if (playbackInfo.containsKey("readyToPlay")) {
+							readyToPlay = ((NSNumber)playbackInfo.get("readyToPlay")).boolValue();
+							if (!readyToPlay && !playbackInfo.containsKey("duration")) { // we assume it's stopped
+								if (videoStateListener != null) {
+									videoStateListener.onVideoStopped();
+								}
+							}
+						} else {
+							// We assume it was stopped.
+							if (videoStateListener != null) {
+								videoStateListener.onVideoStopped();
+							}
+						}
+						Log.d(TAG, "playback-info: readyToPlay:" +(readyToPlay?"true":"false")+", duration:"+duration+", position:"+position+", rate:"+rate);
+						
+					} catch (ParserConfigurationException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (ParseException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (SAXException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (PropertyListFormatException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					
+				}
+
+				
+			});
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
