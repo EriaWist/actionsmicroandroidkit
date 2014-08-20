@@ -102,7 +102,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			dataSource.setMediaStreamingStateListener(null);
 			dataSource = null;
 		}
-		if (mediaUrl.startsWith("http")) {
+		if (mediaUrl.startsWith("http") || mediaUrl.startsWith("rtsp") || mediaUrl.startsWith("mms")) {
 			dataSource = new MediaStreamingHttpDataSource(mediaUrl, userAgentString != null?userAgentString:DEFAULT_USER_AGENT_STRING, mediaContentLength);
 		} else if (mediaUrl.startsWith(ContentResolver.SCHEME_CONTENT)) { 
 			dataSource = new MediaStreamingContentUriDataSource(context, Uri.parse(mediaUrl));
