@@ -6,7 +6,11 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -27,6 +31,7 @@ import com.dd.plist.PropertyListFormatException;
 import com.dd.plist.XMLPropertyListParser;
 import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncSocket;
+import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpClient.StringCallback;
 import com.koushikdutta.async.http.AsyncHttpGet;
@@ -58,6 +63,11 @@ public class AirPlayClient {
 		void onVideoError(int errorCode);
 
 	}
+	public interface ConnectionManager {
+
+		void onConnectionFailed(Exception e);
+		
+	}
 	private static final String USER_AGENT_STRING = "MediaControl/1.0";
 	private static final String TAG = "AirPlayClient";
 	private InetAddress serverAddress;
@@ -80,7 +90,30 @@ public class AirPlayClient {
 	
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 	private Context context;
-	
+	private List<ConnectionManager> managers = new ArrayList<ConnectionManager>();
+	public void addConnectionManager(ConnectionManager listener) {
+		synchronized(managers) {
+			if (!managers.contains(listener)) {
+				managers.add(listener);
+			}
+		}
+	}
+	public void removeConnectionManager(ConnectionManager manager) {
+		synchronized(managers) {
+			managers.remove(manager);
+		}
+	}
+	private void notifyConnectionManagerDidFailed(Exception e) {
+		synchronized(managers) {
+			Iterator<ConnectionManager> iterator = new CopyOnWriteArrayList<ConnectionManager>(managers).listIterator();
+			while (iterator.hasNext()) {
+				ConnectionManager manager = iterator.next(); 
+				if (manager != null) {
+					manager.onConnectionFailed(e);
+				}						
+			}
+		}
+	}
 	public AirPlayClient(Context context, InetAddress inetAddress) {
 		this.context = context;
 		this.serverAddress = inetAddress;
@@ -148,7 +181,7 @@ public class AirPlayClient {
 					final AsyncHttpServerResponse response) {
 				try {
 					NSDictionary event = (NSDictionary)XMLPropertyListParser.parse(request.getBody().get().toString().getBytes());
-					Log.d(TAG, "Event\n:"+event.toXMLPropertyList());
+					Log.d(TAG, "Event:\n"+event.toXMLPropertyList());
 					if (event.containsKey("category")) {
 						if (event.get("category").toString().equals("video")) {
 							if (event.containsKey("state")) {
@@ -213,18 +246,28 @@ public class AirPlayClient {
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
 			AsyncHttpPost reverse = new AsyncHttpPost(getServerUri("/reverse"), headers);
-			reverse.setTimeout(0);
+//			reverse.setTimeout(0);
 			AsyncHttpClient httpClient = new AsyncHttpClient(reverseConnection);
 			httpClient.executeString(reverse, new StringCallback() {
 			    @Override
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 			        if (e != null) {
 			            e.printStackTrace();
+			            handleNetworkException(e);
 			            return;
 			        }
 			        AsyncSocket socket = source.detachSocket();
 			        Log.d(TAG, "Server says: " + source.getHeaders().getHeaders().getStatusLine());
+			        
 			        eventServer.establishConnection(socket);
+			        socket.setClosedCallback(new CompletedCallback() {
+
+						@Override
+						public void onCompleted(Exception e) {
+							notifyConnectionManagerDidFailed(e);
+						}
+			        	
+			        });
 			    }
 			});
 		} catch (URISyntaxException e) {
@@ -278,6 +321,7 @@ public class AirPlayClient {
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 			        if (e != null) {
 			            e.printStackTrace();
+			            handleNetworkException(e);
 			            return;
 			        }
 			        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
@@ -324,6 +368,7 @@ public class AirPlayClient {
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 			        if (e != null) {
 			            e.printStackTrace();
+			            handleNetworkException(e);
 			            return;
 			        }
 			        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
@@ -348,6 +393,7 @@ public class AirPlayClient {
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 			        if (e != null) {
 			            e.printStackTrace();
+			            handleNetworkException(e);
 			            return;
 			        }
 			        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
@@ -371,6 +417,7 @@ public class AirPlayClient {
 		    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 		        if (e != null) {
 		            e.printStackTrace();
+		            handleNetworkException(e);
 		            return;
 		        }
 		        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
@@ -386,6 +433,7 @@ public class AirPlayClient {
 		    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 		        if (e != null) {
 		            e.printStackTrace();
+		            handleNetworkException(e);
 		            return;
 		        }
 		        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
@@ -468,11 +516,12 @@ public class AirPlayClient {
 				@Override
 				public void onCompleted(Exception e,
 						AsyncHttpResponse source, String result) {
-					schedulePlaybackInfoPoller();
 					if (e != null) {
 			            e.printStackTrace();
+			            handleNetworkException(e);
 			            return;
 			        }
+					schedulePlaybackInfoPoller();
 					Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
 					try {
 						NSDictionary playbackInfo = (NSDictionary)XMLPropertyListParser.parse(result.getBytes());
@@ -525,5 +574,11 @@ public class AirPlayClient {
 			simpleHttpFileServer.stop();
 			simpleHttpFileServer = null;
 		}
+	}
+	protected void handleNetworkException(Exception e) {
+		if (videoStateListener != null) {
+			videoStateListener.onVideoError(-1004); //TODO refactor the error code with domain for client to distinguish.
+		}
+		notifyConnectionManagerDidFailed(e);
 	}
 }
