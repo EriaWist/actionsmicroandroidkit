@@ -1,4 +1,4 @@
-package com.actionsmicro.androidkit.ezcast.imp.androidrx;
+package com.actionsmicro.androidkit.ezcast.imp.airplay;
 
 import javax.jmdns.ServiceInfo;
 
@@ -15,30 +15,30 @@ import com.actionsmicro.androidkit.ezcast.MessageApi;
 import com.actionsmicro.androidkit.ezcast.MessageApiBuilder;
 import com.actionsmicro.androidkit.ezcast.imp.bonjour.BonjourDeviceInfo;
 
-public class AndroidRxInfo extends BonjourDeviceInfo {
-	
+public class AirPlayDeviceInfo extends BonjourDeviceInfo {
+
 	private String deviceID;
 
-	public AndroidRxInfo(Parcel in) {
+	public AirPlayDeviceInfo(Parcel in) {
 		super(in);
 		deviceID = in.readString();
 	}
 	
-	public AndroidRxInfo(ServiceInfo newService) {
+	public AirPlayDeviceInfo(ServiceInfo newService) {
 		super(newService);
 		deviceID = newService.getPropertyString("deviceid");
 	}
-	
-	public static final Parcelable.Creator<AndroidRxInfo> CREATOR = new Parcelable.Creator<AndroidRxInfo>() {
-		public AndroidRxInfo createFromParcel(Parcel in) {
-			return new AndroidRxInfo(in);
+		
+	public static final Parcelable.Creator<AirPlayDeviceInfo> CREATOR = new Parcelable.Creator<AirPlayDeviceInfo>() {
+		public AirPlayDeviceInfo createFromParcel(Parcel in) {
+			return new AirPlayDeviceInfo(in);
 		}
 
-		public AndroidRxInfo[] newArray(int size) {
-			return new AndroidRxInfo[size];
+		public AirPlayDeviceInfo[] newArray(int size) {
+			return new AirPlayDeviceInfo[size];
 		}
 	};
-		
+	
 	@Override
 	public void writeToParcel(Parcel parcel, int flags) {
 		super.writeToParcel(parcel, flags);
@@ -67,7 +67,8 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 
 	@Override
 	protected MessageApi createMessageApi(MessageApiBuilder messageApiBuilder) {
-		return new AndroidRxMessageApi(messageApiBuilder);
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	@Override
@@ -78,22 +79,22 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 	}
 
 	@Override
-	protected DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder) {		
-		return new AndroidRxDisplayApi(displayApiBuilder);
+	protected DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	@Override
 	protected MediaPlayerApi createMediaPlayerApi(
 			MediaPlayerApiBuilder mediaPlayerApiBuilder) {
-		return new AndroidRxMediaPlayerApi(mediaPlayerApiBuilder);
+		return new AirPlayMediaPlayerApi(mediaPlayerApiBuilder);
 	}
-	
+
 	@Override
 	public boolean supportMediaFileExtension(String fileExtension) {
-		// TODO Auto-generated method stub
 		return true;
-	}	
-	
+	}
+
 	@Override
 	public String getParameter(String key) {
 		if (key.equalsIgnoreCase("ezcast.service.android")) {
@@ -101,6 +102,6 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 		} else if (key.equals("deviceid")) {
 			return deviceID;
 		}
-		return null;	
+		return null;
 	}
 }

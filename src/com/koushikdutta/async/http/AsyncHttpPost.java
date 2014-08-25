@@ -1,7 +1,8 @@
 package com.koushikdutta.async.http;
 
 import java.net.URI;
-import java.net.URISyntaxException;
+
+import com.koushikdutta.async.http.libcore.RawHeaders;
 
 public class AsyncHttpPost extends AsyncHttpRequest {
     public static final String METHOD = "POST";
@@ -12,5 +13,8 @@ public class AsyncHttpPost extends AsyncHttpRequest {
 
     public AsyncHttpPost(URI uri) {
         super(uri, METHOD);
+    }
+    public AsyncHttpPost(URI uri, RawHeaders headers) {
+    	super(uri, METHOD, headers);
     }
 }

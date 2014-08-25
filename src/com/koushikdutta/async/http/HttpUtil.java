@@ -123,6 +123,9 @@ public class HttpUtil {
         String connection = headers.get("Connection");
         if (connection != null) {
             keepAlive = "keep-alive".equalsIgnoreCase(connection);
+            if (!keepAlive) {
+            	keepAlive = "upgrade".equalsIgnoreCase(connection);
+            }
         }
         else {
             keepAlive = headers.getHttpMinorVersion() >= 1;
