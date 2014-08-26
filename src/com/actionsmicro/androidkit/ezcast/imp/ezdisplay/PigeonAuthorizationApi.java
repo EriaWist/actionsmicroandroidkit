@@ -18,7 +18,7 @@ public class PigeonAuthorizationApi extends PigeonApi implements AuthorizationAp
 	@Override
 	public void requestToDisplay(int splitCount, int position) {
 		if (pigeonClient != null) {
-			RequestResult result = pigeonClient.requestStreaming(0, 0);
+			RequestResult result = pigeonClient.requestStreaming(splitCount, position);
 			if (result == RequestResult.ALLOW) {
 				if (authorizationListener != null) {
 					if (pigeonClient instanceof MultiRegionsDisplay) {
