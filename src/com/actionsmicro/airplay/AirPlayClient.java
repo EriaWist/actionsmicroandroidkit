@@ -575,11 +575,14 @@ public class AirPlayClient {
 			RawHeaders headers = new RawHeaders();
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
+			headers.add("Content-Type", "application/x-apple-binary-plist");
 			AsyncHttpPost playVideo = new AsyncHttpPost(getServerUri("/play"), headers);
 			NSDictionary playbackInfo = new NSDictionary();
 			playbackInfo.put("Content-Location", mediaUriString);
 			playbackInfo.put("Start-Position", 0.0);
-			StringBody body = new PlistBody(playbackInfo.toXMLPropertyList());
+			ByteArrayOutputStream binaryPlist = new ByteArrayOutputStream();
+			BinaryPropertyListWriter.write(binaryPlist, playbackInfo);
+			StreamBody body = new StreamBody(new ByteArrayInputStream(binaryPlist.toByteArray()), binaryPlist.size());
 			playVideo.setBody(body);
 			getHttpClient().executeString(playVideo, new StringCallback() {
 			    @Override
@@ -598,6 +601,9 @@ public class AirPlayClient {
 			});
 		} catch (URISyntaxException e) {
 			e.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
 		}
 	}
 	private URI getServerUri(String path) throws URISyntaxException {
