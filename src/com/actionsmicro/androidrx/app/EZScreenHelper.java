@@ -151,11 +151,11 @@ public class EZScreenHelper {
 			addView(photoView);
 		}
 		androidRxSchemaServer = new AndroidRxSchemaServer(context);
-		try {
-			androidRxSchemaServer.start();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+//		try {
+//			androidRxSchemaServer.start();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
 	}
 	private void hidePhotoView() {
 		setViewVisibility(photoView, View.INVISIBLE);
@@ -1311,7 +1311,7 @@ public class EZScreenHelper {
 			this.getLock().release();
 			this.setLock(null);
 		}
-		androidRxSchemaServer.stop();
+//		androidRxSchemaServer.stop();
 		ezScreenInitialized = false;
 		airplayInitialized = false;
 		cleanUpAirPlayCache();
