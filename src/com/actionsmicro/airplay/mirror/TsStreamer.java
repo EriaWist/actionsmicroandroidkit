@@ -47,7 +47,7 @@ public class TsStreamer {
 	private void createAvcEncoder(int width, int height) {
 		releaseAvcEncoder();
 		try {
-			avcEncoder = new AvcEncoder(width, height, 1400000, 15, 5) {
+			avcEncoder = new AvcEncoder(width, height, 5400000, 25, 5) {
 				protected void onOutputForamtChanged(MediaFormat outputFormat) {
 					closeTsFileOutput();
 					try {
@@ -62,12 +62,16 @@ public class TsStreamer {
 									return;
 								}
 								try {
-									ByteBuffer idleBuffer = idleBuffers.poll(0, TimeUnit.MILLISECONDS);
-									if (idleBuffer == null) {
-//										if (debugCounter++ % 1000 == 0) {
-										Log.w(TAG, "Idle Buffer under-run! :"+debugCounter);
-//										}
-									}
+									ByteBuffer idleBuffer = null;
+									do {
+										idleBuffer = idleBuffers.poll(500, TimeUnit.MILLISECONDS);
+										if (idleBuffer == null) {
+//											if (debugCounter++ % 1000 == 0) {
+											Log.w(TAG, "Idle Buffer under-run! :"+debugCounter);
+//											}
+										}
+									} while (idleBuffer == null && !stop);
+									
 									if (idleBuffer != null) {
 										idleBuffer.clear();
 										idleBuffer.put(tsPacket);
