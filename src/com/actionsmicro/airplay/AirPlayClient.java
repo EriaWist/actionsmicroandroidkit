@@ -3,15 +3,13 @@ package com.actionsmicro.airplay;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.net.URL;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -24,20 +22,17 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
-import android.annotation.TargetApi;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.YuvImage;
-import android.media.MediaCodec;
-import android.media.MediaFormat;
 import android.net.Uri;
-import android.os.Build;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 
 import com.actionsmicro.airplay.http.PlistBody;
-import com.actionsmicro.airplay.mirror.AvcEncoder;
-import com.actionsmicro.androidkit.ezcast.imp.airplay.SimpleMpegTsPacketizer;
+import com.actionsmicro.airplay.mirror.TsStreamer;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
@@ -48,6 +43,7 @@ import com.dd.plist.NSNumber;
 import com.dd.plist.PropertyListFormatException;
 import com.dd.plist.XMLPropertyListParser;
 import com.koushikdutta.async.AsyncServer;
+import com.koushikdutta.async.AsyncServerSocket;
 import com.koushikdutta.async.AsyncSocket;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.http.AsyncHttpClient;
@@ -113,6 +109,12 @@ public class AirPlayClient {
 			return new PlistBody();
 		}
 	};
+	private AsyncHttpServer m3u8Server = new AsyncHttpServer() {
+		@Override
+		protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+			Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+		}
+	};
 	private HandlerThread timerThread;
 	private Handler timerHandler;
 	private VideoStateListener videoStateListener;
@@ -122,8 +124,6 @@ public class AirPlayClient {
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 	private Context context;
 	private List<ConnectionManager> managers = new ArrayList<ConnectionManager>();
-	private AvcEncoder avcEncoder;
-	protected FileOutputStream avcOut;
 	public void addConnectionManager(ConnectionManager listener) {
 		synchronized(managers) {
 			if (!managers.contains(listener)) {
@@ -157,96 +157,7 @@ public class AirPlayClient {
 		prepareSlideshowServer();
 		establishReverseHttpConnectionForSlideshow();		
 	}
-	private static final byte[] nalHeader = {0x00,0x00,0x00,0x01};
-	private SimpleMpegTsPacketizer tsPacketizer;
-	protected byte[] sps;
-	protected byte[] pps;
-	private FileOutputStream tsFileOutputStream;
-
-	private void createAvcEncoder(int width, int height) {
-		releaseAvcEncoder();
-		try {
-			avcEncoder = new AvcEncoder(width, height) {
-				protected void onOutputForamtChanged(MediaFormat outputFormat) {
-					closeTsFileOutput();
-					try {
-						tsFileOutputStream = new FileOutputStream("/sdcard/test.ts");
-						tsPacketizer = new SimpleMpegTsPacketizer(new SimpleMpegTsPacketizer.PacketReceiver() {
-
-							@Override
-							public void onPacketReady(byte[] array) {
-								try {
-									tsFileOutputStream.write(array);
-								} catch (IOException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}								
-							}
-
-							
-						});
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-			};
-			avcEncoder.setParameterSetsListener(new AvcEncoder.ParameterSetsListener() {
-				@Override
-				public void avcParametersSetsEstablished(byte[] sps, byte[] pps) {
-					try {
-						AirPlayClient.this.sps = sps;
-						AirPlayClient.this.pps = pps;
-//						avcOut = new FileOutputStream("/sdcard/testavcencoder.h264");
-						if (avcOut != null) {
-							avcOut.write(nalHeader);
-							avcOut.write(sps);
-							avcOut.write(nalHeader);
-							avcOut.write(pps);
-						}
-					} catch (FileNotFoundException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-			});
-			avcEncoder.setFrameListener(new AvcEncoder.EncodedFrameListener() {
-				@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-				@Override
-				public void frameReceived(byte[] outData, int index, int length, MediaCodec.BufferInfo bufferInfo) {
-					try {
-						if (avcOut != null) {
-							avcOut.write(outData, index, length);
-						}
-						if (tsPacketizer != null) {
-							if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_SYNC_FRAME) != 0) {
-								ByteBuffer temp = ByteBuffer.allocate(length + 8 + sps.length + pps.length);
-								temp.order(ByteOrder.BIG_ENDIAN);
-								temp.putInt(0x00000001);
-								temp.put(sps);
-								temp.putInt(0x00000001);
-								temp.put(pps);
-								temp.put(outData, index, length);
-								tsPacketizer.writeFrame(temp.array(), 0, temp.limit(), bufferInfo.presentationTimeUs);
-							} else {
-								tsPacketizer.writeFrame(outData, index, length, bufferInfo.presentationTimeUs);
-							}
-						}
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				
-			});
-
-		} catch (Throwable t) {
-			
-		}
-	}
+	
 	private void inqueryServerInfo() {
 		RawHeaders headers = new RawHeaders();
 		headers.add("Content-Lengthe", "0");
@@ -558,27 +469,16 @@ public class AirPlayClient {
 		if (asyncHttpClient != null) {
 			asyncHttpClient.getServer().stop();
 		}
-		releaseAvcEncoder();
-		if (avcOut != null) {
-			try {
-				avcOut.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		if (tsStreamer != null) {
+			tsStreamer.release();
+			tsStreamer = null;
 		}
-		tsPacketizer = null;
-	}
-	private void releaseAvcEncoder() {
-		if (avcEncoder != null) {
-			try {
-				avcEncoder.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		if (m3u8Server != null) {
+			m3u8Server.stop();
+			m3u8Server = null;
 		}
 	}
+	
 	private void stopPeriodicalPoller() {
 		if (timerThread != null) {
 			timerThread.quit();
@@ -935,29 +835,78 @@ public class AirPlayClient {
 			jpegBuffer.reset();
 		}
 	}
+	private TsStreamer tsStreamer = null;
+	private AsyncServerSocket m3u8ServerSocket;
 	public void displayYuvImage(YuvImage yuvImage) {
-		if (avcEncoder == null || yuvImage.getWidth() != yuvImage.getWidth() || avcEncoder.getHeight() != yuvImage.getHeight()) {
-			createAvcEncoder(yuvImage.getWidth(), yuvImage.getHeight());
+		if (tsStreamer == null) {
+			tsStreamer = new TsStreamer();
+			tsStreamer.start();
+			Log.d(TAG, "tsStreamer running at:" + getTsServerUrl());
+			m3u8Server.get("/", new HttpServerRequestCallback() {
+
+				@Override
+				public void onRequest(AsyncHttpServerRequest request,
+						AsyncHttpServerResponse response) {
+					response.setContentType("application/x-mpegURL");
+					StringBuilder sb = new StringBuilder();
+					sb.append("#EXTM3U\n" +
+							"#EXT-X-TARGETDURATION:1\n" +
+							"#EXT-X-VERSION:3\n" +
+							"#EXT-X-MEDIA-SEQUENCE:1\n" +
+							"#EXTINF:0.3,\n" +
+							getTsServerUrl());
+					response.send(sb.toString());
+				}
+				
+			});
+			m3u8ServerSocket = m3u8Server.listen(0);
+			Log.d(TAG, "m3u8Server running at:" + getM3u8ServerUrl());
+			playVideo(getM3u8ServerUrl(), null);
 		}
-		if (avcEncoder != null) {
-				avcEncoder.offerEncoder(yuvImage.getYuvData(), System.currentTimeMillis() * 1000);
+		if (tsStreamer != null) {
+			tsStreamer.displayYuvImage(yuvImage);
 		}
 	}
 	
-	private void closeTsFileOutput() {
-		if (tsFileOutputStream != null) {
-			try {
-				tsFileOutputStream.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
 	private static NSDictionary disctionaryWithKeyAndValue(String key, String value) {
 		NSDictionary dict = new NSDictionary();
 		dict.put(key, value);
 		return dict;
 	}
+	private String getM3u8ServerUrl() {
+		if (m3u8ServerSocket != null) {
+			try {
+				return new URL("http", getIPAddress(true), m3u8ServerSocket.getLocalPort(), "").toString();
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return null;
+	}
+	private String getTsServerUrl() {
+		if (tsStreamer != null) {
+			try {
+				return new URL("http", getIPAddress(true), tsStreamer.getListeningPort(), "").toString();
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return null;
+	}
+	private String getIPAddress(boolean useIPv4) { //TODO  DRY
+		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+		int ip = wifiInfo.getIpAddress();
 
+		String ipString = String.format(
+				"%d.%d.%d.%d",
+				(ip & 0xff),
+				(ip >> 8 & 0xff),
+				(ip >> 16 & 0xff),
+				(ip >> 24 & 0xff));
+
+		return ipString;
+    }
 }

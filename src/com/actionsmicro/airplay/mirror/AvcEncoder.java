@@ -49,18 +49,18 @@ public class AvcEncoder {
 	public void setParameterSetsListener(ParameterSetsListener parameterSetsListener) {
 		this.parameterSetsListener = parameterSetsListener;
 	}
-	public AvcEncoder(int width, int height) {
+	public AvcEncoder(int width, int height, int bitRate, int framerate, int iFrameInterval) {
 		this.width = width;
 		this.height = height;
 		mediaCodec = MediaCodec.createEncoderByType("video/avc");
-		MediaFormat mediaFormat = getMediaFormat();
+		MediaFormat mediaFormat = getMediaFormat(bitRate, framerate, iFrameInterval);
 		mediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 		mediaCodec.start();
 	}
-	public MediaFormat getMediaFormat() {
+	public MediaFormat getMediaFormat(int bitRate, int framerate, int iFrameInterval) {
 		MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height);
-		mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 6000000);
-		mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
+		mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 1400000);
+		mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
 		mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
 		mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
 		return mediaFormat;
