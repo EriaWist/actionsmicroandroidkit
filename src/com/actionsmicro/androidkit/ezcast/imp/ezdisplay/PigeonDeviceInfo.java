@@ -90,6 +90,10 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	}
 	@Override
 	protected DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder) {
+		String type = getProjectorInfo().getParameter("type");
+		if (type != null && type.equals("music")) {
+			return null;
+		}
 		return new PigeonDisplayApi(displayApiBuilder);
 	}
 	@Override
