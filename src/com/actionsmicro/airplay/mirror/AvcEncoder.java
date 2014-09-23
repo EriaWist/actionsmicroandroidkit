@@ -87,7 +87,7 @@ public class AvcEncoder {
  	 
  	    return output;
  	}
- 	private static byte[] yuvBuffer = new byte[1024*1024];
+ 	private static byte[] yuvBuffer = new byte[(int) (1920*1080*1.5)];
 	public synchronized void offerEncoder(byte[] input, long presentationTimeStamp) {
 		try {
 			ByteBuffer[] inputBuffers = mediaCodec.getInputBuffers();
@@ -97,8 +97,12 @@ public class AvcEncoder {
 				ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
 				inputBuffer.clear();
 				int framesize = input.length*2/3;
-				NV21toYUV420Planar(input, yuvBuffer, framesize);
-	            inputBuffer.put(yuvBuffer, 0, input.length);
+				try {
+					NV21toYUV420Planar(input, yuvBuffer, framesize);
+		            inputBuffer.put(yuvBuffer, 0, input.length);
+				} catch (ArrayIndexOutOfBoundsException e) {
+		            inputBuffer.put(input, 0, input.length);					
+				}
 				mediaCodec.queueInputBuffer(inputBufferIndex, 0, input.length, presentationTimeStamp, 0);
 			}
  
