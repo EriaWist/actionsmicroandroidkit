@@ -59,10 +59,10 @@ public class AvcEncoder {
 	}
 	public MediaFormat getMediaFormat(int bitRate, int framerate, int iFrameInterval) {
 		MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height);
-		mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 1400000);
-		mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
+		mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
+		mediaFormat.setFloat(MediaFormat.KEY_FRAME_RATE, framerate);
 		mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
-		mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+		mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval);
 		return mediaFormat;
 	}
  	public void close() throws IOException {
