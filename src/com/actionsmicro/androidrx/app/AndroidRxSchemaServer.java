@@ -27,10 +27,9 @@ import android.view.WindowManager;
 
 import com.actionsmicro.androidrx.app.TimeoutableLocationListener.TimeoutLisener;
 import com.actionsmicro.utils.Device;
+import com.actionsmicro.utils.Utils;
 
-import fi.iki.elonen.NanoHTTPD;
-
-public class AndroidRxSchemaServer extends NanoHTTPD {
+public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 
 	public static final int PORT = 8182;
 	public static final String KeyAES = "28906462822699798631919982357480";
@@ -59,7 +58,7 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 	private Context context;
 	
 	public AndroidRxSchemaServer(Context context) {
-		super(PORT);
+//		super(PORT);
 		this.context = context;
 		createAndroidRxSchema();
 	}
@@ -123,15 +122,15 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 		
 	}
 
-	@Override 
-	public Response serve(IHTTPSession session) {
-		String msg = "";
-		if (!schemaJSONString.isEmpty()) {
-			msg = schemaJSONString;
-		}
-
-		return new NanoHTTPD.Response(msg);
-	}
+//	@Override 
+//	public Response serve(IHTTPSession session) {
+//		String msg = "";
+//		if (!schemaJSONString.isEmpty()) {
+//			msg = schemaJSONString;
+//		}
+//
+//		return new NanoHTTPD.Response(msg);
+//	}
 	
 	private String getCurrentSsid(Context context) {
 		String ssid = null;
@@ -221,6 +220,7 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 	private RxFunction currentFunc = null;
 	private Long startAt;
 	public void startFunction(RxFunction func) {
+		sendAndroidRxInfo();
 		currentFunc = func;
 		startAt = TimeUnit.MILLISECONDS.toSeconds(SystemClock.elapsedRealtime());
 	}
@@ -251,6 +251,10 @@ public class AndroidRxSchemaServer extends NanoHTTPD {
 		SharedPreferences prefs;
 		prefs = context.getSharedPreferences(ANDROIDRX_SCHEMA_PREFERENCE_KEY, 0);
 		return prefs.getLong(func.toString(), 0);
+	}
+	private void sendAndroidRxInfo() {
+		String url = "http://cloud.iezvu.com/dongleinfo_rx.php?" + "&type=android";
+		Utils.sendDataToServer(url, schemaJSONString);
 	}
 
 }
