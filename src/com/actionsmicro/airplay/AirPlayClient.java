@@ -469,13 +469,19 @@ public class AirPlayClient {
 		if (asyncHttpClient != null) {
 			asyncHttpClient.getServer().stop();
 		}
+		releaseTsStreamer();
+		stopM3u8Server();
+		m3u8Server = null;
+	}
+	private void stopM3u8Server() {
+		if (m3u8Server != null) {
+			m3u8Server.stop();
+		}
+	}
+	private void releaseTsStreamer() {
 		if (tsStreamer != null) {
 			tsStreamer.release();
 			tsStreamer = null;
-		}
-		if (m3u8Server != null) {
-			m3u8Server.stop();
-			m3u8Server = null;
 		}
 	}
 	
@@ -838,31 +844,50 @@ public class AirPlayClient {
 	private TsStreamer tsStreamer = null;
 	private AsyncServerSocket m3u8ServerSocket;
 	public void displayYuvImage(YuvImage yuvImage) {
+		requestRemoteToPlayTsStreamer();
+		displayYuvImageViaTsStreamer(yuvImage);
+	}
+	private void requestRemoteToPlayTsStreamer() {
 		if (tsStreamer == null) {
 			tsStreamer = new TsStreamer();
+			tsStreamer.setDelegate(new TsStreamer.Delegate() {
+				
+				@Override
+				public void onSizeChanged() {
+					stopVideo();
+					releaseTsStreamer();
+					stopM3u8Server();
+					requestRemoteToPlayTsStreamer();
+				}
+			});
 			tsStreamer.start();
 			Log.d(TAG, "tsStreamer running at:" + getTsServerUrl());
-			m3u8Server.get("/", new HttpServerRequestCallback() {
-
-				@Override
-				public void onRequest(AsyncHttpServerRequest request,
-						AsyncHttpServerResponse response) {
-					response.setContentType("application/x-mpegURL");
-					StringBuilder sb = new StringBuilder();
-					sb.append("#EXTM3U\n" +
-							"#EXT-X-TARGETDURATION:1\n" +
-							"#EXT-X-VERSION:3\n" +
-							"#EXT-X-MEDIA-SEQUENCE:1\n" +
-							"#EXTINF:0.3,\n" +
-							getTsServerUrl());
-					response.send(sb.toString());
-				}
-				
-			});
+			initM3u8ServerForTsStreamer();
 			m3u8ServerSocket = m3u8Server.listen(0);
 			Log.d(TAG, "m3u8Server running at:" + getM3u8ServerUrl());
 			playVideo(getM3u8ServerUrl(), null);
 		}
+	}
+	private void initM3u8ServerForTsStreamer() {
+		m3u8Server.get("/", new HttpServerRequestCallback() {
+
+			@Override
+			public void onRequest(AsyncHttpServerRequest request,
+					AsyncHttpServerResponse response) {
+				response.setContentType("application/x-mpegURL");
+				StringBuilder sb = new StringBuilder();
+				sb.append("#EXTM3U\n" +
+						"#EXT-X-TARGETDURATION:1\n" +
+						"#EXT-X-VERSION:3\n" +
+						"#EXT-X-MEDIA-SEQUENCE:1\n" +
+						"#EXTINF:0.3,\n" +
+						getTsServerUrl());
+				response.send(sb.toString());
+			}
+			
+		});
+	}
+	private void displayYuvImageViaTsStreamer(YuvImage yuvImage) {
 		if (tsStreamer != null) {
 			tsStreamer.displayYuvImage(yuvImage);
 		}

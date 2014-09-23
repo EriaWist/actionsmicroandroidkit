@@ -26,6 +26,11 @@ import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
 import com.koushikdutta.async.http.server.HttpServerRequestCallback;
 
 public class TsStreamer {
+	public interface Delegate {
+
+		void onSizeChanged();
+		
+	}
 	private static final String TAG = "TsStreamer";
 	private AvcEncoder avcEncoder;
 	private FileOutputStream avcOut;
@@ -34,6 +39,7 @@ public class TsStreamer {
 	private FileOutputStream tsFileOutputStream;
 	private byte[] sps;
 	private byte[] pps;
+	private Delegate delegate;
 	public TsStreamer() {
 		prepareBuffers();
 		initHttpServer();
@@ -153,6 +159,7 @@ public class TsStreamer {
 		if (avcEncoder != null) {
 			try {
 				avcEncoder.close();
+				avcEncoder = null;
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -162,10 +169,9 @@ public class TsStreamer {
 	private boolean stop = false;
 	public void release() {
 		stop = true;
-		if (tsServer != null) {
-			tsServer.stop();
-			tsServer = null;
-		}
+		stopHttpServer();
+		httpServer = null;
+
 		releaseAvcEncoder();
 
 		if (avcOut != null) {
@@ -180,9 +186,21 @@ public class TsStreamer {
 
 		closeTsFileOutput();
 	}
+	private void stopHttpServer() {
+		if (httpServer != null) {
+			httpServer.stop();
+		}
+	}
 	public void displayYuvImage(YuvImage yuvImage) {
-		if (avcEncoder == null || yuvImage.getWidth() != yuvImage.getWidth() || avcEncoder.getHeight() != yuvImage.getHeight()) {
+		if (stop) {
+			return;
+		}
+		if (avcEncoder == null || avcEncoder.getWidth() != yuvImage.getWidth() || avcEncoder.getHeight() != yuvImage.getHeight()) {
+			boolean avcEncoderWasNull = avcEncoder == null;
 			createAvcEncoder(yuvImage.getWidth(), yuvImage.getHeight());
+			if (!avcEncoderWasNull && delegate != null) {
+				delegate.onSizeChanged();
+			}
 		}
 		if (avcEncoder != null) {
 			avcEncoder.offerEncoder(yuvImage.getYuvData(), System.currentTimeMillis() * 1000);
@@ -198,7 +216,7 @@ public class TsStreamer {
 			}
 		}
 	}
-	private AsyncHttpServer tsServer = new AsyncHttpServer() {
+	private AsyncHttpServer httpServer = new AsyncHttpServer() {
 		@Override
 		protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
 			Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
@@ -214,13 +232,13 @@ public class TsStreamer {
 		}
 	}
 	private AsyncServerSocket serverSocket;
-	private AsyncServer tsAsyncServer = new AsyncServer(); 
-	public void start() {
-		serverSocket = tsServer.listen(tsAsyncServer, 0);
+	private AsyncServer httpAsyncServer = new AsyncServer(); 
+	private void startHttpServer() {
+		serverSocket = httpServer.listen(httpAsyncServer, 0);
 		Log.d(TAG, "tsServer listen on port:" + serverSocket.getLocalPort());
 	}
 	private void initHttpServer() {
-		tsServer.get("/", new HttpServerRequestCallback() {
+		httpServer.get("/", new HttpServerRequestCallback() {
 
 			@Override
 			public void onRequest(AsyncHttpServerRequest request,
@@ -233,7 +251,7 @@ public class TsStreamer {
 					@Override
 					public void onWriteable() {
 						try {
-							do {
+							while (!stop) {
 								boolean shouldPollItOut = true;
 								ByteBuffer tsBuffer = tsBuffers.peek();
 								if (tsBuffer == null) {
@@ -259,7 +277,7 @@ public class TsStreamer {
 								} else {
 									Log.w(TAG, "TS Buffer under-run!");
 								}
-							} while (!stop);
+							};
 						} catch (InterruptedException e1) {
 							// TODO Auto-generated catch block
 							e1.printStackTrace();
@@ -274,5 +292,14 @@ public class TsStreamer {
 	}
 	public int getListeningPort() {
 		return serverSocket.getLocalPort();
+	}
+	public Delegate getDelegate() {
+		return delegate;
+	}
+	public void setDelegate(Delegate delegate) {
+		this.delegate = delegate;
+	}
+	public void start() {
+		startHttpServer();
 	}
 }
