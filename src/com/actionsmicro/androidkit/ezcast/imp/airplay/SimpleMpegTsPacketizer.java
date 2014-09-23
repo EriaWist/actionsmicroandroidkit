@@ -236,9 +236,10 @@ public class SimpleMpegTsPacketizer {
 		pes.put((byte)0x01);
 		pes.put((byte)0xE0);
 		if (length+3+10+6 > 0xFFFF) {
-			Log.e("TS", "packet length overflow");
+			Log.e("TS", "packet length overflow:"+String.valueOf(length+3+10+6));
 		}
-		pes.putShort((short) (length+3+10+6));
+//		pes.putShort((short) (length+3+10+6));
+		pes.putShort((short) (0x0000));
 		pes.put((byte)0x80);
 		pes.put((byte)0xC0);
 		pes.put((byte)0x0A);
