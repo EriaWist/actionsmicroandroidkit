@@ -300,7 +300,9 @@ public class AirPlayClient {
 
 						@Override
 						public void onCompleted(Exception e) {
-							notifyConnectionManagerDidFailed(e);
+							if (e != null) {
+								notifyConnectionManagerDidFailed(e);
+							}
 						}
 			        	
 			        });
@@ -363,7 +365,9 @@ public class AirPlayClient {
 
 						@Override
 						public void onCompleted(Exception e) {
-							notifyConnectionManagerDidFailed(e);
+							if (e != null) {
+								notifyConnectionManagerDidFailed(e);
+							}
 						}
 			        	
 			        });
@@ -713,7 +717,9 @@ public class AirPlayClient {
 		if (videoStateListener != null) {
 			videoStateListener.onVideoError(-1004); //TODO refactor the error code with domain for client to distinguish.
 		}
-		notifyConnectionManagerDidFailed(e);
+		if (e != null) {
+			notifyConnectionManagerDidFailed(e);
+		}
 	}
 	private ByteArrayOutputStream jpegBuffer = new ByteArrayOutputStream(500*1024);
 	private Semaphore semaphore = new Semaphore(1);
