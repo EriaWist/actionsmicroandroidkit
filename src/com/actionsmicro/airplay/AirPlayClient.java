@@ -313,6 +313,7 @@ public class AirPlayClient {
 		}
 	}
 	private int slideshowAssetsId = 1;
+	private boolean attempToPlayVideo;
 	private void prepareSlideshowServer() {
 		slideshowServer.get("/slideshows/1/assets/1", new HttpServerRequestCallback() {
 
@@ -392,7 +393,8 @@ public class AirPlayClient {
 		return sessionId;//"368e90a4-5de6-4196-9e58-9917bdd4ffd7";
 	}
 	public void playVideo(String url, VideoStateListener videoStateListener) {
-		stopHttpFileServer();		
+		attempToPlayVideo = true;
+		stopHttpFileServer();	
 		
 		duration = -1;
 		position = 0;
@@ -436,6 +438,7 @@ public class AirPlayClient {
 			getHttpClient().executeString(playVideo, new StringCallback() {
 			    @Override
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
+			    	attempToPlayVideo = false;
 			        if (e != null) {
 			            e.printStackTrace();
 			            handleNetworkException(e);
@@ -755,7 +758,9 @@ public class AirPlayClient {
 		}
 	}
 	public void displayPhoto(InputStream jpegStream, long length) {
-		
+		if (attempToPlayVideo) {
+			return;
+		}
 		if (semaphore.tryAcquire()) {
 			Log.d(TAG, "clone jpeg buffer");
 			synchronized (jpegBuffer) {
@@ -787,7 +792,6 @@ public class AirPlayClient {
 							String result) {
 						Log.d(TAG, "send /photo request - cache complete\n"+source.getHeaders().getHeaders().getResponseMessage());
 						semaphore.release();									
-						
 						RawHeaders headers = new RawHeaders();
 						headers.add("User-Agent", USER_AGENT_STRING);
 						headers.add("X-Apple-AssetAction", "displayCached");
