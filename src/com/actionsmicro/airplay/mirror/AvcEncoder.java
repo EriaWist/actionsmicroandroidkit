@@ -52,7 +52,14 @@ public class AvcEncoder {
 	public AvcEncoder(int width, int height, int bitRate, int framerate, int iFrameInterval) {
 		this.width = width;
 		this.height = height;
-		mediaCodec = MediaCodec.createEncoderByType("video/avc");
+		try {
+			mediaCodec = MediaCodec.createByCodecName("OMX.SEC.AVC.Encoder");
+		} catch (Throwable t) {
+				
+		}
+		if (mediaCodec == null) {
+			mediaCodec = MediaCodec.createEncoderByType("video/avc");
+		}
 		MediaFormat mediaFormat = getMediaFormat(bitRate, framerate, iFrameInterval);
 		mediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 		mediaCodec.start();
