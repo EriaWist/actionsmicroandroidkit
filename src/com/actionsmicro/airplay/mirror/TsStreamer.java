@@ -41,66 +41,19 @@ public class TsStreamer {
 	private byte[] pps;
 	private Delegate delegate;
 	public TsStreamer() {
+		createPacketizer();
 		prepareBuffers();
 		initHttpServer();
 	}
 	private void createAvcEncoder(int width, int height) {
 		releaseAvcEncoder();
 		try {
+
 			avcEncoder = new AvcEncoder(width, height, 5400000, 25, 5) {
 				protected void onOutputForamtChanged(MediaFormat outputFormat) {
 					closeTsFileOutput();
-					try {
-//						tsFileOutputStream = new FileOutputStream("/sdcard/test.ts");
-						tsPacketizer = new SimpleMpegTsPacketizer(new SimpleMpegTsPacketizer.PacketReceiver() {
-
-							private int debugCounter = 1;
-
-							@Override
-							public void onPacketReady(byte[] tsPacket) {
-								if (stop) {
-									return;
-								}
-								try {
-									ByteBuffer idleBuffer = null;
-									do {
-										idleBuffer = idleBuffers.poll(500, TimeUnit.MILLISECONDS);
-										if (idleBuffer == null) {
-//											if (debugCounter++ % 1000 == 0) {
-											Log.w(TAG, "Idle Buffer under-run! :"+debugCounter);
-//											}
-										}
-									} while (idleBuffer == null && !stop);
-									
-									if (idleBuffer != null) {
-										idleBuffer.clear();
-										idleBuffer.put(tsPacket);
-										idleBuffer.rewind();
-										tsBuffers.add(idleBuffer);
-//										debugCounter = 1;
-									}
-								} catch (InterruptedException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								} finally {
-
-								}
-								try {
-									if (tsFileOutputStream != null) {
-										tsFileOutputStream.write(tsPacket);
-									}
-								} catch (IOException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}								
-							}
-
-
-						});
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+//					tsFileOutputStream = new FileOutputStream("/sdcard/test.ts");
+//					createPacketizer();
 				}
 			};
 			avcEncoder.setParameterSetsListener(new AvcEncoder.ParameterSetsListener() {
@@ -305,5 +258,57 @@ public class TsStreamer {
 	}
 	public void start() {
 		startHttpServer();
+	}
+	private void createPacketizer() {
+		try {
+			tsPacketizer = new SimpleMpegTsPacketizer(new SimpleMpegTsPacketizer.PacketReceiver() {
+
+				private int debugCounter = 1;
+
+				@Override
+				public void onPacketReady(byte[] tsPacket) {
+					if (stop) {
+						return;
+					}
+					try {
+						ByteBuffer idleBuffer = null;
+						do {
+							idleBuffer = idleBuffers.poll(500, TimeUnit.MILLISECONDS);
+							if (idleBuffer == null) {
+//											if (debugCounter++ % 1000 == 0) {
+								Log.w(TAG, "Idle Buffer under-run! :"+debugCounter);
+//											}
+							}
+						} while (idleBuffer == null && !stop);
+						
+						if (idleBuffer != null) {
+							idleBuffer.clear();
+							idleBuffer.put(tsPacket);
+							idleBuffer.rewind();
+							tsBuffers.add(idleBuffer);
+//										debugCounter = 1;
+						}
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} finally {
+
+					}
+					try {
+						if (tsFileOutputStream != null) {
+							tsFileOutputStream.write(tsPacket);
+						}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}								
+				}
+
+
+			});
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }
