@@ -6,6 +6,7 @@ import android.graphics.YuvImage;
 
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.DisplayApiBuilder;
+import com.actionsmicro.graphics.YuvImageToJpegHelper;
 
 public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 
@@ -39,7 +40,10 @@ public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 	@Override
 	public void sendYuvScreenData(YuvImage yuvImage, int quailty)
 			throws Exception {
-		getGoogleCastClient().sendYuvScreenData(yuvImage, quailty);
-
+		YuvImageToJpegHelper helper = YuvImageToJpegHelper.getDefaultHelper();
+		synchronized (helper) {
+			InputStream inputStream = helper.compressYuvImageToJpegStream(yuvImage, quailty);
+			sendJpegEncodedScreenData(inputStream, inputStream.available());
+		}
 	}
 }

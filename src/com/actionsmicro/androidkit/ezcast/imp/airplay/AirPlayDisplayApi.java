@@ -6,6 +6,7 @@ import android.graphics.YuvImage;
 
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.DisplayApiBuilder;
+import com.actionsmicro.graphics.YuvImageToJpegHelper;
 
 public class AirPlayDisplayApi extends AirPlayApi implements DisplayApi {
 
@@ -40,8 +41,10 @@ public class AirPlayDisplayApi extends AirPlayApi implements DisplayApi {
 	@Override
 	public void sendYuvScreenData(YuvImage yuvImage, int quailty)
 			throws Exception {
-		getAirPlayClient().displayYuvImage(yuvImage);
-		
+		YuvImageToJpegHelper helper = YuvImageToJpegHelper.getDefaultHelper();
+		synchronized (helper) {
+			InputStream inputStream = helper.compressYuvImageToJpegStream(yuvImage, quailty);
+			sendJpegEncodedScreenData(inputStream, inputStream.available());
+		}
 	}
-
 }
