@@ -24,6 +24,7 @@ import com.actionsmicro.BuildConfig;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
+import com.actionsmicro.graphics.YuvImageToJpegHelper;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.actionsmicro.web.SimpleMotionJpegHttpServer;
@@ -224,16 +225,11 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	public synchronized void sendYuvScreenData(YuvImage yuvImage, int quailty)
 			throws Exception {
 		if (simpleMotionJpegHttpServer != null) {
-			final int width = yuvImage.getWidth();
-			final int height = yuvImage.getHeight();
-			Log.d(TAG, "sentImageToServer width=" + width+",height=" + height);
-			ByteArrayOutputStream compressionBuffer = getCompressionBuffer();
-			compressionBuffer.reset();
-			Log.d(TAG, "Start compress");
-			android.graphics.Rect rect = new android.graphics.Rect(0, 0, width, height); 
-			yuvImage.compressToJpeg(rect, quailty, compressionBuffer);
-			sendJpegEncodedScreenData(new ByteArrayInputStream(compressionBuffer.toByteArray()), compressionBuffer.size());
-			compressionBuffer.reset();
+			YuvImageToJpegHelper helper = YuvImageToJpegHelper.getDefaultHelper();
+			synchronized (helper) {
+				InputStream inputStream = helper.compressYuvImageToJpegStream(yuvImage, quailty);
+				sendJpegEncodedScreenData(inputStream, inputStream.available());
+			}
 		}
 	}
 	private ByteArrayOutputStream getCompressionBuffer() {

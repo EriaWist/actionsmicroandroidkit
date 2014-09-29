@@ -1,4 +1,4 @@
-package com.actionsmicro.androidkit.ezcast.imp.googlecast;
+package com.actionsmicro.androidkit.ezcast.imp.airplay;
 
 import java.io.InputStream;
 
@@ -8,33 +8,34 @@ import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.DisplayApiBuilder;
 import com.actionsmicro.graphics.YuvImageToJpegHelper;
 
-public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
+public class AirPlayDisplayApi extends AirPlayApi implements DisplayApi {
 
-	protected static final String TAG = "GoogleCastDisplayApi";
-	private DisplayListener displayListener;
-	public GoogleCastDisplayApi(DisplayApiBuilder displayApiBuilder) {
-		super(displayApiBuilder);
-		displayListener = displayApiBuilder.getDisplayListener();
+	public AirPlayDisplayApi(DisplayApiBuilder apiBuilder) {
+		super(apiBuilder);
+		// TODO Auto-generated constructor stub
 	}
+
 	@Override
 	public void startDisplaying() {
-		getGoogleCastClient().startDisplaying();
 	}
 
 	@Override
 	public void stopDisplaying() {
-		getGoogleCastClient().stopDisplaying();
+		// TODO Auto-generated method stub
+
 	}
 
 	@Override
 	public void resendLastImage() throws Exception {
-		getGoogleCastClient().resendLastImage();
+		// TODO Auto-generated method stub
+
 	}
 
 	@Override
 	public void sendJpegEncodedScreenData(InputStream input, long length)
 			throws Exception {
-		getGoogleCastClient().sendJpegEncodedScreenData(input, length);		
+		getAirPlayClient().displayPhoto(input, length);
+
 	}
 
 	@Override

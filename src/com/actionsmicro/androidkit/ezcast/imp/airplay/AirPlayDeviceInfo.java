@@ -80,8 +80,7 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 
 	@Override
 	protected DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder) {
-		// TODO Auto-generated method stub
-		return null;
+		return new AirPlayDisplayApi(displayApiBuilder);
 	}
 
 	@Override

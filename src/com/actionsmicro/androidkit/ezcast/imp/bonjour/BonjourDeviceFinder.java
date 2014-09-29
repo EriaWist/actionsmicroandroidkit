@@ -33,7 +33,7 @@ public abstract class BonjourDeviceFinder<T extends BonjourDeviceInfo> extends D
 			@Override
 			public void serviceAdded(ServiceEvent event) {
 				Log.d(TAG, "Service added: "  + event.getInfo() + " " + event.getName() + " " + event.getInfo().getPropertyString("passcode"));
-				event.getDNS().requestServiceInfo(event.getType(), event.getName(), true, 3 * 60*1000);
+				event.getDNS().requestServiceInfo(event.getType(), event.getName(), true, 50);
 			}
 	
 			@Override
