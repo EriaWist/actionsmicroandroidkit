@@ -119,6 +119,7 @@ public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
+		sendAndroidRxInfo();
 		
 	}
 
