@@ -6,7 +6,7 @@ import android.os.Parcelable;
 
 /**
  * This class wraps information of a device.
- * @author jamchen
+ * @author James Chen
  * @version {SDK_VERSION_STRING}
  * @since 2.0
  */

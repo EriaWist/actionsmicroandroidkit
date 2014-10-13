@@ -29,7 +29,7 @@ public interface AuthorizationApi extends Api {
 	public final static int POSITION_AUTO = 0;
 	/**
 	 * Authorization callback handler. 
-	 * @author jamchen
+	 * @author James Chen
 	 * @version {SDK_VERSION_STRING}
 	 * @since 2.0
 	 */
@@ -45,7 +45,7 @@ public interface AuthorizationApi extends Api {
 		void authorizationIsGranted(AuthorizationApi authorizer, int splitCount, int position);
 		/**
 		 * The reason why authorization request was denied.
-		 * @author jamchen
+		 * @author James Chen
 		 * @see #requestToDisplay(int, int)
 		 * @since 2.0
 		 */

@@ -15,7 +15,7 @@ import android.graphics.YuvImage;
 public interface DisplayApi extends Api {
 	/**
 	 * Roles in multi-session mode.
-	 * @author jamchen
+	 * @author James Chen
 	 * @since 2.0
 	 */
 	public enum Role {
@@ -37,7 +37,7 @@ public interface DisplayApi extends Api {
 	}
 	/**
 	 * Callback to handle display related events from the device.
-	 * @author jamchen
+	 * @author James Chen
 	 *
 	 * @since 2.0
 	 */

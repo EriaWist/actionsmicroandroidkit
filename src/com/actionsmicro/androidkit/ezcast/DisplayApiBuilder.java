@@ -5,7 +5,7 @@ import android.content.Context;
 import com.actionsmicro.androidkit.ezcast.DisplayApi.DisplayListener;
 /**
  * ApiBuilder to build DisplayApi.
- * @author jamchen
+ * @author James Chen
  * @version {SDK_VERSION_STRING}
  * @since 2.0
  */

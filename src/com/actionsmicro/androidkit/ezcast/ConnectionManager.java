@@ -1,7 +1,7 @@
 package com.actionsmicro.androidkit.ezcast;
 /**
  * Connection related callback.
- * @author jamchen
+ * @author James Chen
  * @version {SDK_VERSION_STRING}
  * @since 2.0
  */
