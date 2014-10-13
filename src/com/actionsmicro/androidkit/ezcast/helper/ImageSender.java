@@ -15,6 +15,7 @@ import com.actionsmicro.utils.Log;
 
 /**
  * Helper class to send image(Bitmap) to the device.
+ * This class is not part of this SDK officially yet, please use it at your own risk.
  * 
  * @author James Chen
  * @version {SDK_VERSION_STRING}
