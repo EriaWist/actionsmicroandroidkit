@@ -45,7 +45,6 @@
             unless="sdk.dir"
     />
 
-
 <!-- extension targets. Uncomment the ones where you want to do custom work
      in between standard targets -->
 <!--
@@ -60,6 +59,7 @@
     <target name="-post-compile">
     </target>
 -->
+    <import file="custom_rules.xml" optional="true" />
 
     <!-- Import the actual build file.
 

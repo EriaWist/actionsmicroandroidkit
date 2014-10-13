@@ -20,6 +20,9 @@
 #}
 
 #Specifies to keep the parameter names and types of methods that are kept. This option actually keeps trimmed versions of the debugging attributes LocalVariableTable and LocalVariableTypeTable. It can be useful when processing a library. Some IDEs can use the information to assist developers who use the library, for example with tool tips or autocompletion. Only applicable when obfuscating.
+-libraryjars library_projects/google-play-services_lib/libs/google-play-services.jar
+-libraryjars library_projects/mediarouter/libs/android-support-v7-mediarouter.jar
+
 -keepparameternames
 
 -renamesourcefileattribute SourceFile
