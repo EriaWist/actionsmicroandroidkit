@@ -22,6 +22,8 @@
                 <include name="AuthorizationApiBuilder.java"/>
                 <include name="DisplayApi.java"/>
                 <include name="DisplayApiBuilder.java"/>
+                <include name="MediaPlayerApi.java"/>
+                <include name="MediaPlayerApiBuilder.java"/>
                 <include name="ConnectionManager.java"/>
                 <include name="DeviceInfo.java"/>
                 <include name="helper/*.java"/>
