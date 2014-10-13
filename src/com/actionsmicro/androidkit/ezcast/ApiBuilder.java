@@ -27,7 +27,7 @@ public abstract class ApiBuilder<API> {
 	/**
 	 * Set the {@link ConnectionManager} to handle connection events of the API.
 	 * @param connectionManager
-	 * @return
+	 * @return ApiBuilder itself for chaining.
 	 * @since 2.0
 	 */
 

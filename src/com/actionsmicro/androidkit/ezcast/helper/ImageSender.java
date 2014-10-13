@@ -34,7 +34,7 @@ public class ImageSender {
 	/**
 	 * BitmapManager defines interface for asynchronous mode clients to manage buffer life-cycle.
 	 *
-	 * @see {@link ImageSender#sendImage(Bitmap)} 
+	 * @see ImageSender#sendImage(Bitmap)
 	 */
 	public interface BitmapManager {
 		public boolean onProcessBitmapBegin(Client client, Bitmap bitmap);

@@ -17,13 +17,13 @@ package com.actionsmicro.androidkit.ezcast;
 public interface AuthorizationApi extends Api {
 	/**
 	 * Request the device to split display automatically. 
-	 * @see requestToDisplay(int, int)
+	 * @see #requestToDisplay(int, int)
 	 * @since 2.0
 	 */
 	public final static int SPLIT_COUNT_AUTO = 0;
 	/**
 	 * Request the device to position current stream automatically. 
-	 * @see requestToDisplay(int, int)
+	 * @see #requestToDisplay(int, int)
 	 * @since 2.0
 	 */
 	public final static int POSITION_AUTO = 0;
@@ -39,14 +39,14 @@ public interface AuthorizationApi extends Api {
 		 * @param authorizer The authorization API object.
 		 * @param splitCount The split count of the device.
 		 * @param position The position current stream is placed.
-		 * @see requestToDisplay(int, int)
+		 * @see #requestToDisplay(int, int)
 		 * @since 2.0
 		 */
 		void authorizationIsGranted(AuthorizationApi authorizer, int splitCount, int position);
 		/**
 		 * The reason why authorization request was denied.
 		 * @author jamchen
-		 * @see requestToDisplay(int, int)
+		 * @see #requestToDisplay(int, int)
 		 * @since 2.0
 		 */
 		public enum DeniedReason {
