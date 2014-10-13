@@ -26,6 +26,7 @@
                 <include name="MediaPlayerApiBuilder.java"/>
                 <include name="ConnectionManager.java"/>
                 <include name="DeviceInfo.java"/>
+                <include name="DeviceFinder.java"/>
                 <include name="helper/ImageSender.java"/>
                 <!-- 
                 <include name="imp/ezdisplay/FalconDeviceFinder.java"/>
