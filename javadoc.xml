@@ -14,7 +14,7 @@
 
     <target name="javadoc">
         <javadoc access="public" author="true" classpath="${sdk.dir}/platforms/android-19/android.jar:bin/classes.jar:libs/*:library_projects/mediarouter/libs/android-support-v7-mediarouter.jar:library_projects/google-play-services_lib/libs/*" destdir="doc" doctitle="Actions-Micro EZCast SDK" nodeprecated="true" nodeprecatedlist="true" noindex="false" nonavbar="false" notree="false" source="1.6" linkoffline="http://d.android.com/reference ${sdk.dir}/docs/reference" link="http://docs.oracle.com/javase/6/docs/api/"
-            splitindex="true" use="true" version="true" docencoding="UTF-8" charset="UTF-8" encoding="UTF-8">
+            splitindex="true" use="true" version="true" docencoding="UTF-8" charset="UTF-8" encoding="UTF-8" stylesheetfile="javadoc.css">
             <fileset dir="src/com/actionsmicro/androidkit/ezcast/" casesensitive="yes">
                 <include name="Api.java"/>
                 <include name="ApiBuilder.java"/>
