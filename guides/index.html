@@ -47,11 +47,20 @@
         <p>
             Android 4.0 and later.
         </p>
+        <h2>Dependencies</h2>
+        <p>
+            EZCast SDK depends on Google Play Services and MediaRouter.
+            To install/setup those library, please refer to following links respectively:
+            <ul>
+                <li>Google Play Services: <a href="http://bit.ly/11gSJks">http://bit.ly/11gSJks</a></li>
+                <li>MediaRouter: MediaRouter is part of Android Support Libraries. To install Android Support Libraries, please refer to <a href="http://bit.ly/11gTc6f">http://bit.ly/11gTc6f</a></li>
+            </ul>
+        </p> 
         <h2>
             Install the Library
         </h2>
         <p>
-            Copy the jar file (for example, ez_cast_sdk_v_2.0.12.jar) to the libs folder under your project root.             
+            Copy the jar file (for example, ez_cast_sdk_v_2.1.1.jar) to the libs folder under your project root.             
             <p><img src="images/libs.png" class="img-polaroid"></p>
         </p>
         <p>
@@ -66,10 +75,33 @@
         <h2>
             Getting Started            
         </h2>
+        <h3>Device Discovery</h3>
+        <p>
+        To find compatible devices, you need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html">DeviceFinder</a> and implements <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.Listener.html">DeviceFinder.Listener</a> interface to receive discovery events, such as onDeviceAdded() and onDeviceRemoved().
+        </p>
+        <p>First of all, get the shared instance of <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html">DeviceFinder</a> through <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html#getDefaultFinder(android.content.Context)">getDefaultFinder()</a>.</p>
+<pre class="prettyprint">
+deviceFinder = DeviceFinder.getDefaultFinder(getApplicationContext());
+</pre>
+        <p>Implement <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.Listener.html">DeviceFinder.Listener</a> to receive discovery events.</p>
+<pre class="prettyprint">
+private DeviceFinder.Listener listener = new DeviceFinder.Listener() {        
+    @Override
+    public void onDeviceRemoved(DeviceFinder deviceFinder, DeviceInfo device) {
+        // update data model and UI if needed
+    }
+    
+    @Override
+    public void onDeviceAdded(DeviceFinder deviceFinder, DeviceInfo device) {
+        // update data model and UI if needed
+    }
+};  
+</pre>
+
         <h3>Authorization</h3>
         <p>
-Before sending image to the device, client needs to ask for permission via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApi.html">AuthenticationApi</a>.
-You need to use <a href="../doc/com/actionsmicro/ezcast/AuthorizationApiBuilder.html">AuthorizationApiBuilder</a> to create AuthorizationApi instance and ask permission to display contents via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApi.html#requestToDisplay(int,%20int)">requestToDisplay</a>. There are bunch of callbacks, which are also setting up via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApiBuilder.html#setAuthorizationListener(com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener)">AuthorizationApiBuilder.setAuthorizationListener</a>.
+Before sending image to the device, client needs to ask for permission via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApi.html">AuthenticationApi</a>.
+You need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApiBuilder.html">AuthorizationApiBuilder</a> to create AuthorizationApi instance and ask permission to display contents via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApi.html#requestToDisplay(int,%20int)">requestToDisplay</a>. There are bunch of callbacks, which are also setting up via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApiBuilder.html#setAuthorizationListener(com.actionsmicro.androidkit.ezcast.AuthorizationApi.AuthorizationListener)">AuthorizationApiBuilder.setAuthorizationListener</a>.
         </p>
 
 <pre class="prettyprint">
@@ -111,7 +143,7 @@ protected void onPause() {
         
         <h3>Display Image</h3>
         <p>
-        After the permission has been granted,  client then can display contents via <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html">DisplayApi</a>. To connect to display API, you need to use <a href="../doc/com/actionsmicro/ezcast/DisplayApiBuilder.html">DisplayApiBuilder</a>. There are callbacks regarding to display as well which of those are setup via DisplayApiBuilder. These callbacks are <a href="../doc/com/actionsmicro/ezcast/DisplayApi.DisplayListener.html">DisplayListener</a> and <a href="../doc/com/actionsmicro/ezcast/ConnectionManager.html">ConnectionManager</a>. Before displaying anything client also needs to call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#startDisplaying()">startDisplaying</a>.    
+        After the permission has been granted,  client then can display contents via <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html">DisplayApi</a>. To connect to display API, you need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApiBuilder.html">DisplayApiBuilder</a>. There are callbacks regarding to display as well which of those are setup via DisplayApiBuilder. These callbacks are <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.DisplayListener.html">DisplayListener</a> and <a href="../doc/com/actionsmicro/androidkit/ezcast/ConnectionManager.html">ConnectionManager</a>. Before displaying anything client also needs to call <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html#startDisplaying()">startDisplaying</a>.    
         </p>
         
 <pre class="prettyprint">
@@ -165,7 +197,7 @@ displayApi.connect();
 displayApi.startDisplaying();
 </pre>
         <p>
-        To send image data to the device, client should call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#sendJpegEncodedScreenData(java.io.InputStream,%20long)">sendJpegEncodedScreenData</a>
+        To send image data to the device, client should call <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html#sendJpegEncodedScreenData(java.io.InputStream,%20long)">sendJpegEncodedScreenData</a>
         and the data must be encoded as JPEG. 
         </p>
         
@@ -182,7 +214,7 @@ try {
 }
 </pre>
         <p>
-        To stop displaying image, client can call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#stopDisplaying()">stopDisplaying</a>. Client should
+        To stop displaying image, client can call <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html#stopDisplaying()">stopDisplaying</a>. Client should
         disconnect from DisplayApi when DisplayApi is no longer needed to release the
         resources obtained by the api instance.
         </p>
@@ -230,7 +262,7 @@ protected void onListItemClick (ListView l, View v, int position, long id) {
         
         <h3>DeviceInfo</h3>
         <p>
-        To obtain the <a href="../doc/com/actionsmicro/ezcast/DeviceInfo.html">DeviceInfo</a>, you can get it from the intent extra. The extra name is <em>"com.actionsmicro.ezcast.device_info"</em>.    
+        To obtain the <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceInfo.html">DeviceInfo</a>, you can get it from the intent extra. The extra name is <em>"com.actionsmicro.ezcast.device_info"</em>.    
         </p>
         
 <pre class="prettyprint">
