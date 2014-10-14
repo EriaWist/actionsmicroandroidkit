@@ -22,6 +22,8 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import android.os.Handler;
@@ -419,9 +421,32 @@ public class Falcon {
 		public final String getParameter(String key) {
 			return keyValuePairs.get(key);
 		}
+		public static final int SERVICE_CLIENT_MODE = 0x200000;
+		private int getServiceFlags() {
+			String serviceStringParam;
+			String serviceString;
+			serviceStringParam = "ezcast.service.android." + Locale.getDefault().getCountry();
+			serviceString = getParameter(serviceStringParam);
+
+			if (serviceString == null) {
+				serviceStringParam = "ezcast.service.android";
+				serviceString = getParameter(serviceStringParam);
+			}
+			
+			if (serviceString == null) {
+				android.util.Log.e("ServiceBitmask","Can not parse service!");
+				return -1;
+			}
+			
+			return ((int) Long.parseLong(serviceString, 16));
+		}
+		public boolean supportClientMode() {
+			return (getServiceFlags() & SERVICE_CLIENT_MODE) != 0;
+		}
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
 	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
+	private ArrayList<ProjectorInfo> tempProjectors = new ArrayList<ProjectorInfo>(); // for WiFi display response only
 	private static Falcon singleton;
 	/**
 	 * Return the shared instance of Falcon.
@@ -487,7 +512,7 @@ public class Falcon {
 					@Override
 					public void run() {
 						try {
-							final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
+							final ProjectorInfo projectorInfo = getProjectorInfoWithAddress(ipAddress);
 							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
 							while (true) {
 								final ByteBuffer header = ByteBuffer.allocate(4);
@@ -525,7 +550,7 @@ public class Falcon {
 	}
 	private void dispatchOnDisconnect(InetAddress ipAddress) {
 		Log.d(TAG, "dispatchOnDisconnect");
-		final ProjectorInfo projector = createProjectorWithAddressIfNeeded(ipAddress);
+		final ProjectorInfo projector = getProjectorInfoWithAddress(ipAddress);
 		mainThreadHandler.post(new Runnable() {
 
 			@Override
@@ -622,7 +647,7 @@ public class Falcon {
 		if (e != null) {
 			Log.d(TAG, "dispatchException:" + e);
 			e.printStackTrace();
-			final ProjectorInfo projector = createProjectorWithAddressIfNeeded(address);
+			final ProjectorInfo projector = getProjectorInfoWithAddress(address);
 			mainThreadHandler.post(new Runnable() {
 
 				@Override
@@ -909,9 +934,9 @@ public class Falcon {
 			projectorInfo.osVerion = parameters[1];
 		}
 	}
-	private ProjectorInfo getProjectorInfoWithAddress(InetAddress address) {
-		synchronized(projectors) {
-			Iterator<ProjectorInfo> iterator = projectors.listIterator();
+	private ProjectorInfo getProjectorInfoWithAddressInList(InetAddress address, List<ProjectorInfo> list) {
+		synchronized(list) {
+			Iterator<ProjectorInfo> iterator = list.listIterator();
 			while (iterator.hasNext()) {
 				ProjectorInfo projector = iterator.next(); 
 				if (projector.ipAddress.equals(address)) {
@@ -920,6 +945,17 @@ public class Falcon {
 			}
 			return null;
 		}
+	}
+	private ProjectorInfo getProjectorInfoWithAddress(InetAddress address) {
+		ProjectorInfo projector = getProjectorInfoWithAddressInList(address, projectors);
+		if (projector != null) {
+			return projector;
+		}
+		projector = getProjectorInfoWithAddressInList(address, tempProjectors);
+		if (projector != null) {
+			return projector;
+		}			
+		return null;
 	}
 	private static final int IPMSG_VERSION = 0x002;
 	
@@ -1065,12 +1101,12 @@ public class Falcon {
 	private ProjectorInfo createProjectorWithAddressIfNeeded(
 			final InetAddress address) {
 		ProjectorInfo projectorInfo;
-		synchronized(projectors) {
+		synchronized(tempProjectors) {
 			projectorInfo = getProjectorInfoWithAddress(address);
 			if (projectorInfo == null) {
 				projectorInfo = new ProjectorInfo();
 				projectorInfo.ipAddress = address;
-				projectors.add(projectorInfo);
+				tempProjectors.add(projectorInfo);
 			}
 		}
 		return projectorInfo;
@@ -1094,10 +1130,18 @@ public class Falcon {
 	private void processRemoteControlMessage(final ProjectorInfo projectorInfo, final String receiveString) {
 		Log.d(TAG, "receive EZ Remote message:" + receiveString + " from:" + projectorInfo.getAddress().getHostAddress());
 		if (receiveString.startsWith(projectorInfo.getAddress().getHostAddress())) { //backward compatibility
+			addProjector(projectorInfo);
 			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 		} else if (receiveString.startsWith("EZREMOTE:")) {
 			parseRemoteControlResponseString(receiveString, projectorInfo);
-			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+			if (projectorInfo.supportClientMode() || isDirectConnenctedIpAddress(projectorInfo.getAddress())) {
+				addProjector(projectorInfo);
+				mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+			} else {
+				synchronized (tempProjectors) {
+					tempProjectors.remove(projectorInfo);
+				}
+			}
 		} else if (receiveString.startsWith("STANDARD:")) {	//小機發給App的message (公版）
 			mainThreadHandler.post(new Runnable() {
 
@@ -1128,15 +1172,37 @@ public class Falcon {
 			});
 		}
 	}
+	private boolean isDirectConnenctedIpAddress(InetAddress address) {
+		if (address != null) {
+			if (address.getHostAddress().equals("192.168.111.1") ||
+					address.getHostAddress().equals("192.168.203.1") ||
+					address.getHostAddress().equals("192.168.168.1")) {
+				return true;
+			}
+		}
+		return false;
+	}
+	private void addProjector(final ProjectorInfo projectorInfo) {
+		synchronized (projectors) {
+			if (!projectors.contains(projectorInfo)) {
+				projectors.add(projectorInfo);
+			}
+		}
+		synchronized (tempProjectors) {
+			tempProjectors.remove(projectorInfo);
+		}
+	}
 	private void handleWifiDisplayMessage(final DatagramPacket recvPacket) {
 		final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(recvPacket.getAddress());
 		if (parseWifiDisplayResponse(recvPacket, projectorInfo)) {
 			Log.d(TAG, "receive EZ Wifi Response");
 			projectorInfo.wifiDisplayPortNumber = EZ_WIFI_DISPLAY_PORT_NUMBER;
-			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+			// we don't report wifi display discovery anymore.
+//			mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 		} else {
-			synchronized(projectors) {
-				projectors.remove(projectorInfo);
+			// it's fraud, let's remove it from tempProjectors if it's still in tempProjectors.
+			synchronized(tempProjectors) {
+				tempProjectors.remove(projectorInfo);
 			}
 		}
 	}
@@ -1224,8 +1290,12 @@ public class Falcon {
 			projectorInfo.name = keyValuePairs.get(PARAMETER_NAME_KEY);
 		}
 		projectorInfo.passcode = keyValuePairs.get("passcode");
-		projectorInfo.model = keyValuePairs.get(PARAMETER_MODEL_KEY);
-		projectorInfo.vendor = keyValuePairs.get(PARAMETER_VENDOR_KEY);
+		if (projectorInfo.model == null) { // Use EZRemote's parameter as first priority
+			projectorInfo.model = keyValuePairs.get(PARAMETER_MODEL_KEY);
+		}
+		if (projectorInfo.vendor == null) { // Use EZRemote's parameter as first priority
+			projectorInfo.vendor = keyValuePairs.get(PARAMETER_VENDOR_KEY);
+		}
 		if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY) && keyValuePairs.containsKey(PARAMETER_SERVICE_KEY)) {
 			projectorInfo.service = Integer.parseInt(keyValuePairs.get(PARAMETER_SERVICE_KEY), 16);
 		}
