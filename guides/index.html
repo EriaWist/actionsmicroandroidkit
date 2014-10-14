@@ -102,6 +102,8 @@ private DeviceFinder.Listener listener = new DeviceFinder.Listener() {
         <p>
 Before sending image to the device, client needs to ask for permission via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApi.html">AuthenticationApi</a>.
 You need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApiBuilder.html">AuthorizationApiBuilder</a> to create AuthorizationApi instance and ask permission to display contents via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApi.html#requestToDisplay(int,%20int)">requestToDisplay</a>. There are bunch of callbacks, which are also setting up via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApiBuilder.html#setAuthorizationListener(com.actionsmicro.androidkit.ezcast.AuthorizationApi.AuthorizationListener)">AuthorizationApiBuilder.setAuthorizationListener</a>.
+<div class="alert"><strong>Note:</strong> If AuthorizationApiBuilder.build() returns NULL, it means current device doesn't need authorization.
+            </div>
         </p>
 
 <pre class="prettyprint">
@@ -118,10 +120,14 @@ protected void onResume() {
         public void authorizationIsGranted(AuthorizationApi arg0, int arg1, int arg2) {
                 
         }
-                    
     }).build();
-    authorizationApi.connect();
-    authorizationApi.requestToDisplay(0, 0);
+    if (authorizationApi != null) {
+        authorizationApi.connect();
+        authorizationApi.requestToDisplay(0, 0);
+    } else {
+        // no authorization API means no authorization needed.
+        startToDisplay();
+    }
 }
 </pre>
         
