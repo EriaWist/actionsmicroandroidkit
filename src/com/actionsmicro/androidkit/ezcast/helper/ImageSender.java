@@ -10,11 +10,11 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
-import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.utils.Log;
 
 /**
  * Helper class to send image(Bitmap) to the device.
+ * This class is not part of this SDK officially yet, please use it at your own risk.
  * 
  * @author James Chen
  * @version {SDK_VERSION_STRING}
@@ -33,11 +33,11 @@ public class ImageSender {
 	/**
 	 * BitmapManager defines interface for asynchronous mode clients to manage buffer life-cycle.
 	 *
-	 * @see {@link ImageSender#sendImage(Bitmap)} 
+	 * @see ImageSender#sendImage(Bitmap)
 	 */
 	public interface BitmapManager {
-		public boolean onProcessBitmapBegin(Client client, Bitmap bitmap);
-		public void onProcessBitmapEnd(Client client, Bitmap bitmap);
+		public boolean onProcessBitmapBegin(Bitmap bitmap);
+		public void onProcessBitmapEnd(Bitmap bitmap);
 	}
 	protected static final String TAG = "ImageSender";
 	private ArrayBlockingQueue<Job> pendingJobs = new ArrayBlockingQueue<Job>(1);
@@ -103,10 +103,10 @@ public class ImageSender {
 				try {
 					if (null != job && null != job.bitmap) {
 						Log.d(TAG, "job comes in");
-						if (bitmapManager != null && displayApi != null && bitmapManager.onProcessBitmapBegin(null, job.bitmap)) {
+						if (bitmapManager != null && displayApi != null && bitmapManager.onProcessBitmapBegin(job.bitmap)) {
 							getCompressionBuffer().reset();
 							job.bitmap.compress(CompressFormat.JPEG, 70, getCompressionBuffer());
-							bitmapManager.onProcessBitmapEnd(null, job.bitmap);
+							bitmapManager.onProcessBitmapEnd(job.bitmap);
 							Log.d(TAG, "jpeg size:" + getCompressionBuffer().size());
 							displayApi.sendJpegEncodedScreenData(new ByteArrayInputStream(getCompressionBuffer().toByteArray()), getCompressionBuffer().size());
 						}

@@ -15,12 +15,12 @@
       <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
       <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
     <![endif]-->
-    <link href="css/bootstrap.css" rel="stylesheet">
     <link rel="stylesheet" href="google-code-prettify/prettify.css">
     <script src="google-code-prettify/prettify.js"></script>
     
-    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/black-tie/jquery-ui.css" rel="stylesheet">
+    <link href="css/jquery-ui.css" rel="stylesheet">
     <link type="text/css" rel="stylesheet" href="css/jquery.tocify.css" />
+    <link href="css/bootstrap.css" rel="stylesheet">
     <style>
     body {
       padding-top: 60px;
@@ -29,6 +29,9 @@
     .prettyprint.prettyprinted {
         padding: 20px;
         border: 1px solid rgba(0, 0, 0, 0.15);
+        overflow: auto;
+        word-wrap: normal;
+        white-space: pre;
     }
     </style>
 </head>
@@ -47,11 +50,20 @@
         <p>
             Android 4.0 and later.
         </p>
+        <h2>Dependencies</h2>
+        <p>
+            EZCast SDK depends on Google Play Services and MediaRouter.
+            To install/setup those library, please refer to following links respectively:
+            <ul>
+                <li>Google Play Services: <a href="http://bit.ly/11gSJks">http://bit.ly/11gSJks</a></li>
+                <li>MediaRouter: MediaRouter is part of Android Support Libraries. To install Android Support Libraries, please refer to <a href="http://bit.ly/11gTc6f">http://bit.ly/11gTc6f</a></li>
+            </ul>
+        </p> 
         <h2>
             Install the Library
         </h2>
         <p>
-            Copy the jar file (for example, ez_cast_sdk_v_2.0.12.jar) to the libs folder under your project root.             
+            Copy the jar file (for example, ez_cast_sdk_v_2.1.1.jar) to the libs folder under your project root.             
             <p><img src="images/libs.png" class="img-polaroid"></p>
         </p>
         <p>
@@ -66,10 +78,35 @@
         <h2>
             Getting Started            
         </h2>
-        <h3>Authorization</h3>
+        <h3>Device Discovery</h3>
         <p>
-Before sending image to the device, client needs to ask for permission via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApi.html">AuthenticationApi</a>.
-You need to use <a href="../doc/com/actionsmicro/ezcast/AuthorizationApiBuilder.html">AuthorizationApiBuilder</a> to create AuthorizationApi instance and ask permission to display contents via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApi.html#requestToDisplay(int,%20int)">requestToDisplay</a>. There are bunch of callbacks, which are also setting up via <a href="../doc/com/actionsmicro/ezcast/AuthorizationApiBuilder.html#setAuthorizationListener(com.actionsmicro.ezcast.AuthorizationApi.AuthorizationListener)">AuthorizationApiBuilder.setAuthorizationListener</a>.
+        To find compatible devices, you need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html">DeviceFinder</a> and implements <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.Listener.html">DeviceFinder.Listener</a> interface to receive discovery events, such as onDeviceAdded() and onDeviceRemoved().
+        </p>
+        <p>First of all, get the shared instance of <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html">DeviceFinder</a> through <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html#getDefaultFinder(android.content.Context)">getDefaultFinder()</a>.</p>
+<pre class="prettyprint">
+deviceFinder = DeviceFinder.getDefaultFinder(getApplicationContext());
+</pre>
+        <p>Implement <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.Listener.html">DeviceFinder.Listener</a> to receive discovery events.</p>
+<pre class="prettyprint">
+private DeviceFinder.Listener listener = new DeviceFinder.Listener() {        
+    @Override
+    public void onDeviceRemoved(DeviceFinder deviceFinder, DeviceInfo device) {
+        // update data model and UI if needed
+    }
+    
+    @Override
+    public void onDeviceAdded(DeviceFinder deviceFinder, DeviceInfo device) {
+        // update data model and UI if needed
+    }
+};  
+</pre>
+
+        <h3 id="authorization">Authorization</h3>
+        <p>
+Before sending image to the device or playing video/audio, client needs to ask for permission via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApi.html">AuthenticationApi</a>.
+You need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApiBuilder.html">AuthorizationApiBuilder</a> to create AuthorizationApi instance and ask permission to display contents via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApi.html#requestToDisplay(int,%20int)">requestToDisplay</a>. There are bunch of callbacks, which are also setting up via <a href="../doc/com/actionsmicro/androidkit/ezcast/AuthorizationApiBuilder.html#setAuthorizationListener(com.actionsmicro.androidkit.ezcast.AuthorizationApi.AuthorizationListener)">AuthorizationApiBuilder.setAuthorizationListener</a>.
+<div class="alert"><strong>Note:</strong> If AuthorizationApiBuilder.build() returns NULL, it means current device doesn't need authorization.
+            </div>
         </p>
 
 <pre class="prettyprint">
@@ -86,10 +123,14 @@ protected void onResume() {
         public void authorizationIsGranted(AuthorizationApi arg0, int arg1, int arg2) {
                 
         }
-                    
     }).build();
-    authorizationApi.connect();
-    authorizationApi.requestToDisplay(0, 0);
+    if (authorizationApi != null) {
+        authorizationApi.connect();
+        authorizationApi.requestToDisplay(0, 0);
+    } else {
+        // no authorization API means no authorization needed.
+        startToDisplay();
+    }
 }
 </pre>
         
@@ -111,7 +152,7 @@ protected void onPause() {
         
         <h3>Display Image</h3>
         <p>
-        After the permission has been granted,  client then can display contents via <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html">DisplayApi</a>. To connect to display API, you need to use <a href="../doc/com/actionsmicro/ezcast/DisplayApiBuilder.html">DisplayApiBuilder</a>. There are callbacks regarding to display as well which of those are setup via DisplayApiBuilder. These callbacks are <a href="../doc/com/actionsmicro/ezcast/DisplayApi.DisplayListener.html">DisplayListener</a> and <a href="../doc/com/actionsmicro/ezcast/ConnectionManager.html">ConnectionManager</a>. Before displaying anything client also needs to call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#startDisplaying()">startDisplaying</a>.    
+        After the permission has been granted,  client then can display contents via <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html">DisplayApi</a>. To connect to display API, you need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApiBuilder.html">DisplayApiBuilder</a>. There are callbacks regarding to display as well which of those are setup via DisplayApiBuilder. These callbacks are <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.DisplayListener.html">DisplayListener</a> and <a href="../doc/com/actionsmicro/androidkit/ezcast/ConnectionManager.html">ConnectionManager</a>. Before displaying anything client also needs to call <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html#startDisplaying()">startDisplaying</a>.    
         </p>
         
 <pre class="prettyprint">
@@ -165,7 +206,7 @@ displayApi.connect();
 displayApi.startDisplaying();
 </pre>
         <p>
-        To send image data to the device, client should call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#sendJpegEncodedScreenData(java.io.InputStream,%20long)">sendJpegEncodedScreenData</a>
+        To send image data to the device, client should call <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html#sendJpegEncodedScreenData(java.io.InputStream,%20long)">sendJpegEncodedScreenData</a>
         and the data must be encoded as JPEG. 
         </p>
         
@@ -174,15 +215,14 @@ Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launche
 ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
 icon.compress(CompressFormat.JPEG, 100, outBuffer);
 try {
-    displayApi.sendJpegEncodedScreenData(new ByteArrayInputStream(outBuffer.toByteArray()), 
-                                                   outBuffer.size());
+    displayApi.sendJpegEncodedScreenData(new ByteArrayInputStream(outBuffer.toByteArray()), outBuffer.size());
 } catch (Exception e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
 }
 </pre>
         <p>
-        To stop displaying image, client can call <a href="../doc/com/actionsmicro/ezcast/DisplayApi.html#stopDisplaying()">stopDisplaying</a>. Client should
+        To stop displaying image, client can call <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html#stopDisplaying()">stopDisplaying</a>. Client should
         disconnect from DisplayApi when DisplayApi is no longer needed to release the
         resources obtained by the api instance.
         </p>
@@ -201,7 +241,106 @@ protected void onPause() {
     super.onPause();		
 }
 </pre>
+        <h3>Media Streaming</h3>
+        <p>
+            Before playing video/audio, you need to grant permission as displaying image through <a href="#authorization">authorization APIs</a>.
+        </p>
+        <p>
+            To play video or audio, you need to work with <a href="../doc/com/actionsmicro/androidkit/ezcast/MediaPlayerApi.html">MediaPlayerApi</a> and <a href="../doc/com/actionsmicro/androidkit/ezcast/MediaPlayerApi.MediaPlayerStateListener.html">MediaPlayerStateListener</a>.
+        </p>
+
+        <p>
+            To create MediaPlayerApi, you will need <a href="../doc/com/actionsmicro/androidkit/ezcast/MediaPlayerApiBuilder.html">MediaPlayerApiBuilder</a> and setup MediaPlayerStateListener to receive playback events, 
+            such as media duration, current position and so on.
+        </p>
+<pre class="prettyprint">
+mediaPlayerApi = new MediaPlayerApiBuilder(deviceInfo, this)
+.setMediaPlayerStateListener(new MediaPlayerStateListener() {
+
+    @Override
+    public void mediaPlayerDidStart(MediaPlayerApi api) {
         
+    }
+
+    @Override
+    public void mediaPlayerDidStop(MediaPlayerApi api) {
+        setEnableSeekBar(false);
+        setEnablevVolumeControls(false);
+        
+    }
+
+    @Override
+    public void mediaPlayerDidFailed(MediaPlayerApi api,
+            int resultCode) {
+        displayMessage("mediaPlayerDidFailed:"+resultCode);
+        
+    }
+
+    @Override
+    public void mediaPlayerTimeDidChange(MediaPlayerApi api,
+            long time) {
+        updateTimeInfo(time);
+    }
+
+
+    @Override
+    public void mediaPlayerDurationIsReady(MediaPlayerApi api,
+            long duration) {
+        setEnableSeekBar(true);
+        setEnablevVolumeControls(true);
+        updateTimeInfo(0);
+    }
+
+}).build();
+if (mediaPlayerApi != null) {
+    mediaPlayerApi.connect();
+}
+</pre>        
+        <h4>Play</h4>
+        <p>
+            To play media, just invoke MediaPlayerApi.play() and pass media URL to it.
+            Playback info will be given through MediaPlayerStateListener if you setup a MediaPlayerStateListener via MediaPlayerApiBuilder.</p>
+<pre class="prettyprint">
+mediaPlayerApi.play(this, mediaUrl, null, -1L, mediaTitle);
+</pre>
+        <h4>Pause</h4>
+<pre class="prettyprint">
+mediaPlayerApi.pause();
+</pre>
+        <h4>Resume</h4>
+<pre class="prettyprint">
+mediaPlayerApi.resume();
+</pre>
+        <h4>Stop</h4>
+<pre class="prettyprint">
+mediaPlayerApi.stop();
+</pre>
+    <h4>Seek</h4>
+<pre class="prettyprint">
+mediaPlayerApi.seek(positionInSecond);
+</pre>
+    <h4>Clean Up</h4>
+<pre class="prettyprint">
+if (mediaPlayerApi != null) {
+    mediaPlayerApi.stop();
+    mediaPlayerApi.disconnect();
+    mediaPlayerApi = null;
+}
+</pre>
+    <h4>Volume Control</h4>
+    <div class="alert"><strong>Note:</strong>
+        Only some kind of device support volume control.
+    </div>
+<pre class="prettyprint">
+mediaPlayerApi.increaseVolume();
+</pre>
+<pre class="prettyprint">
+mediaPlayerApi.decreaseVolume();
+</pre>
+
+<!--  -->
+<!-- Quick Start -->
+<!--  -->
         <h2>Quick Start - Override the Sample Program</h2>
         <p>
         The fastest way to develop an EZCast is override the sample program.
@@ -230,7 +369,7 @@ protected void onListItemClick (ListView l, View v, int position, long id) {
         
         <h3>DeviceInfo</h3>
         <p>
-        To obtain the <a href="../doc/com/actionsmicro/ezcast/DeviceInfo.html">DeviceInfo</a>, you can get it from the intent extra. The extra name is <em>"com.actionsmicro.ezcast.device_info"</em>.    
+        To obtain the <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceInfo.html">DeviceInfo</a>, you can get it from the intent extra. The extra name is <em>"com.actionsmicro.ezcast.device_info"</em>.    
         </p>
         
 <pre class="prettyprint">
@@ -243,7 +382,7 @@ protected void onCreate(Bundle savedInstanceState) {
 }
 </pre>
         <p>
-        And then you are good to go to play with AuthenticationApi and DisplayApi which are mentioned in previous sections.    
+        And then you are good to go to play with AuthenticationApi, DisplayApi and MediaPlayerApi which are mentioned in previous sections.    
         </p>
         <h2>See Also</h2>
         
@@ -259,7 +398,7 @@ protected void onCreate(Bundle savedInstanceState) {
         <div class="navbar navbar-fixed-bottom">
             <div class="navbar-inner">
                 <p class="pull-left" style="margin: 10px;">Copyright © 2014 Actions-Micro Inc. All Rights Reserved.</p>
-                <p class="pull-right" style="margin: 10px;">Updated: 2014-7-12</p>
+                <p class="pull-right" style="margin: 10px;">Updated: 2014-10-15</p>
             </div>
         </div>
     </div>

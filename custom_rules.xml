@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="android_ez_display_core_custom_rules" default="help">
+	<property name="java.compiler.classpath" value="library_projects/google-play-services_lib/libs/google-play-services.jar;library_projects/mediarouter/libs/android-support-v7-mediarouter.jar" />
+</project>

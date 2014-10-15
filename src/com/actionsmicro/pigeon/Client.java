@@ -110,12 +110,12 @@ public class Client {
 						Log.d(TAG, "job comes in");
 						boolean shouldProcess = true;
 						if (bitmapManager != null) {
-							shouldProcess = bitmapManager.onProcessBitmapBegin(Client.this, job.bitmap);
+							shouldProcess = bitmapManager.onProcessBitmapBegin(job.bitmap);
 						}
 						if (shouldProcess) {
 							sendImageToServer(job.bitmap, job.format, job.quailty);
 							if (bitmapManager != null) {
-								bitmapManager.onProcessBitmapEnd(Client.this, job.bitmap);
+								bitmapManager.onProcessBitmapEnd(job.bitmap);
 							} else {
 								job.bitmap.recycle();
 							}
