@@ -21,9 +21,10 @@ if [ ! -d "sdk_template/ezcast-sdk_lib/libs" ]; then
 fi
 mv bin/proguard/obfuscated.jar sdk_template/ezcast-sdk_lib/libs/$1_$2.jar
 
-export SDK_VERSION_STRING=${BUILD_VERSION_STRING}
-export BUILD_YEAR=`date +'%Y'`
-export BUILD_DATE="`date `"
+# move to Jenkins SDK job
+# export SDK_VERSION_STRING=${BUILD_VERSION_STRING}
+# export BUILD_YEAR=`date +'%Y'`
+# export BUILD_DATE="`date `"
 
 echo generate Javadoc
 ant -buildfile javadoc.xml javadoc
