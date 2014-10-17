@@ -512,7 +512,7 @@ public class Falcon {
 					@Override
 					public void run() {
 						try {
-							final ProjectorInfo projectorInfo = getProjectorInfoWithAddress(ipAddress);
+							final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
 							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
 							while (true) {
 								final ByteBuffer header = ByteBuffer.allocate(4);
@@ -550,7 +550,7 @@ public class Falcon {
 	}
 	private void dispatchOnDisconnect(InetAddress ipAddress) {
 		Log.d(TAG, "dispatchOnDisconnect");
-		final ProjectorInfo projector = getProjectorInfoWithAddress(ipAddress);
+		final ProjectorInfo projector = createProjectorWithAddressIfNeeded(ipAddress);
 		mainThreadHandler.post(new Runnable() {
 
 			@Override
@@ -647,7 +647,7 @@ public class Falcon {
 		if (e != null) {
 			Log.d(TAG, "dispatchException:" + e);
 			e.printStackTrace();
-			final ProjectorInfo projector = getProjectorInfoWithAddress(address);
+			final ProjectorInfo projector = createProjectorWithAddressIfNeeded(address);
 			mainThreadHandler.post(new Runnable() {
 
 				@Override
