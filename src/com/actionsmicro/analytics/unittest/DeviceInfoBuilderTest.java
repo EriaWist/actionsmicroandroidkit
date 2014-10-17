@@ -7,29 +7,34 @@ import org.json.JSONObject;
 
 import android.test.mock.MockContext;
 
+import com.actionsmicro.analytics.DeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastDeviceInfoBuilder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 import com.google.gson.Gson;
 
 public class DeviceInfoBuilderTest extends TestCase {
-	Mockery context = new Mockery();
-	Gson gson = new Gson();
-
+	final Mockery context = new Mockery();
+	final Gson gson = new Gson();
+	final String packageName = "com.mock.app";
+	final MockContext mockAndroidContext = new MockContext() {
+		@Override
+		public String getPackageName() {
+			return packageName;
+		}
+	};
+	final ProjectorInfo projectorInfo = new ProjectorInfo() {
+		
+	};
+	final PigeonDeviceInfo pigeonDeviceInfo = new PigeonDeviceInfo(projectorInfo) {
+		
+	};
+	public void testDeviceInfoBuilderFactory() {
+		DeviceInfoBuilder builder = DeviceInfoBuilder.getBuilderForDevice(mockAndroidContext, pigeonDeviceInfo);
+		assertTrue(builder instanceof EZCastDeviceInfoBuilder);
+	}
 	public void testEZCastDeviceInfo() {
-		
-		final String packageName = "com.mock.app";
-		MockContext mockContext = new MockContext() {
-			@Override
-			public String getPackageName() {
-				return packageName;
-			}
-		};
-		ProjectorInfo projectorInfo = new ProjectorInfo() {
-			
-		};
-		
-		EZCastDeviceInfoBuilder deviceInfoBuilder= new EZCastDeviceInfoBuilder(mockContext, new PigeonDeviceInfo(projectorInfo));
+		EZCastDeviceInfoBuilder deviceInfoBuilder= new EZCastDeviceInfoBuilder(mockAndroidContext, pigeonDeviceInfo);
 		try {
 			JSONObject jsonObject = new JSONObject(gson.toJson(deviceInfoBuilder.buildDeviceInfo()));
 			assertEquals(packageName, jsonObject.get("package_id"));			
