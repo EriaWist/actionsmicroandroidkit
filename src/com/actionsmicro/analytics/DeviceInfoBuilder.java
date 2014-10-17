@@ -12,7 +12,7 @@ public abstract class DeviceInfoBuilder {
 	
 	public static DeviceInfoBuilder getBuilderForDevice(Context context, com.actionsmicro.androidkit.ezcast.DeviceInfo device) {
 		if (device instanceof PigeonDeviceInfo) {
-			return new EZCastDeviceInfoBuilder(context, device);
+			return new EZCastDeviceInfoBuilder(context, (PigeonDeviceInfo) device);
 		}
 		return null;
 	}
@@ -27,5 +27,8 @@ public abstract class DeviceInfoBuilder {
 	}
 	protected DeviceInfo getDevice() {
 		return device;
+	}
+	protected String getPackageId() {
+		return context.getPackageName();
 	}
 }

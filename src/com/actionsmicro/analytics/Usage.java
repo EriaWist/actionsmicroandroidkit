@@ -8,10 +8,12 @@ public abstract class Usage {
 	private Context context;
 	private long timestamp;
 	private String type;
+	private String package_id;
 	public Usage(Tracker tracker, Context context, String type) {
 		this.tracker = tracker;
 		this.context = context;
 		this.type = type;
+		this.package_id = context.getPackageName();
 		// TODO gather app info
 //		"app_id":"app_mac_address | UUID",
 //		"package_id": "com.winnerwave.EZCast",
