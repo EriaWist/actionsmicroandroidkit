@@ -18,15 +18,18 @@ import com.actionsmicro.androidkit.ezcast.imp.bonjour.BonjourDeviceInfo;
 public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 
 	private String deviceID;
+	private String rmodel;
 
 	public AirPlayDeviceInfo(Parcel in) {
 		super(in);
 		deviceID = in.readString();
+		rmodel = in.readString();
 	}
 	
 	public AirPlayDeviceInfo(ServiceInfo newService) {
 		super(newService);
 		deviceID = newService.getPropertyString("deviceid");
+		rmodel   = newService.getPropertyString("rmodel");
 	}
 		
 	public static final Parcelable.Creator<AirPlayDeviceInfo> CREATOR = new Parcelable.Creator<AirPlayDeviceInfo>() {
@@ -43,6 +46,7 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 	public void writeToParcel(Parcel parcel, int flags) {
 		super.writeToParcel(parcel, flags);
 		parcel.writeString(deviceID);
+		parcel.writeString(rmodel);
 	}
 	
 	@Override
@@ -100,6 +104,8 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 			return Long.toHexString(SERVICE_VIDEO | SERVICE_WEB | SERVICE_CLOUD_VIDEO | SERVICE_CLOUD_STORAGE | SERVICE_LIVE | SERVICE_EZCAST | SERVICE_COMMENT | SERVICE_UPDATE | SERVICE_SOCIAL);   
 		} else if (key.equals("deviceid")) {
 			return deviceID;
+		} else if(key.equals("rmodel")){
+			return rmodel;
 		}
 		return null;
 	}
