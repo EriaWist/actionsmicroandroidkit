@@ -102,11 +102,14 @@ public class SimpleMotionJpegOverHttpClient {
 
 			private String readLine(InputStream in)
 					throws IOException {
+				Log.d(TAG, "readLine begin");
 				String meta;
 				StringBuilder sb = new StringBuilder();
 				do {
 					int singleChar = in.read();
-					if (singleChar == '\n' || singleChar == '\r') {
+					if (singleChar == -1) {
+						break;
+					} else if (singleChar == '\n' || singleChar == '\r') {
 						if (singleChar == '\r') {
 							singleChar = in.read();
 						}
@@ -114,8 +117,9 @@ public class SimpleMotionJpegOverHttpClient {
 					} else {
 						sb.append((char)singleChar);
 					}
-				} while (true);
+				} while (!stopped);
 				meta = sb.toString();
+				Log.d(TAG, "readLine end");
 				return meta;
 			}
 			
