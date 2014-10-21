@@ -29,6 +29,8 @@ public class ActionsUploader {
 		void onServerError(Exception e, String jsonBody);
 
 		void onInvalidJson(String errorMsg, String jsonBody);
+
+		void onRequestError(String error, String jsonBody);
 		
 	}
 	// make it testable
@@ -51,6 +53,10 @@ public class ActionsUploader {
 							if (requestHandler != null) {
 								requestHandler.onInvalidJson(error, jsonBody);
 							}									
+						} else {
+							if (requestHandler != null) {
+								requestHandler.onRequestError(error, jsonBody);
+							}
 						}
 					}
 				} else {
