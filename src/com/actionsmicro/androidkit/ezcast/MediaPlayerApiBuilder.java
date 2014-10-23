@@ -1,7 +1,5 @@
 package com.actionsmicro.androidkit.ezcast;
 
-import android.content.Context;
-
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.MediaPlayerStateListener;
 
 /**
@@ -28,12 +26,12 @@ public class MediaPlayerApiBuilder extends ApiBuilder<MediaPlayerApi> {
 	}
 	/**
 	 * Create Media player API builder.
+	 * @param sdk The EzCaskSdk instance.
 	 * @param device The device this API will be bound to.
-	 * @param context The Android Context object.
 	 * @since 2.1
 	 */	
-	public MediaPlayerApiBuilder(DeviceInfo device, Context context) {
-		super(device, context);
+	public MediaPlayerApiBuilder(EzCastSdk sdk, DeviceInfo device) {
+		super(sdk, device);
 	}
 	/**
 	 * Create the media player API object.
