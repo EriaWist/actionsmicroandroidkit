@@ -78,13 +78,48 @@
         <h2>
             Getting Started            
         </h2>
+        <h3>Initialization</h3>
+        <p>
+        To start to use EZCast SDK, you need to create an EzCastSdk instance at first.
+        </p>
+        <p>
+        First of all, we check if any EzCastSdk instance had been created via getSharedSdk().
+        If no instance exists, you should create one with the application ID and the application secret which are assigned to you.
+        And then you should check whether this instance had been initialized or not. If it had been initialized, you can work with it. Otherwise, you should initialize it.
+        </p>
+<pre class="prettyprint">
+ezCastSdk = EzCastSdk.getSharedSdk();
+if (ezCastSdk == null) {
+    ezCastSdk = new EzCastSdk(getApplicationContext(), "your_app_id", "your_app_secret");                     
+}
+if (!ezCastSdk.isInitialized()) {
+    ezCastSdk.init(new EzCastSdk.EzCastSdkInitializationListener() {
+
+        @Override
+        public void onInitialized(EzCastSdk ezCastSdk) {
+            runOnUiThread(new Runnable() {
+
+                @Override
+                public void run() {
+                    deviceFinder = DeviceListActivity.this.ezCastSdk.getDeviceFinder();
+                    deviceFinder.addListener(listener);
+                    deviceFinder.search();                      
+                }
+
+            });
+        }
+    });
+} else {
+    deviceFinder = ezCastSdk.getDeviceFinder();
+}    
+</pre>
         <h3>Device Discovery</h3>
         <p>
         To find compatible devices, you need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html">DeviceFinder</a> and implements <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.Listener.html">DeviceFinder.Listener</a> interface to receive discovery events, such as onDeviceAdded() and onDeviceRemoved().
         </p>
-        <p>First of all, get the shared instance of <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html">DeviceFinder</a> through <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.html#getDefaultFinder(android.content.Context)">getDefaultFinder()</a>.</p>
+        <p>You can obtain the device finder from EzCastSdk.</p>
 <pre class="prettyprint">
-deviceFinder = DeviceFinder.getDefaultFinder(getApplicationContext());
+deviceFinder = ezCastSdk.getDeviceFinder();
 </pre>
         <p>Implement <a href="../doc/com/actionsmicro/androidkit/ezcast/DeviceFinder.Listener.html">DeviceFinder.Listener</a> to receive discovery events.</p>
 <pre class="prettyprint">
@@ -113,7 +148,7 @@ You need to use <a href="../doc/com/actionsmicro/androidkit/ezcast/Authorization
 @Override
 protected void onResume() {
     super.onResume();
-    authorizationApi = new AuthorizationApiBuilder(deviceInfo, this)
+    authorizationApi = new AuthorizationApiBuilder(EzCastSdk.getSharedSdk(), deviceInfo)
     .setAuthorizationListener(new AuthorizationListener() {
         @Override
         public void authorizationIsDenied(AuthorizationApi arg0, DeniedReason arg1) {
@@ -156,7 +191,7 @@ protected void onPause() {
         </p>
         
 <pre class="prettyprint">
-displayApi = new DisplayApiBuilder(deviceInfo, ExampleActivity.this)
+displayApi = new DisplayApiBuilder(EzCastSdk.getSharedSdk(), deviceInfo)
     .setDisplayListener(new DisplayListener() {
 
         @Override
@@ -254,7 +289,7 @@ protected void onPause() {
             such as media duration, current position and so on.
         </p>
 <pre class="prettyprint">
-mediaPlayerApi = new MediaPlayerApiBuilder(deviceInfo, this)
+mediaPlayerApi = new MediaPlayerApiBuilder(EzCastSdk.getSharedSdk(), deviceInfo)
 .setMediaPlayerStateListener(new MediaPlayerStateListener() {
 
     @Override
