@@ -1,8 +1,9 @@
 package com.actionsmicro.androidkit.ezcast;
 
-import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
-
 import android.content.Context;
+
+import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
+import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
 
 public class EzCastSdk {
 	private String appId;
@@ -54,6 +55,7 @@ public class EzCastSdk {
 		if (deviceFinder == null) {
 			deviceFinder = new DeviceFinder(context);
 			deviceFinder.addDeviceFinderImp(new FalconDeviceFinder(deviceFinder));
+			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
 		}
 		return deviceFinder;
 	}
