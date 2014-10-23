@@ -1,7 +1,5 @@
 package com.actionsmicro.androidkit.ezcast;
 
-import android.content.Context;
-
 import com.actionsmicro.androidkit.ezcast.AuthorizationApi.AuthorizationListener;
 /**
  * Authorization API builder.
@@ -23,12 +21,12 @@ public class AuthorizationApiBuilder extends ApiBuilder<AuthorizationApi> {
 	}
 	/**
 	 * Create Authorization API builder.
+	 * @param sdk The EzCaskSdk instance.
 	 * @param device The device this API will be bound to.
-	 * @param context The Android Context object.
 	 * @since 2.0
 	 */
-	public AuthorizationApiBuilder(DeviceInfo device, Context context) {
-		super(device, context);
+	public AuthorizationApiBuilder(EzCastSdk sdk, DeviceInfo device) {
+		super(sdk, device);
 	}
 	/**
 	 * Create the authorization API object.

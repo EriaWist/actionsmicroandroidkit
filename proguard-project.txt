@@ -47,24 +47,7 @@
 	public *;
 }
 
-
--keep public class com.actionsmicro.androidkit.ezcast.* {
-	public *;
-}
-
 -keep public class com.actionsmicro.androidkit.ezcast.helper.ImageSender {
-	public *;
-}
-
--keep public class com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder {
-	public *;
-}
-
--keep public class com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder {
-	public *;
-}
-
--keep public class com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastFinder {
 	public *;
 }
 
