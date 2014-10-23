@@ -56,13 +56,20 @@
             To install/setup those library, please refer to following links respectively:
             <ul>
                 <li>Google Play Services: <a href="http://bit.ly/11gSJks">http://bit.ly/11gSJks</a></li>
-                <li>MediaRouter: MediaRouter is part of Android Support Libraries. To install Android Support Libraries, please refer to <a href="http://bit.ly/11gTc6f">http://bit.ly/11gTc6f</a></li>
+                <li>MediaRouter: MediaRouter is part of Android Support Libraries. To install Android Support Libraries, please refer to the <a href="http://bit.ly/11gTc6f">http://bit.ly/11gTc6f</a></li>
             </ul>
         </p> 
         <h2>
             Install the Library
         </h2>
         <p>
+            EZCast SDK has been packaged as an <a href="http://bit.ly/1DCWChw">Android Library Project</a>.
+            All you need to do is add it as an Android Library Project to your application project. Please refer to <a href="http://bit.ly/1DCWChw">official document</a> for more detail.
+            <p><img src="images/add_lib_proj.png" class="img-polaroid"></p>
+        </p>
+            <div class="alert"><strong>Note:</strong> To run the sample project, you can skip this step since the project has been setup for you.
+            </div>
+        <!-- <p>
             Copy the jar file (for example, ez_cast_sdk_v_2.1.1.jar) to the libs folder under your project root.             
             <p><img src="images/libs.png" class="img-polaroid"></p>
         </p>
@@ -74,7 +81,7 @@
             <img src="images/add_jar_1.png">
             Choose the EZCast SDK jar file, such as ez_cast_sdk_v_2.0.12.jar.
             <img src="images/add_jar_2.png">
-        </p>
+        </p> -->
         <h2>
             Getting Started            
         </h2>
@@ -101,16 +108,14 @@ if (!ezCastSdk.isInitialized()) {
 
                 @Override
                 public void run() {
-                    deviceFinder = DeviceListActivity.this.ezCastSdk.getDeviceFinder();
-                    deviceFinder.addListener(listener);
-                    deviceFinder.search();                      
+                    // start working with SDK                    
                 }
 
             });
         }
     });
 } else {
-    deviceFinder = ezCastSdk.getDeviceFinder();
+    // start working with SDK                    
 }    
 </pre>
         <h3>Device Discovery</h3>
