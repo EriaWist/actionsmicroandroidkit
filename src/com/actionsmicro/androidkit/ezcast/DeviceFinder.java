@@ -7,8 +7,6 @@ import java.util.List;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-
-import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
 /**
  * DeviceFinder provides interfaces to discovery devices.
  * @author James Chen
@@ -17,7 +15,7 @@ import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
 */
 public class DeviceFinder {
 	
-	private static DeviceFinder defaultFinder;
+//	private static DeviceFinder defaultFinder;
 	private Context context;
 	/**
 	 * Create a DeviceFinder. Internal use only, please use {@link #getDefaultFinder(Context)} instead.
@@ -34,19 +32,19 @@ public class DeviceFinder {
 	public void addDeviceFinderImp(DeviceFinderBase deviceFinderImp) {
 		imps.add(deviceFinderImp);
 	}
-	/**
-	 * Get default device finder.
-	 * @param context Android Context object.
-	 * @return The default device finder.
-	 * @since 2.1
-	 */
-	static public DeviceFinder getDefaultFinder(Context context) {
-		if (defaultFinder == null) {
-			defaultFinder = new DeviceFinder(context);
-			defaultFinder.addDeviceFinderImp(new FalconDeviceFinder(defaultFinder));
-		}
-		return defaultFinder;
-	}
+//	/**
+//	 * Get default device finder.
+//	 * @param context Android Context object.
+//	 * @return The default device finder.
+//	 * @since 2.1
+//	 */
+//	static public DeviceFinder getDefaultFinder(Context context) {
+//		if (defaultFinder == null) {
+//			defaultFinder = new DeviceFinder(context);
+//			defaultFinder.addDeviceFinderImp(new FalconDeviceFinder(defaultFinder));
+//		}
+//		return defaultFinder;
+//	}
 	/**
 	 * Interfaces to handle events of device discovery.
 	 * @author James Chen

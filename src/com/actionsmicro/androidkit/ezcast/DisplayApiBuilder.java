@@ -1,7 +1,5 @@
 package com.actionsmicro.androidkit.ezcast;
 
-import android.content.Context;
-
 import com.actionsmicro.androidkit.ezcast.DisplayApi.DisplayListener;
 /**
  * ApiBuilder to build DisplayApi.
@@ -15,12 +13,12 @@ public class DisplayApiBuilder extends ApiBuilder<DisplayApi> {
 
 	/**
 	 * Create DisplayApiBuilder.
+	 * @param sdk The EzCaskSdk instance.
 	 * @param device The device this API will be bound to.
-	 * @param context The Android Context object.
 	 * @since 2.0
 	 */
-	public DisplayApiBuilder(DeviceInfo device, Context context) {
-		super(device, context);
+	public DisplayApiBuilder(EzCastSdk sdk, DeviceInfo device) {
+		super(sdk, device);
 	}
 
 	/**

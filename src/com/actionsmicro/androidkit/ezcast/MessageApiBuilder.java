@@ -1,13 +1,11 @@
 package com.actionsmicro.androidkit.ezcast;
 
-import android.content.Context;
-
 import com.actionsmicro.androidkit.ezcast.MessageApi.MessageListener;
 
 public class MessageApiBuilder extends ApiBuilder<MessageApi> {
 
-	public MessageApiBuilder(DeviceInfo device, Context context) {
-		super(device, context);
+	public MessageApiBuilder(EzCastSdk sdk, DeviceInfo device) {
+		super(sdk, device);
 	}
 	
 	private MessageListener messageListener; 

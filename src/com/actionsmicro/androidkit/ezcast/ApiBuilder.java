@@ -14,11 +14,13 @@ public abstract class ApiBuilder<API> {
 	protected DeviceInfo device;
 	private ConnectionManager connectionManager;
 	private Context context;
+	private EzCastSdk sdk;
 
-	public ApiBuilder(DeviceInfo device, Context context) {
+	public ApiBuilder(EzCastSdk sdk, DeviceInfo device) {
 		super();
 		this.device = device;
-		this.context = context;
+		this.context = sdk.getContext();
+		this.sdk = sdk;
 	}
 
 	public ConnectionManager getConnectionManager() {
@@ -47,6 +49,10 @@ public abstract class ApiBuilder<API> {
 	}
 	public DeviceInfo getDevice() {
 		return device;
+	}
+
+	public EzCastSdk getSdk() {
+		return sdk;
 	}
 
 }
