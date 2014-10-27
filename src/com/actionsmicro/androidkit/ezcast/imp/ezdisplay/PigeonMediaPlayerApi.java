@@ -13,6 +13,7 @@ import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
 import com.actionsmicro.pigeon.MediaStreamingContentUriDataSource;
+import com.actionsmicro.pigeon.MediaStreamingFileBaseDataSource;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.pigeon.MediaStreamingHttpDataSource;
 import com.actionsmicro.pigeon.MediaStreamingStateListener;
@@ -109,6 +110,13 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		} else if (MediaStreamingFileDataSource.supportsFileExt(com.actionsmicro.utils.Utils.getFileExtension(mediaUrl).toLowerCase())) {
 			File mediaFile = new File(mediaUrl);
 			dataSource = new MediaStreamingFileDataSource(mediaFile);
+			((MediaStreamingFileDataSource)dataSource).setEOFListener(new MediaStreamingFileBaseDataSource.EOFListener() {
+                
+                @Override
+                public void readFileEnd() {
+                    ((Client)mediaStreaming).forceenableHeartbeat();
+                }
+            });
 		} else {
 			return false;
 		}

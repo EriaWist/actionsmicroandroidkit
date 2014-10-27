@@ -916,6 +916,12 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	protected boolean shouldSendHeartbeat() {
 		return !isStreamingMedia;
 	}
+	
+	@Override
+	public void forceenableHeartbeat() {
+	    isStreamingMedia = false;
+	}
+	
 	@Override
 	public void resetPlayer() {
 		sendDataToRemote(createPlayerResetPacket().array());
