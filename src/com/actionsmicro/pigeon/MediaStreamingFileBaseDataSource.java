@@ -49,9 +49,6 @@ public abstract class MediaStreamingFileBaseDataSource implements FileDataSource
 						if (sizeRead == -1) {
 							mediaStreaming.sendEofPacket();
 							shouldReadFile = false;
-							if(mEOFListener != null){
-							    mEOFListener.readFileEnd();
-							}
 						} else {
 							mediaStreaming.sendStreamingContents(buffer, sizeRead);
 						}
@@ -125,15 +122,6 @@ public abstract class MediaStreamingFileBaseDataSource implements FileDataSource
 		if (mediaStreamingStateListener != null) {
 			mediaStreamingStateListener.medisStreamingDurationIsReady(this, duration);
 		}
-	}
-	
-	private EOFListener mEOFListener = null;
-	public interface EOFListener{
-	    public void readFileEnd();
-	}
-	
-	public void setEOFListener(EOFListener l){
-	    mEOFListener = l;
 	}
 
 }

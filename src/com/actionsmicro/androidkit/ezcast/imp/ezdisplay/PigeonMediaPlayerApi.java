@@ -110,13 +110,6 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		} else if (MediaStreamingFileDataSource.supportsFileExt(com.actionsmicro.utils.Utils.getFileExtension(mediaUrl).toLowerCase())) {
 			File mediaFile = new File(mediaUrl);
 			dataSource = new MediaStreamingFileDataSource(mediaFile);
-			((MediaStreamingFileDataSource)dataSource).setEOFListener(new MediaStreamingFileBaseDataSource.EOFListener() {
-                
-                @Override
-                public void readFileEnd() {
-                    ((Client)mediaStreaming).forceenableHeartbeat();
-                }
-            });
 		} else {
 			return false;
 		}

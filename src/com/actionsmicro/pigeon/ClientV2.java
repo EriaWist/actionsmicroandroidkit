@@ -848,7 +848,8 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	}
 	@Override
 	public void sendEofPacket() {
-		sendDataToRemote(createFileEofPacket().array());		
+		sendDataToRemote(createFileEofPacket().array());
+		isStreamingMedia = false;
 	}
 	@Override
 	public void stopMediaStreaming() {
@@ -915,11 +916,6 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	@Override
 	protected boolean shouldSendHeartbeat() {
 		return !isStreamingMedia;
-	}
-	
-	@Override
-	public void forceenableHeartbeat() {
-	    isStreamingMedia = false;
 	}
 	
 	@Override
