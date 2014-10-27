@@ -12,6 +12,7 @@ public abstract class BonjourDeviceInfo extends DeviceInfo {
 	private int port;
 	private InetAddress address;
 	private String name;
+	private ServiceInfo seviceInfo;
 	
 	public BonjourDeviceInfo(Parcel in) {
 		port = in.readInt();
@@ -24,6 +25,7 @@ public abstract class BonjourDeviceInfo extends DeviceInfo {
 		this.port = newService.getPort();
 		this.address = newService.getInet4Address();
 		this.name = newService.getName();
+		this.seviceInfo = newService;
 	}
 	
 	public static final BonjourDeviceInfo.Creator<? extends BonjourDeviceInfo> DEVICE_CREATOR = null;
@@ -62,6 +64,12 @@ public abstract class BonjourDeviceInfo extends DeviceInfo {
 
 	public int getPort() {
 		return this.port;		
+	}
+	public String getPropertyString(String name) {
+		if (seviceInfo != null) {
+			return seviceInfo.getPropertyString(name);
+		}
+		return null;
 	}
 
 	protected static final long SERVICE_PHOTO = 0x01;

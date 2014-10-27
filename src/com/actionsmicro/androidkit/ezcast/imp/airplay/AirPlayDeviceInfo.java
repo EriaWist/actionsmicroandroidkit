@@ -107,6 +107,6 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 		} else if(key.equals("rmodel")){
 			return rmodel;
 		}
-		return null;
+		return getPropertyString(key);
 	}
 }
