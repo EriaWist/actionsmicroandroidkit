@@ -1,5 +1,6 @@
 package com.actionsmicro.analytics.unittest;
 
+import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
 import org.jmock.Expectations;
@@ -36,6 +37,8 @@ public class UsageArchiverTest extends TestCase {
 			JSONObject jsonObject = new JSONObject(gson.toJson(usage));
 			assertEquals("web_video", jsonObject.get("type"));			
 			assertEquals(mockUrl, jsonObject.get("video_url"));			
+		} catch (AssertionFailedError t) {
+			throw t;
 		} catch (Throwable t) {
 			t.printStackTrace();
 			fail(t.getMessage());

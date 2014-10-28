@@ -1,5 +1,6 @@
 package com.actionsmicro.analytics.unittest;
 
+import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
 import org.json.JSONObject;
@@ -64,6 +65,8 @@ public class AppInfoArchiverTest extends TestCase {
 			assertTrue(jsonObject.has("country"));
 			assertTrue(jsonObject.has("time_zone"));
 			
+		} catch (AssertionFailedError t) {
+			throw t;
 		} catch (Throwable t) {
 			t.printStackTrace();
 			fail(t.getMessage());
