@@ -152,6 +152,7 @@ public class Client {
 	protected boolean shouldSendHeartbeat() {
 		return true;
 	}
+	
 	private void sendHeartbeat() throws IllegalArgumentException, IOException {
 		Log.d(TAG, "try to sendHeartbeat("+serverAddress+":"+portNumber+")");	
 		sendDataToRemote(createPacketHeaderForSendingHeartbeat().array());	

@@ -13,6 +13,7 @@ import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
 import com.actionsmicro.pigeon.MediaStreamingContentUriDataSource;
+import com.actionsmicro.pigeon.MediaStreamingFileBaseDataSource;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.pigeon.MediaStreamingHttpDataSource;
 import com.actionsmicro.pigeon.MediaStreamingStateListener;
