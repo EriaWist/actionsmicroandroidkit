@@ -13,6 +13,7 @@ import org.json.JSONObject;
 import android.test.mock.MockContext;
 
 import com.actionsmicro.analytics.Tracker;
+import com.actionsmicro.analytics.Usage;
 import com.actionsmicro.analytics.unittest.mock.MockDeviceInfo;
 import com.actionsmicro.analytics.usage.LocalAudioUsage;
 import com.actionsmicro.analytics.usage.LocalVideoUsage;
@@ -20,6 +21,7 @@ import com.actionsmicro.analytics.usage.MediaUsage;
 import com.actionsmicro.analytics.usage.RemoteMediaUsage;
 import com.actionsmicro.analytics.usage.WebAudioUsage;
 import com.actionsmicro.analytics.usage.WebVideoUsage;
+import com.actionsmicro.analytics.usage.WifiDisplayUsage;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.google.gson.Gson;
 
@@ -133,6 +135,36 @@ public class UsageArchiverTest extends TestCase {
 		verifyMediaUsgaeJson(usage, "local_video");		
 	}
 	private void verifyMediaUsgaeJson(final MediaUsage usage, String recordType) {
+		verifyUsgaeJson(usage, recordType);
+		try {
+			JSONObject jsonObject = new JSONObject(gson.toJson(usage));
+			assertEquals(mockResult, jsonObject.get("result"));
+			assertEquals(mockNormalizedResult, jsonObject.getInt("normalized_result"));
+			assertEquals(mockDuration , jsonObject.getLong("duration"));
+			assertEquals(mockTitle , jsonObject.get("title"));
+		} catch (AssertionFailedError t) {
+			throw t;
+		} catch (Throwable t) {
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+	}
+	public void testWifiDisplayUsage() {
+		final Tracker tracker = context.mock(Tracker.class);
+		Map<String, String> properties = new HashMap<String, String>();
+		properties.put("deviceid", mockDeviceId);
+		properties.put("srcvers", mockFirmwareVersion);
+		final DeviceInfo device = new MockDeviceInfo(properties) ;
+		final WifiDisplayUsage usage = new WifiDisplayUsage(tracker, mockAndroidContext, mockAppId, mockPackageName, device);
+		context.checking(new Expectations() {{
+			oneOf (tracker).log(with(same(usage)));
+		}});
+		usage.begin();
+		usage.commit();
+		context.assertIsSatisfied();
+		verifyUsgaeJson(usage, "wifi_display");		
+	}
+	private void verifyUsgaeJson(final Usage usage, String recordType) {
 		try {
 			JSONObject jsonObject = new JSONObject(gson.toJson(usage));
 			assertEquals(recordType, jsonObject.get("type"));			
@@ -143,12 +175,8 @@ public class UsageArchiverTest extends TestCase {
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
 			assertTrue(jsonObject.has("timestamp"));
 			assertTrue(jsonObject.has("play_time"));
-			assertEquals(mockResult, jsonObject.get("result"));
-			assertEquals(mockNormalizedResult, jsonObject.getInt("normalized_result"));
 			assertEquals("android", jsonObject.get("app_os_type"));
 			assertEquals(mockFirmwareVersion, jsonObject.get("firmware_version"));
-			assertEquals(mockDuration , jsonObject.getLong("duration"));
-			assertEquals(mockTitle , jsonObject.get("title"));
 		} catch (AssertionFailedError t) {
 			throw t;
 		} catch (Throwable t) {
