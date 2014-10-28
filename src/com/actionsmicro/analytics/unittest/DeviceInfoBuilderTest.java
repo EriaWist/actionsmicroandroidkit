@@ -1,9 +1,6 @@
 package com.actionsmicro.analytics.unittest;
 
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.jmdns.ServiceInfo;
@@ -19,7 +16,10 @@ import android.test.mock.MockContext;
 import com.actionsmicro.analytics.DeviceInfoBuilder;
 import com.actionsmicro.analytics.device.AirPlayDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastDeviceInfoBuilder;
+import com.actionsmicro.analytics.device.EZCastScreenDeviceInfoBuilder;
+import com.actionsmicro.analytics.unittest.mock.MockServiceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceInfo;
+import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxInfo;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 import com.google.gson.Gson;
@@ -42,254 +42,15 @@ public class DeviceInfoBuilderTest extends TestCase {
 		final String mockSrcvers = "210.98";
 		final String mockOsBuildVersion = "12A365b";
 		final String mockProtovers = "1.0";
-
-		final ServiceInfo mockServiceInfo = new ServiceInfo() {
-
-
-			@Override
-			public boolean hasData() {
-				// TODO Auto-generated method stub
-				return false;
-			}
-
-			@Override
-			public String getType() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getTypeWithSubtype() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getName() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getKey() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getQualifiedName() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getServer() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			@Deprecated
-			public String getHostAddress() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String[] getHostAddresses() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			@Deprecated
-			public InetAddress getAddress() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			@Deprecated
-			public InetAddress getInetAddress() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			@Deprecated
-			public Inet4Address getInet4Address() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			@Deprecated
-			public Inet6Address getInet6Address() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public InetAddress[] getInetAddresses() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public Inet4Address[] getInet4Addresses() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public Inet6Address[] getInet6Addresses() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public int getPort() {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-
-			@Override
-			public int getPriority() {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-
-			@Override
-			public int getWeight() {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-
-			@Override
-			public byte[] getTextBytes() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			@Deprecated
-			public String getTextString() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			@Deprecated
-			public String getURL() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String[] getURLs() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			@Deprecated
-			public String getURL(String protocol) {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String[] getURLs(String protocol) {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public byte[] getPropertyBytes(String name) {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getPropertyString(String name) {
-				if ("deviceid".equals(name)) {
-					return mockDeviceId;
-				} else if ("features".equals(name)) {
-					return String.valueOf(mockFeatures);
-				} else if ("model".equals(name)) {
-					return mockModel;
-				} else if ("srcvers".equals(name)) {
-					return mockSrcvers;
-				} else if ("osBuildVersion".equals(name)) {
-					return mockOsBuildVersion;
-				} else if ("protovers".equals(name)) {
-					return mockProtovers;
-				}
-				return null;
-			}
-
-			@Override
-			public Enumeration<String> getPropertyNames() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getNiceTextString() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public void setText(byte[] text) throws IllegalStateException {
-				// TODO Auto-generated method stub
-				
-			}
-
-			@Override
-			public void setText(Map<String, ?> props)
-					throws IllegalStateException {
-				// TODO Auto-generated method stub
-				
-			}
-
-			@Override
-			public boolean isPersistent() {
-				// TODO Auto-generated method stub
-				return false;
-			}
-
-			@Override
-			public String getDomain() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getProtocol() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getApplication() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public String getSubtype() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-
-			@Override
-			public Map<Fields, String> getQualifiedNameMap() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-			
-		};
+		Map<String, String> properties = new HashMap<String, String>();
+		properties.put("deviceid", mockDeviceId);
+		properties.put("features", String.valueOf(mockFeatures));
+		properties.put("model", mockModel);
+		properties.put("srcvers", mockSrcvers);
+		properties.put("osBuildVersion", mockOsBuildVersion);
+		properties.put("protovers", mockProtovers);
+		
+		final ServiceInfo mockServiceInfo = new MockServiceInfo(properties);
 		final AirPlayDeviceInfo deviceInfo = new AirPlayDeviceInfo(mockServiceInfo) {
 			
 		};
@@ -361,6 +122,32 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals("ezcast", jsonObject.get("device_type"));			
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
 			assertEquals(mockEncryptedData, jsonObject.get("encrypted_data"));			
+		} catch (Throwable t) {
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+	}
+	public void testEZCastScreenDeviceInfo() {
+		final String mockSrcvers = "20140515";
+		Map<String, String> properties = new HashMap<String, String>();
+		properties.put("deviceid", mockDeviceId);
+		properties.put("srcvers", mockSrcvers);
+		
+		final ServiceInfo mockServiceInfo = new MockServiceInfo(properties);
+		final AndroidRxInfo deviceInfo = new AndroidRxInfo(mockServiceInfo) {
+			
+		};
+		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(mockAndroidContext, deviceInfo, mockAppId);
+		assertTrue(builder instanceof EZCastScreenDeviceInfoBuilder);
+		try {
+			JSONObject jsonObject = new JSONObject(gson.toJson(builder.buildDeviceInfo()));
+			assertEquals("ezscreen", jsonObject.get("type"));			
+			assertEquals("2014-10-24", jsonObject.get("schema_version"));			
+			assertEquals(mockAppId, jsonObject.get("app_id"));			
+			assertEquals(mockPackageName, jsonObject.get("package_id"));			
+			assertEquals("ezscreen", jsonObject.get("device_type"));			
+			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
+			assertEquals(mockSrcvers, jsonObject.get("srcvers"));			
 		} catch (Throwable t) {
 			t.printStackTrace();
 			fail(t.getMessage());
