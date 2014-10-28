@@ -5,6 +5,7 @@ import java.util.Map;
 
 import javax.jmdns.ServiceInfo;
 
+import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
 import org.jmock.Mockery;
@@ -12,16 +13,20 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.test.mock.MockContext;
+import android.util.Log;
 
 import com.actionsmicro.analytics.DeviceInfoBuilder;
 import com.actionsmicro.analytics.device.AirPlayDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastScreenDeviceInfoBuilder;
+import com.actionsmicro.analytics.device.GoogleCastDeviceInfoBuilder;
 import com.actionsmicro.analytics.unittest.mock.MockServiceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxInfo;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
+import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastDeviceInfo;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
+import com.google.android.gms.cast.CastDevice;
 import com.google.gson.Gson;
 
 public class DeviceInfoBuilderTest extends TestCase {
@@ -69,6 +74,8 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals(mockSrcvers, jsonObject.get("srcvers"));			
 			assertEquals(mockOsBuildVersion, jsonObject.get("osBuildVersion"));			
 			assertEquals(mockProtovers, jsonObject.get("protovers"));			
+		} catch (AssertionFailedError t) {
+			throw t;
 		} catch (Throwable t) {
 			t.printStackTrace();
 			fail(t.getMessage());
@@ -122,6 +129,8 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals("ezcast", jsonObject.get("device_type"));			
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
 			assertEquals(mockEncryptedData, jsonObject.get("encrypted_data"));			
+		} catch (AssertionFailedError t) {
+			throw t;
 		} catch (Throwable t) {
 			t.printStackTrace();
 			fail(t.getMessage());
@@ -148,6 +157,43 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals("ezscreen", jsonObject.get("device_type"));			
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
 			assertEquals(mockSrcvers, jsonObject.get("srcvers"));			
+		} catch (AssertionFailedError t) {
+			throw t;
+		} catch (Throwable t) {
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+	}
+	public void testGoogleCastDeviceInfo() {
+		final String mockSrcvers = "20140515";
+		final GoogleCastDeviceInfo deviceInfo = new GoogleCastDeviceInfo((CastDevice) null) {
+			@Override
+			public String getParameter(String key) {
+				if (key.equalsIgnoreCase("deviceid")) {
+					return mockDeviceId;
+				}
+				if (key.equalsIgnoreCase("srcvers")) {
+					return mockSrcvers;
+				}
+				return null;
+			}
+		};
+		
+		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(mockAndroidContext, deviceInfo, mockAppId);
+		assertTrue(builder instanceof GoogleCastDeviceInfoBuilder);
+		JSONObject jsonObject = null;
+		try {
+			jsonObject = new JSONObject(gson.toJson(builder.buildDeviceInfo()));
+			assertEquals("chromecast", jsonObject.get("type"));			
+			assertEquals("2014-10-24", jsonObject.get("schema_version"));			
+			assertEquals(mockAppId, jsonObject.get("app_id"));			
+			assertEquals(mockPackageName, jsonObject.get("package_id"));			
+			assertEquals("chromecast", jsonObject.get("device_type"));			
+			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
+			assertEquals(mockSrcvers, jsonObject.get("device_version"));	
+		} catch (AssertionFailedError t) {
+			Log.d("DeviceInfoBuilderTest", jsonObject.toString());
+			throw t;
 		} catch (Throwable t) {
 			t.printStackTrace();
 			fail(t.getMessage());

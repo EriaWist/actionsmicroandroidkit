@@ -8,10 +8,12 @@ import android.content.Context;
 import com.actionsmicro.analytics.device.AirPlayDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastScreenDeviceInfoBuilder;
+import com.actionsmicro.analytics.device.GoogleCastDeviceInfoBuilder;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxInfo;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
+import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastDeviceInfo;
 
 public abstract class DeviceInfoBuilder<T extends DeviceInfo> {
 	private Context context;
@@ -28,6 +30,8 @@ public abstract class DeviceInfoBuilder<T extends DeviceInfo> {
 			return new AirPlayDeviceInfoBuilder(context, (AirPlayDeviceInfo) device, appId);
 		} else if (device instanceof AndroidRxInfo) {
 			return new EZCastScreenDeviceInfoBuilder(context, (AndroidRxInfo) device, appId);			
+		} else if (device instanceof GoogleCastDeviceInfo) {
+			return new GoogleCastDeviceInfoBuilder(context, (GoogleCastDeviceInfo) device, appId);			
 		}
 		
 		return null;
