@@ -11,6 +11,7 @@ import javax.jmdns.ServiceInfo;
 import junit.framework.TestCase;
 
 import org.jmock.Mockery;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.test.mock.MockContext;
@@ -26,11 +27,11 @@ import com.google.gson.Gson;
 public class DeviceInfoBuilderTest extends TestCase {
 	final Mockery context = new Mockery();
 	final Gson gson = new Gson();
-	final String packageName = "com.mock.app";
+	final String mockPackageName = "com.mock.app";
 	final MockContext mockAndroidContext = new MockContext() {
 		@Override
 		public String getPackageName() {
-			return packageName;
+			return mockPackageName;
 		}
 	};
 	private final String mockAppId = "12:34:56:78:9A";
@@ -299,7 +300,7 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals("airplay", jsonObject.get("type"));			
 			assertEquals("2014-10-24", jsonObject.get("schema_version"));			
 			assertEquals(mockAppId, jsonObject.get("app_id"));			
-			assertEquals(packageName, jsonObject.get("package_id"));			
+			assertEquals(mockPackageName, jsonObject.get("package_id"));			
 			assertEquals("airplay", jsonObject.get("device_type"));			
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
 			assertEquals(mockFeatures, jsonObject.getLong("features"));			
@@ -312,19 +313,54 @@ public class DeviceInfoBuilderTest extends TestCase {
 			fail(t.getMessage());
 		}
 	}
-	public void testEZCastDeviceInfo() {
+	public void testEZCastDeviceInfoBuilderFactory() {
 		final ProjectorInfo projectorInfo = new ProjectorInfo() {
-			
 		};
 		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
-			
+			@Override
+			public final String getParameter(String key) {
+				if ("deviceid".equals(key)) {
+					return mockDeviceId;
+				}
+				return null;
+			}			
 		};
 		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(mockAndroidContext, deviceInfo, mockAppId);
 		assertTrue(builder instanceof EZCastDeviceInfoBuilder);
+	}
+	public void testEZCastDeviceInfo() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+		};
+		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
+			@Override
+			public final String getParameter(String key) {
+				if ("deviceid".equals(key)) {
+					return mockDeviceId;
+				}
+				return null;
+			}			
+		};
+		final String mockEncryptedData = "4RJEOH4aTbG9";
+		EZCastDeviceInfoBuilder builder = new EZCastDeviceInfoBuilder(mockAndroidContext, deviceInfo, mockAppId) {
+			@Override
+			protected JSONObject getDongleInfo() {
+				try {
+					return new JSONObject("{\"encrypted_data\":\""+mockEncryptedData+"\"}");
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+				return null;
+			}
+		};
 		try {
 			JSONObject jsonObject = new JSONObject(gson.toJson(builder.buildDeviceInfo()));
+			assertEquals("device", jsonObject.get("type"));			
+			assertEquals("2014-10-24", jsonObject.get("schema_version"));			
 			assertEquals(mockAppId, jsonObject.get("app_id"));			
-			assertEquals(packageName, jsonObject.get("package_id"));			
+			assertEquals(mockPackageName, jsonObject.get("package_id"));			
+			assertEquals("ezcast", jsonObject.get("device_type"));			
+			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
+			assertEquals(mockEncryptedData, jsonObject.get("encrypted_data"));			
 		} catch (Throwable t) {
 			t.printStackTrace();
 			fail(t.getMessage());
