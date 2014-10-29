@@ -14,10 +14,8 @@ import com.actionsmicro.analytics.AppInfo;
 import com.actionsmicro.analytics.DeviceInfoBuilder;
 import com.actionsmicro.analytics.Tracker;
 import com.actionsmicro.analytics.tracker.LogTracker;
-import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
-import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastFinder;
 import com.actionsmicro.utils.Log;
 
 public class EzCastSdk {
@@ -139,8 +137,6 @@ public class EzCastSdk {
 		if (deviceFinder == null) {
 			deviceFinder = new DeviceFinder(context);
 			deviceFinder.addDeviceFinderImp(new FalconDeviceFinder(deviceFinder));
-			deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
-			deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
 			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
 		}
 		return deviceFinder;
