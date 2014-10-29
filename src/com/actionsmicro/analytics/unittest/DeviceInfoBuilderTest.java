@@ -30,6 +30,7 @@ import com.google.android.gms.cast.CastDevice;
 import com.google.gson.Gson;
 
 public class DeviceInfoBuilderTest extends TestCase {
+	private static final String TAG = "DeviceInfoBuilderTest";
 	final Mockery context = new Mockery();
 	final Gson gson = new Gson();
 	final String mockPackageName = "com.mock.app";
@@ -42,14 +43,14 @@ public class DeviceInfoBuilderTest extends TestCase {
 	private final String mockAppId = "12:34:56:78:9A";
 	private final String mockDeviceId = "02:A4:05:04:5E:FC";
 	public void testAirPlayDeviceInfo() {
-		final long mockFeatures = 130367356919L;
+		final String mockFeatures = "0x5A7FFFF7,0x1E";
 		final String mockModel = "AppleTV3,2";
 		final String mockSrcvers = "210.98";
 		final String mockOsBuildVersion = "12A365b";
 		final String mockProtovers = "1.0";
 		Map<String, String> properties = new HashMap<String, String>();
 		properties.put("deviceid", mockDeviceId);
-		properties.put("features", String.valueOf(mockFeatures));
+		properties.put("features", mockFeatures);
 		properties.put("model", mockModel);
 		properties.put("srcvers", mockSrcvers);
 		properties.put("osBuildVersion", mockOsBuildVersion);
@@ -63,13 +64,14 @@ public class DeviceInfoBuilderTest extends TestCase {
 		assertTrue(builder instanceof AirPlayDeviceInfoBuilder);
 		try {
 			JSONObject jsonObject = new JSONObject(gson.toJson(builder.buildDeviceInfo()));
+			Log.d(TAG, jsonObject.toString());
 			assertEquals("airplay", jsonObject.get("type"));			
 			assertEquals("2014-10-24", jsonObject.get("schema_version"));			
 			assertEquals(mockAppId, jsonObject.get("app_id"));			
 			assertEquals(mockPackageName, jsonObject.get("package_id"));			
 			assertEquals("airplay", jsonObject.get("device_type"));			
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
-			assertEquals(mockFeatures, jsonObject.getLong("features"));			
+			assertEquals(mockFeatures, jsonObject.get("features"));			
 			assertEquals(mockModel, jsonObject.get("model"));			
 			assertEquals(mockSrcvers, jsonObject.get("srcvers"));			
 			assertEquals(mockOsBuildVersion, jsonObject.get("osBuildVersion"));			
@@ -192,7 +194,7 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
 			assertEquals(mockSrcvers, jsonObject.get("device_version"));	
 		} catch (AssertionFailedError t) {
-			Log.d("DeviceInfoBuilderTest", jsonObject.toString());
+			Log.d(TAG, jsonObject.toString());
 			throw t;
 		} catch (Throwable t) {
 			t.printStackTrace();

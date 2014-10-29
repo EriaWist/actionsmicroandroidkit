@@ -3,6 +3,7 @@ package com.actionsmicro.analytics.unittest.mock;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -185,8 +186,7 @@ public class MockServiceInfo extends ServiceInfo {
 
 	@Override
 	public Enumeration<String> getPropertyNames() {
-		// TODO Auto-generated method stub
-		return null;
+		return Collections.enumeration(propertyStrings.keySet());
 	}
 
 	@Override

@@ -17,7 +17,7 @@ public class AirPlayDeviceInfoBuilder extends DeviceInfoBuilder<AirPlayDeviceInf
 	public Map<String, Object> buildDeviceInfo() {
 		Map<String, Object> deviceInfo = super.buildDeviceInfo();
 		deviceInfo.put("device_id", getDevice().getPropertyString("deviceid"));
-		deviceInfo.put("features", Long.valueOf(getDevice().getPropertyString("features")));
+		deviceInfo.put("features", getDevice().getPropertyString("features"));
 		deviceInfo.put("model", getDevice().getPropertyString("model"));
 		deviceInfo.put("srcvers", getDevice().getPropertyString("srcvers"));
 		deviceInfo.put("osBuildVersion", getDevice().getPropertyString("osBuildVersion"));
