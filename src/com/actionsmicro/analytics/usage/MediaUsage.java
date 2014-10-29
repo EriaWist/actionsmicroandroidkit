@@ -9,10 +9,10 @@ import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 @SuppressWarnings("unused")
 public class MediaUsage extends Usage {
 	
-	private String result;
+	private String result = "";
 	private int normalized_result;
 	private long duration;
-	private String title;
+	private String title = "";
 
 	public MediaUsage(Tracker tracker, Context context, String appId,
 			String packageId, DeviceInfo device, String recordType,
