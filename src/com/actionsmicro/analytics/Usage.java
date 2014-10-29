@@ -14,6 +14,7 @@ import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxInfo;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastDeviceInfo;
 import com.actionsmicro.utils.Device;
+import com.actionsmicro.utils.Log;
 
 @SuppressWarnings("unused")
 public abstract class Usage extends Record {
@@ -27,6 +28,8 @@ public abstract class Usage extends Record {
 	private long play_time;
 	private String app_os_type;
 	private String firmware_version;
+	private transient DeviceInfo device;
+	private transient Date beginTime;
 	public Usage(Tracker tracker, Context context, String appId, String packageId, DeviceInfo device, String recordType, String schemaVersion) {
 		super(recordType, schemaVersion);
 		fill(tracker, context, appId, packageId, device);		
@@ -41,6 +44,7 @@ public abstract class Usage extends Record {
 		this.device_id = device.getParameter("deviceid"); //TODO: Consider to create a method to DeviceInfo
 		this.app_os_type = "android";
 		this.firmware_version = device.getParameter("srcvers"); //TODO: Consider to create a method to DeviceInfo
+		this.device = device;
 	}
 	public Usage(Tracker tracker, Context context, DeviceInfo device, String recordType, String schemaVersion) {
 		super(recordType, schemaVersion);
@@ -64,22 +68,25 @@ public abstract class Usage extends Record {
 	protected Context getContext() {
 		return context;
 	}
+	public DeviceInfo getDevice() {
+		return device;
+	}
 	private final static TimeZone UTC_TIME_ZONE = TimeZone.getTimeZone("UTC");
 	private final static DateFormat ISO_8601_DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+	private static final String TAG = "Usage";
     static {
     	ISO_8601_DATE_TIME_FORMAT.setTimeZone(UTC_TIME_ZONE);
     }
 	public void begin() {
-		this.timestamp = ISO_8601_DATE_TIME_FORMAT.format(new Date());
+		beginTime = new Date();
+		timestamp = ISO_8601_DATE_TIME_FORMAT.format(beginTime);
+		Log.d(TAG, "Begin Usage:"+timestamp);
 	}
 	
 	public void commit() {
-		try {
-			Date begin = ISO_8601_DATE_TIME_FORMAT.parse(timestamp);
-			play_time = (new Date().getTime() - begin.getTime()) * 1000;
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
+		Date now = new Date();
+		play_time = (now.getTime() - beginTime.getTime()) / 1000;
+		Log.d(TAG, "Commit Usage from:"+beginTime+"("+beginTime.getTime()+")"+" to " + now +"("+beginTime.getTime()+")"+". play_time="+play_time);
 		
 		tracker.log(this);
 	}
