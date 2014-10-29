@@ -20,6 +20,7 @@ public class AndroidRxDisplayApi extends AndroidRxApi implements DisplayApi {
 
 	@Override
 	public void startDisplaying() {
+		startTrackingWifiDisplay();
 		final HashMap<String, Object> params = new HashMap<String, Object>();
 		params.put("url", getMjpegServer().getServerUrl());
 		invokeRpcMethod("display", params);
@@ -39,6 +40,7 @@ public class AndroidRxDisplayApi extends AndroidRxApi implements DisplayApi {
 
 	@Override
 	public void stopDisplaying() {
+		stopTrackingWifiDisplay();
 		invokeRpcMethod("stop_display", 3000);
 		synchronized (this) {
 			if (simpleMotionJpegHttpServer != null) {
