@@ -20,12 +20,12 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 	
 	@Override
 	public void startDisplaying() {
-		super.startDisplaying();
+		startTrackingWifiDisplay();
 	}
 
 	@Override
 	public void stopDisplaying() {
-		super.stopDisplaying();
+		stopTrackingWifiDisplay();
 	}
 	@Override
 	protected void onPigeonClientCreated(Client pigeonClient) {

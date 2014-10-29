@@ -34,13 +34,13 @@ public abstract class TrackableApi implements Api {
 	protected Context getContext() {
 		return context;
 	}
-	public void startDisplaying() {
+	public void startTrackingWifiDisplay() {
 		if (wifiDisplayUsage != null) {
 			throw new IllegalStateException("startDisplaying is called more than once");
 		}
 		wifiDisplayUsage = (WifiDisplayUsage) new WifiDisplayUsage(getTracker(), getContext(), getDevice()).begin();
 	}
-	public void stopDisplaying() {
+	public void stopTrackingWifiDisplay() {
 		if (wifiDisplayUsage != null) {
 			wifiDisplayUsage.commit();
 		} else {
