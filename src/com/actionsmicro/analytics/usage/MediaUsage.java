@@ -23,15 +23,18 @@ public class MediaUsage extends Usage {
 			String schemaVersion) {
 		super(tracker, context, device, recordType, schemaVersion);
 	}
-	public void setResult(String deviceNativeResult, int normalized_result) {
+	public MediaUsage setResult(String deviceNativeResult, int normalized_result) {
 		this.result = deviceNativeResult;
 		this.normalized_result = normalized_result;
+		return this;
 	}
-	public void setDuration(long duration) {
+	public MediaUsage setDuration(long duration) {
 		this.duration = duration;
+		return this;
 	}
-	public void setTitle(String title) {
+	public MediaUsage setTitle(String title) {
 		this.title = title;
+		return this;
 	}
 
 }

@@ -25,8 +25,9 @@ public class RemoteMediaUsage extends MediaUsage {
 		super(tracker, context, device, recordType, schemaVersion);
 		this.url = url;
 	}
-	public void setUserAgent(String user_agent) {
+	public RemoteMediaUsage setUserAgent(String user_agent) {
 		this.user_agent = user_agent;
+		return this;
 	}
 
 }

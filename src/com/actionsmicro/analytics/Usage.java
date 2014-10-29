@@ -1,7 +1,6 @@
 package com.actionsmicro.analytics;
 
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
@@ -77,14 +76,21 @@ public abstract class Usage extends Record {
     static {
     	ISO_8601_DATE_TIME_FORMAT.setTimeZone(UTC_TIME_ZONE);
     }
-	public void begin() {
+	public Usage begin() {
+		if (beginTime != null) {
+			throw new IllegalStateException("begin is not more than once!");
+		}
 		beginTime = new Date();
 		timestamp = ISO_8601_DATE_TIME_FORMAT.format(beginTime);
 		Log.d(TAG, "Begin Usage:"+timestamp);
+		return this;
 	}
 	
 	public void commit() {
 		Date now = new Date();
+		if (beginTime == null) {
+			throw new IllegalStateException("begin is not called!");
+		}
 		play_time = (now.getTime() - beginTime.getTime()) / 1000;
 		Log.d(TAG, "Commit Usage from:"+beginTime+"("+beginTime.getTime()+")"+" to " + now +"("+beginTime.getTime()+")"+". play_time="+play_time);
 		
