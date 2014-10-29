@@ -7,9 +7,10 @@ import com.actionsmicro.analytics.Tracker;
 import com.actionsmicro.analytics.Usage;
 import com.actionsmicro.utils.Log;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class LogTracker implements Tracker {
-	private final Gson gson = new Gson();
+	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 	
 	@Override
 	public void log(Usage usage) {

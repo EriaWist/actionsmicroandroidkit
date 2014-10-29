@@ -173,4 +173,7 @@ public class EzCastSdk {
 			}
 		}
 	}
+	protected Tracker getTracker() {
+		return tracker;
+	}
 }
