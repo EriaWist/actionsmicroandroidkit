@@ -5,10 +5,11 @@ import android.content.Context;
 import com.actionsmicro.androidkit.ezcast.Api;
 import com.actionsmicro.androidkit.ezcast.ApiBuilder;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
+import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.utils.Log;
 import com.google.android.gms.cast.CastDevice;
 
-public class GoogleCastApi implements Api{
+public class GoogleCastApi extends TrackableApi implements Api{
 
 	private static final String TAG = "GoogleCastApi";
 	protected CastDevice castDevice;
@@ -22,6 +23,7 @@ public class GoogleCastApi implements Api{
 	private ConnectionManager connectionManagerProxy;
 
 	public <T> GoogleCastApi(ApiBuilder<T> apiBuilder) {
+		super(apiBuilder);
 		context = apiBuilder.getContext();
 		connectionManager = apiBuilder.getConnectionManager();
 		castDevice = ((GoogleCastDeviceInfo)apiBuilder.getDevice()).getCastDevice();		
@@ -44,6 +46,7 @@ public class GoogleCastApi implements Api{
 		} else {
 			onCreateGoogleCastClient(googleCastClient);
 		}
+		super.connect();
 	}
 
 	protected void onCreateGoogleCastClient(EZCastOverGoogleCast googleCastClient) {
@@ -56,6 +59,7 @@ public class GoogleCastApi implements Api{
 			EZCastOverGoogleCast.releaseClient(googleCastClient, connectionManagerProxy);	
 			googleCastClient = null;
 		}
+		super.disconnect();
 	}
 
 }

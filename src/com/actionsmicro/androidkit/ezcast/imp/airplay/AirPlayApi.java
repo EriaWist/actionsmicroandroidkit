@@ -4,15 +4,17 @@ import com.actionsmicro.airplay.AirPlayClient;
 import com.actionsmicro.airplay.AirPlayClient.ConnectionManager;
 import com.actionsmicro.androidkit.ezcast.Api;
 import com.actionsmicro.androidkit.ezcast.ApiBuilder;
+import com.actionsmicro.androidkit.ezcast.TrackableApi;
 
 
-public class AirPlayApi implements Api {
+public class AirPlayApi extends TrackableApi implements Api {
 
 	private AirPlayClient airPlayClient;
 	private ApiBuilder<?> apiBuilder;
 	private ConnectionManager connectionManagerWrapper;
 	private static AirPlayClientManager airPlayClientManager = new AirPlayClientManager(); 
 	public <T> AirPlayApi(ApiBuilder<T> apiBuilder) {
+		super(apiBuilder);
 		this.apiBuilder = apiBuilder;
 	}
 	protected AirPlayClient getAirPlayClient() {
@@ -31,6 +33,7 @@ public class AirPlayApi implements Api {
 			}
 		};
 		airPlayClient.addConnectionManager(connectionManagerWrapper);
+		super.connect();
 	}
 
 	@Override
@@ -38,6 +41,7 @@ public class AirPlayApi implements Api {
 		airPlayClientManager.release(airPlayClient, apiBuilder);
 		airPlayClient.removeConnectionManager(connectionManagerWrapper);
 		airPlayClient = null;
+		super.disconnect();
 	}
 
 }

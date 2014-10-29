@@ -1,5 +1,8 @@
 package com.actionsmicro.analytics.tracker;
 
+import java.util.Map;
+
+import com.actionsmicro.analytics.AppInfo;
 import com.actionsmicro.analytics.Tracker;
 import com.actionsmicro.analytics.Usage;
 
@@ -22,6 +25,18 @@ public class ActionsTracker implements Tracker {
 	 */
 	@Override
 	public void log(Usage usage) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void log(AppInfo appInfo) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void log(Map<String, Object> map) {
 		// TODO Auto-generated method stub
 		
 	}
