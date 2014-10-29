@@ -59,6 +59,8 @@ public class EzCastSdk {
 	private void fetchLocationAndLogAppInfo() {
 		new Thread() {
 			Location fetchedlocation;
+			Timer timout = new Timer();
+			
 			@Override
 			public void run() {
 				Looper.prepare();
@@ -67,11 +69,14 @@ public class EzCastSdk {
 
 				LocationManager locationManager = (LocationManager)context.getSystemService(Context.LOCATION_SERVICE);
 				try {
+					Log.d(TAG, "requestSingleUpdate");
 					locationManager.requestSingleUpdate(networkProvider, new LocationListener() {
 
 						@Override
 						public void onLocationChanged(Location location) {
-							fetchedlocation = location;		
+							Log.d(TAG, "onLocationChanged");
+							fetchedlocation = location;
+							timout.cancel();
 							Looper.myLooper().quit();
 						}
 
@@ -99,7 +104,6 @@ public class EzCastSdk {
 				}
 				if (hasPermissionToGetLocation) {
 					fetchedlocation = locationManager.getLastKnownLocation(networkProvider);
-					Timer timout = new Timer();
 					timout.schedule(new TimerTask() {
 
 						@Override
