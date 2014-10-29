@@ -7,10 +7,6 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 
-import com.actionsmicro.analytics.usage.LocalAudioUsage;
-import com.actionsmicro.analytics.usage.LocalVideoUsage;
-import com.actionsmicro.analytics.usage.MediaUsage;
-import com.actionsmicro.analytics.usage.WebVideoUsage;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.pigeon.Client;
@@ -101,19 +97,19 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		}
 		return true;
 	}
-	private MediaUsage mediaUsage; 
 	@Override
 	public boolean play(Context context, String mediaUrl, String userAgentString, Long mediaContentLength, String title) throws Exception {
 		if (dataSource != null) {
 			dataSource.setMediaStreamingStateListener(null);
 			dataSource = null;
 		}
-		commitUsageTracking();
+		commitMediaUsageTracking();
 		if (mediaUrl.startsWith("http") || mediaUrl.startsWith("rtsp") || mediaUrl.startsWith("mms")) {
 			dataSource = new MediaStreamingHttpDataSource(mediaUrl, userAgentString != null?userAgentString:DEFAULT_USER_AGENT_STRING, mediaContentLength);
-			beingMediaUsageTrackingForWebVideo(mediaUrl, userAgentString, title);
+			beginRemoteMediaUsageTracking(mediaUrl, userAgentString, title);
 		} else if (mediaUrl.startsWith(ContentResolver.SCHEME_CONTENT)) { 
 			dataSource = new MediaStreamingContentUriDataSource(context, Uri.parse(mediaUrl));
+			beginLocalMediaUsageTracking(mediaUrl, title);
 			beingMediaUsageTrackingForFileDataSource((FileDataSource)dataSource, title, mediaUrl);
 		} else if (MediaStreamingFileDataSource.supportsFileExt(com.actionsmicro.utils.Utils.getFileExtension(mediaUrl).toLowerCase())) {
 			File mediaFile = new File(mediaUrl);
@@ -134,7 +130,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 
 				@Override
 				public void mediaStreamingDidStop(DataSource dataSource) {
-					commitUsageTracking();
+					commitMediaUsageTracking();
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDidStop(PigeonMediaPlayerApi.this);
 					}
@@ -143,9 +139,8 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				@Override
 				public void medisStreamingFail(DataSource dataSource,
 						int resultCode) {
-					if (mediaUsage != null) {
-						mediaUsage.setResult(String.valueOf(resultCode), resultCode);
-					}
+					String resultString = String.valueOf(resultCode);
+					setMediaUsageResultCode(resultString, resultCode);
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDidFailed(PigeonMediaPlayerApi.this, resultCode);
 					}
@@ -162,9 +157,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				@Override
 				public void medisStreamingDurationIsReady(
 						DataSource dataSource, int duration) {
-					if (mediaUsage != null) {
-						mediaUsage.setDuration(duration);
-					}
+					setMediaUsageDuration(duration);
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDurationIsReady(PigeonMediaPlayerApi.this, duration);
 					}
@@ -177,27 +170,15 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		}
 		return true;
 	}
-	private void beingMediaUsageTrackingForWebVideo(String mediaUrl,
-			String userAgentString, String title) {
-		mediaUsage = (MediaUsage) new WebVideoUsage(getTracker(), getContext(), getDevice(), mediaUrl).setUserAgent(userAgentString).setTitle(title).begin();
-	}
 	private void beingMediaUsageTrackingForFileDataSource(
 			FileDataSource fileDataSource, String title, String mediaUrl) {
-		if (title == null || title.length() == 0) {
-			title = com.actionsmicro.utils.Utils.getLastPathComponent(mediaUrl);
-		}
 		if (fileDataSource.isAudio()) {
-			mediaUsage = (MediaUsage) new LocalAudioUsage(getTracker(), getContext(), getDevice()).setTitle(title).begin();				
+			beginLocalAudioUsageTracking(mediaUrl, title);
 		} else {
-			mediaUsage = (MediaUsage) new LocalVideoUsage(getTracker(), getContext(), getDevice()).setTitle(title).begin();
+			beginLocalMediaUsageTracking(mediaUrl, title);
 		}
 	}
-	private synchronized void commitUsageTracking() {
-		if (mediaUsage != null) {
-			mediaUsage.commit();
-			mediaUsage = null;
-		}
-	}
+
 
 	
 }
