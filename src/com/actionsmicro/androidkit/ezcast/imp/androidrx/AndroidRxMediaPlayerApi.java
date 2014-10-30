@@ -235,15 +235,8 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 			}
 			mediaUriString = simpleHttpFileServer.getServerUrl();
 			String mimeType = simpleHttpFileServer.getMimeType();
-			if (mimeType != null && mimeType.startsWith("audio")) {
-				beginLocalAudioUsageTracking(url, title);
-			} else {
-				beginLocalMediaUsageTracking(url, title);
-			}
-		} else {
-			beginRemoteMediaUsageTracking(mediaUriString, userAgentString,
-					title);
 		}
+		beginMediaUsageTracking(context, url, userAgentString, title);
 		final HashMap<String, Object> params = new HashMap<String, Object>();
 		params.put("url", mediaUriString);
 		params.put("callback", jsonRpcOverHttpServer.getServerUrl());

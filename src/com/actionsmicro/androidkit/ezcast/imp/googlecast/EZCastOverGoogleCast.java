@@ -509,17 +509,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 						}
 						mediaUriString = simpleHttpFileServer.getServerUrl();
 						mimeType = simpleHttpFileServer.getMimeType();
-						if (trackableApi != null) {
-							if (mimeType != null && mimeType.startsWith("audio")) {
-								trackableApi.beginLocalAudioUsageTracking(url, title);
-							} else {
-								trackableApi.beginLocalMediaUsageTracking(url, title);
-							}
-						}
 					} else {
-						if (trackableApi != null) {
-							trackableApi.beginRemoteMediaUsageTracking(mediaUriString, userAgentString, title);
-						}
+					}
+					if (trackableApi != null) {
+						trackableApi.beginMediaUsageTracking(context, url, userAgentString, title);
 					}
 					createMediaPlayerIfNeeded();
 					MediaMetadata mediaMetadata = new MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE);

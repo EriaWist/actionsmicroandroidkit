@@ -12,7 +12,6 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
-import com.actionsmicro.pigeon.MediaStreaming.FileDataSource;
 import com.actionsmicro.pigeon.MediaStreamingContentUriDataSource;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.pigeon.MediaStreamingHttpDataSource;
@@ -107,18 +106,15 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		commitMediaUsageTracking();
 		if (mediaUrl.startsWith("http") || mediaUrl.startsWith("rtsp") || mediaUrl.startsWith("mms")) {
 			dataSource = new MediaStreamingHttpDataSource(mediaUrl, userAgentString != null?userAgentString:DEFAULT_USER_AGENT_STRING, mediaContentLength);
-			beginRemoteMediaUsageTracking(mediaUrl, userAgentString, title);
 		} else if (mediaUrl.startsWith(ContentResolver.SCHEME_CONTENT)) { 
 			dataSource = new MediaStreamingContentUriDataSource(context, Uri.parse(mediaUrl));
-			beginLocalMediaUsageTracking(mediaUrl, title);
-			beingMediaUsageTrackingForFileDataSource((FileDataSource)dataSource, title, mediaUrl);
 		} else if (MediaStreamingFileDataSource.supportsFileExt(com.actionsmicro.utils.Utils.getFileExtension(mediaUrl).toLowerCase())) {
 			File mediaFile = new File(mediaUrl);
 			dataSource = new MediaStreamingFileDataSource(mediaFile);
-			beingMediaUsageTrackingForFileDataSource((FileDataSource)dataSource, title, mediaUrl);
 		} else {
 			return false;
 		}
+		beginMediaUsageTracking(context, mediaUrl, userAgentString, title);
 		if (dataSource != null) {
 			dataSource.setMediaStreamingStateListener(new MediaStreamingStateListener() {
 
@@ -172,15 +168,4 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		}
 		return true;
 	}
-	private void beingMediaUsageTrackingForFileDataSource(
-			FileDataSource fileDataSource, String title, String mediaUrl) {
-		if (fileDataSource.isAudio()) {
-			beginLocalAudioUsageTracking(mediaUrl, title);
-		} else {
-			beginLocalMediaUsageTracking(mediaUrl, title);
-		}
-	}
-
-
-	
 }
