@@ -80,6 +80,7 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 				} else if (EZCASTPLAYER_ONERROR.equals(notification.getMethod())) {
 					int errorCode = convertErrorCode(Integer.valueOf(namedParams.get("error").toString()));
 					setMediaUsageResultCode(namedParams.get("error").toString(), errorCode);
+					commitMediaUsageTracking();
 					Log.d(TAG, EZCASTPLAYER_ONERROR+":"+errorCode);
 					currentState = State.STOPPED;
 					if (mediaPlayerStateListener != null) {
@@ -233,7 +234,12 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 				e.printStackTrace();
 			}
 			mediaUriString = simpleHttpFileServer.getServerUrl();
-			beginLocalMediaUsageTracking(url, title);
+			String mimeType = simpleHttpFileServer.getMimeType();
+			if (mimeType != null && mimeType.startsWith("audio")) {
+				beginLocalAudioUsageTracking(url, title);
+			} else {
+				beginLocalMediaUsageTracking(url, title);
+			}
 		} else {
 			beginRemoteMediaUsageTracking(mediaUriString, userAgentString,
 					title);
