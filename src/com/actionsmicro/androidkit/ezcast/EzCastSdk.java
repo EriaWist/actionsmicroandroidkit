@@ -106,7 +106,9 @@ public class EzCastSdk {
 
 						@Override
 						public void run() {
-							Looper.myLooper().quit();
+							if (Looper.myLooper() != null) {
+								Looper.myLooper().quit();
+							}
 						}
 
 					}, LOCATION_TIMEOUT_MS);
