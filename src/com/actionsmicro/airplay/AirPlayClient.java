@@ -541,9 +541,6 @@ public class AirPlayClient {
 			        if (detachedFileServer != null) {
 			        	detachedFileServer.stop();			        	
 			        }
-			        if (videoStateListener != null) {
-			        	videoStateListener.onVideoStopped();
-			        }
 			    }
 			});
 		} catch (URISyntaxException e1) {
