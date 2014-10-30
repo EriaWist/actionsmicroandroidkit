@@ -30,6 +30,8 @@ public abstract class TrackableApi implements Api {
 	@Override
 	public void disconnect() {
 		sdk.disconnectFromDevice(device);
+		stopTrackingWifiDisplay();
+		commitMediaUsageTracking();
 	}
 	protected Tracker getTracker() {
 		return sdk.getTracker();
@@ -49,8 +51,7 @@ public abstract class TrackableApi implements Api {
 	public void stopTrackingWifiDisplay() {
 		if (wifiDisplayUsage != null) {
 			wifiDisplayUsage.commit();
-		} else {
-			throw new IllegalStateException("startDisplaying is not called");
+			wifiDisplayUsage = null;
 		}
 	}
 	private MediaUsage mediaUsage;
