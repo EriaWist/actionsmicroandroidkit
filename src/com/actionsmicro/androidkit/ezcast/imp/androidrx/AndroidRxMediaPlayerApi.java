@@ -72,11 +72,14 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 					}
 				} else if (EZCASTPLAYER_ONDURATIONCHANGE.equals(notification.getMethod())) {
 					Log.d(TAG, EZCASTPLAYER_ONDURATIONCHANGE+":"+namedParams.get("duration"));
+					long duration = Float.valueOf(namedParams.get("duration").toString()).longValue();
+					setMediaUsageDuration((int) duration);
 					if (mediaPlayerStateListener != null) {
-						mediaPlayerStateListener.mediaPlayerDurationIsReady(AndroidRxMediaPlayerApi.this, Float.valueOf(namedParams.get("duration").toString()).longValue());
+						mediaPlayerStateListener.mediaPlayerDurationIsReady(AndroidRxMediaPlayerApi.this, duration);
 					}
 				} else if (EZCASTPLAYER_ONERROR.equals(notification.getMethod())) {
 					int errorCode = convertErrorCode(Integer.valueOf(namedParams.get("error").toString()));
+					setMediaUsageResultCode(namedParams.get("error").toString(), errorCode);
 					Log.d(TAG, EZCASTPLAYER_ONERROR+":"+errorCode);
 					currentState = State.STOPPED;
 					if (mediaPlayerStateListener != null) {
@@ -93,6 +96,7 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 					}
 				} else if (EZCASTPLAYER_ONENDED.equals(notification.getMethod())) {
 					Log.d(TAG, EZCASTPLAYER_ONENDED+":");
+					commitMediaUsageTracking();
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxMediaPlayerApi.this);
 					}
@@ -195,6 +199,7 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 		invokeRpcMethod("stop");
 		currentState = State.STOPPED;
 		stopHttpFileServer();		
+		commitMediaUsageTracking();
 		return true;
 	}
 	private void stopHttpFileServer() {
@@ -206,6 +211,7 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 	@Override
 	public boolean play(Context context, String url, String userAgentString,
 			Long mediaContentLength, String title) throws Exception {
+		commitMediaUsageTracking();
 		stopHttpFileServer();
 		Uri mediaUri = null;
 		try {
@@ -227,12 +233,16 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 				e.printStackTrace();
 			}
 			mediaUriString = simpleHttpFileServer.getServerUrl();
+			beginLocalMediaUsageTracking(url, title);
+		} else {
+			beginRemoteMediaUsageTracking(mediaUriString, userAgentString,
+					title);
 		}
 		final HashMap<String, Object> params = new HashMap<String, Object>();
 		params.put("url", mediaUriString);
 		params.put("callback", jsonRpcOverHttpServer.getServerUrl());
 		invokeRpcMethod("play", params);		
 		return true;
-	}
+	}	
 
 }
