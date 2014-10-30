@@ -31,7 +31,7 @@ public class GoogleCastApi extends TrackableApi implements Api{
 
 	@Override
 	public synchronized void connect() {
-		googleCastClient = EZCastOverGoogleCast.createClient(context, castDevice, connectionManagerProxy = new ConnectionManager() {
+		googleCastClient = EZCastOverGoogleCast.createClient(context, castDevice, this, connectionManagerProxy = new ConnectionManager() {
 
 			@Override
 			public void onConnectionFailed(Api api, Exception e) {

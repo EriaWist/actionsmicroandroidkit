@@ -55,7 +55,7 @@ public abstract class TrackableApi implements Api {
 		}
 	}
 	private MediaUsage mediaUsage;
-	protected synchronized void beginRemoteMediaUsageTracking(String mediaUriString,
+	public synchronized void beginRemoteMediaUsageTracking(String mediaUriString,
 			String userAgentString, String title) {
 		if (title == null || title.length() == 0) {
 			title = com.actionsmicro.utils.Utils.getLastPathComponent(mediaUriString);
@@ -65,14 +65,14 @@ public abstract class TrackableApi implements Api {
 		}
 		mediaUsage = (MediaUsage) new WebVideoUsage(getTracker(), getContext(), getDevice(), mediaUriString).setUserAgent(userAgentString).setTitle(title).begin();
 	}
-	protected synchronized void beginLocalMediaUsageTracking(String url, String title) {
+	public synchronized void beginLocalMediaUsageTracking(String url, String title) {
 		if (MediaStreamingFileDataSource.isAudioFileExt(Utils.getFileExtension(url))) {
 			beginLocalAudioUsageTracking(url, title);
 		} else {
 			beginLocalVideoUsageTracking(url, title);
 		}
 	}
-	protected synchronized void beginLocalAudioUsageTracking(String url, String title) {
+	public synchronized void beginLocalAudioUsageTracking(String url, String title) {
 		if (title == null || title.length() == 0) {
 			title = com.actionsmicro.utils.Utils.getLastPathComponent(url);
 		}
@@ -81,7 +81,7 @@ public abstract class TrackableApi implements Api {
 		}
 		mediaUsage = (MediaUsage) new LocalAudioUsage(getTracker(), getContext(), getDevice()).setTitle(title).begin();
 	}
-	protected synchronized void beginLocalVideoUsageTracking(String url, String title) {
+	public synchronized void beginLocalVideoUsageTracking(String url, String title) {
 		if (title == null || title.length() == 0) {
 			title = com.actionsmicro.utils.Utils.getLastPathComponent(url);
 		}
@@ -90,20 +90,20 @@ public abstract class TrackableApi implements Api {
 		}
 		mediaUsage = (MediaUsage) new LocalVideoUsage(getTracker(), getContext(), getDevice()).setTitle(title).begin();
 	}
-	protected synchronized void commitMediaUsageTracking() {
+	public synchronized void commitMediaUsageTracking() {
 		if (mediaUsage != null) {
 			mediaUsage.commit();
 			mediaUsage = null;
 		}
 	}
-	protected synchronized void setMediaUsageResultCode(String resultString, int resultCode) {
+	public synchronized void setMediaUsageResultCode(String resultString, int resultCode) {
 		if (mediaUsage != null) {
 			mediaUsage.setResult(resultString, resultCode);
 		} else {
 			throw new IllegalStateException("mediaUsage doesn't exist.");
 		}
 	}
-	protected synchronized void setMediaUsageDuration(int duration) {
+	public synchronized void setMediaUsageDuration(int duration) {
 		if (mediaUsage != null) {
 			mediaUsage.setDuration(duration);
 		} else {
