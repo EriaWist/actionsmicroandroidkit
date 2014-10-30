@@ -92,9 +92,10 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 	}
 	@Override
 	public boolean stop() {
-		if(mediaStreaming != null){
+		if (mediaStreaming != null) {
 			mediaStreaming.stopMediaStreaming();
 		}
+		commitMediaUsageTracking();
 		return true;
 	}
 	@Override
