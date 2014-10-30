@@ -17,12 +17,12 @@ public class AirPlayDisplayApi extends AirPlayApi implements DisplayApi {
 
 	@Override
 	public void startDisplaying() {
+		startTrackingWifiDisplay();
 	}
 
 	@Override
 	public void stopDisplaying() {
-		// TODO Auto-generated method stub
-
+		stopTrackingWifiDisplay();
 	}
 
 	@Override
