@@ -70,12 +70,8 @@ public abstract class Usage extends Record {
 	public DeviceInfo getDevice() {
 		return device;
 	}
-	private final static TimeZone UTC_TIME_ZONE = TimeZone.getTimeZone("UTC");
-	private final static DateFormat ISO_8601_DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+	
 	private static final String TAG = "Usage";
-    static {
-    	ISO_8601_DATE_TIME_FORMAT.setTimeZone(UTC_TIME_ZONE);
-    }
 	public Usage begin() {
 		if (beginTime != null) {
 			throw new IllegalStateException("begin is not more than once!");
