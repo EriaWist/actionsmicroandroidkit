@@ -6,9 +6,9 @@ import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.json.JSONObject;
 
-import com.actionsmicro.analytics.tracker.ActionsUploader;
-import com.actionsmicro.analytics.tracker.ActionsUploader.RequestHandler;
-import com.actionsmicro.analytics.tracker.ActionsUploader.ResultProcessor;
+import com.actionsmicro.analytics.tracker.uploader.ActionsUploader;
+import com.actionsmicro.analytics.tracker.uploader.ActionsUploader.ResultProcessor;
+import com.actionsmicro.analytics.tracker.uploader.Uploader;
 
 public class UploaderTest extends TestCase {
 	private static final String DEV_SECRET_KEY = "dev_secret_key";
@@ -18,7 +18,7 @@ public class UploaderTest extends TestCase {
 	public void testUploadSuccess() {
 		ActionsUploader uploader = new ActionsUploader(DEV_API_KEY, DEV_SECRET_KEY);
 		final String requestBody = "{\"type\":\"app\"}";
-		final RequestHandler requestHandler = context.mock(RequestHandler.class);
+		final Uploader.RequestHandler requestHandler = context.mock(Uploader.RequestHandler.class);
 		context.checking(new Expectations() {{
 			oneOf (requestHandler).onSuccuess(with(equal(requestBody)));
 		}});
@@ -49,7 +49,7 @@ public class UploaderTest extends TestCase {
 	private void doTestUploadRequestHandlerOnFailed(final String requestBody,
 			final String mockResponse, final String expectedError) {
 		ActionsUploader uploader = new ActionsUploader(DEV_API_KEY, DEV_SECRET_KEY);
-		final RequestHandler requestHandler = context.mock(RequestHandler.class);
+		final Uploader.RequestHandler requestHandler = context.mock(Uploader.RequestHandler.class);
 		context.checking(new Expectations() {{
 			oneOf (requestHandler).onInvalidJson(with(equal(expectedError)), with(equal(requestBody)));
 		}});
