@@ -92,9 +92,10 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 	}
 	@Override
 	public boolean stop() {
-		if(mediaStreaming != null){
+		if (mediaStreaming != null) {
 			mediaStreaming.stopMediaStreaming();
 		}
+		commitMediaUsageTracking();
 		return true;
 	}
 	@Override
@@ -103,6 +104,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			dataSource.setMediaStreamingStateListener(null);
 			dataSource = null;
 		}
+		commitMediaUsageTracking();
 		if (mediaUrl.startsWith("http") || mediaUrl.startsWith("rtsp") || mediaUrl.startsWith("mms")) {
 			dataSource = new MediaStreamingHttpDataSource(mediaUrl, userAgentString != null?userAgentString:DEFAULT_USER_AGENT_STRING, mediaContentLength);
 		} else if (mediaUrl.startsWith(ContentResolver.SCHEME_CONTENT)) { 
@@ -113,6 +115,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		} else {
 			return false;
 		}
+		beginMediaUsageTracking(context, mediaUrl, userAgentString, title);
 		if (dataSource != null) {
 			dataSource.setMediaStreamingStateListener(new MediaStreamingStateListener() {
 
@@ -125,6 +128,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 
 				@Override
 				public void mediaStreamingDidStop(DataSource dataSource) {
+					commitMediaUsageTracking();
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDidStop(PigeonMediaPlayerApi.this);
 					}
@@ -133,6 +137,9 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				@Override
 				public void medisStreamingFail(DataSource dataSource,
 						int resultCode) {
+					String resultString = String.valueOf(resultCode);
+					setMediaUsageResultCode(resultString, resultCode);
+					commitMediaUsageTracking();
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDidFailed(PigeonMediaPlayerApi.this, resultCode);
 					}
@@ -149,6 +156,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				@Override
 				public void medisStreamingDurationIsReady(
 						DataSource dataSource, int duration) {
+					setMediaUsageDuration(duration);
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDurationIsReady(PigeonMediaPlayerApi.this, duration);
 					}
@@ -161,6 +169,4 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		}
 		return true;
 	}
-
-	
 }

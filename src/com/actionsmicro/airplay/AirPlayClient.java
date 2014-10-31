@@ -282,7 +282,7 @@ public class AirPlayClient {
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
 			AsyncHttpPost reverse = new AsyncHttpPost(getServerUri("/reverse"), headers);
-//			reverse.setTimeout(0);
+			reverse.setTimeout(1000);
 			AsyncHttpClient httpClient = new AsyncHttpClient(reverseConnectionForEvent);
 			httpClient.executeString(reverse, new StringCallback() {
 			    @Override
@@ -348,30 +348,30 @@ public class AirPlayClient {
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
 			AsyncHttpPost reverse = new AsyncHttpPost(getServerUri("/reverse"), headers);
-//			reverse.setTimeout(0);
+			reverse.setTimeout(1000);
 			AsyncHttpClient httpClient = new AsyncHttpClient(reverseConnectionForSlideshow);
 			httpClient.executeString(reverse, new StringCallback() {
 			    @Override
 			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
 			        if (e != null) {
 			            e.printStackTrace();
-			            handleNetworkException(e);
-			            return;
-			        }
-			        AsyncSocket socket = source.detachSocket();
-			        Log.d(TAG, "Server says: " + source.getHeaders().getHeaders().getStatusLine());
-			        
-			        slideshowServer.establishConnection(socket);
-			        socket.setClosedCallback(new CompletedCallback() {
+			            handleNetworkException(e);			            
+			        } else {
+			        	AsyncSocket socket = source.detachSocket();
+			        	Log.d(TAG, "Server says: " + source.getHeaders().getHeaders().getStatusLine());
 
-						@Override
-						public void onCompleted(Exception e) {
-							if (e != null) {
-								notifyConnectionManagerDidFailed(e);
-							}
-						}
-			        	
-			        });
+			        	slideshowServer.establishConnection(socket);
+			        	socket.setClosedCallback(new CompletedCallback() {
+
+			        		@Override
+			        		public void onCompleted(Exception e) {
+			        			if (e != null) {
+			        				notifyConnectionManagerDidFailed(e);
+			        			}
+			        		}
+
+			        	});
+			        }
 			        synchronized (slideshowServer) {
 			        	slideshowServer.notify();
 			        }
@@ -540,9 +540,6 @@ public class AirPlayClient {
 			        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
 			        if (detachedFileServer != null) {
 			        	detachedFileServer.stop();			        	
-			        }
-			        if (videoStateListener != null) {
-			        	videoStateListener.onVideoStopped();
 			        }
 			    }
 			});

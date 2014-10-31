@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.Point;
 import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -78,6 +79,15 @@ public class Screen {
 		} else {
 			activity.getWindow().
 			clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		}
+	}
+	public static void getResolution(Context context, Point outSize) {
+		WindowManager winMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+		if (winMgr != null) {
+			Display display = winMgr.getDefaultDisplay();
+			if (display != null) {
+				display.getSize(outSize);
+			}
 		}
 	}
 }

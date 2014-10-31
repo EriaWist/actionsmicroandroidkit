@@ -1,6 +1,9 @@
 package com.actionsmicro.androidkit.ezcast.imp.bonjour;
 
 import java.net.InetAddress;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.jmdns.ServiceInfo;
 
@@ -12,11 +15,12 @@ public abstract class BonjourDeviceInfo extends DeviceInfo {
 	private int port;
 	private InetAddress address;
 	private String name;
-	
+	private Map<String, String> txtRecord = new HashMap<String, String>();
 	public BonjourDeviceInfo(Parcel in) {
 		port = in.readInt();
 		address = (InetAddress)in.readSerializable();
 		name = in.readString();
+		in.readMap(txtRecord, null);
 	}
 	
 	@SuppressWarnings("deprecation")
@@ -24,6 +28,13 @@ public abstract class BonjourDeviceInfo extends DeviceInfo {
 		this.port = newService.getPort();
 		this.address = newService.getInet4Address();
 		this.name = newService.getName();
+		Enumeration<String> txt = newService.getPropertyNames();
+		if (txt != null) {
+			while (txt.hasMoreElements()) {
+				String key = txt.nextElement();
+				txtRecord.put(key, newService.getPropertyString(key));
+			}
+		}
 	}
 	
 	public static final BonjourDeviceInfo.Creator<? extends BonjourDeviceInfo> DEVICE_CREATOR = null;
@@ -38,6 +49,7 @@ public abstract class BonjourDeviceInfo extends DeviceInfo {
 		parcel.writeInt(port);
 		parcel.writeSerializable(address);
 		parcel.writeString(name);
+		parcel.writeMap(txtRecord);
 	}
 
 	@Override
@@ -62,6 +74,9 @@ public abstract class BonjourDeviceInfo extends DeviceInfo {
 
 	public int getPort() {
 		return this.port;		
+	}
+	public String getPropertyString(String name) {
+		return txtRecord.get(name);
 	}
 
 	protected static final long SERVICE_PHOTO = 0x01;

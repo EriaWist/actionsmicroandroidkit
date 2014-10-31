@@ -2,9 +2,10 @@ package com.actionsmicro.androidkit.ezcast.imp.ezdisplay;
 
 import com.actionsmicro.androidkit.ezcast.MessageApi;
 import com.actionsmicro.androidkit.ezcast.MessageApiBuilder;
+import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 
-public class PigeonMessageApi implements MessageApi {
+public class PigeonMessageApi extends TrackableApi implements MessageApi {
 
 	private ConnectionManager connectionManager;
 	private MessageListener messageListener;
@@ -12,6 +13,7 @@ public class PigeonMessageApi implements MessageApi {
 	private com.actionsmicro.falcon.Falcon.ProjectorInfo.MessageListener pigeonMessageListener;
 
 	public PigeonMessageApi(MessageApiBuilder apiBuilder) {
+		super(apiBuilder);
 		projector = ((PigeonDeviceInfo)apiBuilder.getDevice()).getProjectorInfo();
 		connectionManager = apiBuilder.getConnectionManager();
 		messageListener = apiBuilder.getMessageListener();
@@ -42,13 +44,14 @@ public class PigeonMessageApi implements MessageApi {
 				}
 			}
 		});
-		
+		super.connect();
 	}
 
 	@Override
 	public void disconnect() {
 		projector.removeMessageListener(pigeonMessageListener);
 		projector.disconnectRemoteControl();
+		super.disconnect();
 	}
 
 	@Override

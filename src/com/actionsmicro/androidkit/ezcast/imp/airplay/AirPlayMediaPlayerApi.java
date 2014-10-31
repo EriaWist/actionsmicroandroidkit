@@ -69,6 +69,7 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 	@Override
 	public boolean play(Context context, String url, String userAgentString,
 			Long mediaContentLength, String title) throws Exception {
+		beginMediaUsageTracking(context, url, userAgentString, title);
 		getAirPlayClient().playVideo(url, new AirPlayClient.VideoStateListener() {
 			
 			@Override
@@ -76,6 +77,7 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerDidStop(AirPlayMediaPlayerApi.this);
 				}
+				commitMediaUsageTracking();
 				state = State.STOPPED;
 			}
 			
@@ -109,6 +111,7 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerDurationIsReady(AirPlayMediaPlayerApi.this, (long) duration);
 				}
+				setMediaUsageDuration((int) duration);
 			}
 
 			@Override
@@ -116,10 +119,13 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerDidFailed(AirPlayMediaPlayerApi.this, mappingAirPlayError(errorCode));
 				}
+				setMediaUsageResultCode(String.valueOf(errorCode), mappingAirPlayError(errorCode));
 			}
 		});
 		return true;
 	}
+
+	
 
 //	08-19 11:36:48.932 D/AirPlayClient( 5216): 	<dict>
 //	08-19 11:36:48.932 D/AirPlayClient( 5216): 		<key>NSLocalizedDescription</key>

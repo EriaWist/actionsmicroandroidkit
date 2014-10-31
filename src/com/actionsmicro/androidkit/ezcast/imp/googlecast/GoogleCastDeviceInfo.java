@@ -26,6 +26,9 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	public CastDevice getCastDevice() {
 		return castDevice;
 	}
+	public GoogleCastDeviceInfo(CastDevice castDevice) {
+		this.castDevice = castDevice;
+	}
 	public GoogleCastDeviceInfo(RouteInfo routeInfo) {
 		castDevice = CastDevice.getFromBundle(routeInfo.getExtras());
 	}
