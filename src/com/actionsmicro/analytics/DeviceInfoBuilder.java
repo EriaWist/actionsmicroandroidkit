@@ -1,5 +1,6 @@
 package com.actionsmicro.analytics;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,6 +53,7 @@ public abstract class DeviceInfoBuilder<T extends DeviceInfo> {
 		deviceInfo.put("app_id", appId);
 		deviceInfo.put("package_id", getPackageId());
 		deviceInfo.put("device_type", deviceType);
+		deviceInfo.put("timestamp", Record.ISO_8601_DATE_TIME_FORMAT.format(new Date()));
 		return deviceInfo;
 	}
 	protected Context getContext() {

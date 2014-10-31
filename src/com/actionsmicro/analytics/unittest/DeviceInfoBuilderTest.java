@@ -76,6 +76,7 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals(mockSrcvers, jsonObject.get("srcvers"));			
 			assertEquals(mockOsBuildVersion, jsonObject.get("osBuildVersion"));			
 			assertEquals(mockProtovers, jsonObject.get("protovers"));			
+			assertTrue(jsonObject.has("timestamp"));
 		} catch (AssertionFailedError t) {
 			throw t;
 		} catch (Throwable t) {
@@ -131,6 +132,7 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals("ezcast", jsonObject.get("device_type"));			
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
 			assertEquals(mockEncryptedData, jsonObject.get("encrypted_data"));			
+			assertTrue(jsonObject.has("timestamp"));
 		} catch (AssertionFailedError t) {
 			throw t;
 		} catch (Throwable t) {
@@ -159,6 +161,7 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals("ezscreen", jsonObject.get("device_type"));			
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
 			assertEquals(mockSrcvers, jsonObject.get("srcvers"));			
+			assertTrue(jsonObject.has("timestamp"));
 		} catch (AssertionFailedError t) {
 			throw t;
 		} catch (Throwable t) {
@@ -192,7 +195,8 @@ public class DeviceInfoBuilderTest extends TestCase {
 			assertEquals(mockPackageName, jsonObject.get("package_id"));			
 			assertEquals("chromecast", jsonObject.get("device_type"));			
 			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
-			assertEquals(mockSrcvers, jsonObject.get("device_version"));	
+			assertEquals(mockSrcvers, jsonObject.get("device_version"));
+			assertTrue(jsonObject.has("timestamp"));
 		} catch (AssertionFailedError t) {
 			Log.d(TAG, jsonObject.toString());
 			throw t;
