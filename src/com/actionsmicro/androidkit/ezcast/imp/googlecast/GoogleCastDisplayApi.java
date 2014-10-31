@@ -11,10 +11,8 @@ import com.actionsmicro.graphics.YuvImageToJpegHelper;
 public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 
 	protected static final String TAG = "GoogleCastDisplayApi";
-	private DisplayListener displayListener;
 	public GoogleCastDisplayApi(DisplayApiBuilder displayApiBuilder) {
 		super(displayApiBuilder);
-		displayListener = displayApiBuilder.getDisplayListener();
 	}
 	@Override
 	public void startDisplaying() {

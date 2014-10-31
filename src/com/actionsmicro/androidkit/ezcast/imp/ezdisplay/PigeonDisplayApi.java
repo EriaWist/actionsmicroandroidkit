@@ -17,17 +17,15 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 		super(displayApiBuilder);
 		displayListener = displayApiBuilder.getDisplayListener();
 	}
-
+	
 	@Override
 	public void startDisplaying() {
-		// TODO Auto-generated method stub
-
+		startTrackingWifiDisplay();
 	}
 
 	@Override
 	public void stopDisplaying() {
-		// TODO Auto-generated method stub
-
+		stopTrackingWifiDisplay();
 	}
 	@Override
 	protected void onPigeonClientCreated(Client pigeonClient) {

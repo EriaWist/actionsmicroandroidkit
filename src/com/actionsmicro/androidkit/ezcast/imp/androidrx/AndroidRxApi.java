@@ -12,13 +12,14 @@ import android.os.Looper;
 import com.actionsmicro.androidkit.ezcast.Api;
 import com.actionsmicro.androidkit.ezcast.ApiBuilder;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
+import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.ezcom.jsonrpc.JSONRPC2Session;
 import com.actionsmicro.utils.Log;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
 import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 
-public class AndroidRxApi implements Api {
+public class AndroidRxApi extends TrackableApi implements Api {
 
 	private static final int HEARTBEAT_PERIOD = 1000;
 	private static final String TAG = "AndroidRxApi";
@@ -44,7 +45,7 @@ public class AndroidRxApi implements Api {
 	}
 	
 	public <T> AndroidRxApi(ApiBuilder<T> apiBuilder) {
-		
+		super(apiBuilder);
 		context = apiBuilder.getContext();
 		connectionManager = apiBuilder.getConnectionManager();
 		device = (AndroidRxInfo) apiBuilder.getDevice();
@@ -118,6 +119,7 @@ public class AndroidRxApi implements Api {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		super.connect();
 	}
 
 	@Override
@@ -135,6 +137,7 @@ public class AndroidRxApi implements Api {
 			jsonRpcSession.close();
 			jsonRpcSession = null;
 		}
+		super.disconnect();
 	}
 
 	private URL getBaseUrl() {

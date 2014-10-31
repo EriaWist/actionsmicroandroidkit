@@ -46,7 +46,13 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	protected abstract MediaPlayerApi createMediaPlayerApi(MediaPlayerApiBuilder mediaPlayerApiBuilder);
 	@Override
 	public int compareTo(DeviceInfo another) {
-		return getIpAddress().getHostAddress().compareTo(another.getIpAddress().getHostAddress());
+		int result = getIpAddress().getHostAddress().compareTo(another.getIpAddress().getHostAddress());
+		if (result == 0) {
+			String myName = getName() != null ? getName(): "";
+			String anothersName = another.getName() != null ? another.getName(): "";
+			result = myName.compareTo(anothersName);
+		}
+		return result;
 	}	
 	public abstract boolean supportMediaFileExtension(String fileExtension);
 }

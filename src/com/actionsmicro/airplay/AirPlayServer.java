@@ -20,7 +20,6 @@ import org.apache.commons.net.ntp.TimeStamp;
 
 import vavi.apps.shairport.RTSPResponder;
 import android.content.Context;
-import android.net.wifi.WifiManager;
 
 import com.actionsmicro.airplay.crypto.EzAes;
 import com.actionsmicro.airplay.crypto.FairPlay;
@@ -457,7 +456,7 @@ public class AirPlayServer {
 		airplayService = Aika.create(inetAddress, 0, name);
 		Device dev = new Device();
 		dev.setDeviceid(getMacAddress());
-		dev.setFeatures("0x100029ff");
+		dev.setFeatures("268446207");
 		dev.setModel(AIRPLAY_MODEL);
 		dev.setProtovers("1.0");
 		dev.setSrcvers(AIRPLAYER_VERSION_STRING);

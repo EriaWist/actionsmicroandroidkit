@@ -101,6 +101,6 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 		} else if (key.equals("deviceid")) {
 			return deviceID;
 		}
-		return null;	
+		return getPropertyString(key);	
 	}
 }
