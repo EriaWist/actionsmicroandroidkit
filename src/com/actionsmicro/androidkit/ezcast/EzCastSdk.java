@@ -10,12 +10,16 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
 
+import com.actionsmicro.BuildConfig;
 import com.actionsmicro.analytics.AppInfo;
 import com.actionsmicro.analytics.DeviceInfoBuilder;
 import com.actionsmicro.analytics.Tracker;
+import com.actionsmicro.analytics.tracker.ActionsTracker;
+import com.actionsmicro.analytics.tracker.CompoundTracker;
 import com.actionsmicro.analytics.tracker.LogTracker;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
+import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
 
 public class EzCastSdk {
@@ -38,7 +42,12 @@ public class EzCastSdk {
 		this.appId = appId;
 		this.appSecret = appSecret;
 		this.context = context;
-		tracker = new LogTracker();
+		CompoundTracker compoundTracker = new CompoundTracker();
+		if (BuildConfig.DEBUG) {
+			compoundTracker.add(new LogTracker());
+		}
+		compoundTracker.add(new ActionsTracker(context, appId, appSecret));
+		tracker = compoundTracker;
 		if (sharedEzCastSdk == null) {
 			sharedEzCastSdk = this;
 		}
@@ -160,7 +169,7 @@ public class EzCastSdk {
 		}
 	}
 	private void logDeviceInfo(DeviceInfo device) {
-		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(context, device, appId);
+		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(context, device, Device.getAppMacAddress(context));
 		if (tracker != null) {
 			tracker.log(builder.buildDeviceInfo());
 		}
