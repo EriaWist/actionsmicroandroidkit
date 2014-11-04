@@ -58,3 +58,15 @@
 -keep class com.android.** {
   *;
 }
+
+-keep class org.apache.http.entity.mime.** {
+  *;
+}
+
+# for Gson
+-keepattributes Signature
+-keepclassmembers class com.actionsmicro.analytics.AppInfo { *; }
+-keepclassmembers class com.actionsmicro.analytics.AppInfo$* { *; }
+-keepclassmembers class com.actionsmicro.analytics.Record { *; }
+-keepclassmembers class com.actionsmicro.analytics.Usage { *; }
+-keepclassmembers class com.actionsmicro.analytics.usage.** { *; }
