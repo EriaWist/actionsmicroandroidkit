@@ -80,6 +80,9 @@ public class Device {
 		return DEVICE_TYPE_PHONE;
 	}
 	public static String getAppMacAddress(Context context) {
+		return getAppMacAddress(context, "01:23:45:67:89:ab");
+	}
+	public static String getAppMacAddress(Context context, String defaultValue) {
 		WifiManager wifiMan = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 		if (wifiMan != null) {
 			WifiInfo wifiInf = wifiMan.getConnectionInfo();
@@ -90,7 +93,14 @@ public class Device {
 				}
 			}
 		}
-		return "01:23:45:67:89:ab";
+		return defaultValue;
+	}
+	public static String getAppUniqueId(Context context) {
+		String uniqueId = getAppMacAddress(context, null);
+		if (uniqueId == null) {
+			uniqueId = getUUID(context, "com.actionsmicro.appuuid");
+		}
+		return uniqueId;
 	}
 	public static String getEZScreenServiceName(Context context, String preferenceKey) {
 //		String macAdd = getAppMacAddress(context);

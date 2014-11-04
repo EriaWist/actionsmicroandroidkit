@@ -61,6 +61,6 @@ public class AppInfo extends Record {
 		super("app", "2014-10-24");
 		Point screenSize = new Point();
 		Screen.getResolution(context, screenSize);
-		fill(context, Device.getAppMacAddress(context), PackageUtils.getAppVersion(context), screenSize, location);
+		fill(context, Device.getAppUniqueId(context), PackageUtils.getAppVersion(context), screenSize, location);
 	}
 }
