@@ -71,14 +71,7 @@ public abstract class TrackableApi implements Api {
 			throw new IllegalStateException("un-committed media usage exists.");
 		}
 		mediaUsage = (MediaUsage) new WebVideoUsage(getTracker(), getContext(), getDevice(), mediaUriString).setUserAgent(userAgentString).setTitle(title).begin();
-	}
-	private synchronized void beginLocalMediaUsageTracking(String url, String title) {
-		if (MediaStreamingFileDataSource.isAudioFileExt(Utils.getFileExtension(url))) {
-			beginLocalAudioUsageTracking(url, title);
-		} else {
-			beginLocalVideoUsageTracking(url, title);
-		}
-	}
+	}	
 	private synchronized void beginLocalAudioUsageTracking(String url, String title) {
 		if (title == null || title.length() == 0) {
 			title = com.actionsmicro.utils.Utils.getLastPathComponent(url);
