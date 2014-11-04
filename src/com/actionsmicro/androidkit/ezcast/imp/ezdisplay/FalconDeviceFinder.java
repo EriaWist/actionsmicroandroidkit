@@ -11,7 +11,10 @@ import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 import com.actionsmicro.falcon.Falcon.SearchReultListener;
 
 public class FalconDeviceFinder extends DeviceFinderBase {
-
+	public interface ProjectorInfoFilter {
+		public boolean accept(ProjectorInfo projectInfo); 
+	}
+	public List<ProjectorInfoFilter> filters = new ArrayList<ProjectorInfoFilter>();
 	public FalconDeviceFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy);
 		Falcon.getInstance().addSearchResultListener(new SearchReultListener() {
@@ -19,12 +22,23 @@ public class FalconDeviceFinder extends DeviceFinderBase {
 			@Override
 			public void falconSearchDidFindProjector(Falcon falcon,
 					ProjectorInfo projectorInfo) {
-				getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new PigeonDeviceInfo(projectorInfo));
+				if (filters.size() == 0) {
+					getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new PigeonDeviceInfo(projectorInfo));
+					return;				
+				}
+				for (ProjectorInfoFilter filter : filters) {
+					if (filter.accept(projectorInfo)) {
+						getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new PigeonDeviceInfo(projectorInfo));
+						return;
+					}
+				}
 			}
 			
 		});
 	}
-
+	public void addFilter(ProjectorInfoFilter filter) {
+		filters.add(filter);
+	}
 	@Override
 	public List<DeviceInfo> getDevices() {
 		ArrayList<DeviceInfo> devices = new ArrayList<DeviceInfo>();

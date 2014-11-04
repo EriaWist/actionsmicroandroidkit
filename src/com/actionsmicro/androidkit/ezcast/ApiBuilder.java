@@ -1,5 +1,7 @@
 package com.actionsmicro.androidkit.ezcast;
 
+import java.security.InvalidParameterException;
+
 import android.content.Context;
 
 
@@ -18,6 +20,15 @@ public abstract class ApiBuilder<API> {
 
 	public ApiBuilder(EzCastSdk sdk, DeviceInfo device) {
 		super();
+		if (sdk == null) {
+			throw new InvalidParameterException("EzCastSdk should not be null!");
+		}
+		if (!sdk.isInitialized()) {
+			throw new InvalidParameterException("EzCastSdk is not initialized!");
+		}
+		if (device == null) {
+			throw new InvalidParameterException("DeviceInfo should not be null!");
+		}
 		this.device = device;
 		this.context = sdk.getContext();
 		this.sdk = sdk;
