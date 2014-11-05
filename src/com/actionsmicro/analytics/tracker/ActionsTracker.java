@@ -6,13 +6,32 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
+import java.security.KeyStore;
+import java.security.KeyStore.Entry;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.CertificateException;
+import java.security.spec.KeySpec;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -33,16 +52,40 @@ import com.google.gson.Gson;
 
 public class ActionsTracker implements Tracker {
 	private static final int RETRY_DELAY = 60;
-	private static final int DEFAULT_UPLOAD_DELAY = 5;
+	private static final int DEFAULT_UPLOAD_DELAY = 60;
 	private static final String TAG = "ActionsTracker";
 	private final Uploader uploader;
 	private final Gson gson = new Gson();
 	private ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
 	private Context context;
 	private String appKey;
+	private SecretKey secretKey;
+	private static SecretKey generateKey(String seed) throws Exception {
+//        KeyGenerator kgen = KeyGenerator.getInstance("AES");
+//        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+//        sr.setSeed(seed);
+//        kgen.init(128, sr); // 192 and 256 bits may not be available
+//        return kgen.generateKey();
+		
+		int iterationCount = 1000;
+		int keyLength = 128;
+		int saltLength = keyLength / 8; // same size as key output
+
+		SecureRandom random = new SecureRandom();
+		byte[] salt = new byte[saltLength];
+		random.nextBytes(salt);
+		KeySpec keySpec = new PBEKeySpec(seed.toCharArray(), salt,
+		                    iterationCount, keyLength);
+		SecretKeyFactory keyFactory = SecretKeyFactory
+		                    .getInstance("PBKDF2WithHmacSHA1");
+		return keyFactory.generateSecret(keySpec);
+    }
 	public ActionsTracker(Context context, String appKey, String appSecret) {
 		this.context = context;
 		this.appKey = appKey;
+		
+		setupCipher(appKey, appSecret);
+
 		CompoundUploader compoundUploader = new CompoundUploader();
 		compoundUploader.add(new ActionsUploader(appKey, appSecret));
 		if (BuildConfig.DEBUG) {
@@ -53,6 +96,69 @@ public class ActionsTracker implements Tracker {
 		Thread.setDefaultUncaughtExceptionHandler(uncaughtExceptionHandler);
 		
 		checkPendingLogsAndScheduleUploadIfNeeded();
+	}
+	private void setupCipher(String appKey, String appSecret) {		
+		try {
+			KeyStore ks = getKeyStore(appKey, appSecret);
+			try {
+				Entry keyEntry = ks.getEntry(appKey, null);
+				if (keyEntry != null) {
+					secretKey = ((KeyStore.SecretKeyEntry) keyEntry).getSecretKey();
+				}
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (UnrecoverableEntryException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} finally {
+				
+			}
+			if (secretKey == null) {
+				FileOutputStream keystoreOutputStream = null;
+				try {
+					secretKey = generateKey(appSecret);
+					ks.setEntry(appKey, new KeyStore.SecretKeyEntry(secretKey), null);
+					keystoreOutputStream = new FileOutputStream(getKeyStoreFile(appKey));
+					ks.store(keystoreOutputStream, appSecret.toCharArray());
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} finally {
+					if (keystoreOutputStream != null) {
+						keystoreOutputStream.close();
+					}
+				}
+			}
+		} catch (KeyStoreException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (CertificateException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}
+	private KeyStore getKeyStore(String appKey, String appSecret) throws KeyStoreException, IOException,
+			NoSuchAlgorithmException, CertificateException {
+		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+		File keystoreFile = getKeyStoreFile(appKey);
+		if (keystoreFile.exists()) {
+			ks.load(new FileInputStream(keystoreFile), appSecret.toCharArray());
+		} else {
+			ks.load(null);
+		}
+		return ks;
+	}
+	private File getKeyStoreFile(String appKey) {
+		File dataFolder = context.getDir("actions", Context.MODE_PRIVATE);
+		File keystoreFile = new File(dataFolder, appKey);
+		return keystoreFile;
 	}
 
 	private void checkPendingLogsAndScheduleUploadIfNeeded() {
@@ -94,9 +200,11 @@ public class ActionsTracker implements Tracker {
 		}
 		
 	};
+	private static final String CIPHER_ALGORITHM = "AES";
 	private ScheduledFuture<?> scheduledUpload;
 	private UploadLog uploadLog = new UploadLog();
 	private class UploadLog implements Runnable {
+
 
 		@Override
 		public void run() {
@@ -222,7 +330,26 @@ public class ActionsTracker implements Tracker {
 			StringBuilder sb = new StringBuilder();
 			BufferedReader reader = null;
 			try {
-				reader = new BufferedReader(new InputStreamReader(new FileInputStream(pendingLogFile), "utf-8"));
+				InputStream in = new FileInputStream(pendingLogFile);
+				if (secretKey != null) {
+					try {
+						Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
+						cipher.init(Cipher.DECRYPT_MODE, secretKey);
+						in = new CipherInputStream(in, cipher);
+					} catch (NoSuchAlgorithmException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (NoSuchPaddingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (InvalidKeyException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} finally {
+
+					}
+				}
+				reader = new BufferedReader(new InputStreamReader(in, "utf-8"));
 			    String line = null;
 			    while ((line = reader.readLine()) != null) {
 			    	sb.append(line).append("\n");
@@ -265,15 +392,33 @@ public class ActionsTracker implements Tracker {
 	}
 	private File saveLogToFile(String filename, String logData) {
 		File logFile = new File(context.getDir(appKey, Context.MODE_PRIVATE), filename);
-		FileOutputStream fo = null;
+		OutputStream out = null;
 		try {
 			logFile.createNewFile();
-			fo = new FileOutputStream(logFile);
-			fo.write(logData.getBytes());					
+			out = new FileOutputStream(logFile);
+			if (secretKey != null) {
+				try {
+					Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
+					cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+					out = new CipherOutputStream(out, cipher);
+				} catch (NoSuchAlgorithmException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (NoSuchPaddingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InvalidKeyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} finally {
+
+				}
+			}
+			out.write(logData.getBytes());					
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
-			try {fo.close();} catch (Exception ex) {}
+			try {out.close();} catch (Exception ex) {}
 		}
 		return logFile;
 	}

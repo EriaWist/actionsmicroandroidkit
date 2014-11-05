@@ -207,7 +207,7 @@ public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 		}
 	}
 	public static String getAppMacAddress(Context context) {
-		return Device.getAppMacAddress(context);
+		return Device.getAppUniqueId(context);
 	}
 	public static String getAppVersion(Context context) {
 		String appVersion = "";

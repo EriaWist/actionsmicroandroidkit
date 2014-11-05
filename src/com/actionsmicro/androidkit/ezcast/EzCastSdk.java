@@ -409,7 +409,7 @@ public class EzCastSdk {
 		}
 	}
 	private void logDeviceInfo(DeviceInfo device) {
-		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(context, device, Device.getAppMacAddress(context));
+		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(context, device, Device.getAppUniqueId(context));
 		if (tracker != null) {
 			tracker.log(builder.buildDeviceInfo());
 		}

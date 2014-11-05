@@ -47,7 +47,7 @@ public abstract class Usage extends Record {
 	}
 	public Usage(Tracker tracker, Context context, DeviceInfo device, String recordType, String schemaVersion) {
 		super(recordType, schemaVersion);
-		fill(tracker, context, Device.getAppMacAddress(context), context.getPackageName(), device);
+		fill(tracker, context, Device.getAppUniqueId(context), context.getPackageName(), device);
 	}
 	public static String getDeviceTypeFromDevice(DeviceInfo device) {
 		if (device instanceof PigeonDeviceInfo) {
