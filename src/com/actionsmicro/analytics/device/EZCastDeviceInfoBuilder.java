@@ -19,7 +19,7 @@ import com.koushikdutta.async.http.AsyncHttpClient;
 public class EZCastDeviceInfoBuilder extends DeviceInfoBuilder<PigeonDeviceInfo> {
 
 	public EZCastDeviceInfoBuilder(Context context, PigeonDeviceInfo device, String appId) {
-		super(context, device, appId, "device", "2014-10-24", "ezcast");
+		super(context, device, appId, "device", "2014-10-24", EZCastFamilyDeviceTypeBuilder.getType(device));
 	}
 	protected JSONObject getDongleInfo() {
 		final String dongoleInfoUrl = "http://"+getDevice().getIpAddress().getHostAddress()+"/dongleInfo.json";

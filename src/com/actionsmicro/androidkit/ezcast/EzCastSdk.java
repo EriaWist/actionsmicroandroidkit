@@ -27,6 +27,7 @@ import com.actionsmicro.BuildConfig;
 import com.actionsmicro.analytics.AppInfo;
 import com.actionsmicro.analytics.DeviceInfoBuilder;
 import com.actionsmicro.analytics.Tracker;
+import com.actionsmicro.analytics.device.EZCastFamilyDeviceTypeBuilder;
 import com.actionsmicro.analytics.tracker.ActionsTracker;
 import com.actionsmicro.analytics.tracker.CompoundTracker;
 import com.actionsmicro.analytics.tracker.HashUtils;
@@ -120,100 +121,26 @@ public class EzCastSdk {
 		});
 
 	}
-	private void setupFinderForEzCastAndPro(List<String> supportList) {
-		FalconDeviceFinder falconDeviceFinder = null;
-		if (supportList.contains("ezcastpro")) {
-			if (falconDeviceFinder == null) {
-				falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
-			}
+	private void setupFinderForEzCastAndPro(final List<String> supportList) {
+		if (supportList.contains("ezcastpro") ||
+				supportList.contains("ezcast") ||
+				supportList.contains("ezcastlite") ||
+				supportList.contains("ezcastmusic") ||
+				supportList.contains("ezcastcar")) {
+			FalconDeviceFinder falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
 			falconDeviceFinder.addFilter(new ProjectorInfoFilter() {
 
 				@Override
 				public boolean accept(ProjectorInfo projectInfo) {
-					String family = projectInfo.getParameter("family");
-					if (family != null && family.equals("ezcastpro")) {
+					if (supportList.contains(EZCastFamilyDeviceTypeBuilder.getType(projectInfo))) {
 						return true;
 					}
 					return false;
 				}
-				
-			});
-		}
-		if (supportList.contains("ezcast")) {
-			if (falconDeviceFinder == null) {
-				falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
-			}
-			falconDeviceFinder.addFilter(new ProjectorInfoFilter() {
 
-				@Override
-				public boolean accept(ProjectorInfo projectInfo) {
-					String family = projectInfo.getParameter("family");
-					String type = projectInfo.getParameter("type");
-					if (family != null && family.equals("ezcast") && (type == null || type.equals("ezcast"))) {
-						return true;
-					}
-					return false;
-				}
-				
 			});
-		}
-		if (supportList.contains("ezcastmusic")) {
-			if (falconDeviceFinder == null) {
-				falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
-			}
-			falconDeviceFinder.addFilter(new ProjectorInfoFilter() {
-
-				@Override
-				public boolean accept(ProjectorInfo projectInfo) {
-					String family = projectInfo.getParameter("family");
-					String type = projectInfo.getParameter("type");
-					if (family != null && family.equals("ezcast") && (type != null && type.equals("music"))) {
-						return true;
-					}
-					return false;
-				}
-				
-			});
-		}
-		if (supportList.contains("ezcastcar")) {
-			if (falconDeviceFinder == null) {
-				falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
-			}
-			falconDeviceFinder.addFilter(new ProjectorInfoFilter() {
-
-				@Override
-				public boolean accept(ProjectorInfo projectInfo) {
-					String family = projectInfo.getParameter("family");
-					String type = projectInfo.getParameter("type");
-					if (family != null && family.equals("ezcast") && (type != null && type.equals("car"))) {
-						return true;
-					}
-					return false;
-				}
-				
-			});
-		}
-		if (supportList.contains("ezcastlite")) {
-			if (falconDeviceFinder == null) {
-				falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
-			}
-			falconDeviceFinder.addFilter(new ProjectorInfoFilter() {
-
-				@Override
-				public boolean accept(ProjectorInfo projectInfo) {
-					String family = projectInfo.getParameter("family");
-					String type = projectInfo.getParameter("type");
-					if (family != null && family.equals("ezcast") && (type != null && type.equals("lite"))) {
-						return true;
-					}
-					return false;
-				}
-				
-			});
-		}
-		if (falconDeviceFinder != null) {
 			deviceFinder.addDeviceFinderImp(falconDeviceFinder);
-		}
+		}		
 	}
 	public void init(final InitializationListener listener) {
 		if (isInitialized()) {

@@ -1,12 +1,10 @@
 package com.actionsmicro.analytics;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.TimeZone;
 
 import android.content.Context;
 
+import com.actionsmicro.analytics.device.EZCastFamilyDeviceTypeBuilder;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxInfo;
@@ -51,7 +49,7 @@ public abstract class Usage extends Record {
 	}
 	public static String getDeviceTypeFromDevice(DeviceInfo device) {
 		if (device instanceof PigeonDeviceInfo) {
-			return "ezcast";
+			return EZCastFamilyDeviceTypeBuilder.getType((PigeonDeviceInfo) device);
 		} else if (device instanceof AirPlayDeviceInfo) {
 			return "airplay";
 		} else if (device instanceof AndroidRxInfo) {
