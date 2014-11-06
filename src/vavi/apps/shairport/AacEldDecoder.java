@@ -2,11 +2,14 @@ package vavi.apps.shairport;
 
 import java.nio.ByteBuffer;
 
+import android.annotation.TargetApi;
 import android.media.MediaCodec;
 import android.media.MediaCodec.BufferInfo;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.util.Log;
 
+@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class AacEldDecoder {
 	private MediaCodec decocder;
 	private BufferInfo bufferInfo;
