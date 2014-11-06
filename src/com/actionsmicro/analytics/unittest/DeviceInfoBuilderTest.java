@@ -18,6 +18,7 @@ import android.util.Log;
 import com.actionsmicro.analytics.DeviceInfoBuilder;
 import com.actionsmicro.analytics.device.AirPlayDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastDeviceInfoBuilder;
+import com.actionsmicro.analytics.device.EZCastFamilyDeviceTypeBuilder;
 import com.actionsmicro.analytics.device.EZCastScreenDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.GoogleCastDeviceInfoBuilder;
 import com.actionsmicro.analytics.unittest.mock.MockServiceInfo;
@@ -204,5 +205,117 @@ public class DeviceInfoBuilderTest extends TestCase {
 			t.printStackTrace();
 			fail(t.getMessage());
 		}
+	}
+	public void testEZCastFamilyDeviceTypeBuilderNoFamily() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			public final String getParameter(String key) {
+				return null;
+			}	
+		};
+		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
+					
+		};
+		assertEquals("ezcast", EZCastFamilyDeviceTypeBuilder.getType(deviceInfo));
+	}
+	public void testEZCastFamilyDeviceTypeBuilderEZCastFamilyNoType() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			public final String getParameter(String key) {
+				if ("family".equals(key)) {
+					return "ezcast";
+				}
+				return null;
+			}
+		};
+		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
+						
+		};
+		assertEquals("ezcast", EZCastFamilyDeviceTypeBuilder.getType(deviceInfo));
+	}
+	public void testEZCastFamilyDeviceTypeBuilderEZCastFamilyEZCastType() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			public final String getParameter(String key) {
+				if ("family".equals(key)) {
+					return "ezcast";
+				} else if ("type".equals(key)) {
+					return "ezcast";
+				}
+				return null;
+			}
+		};
+		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
+						
+		};
+		assertEquals("ezcast", EZCastFamilyDeviceTypeBuilder.getType(deviceInfo));
+	}
+	public void testEZCastFamilyDeviceTypeBuilderEZCastFamilyLiteType() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			public final String getParameter(String key) {
+				if ("family".equals(key)) {
+					return "ezcast";
+				} else if ("type".equals(key)) {
+					return "lite";
+				}
+				return null;
+			}
+		};
+		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
+						
+		};
+		assertEquals("ezcastlite", EZCastFamilyDeviceTypeBuilder.getType(deviceInfo));
+	}
+	public void testEZCastFamilyDeviceTypeBuilderEZCastFamilyMusicType() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			public final String getParameter(String key) {
+				if ("family".equals(key)) {
+					return "ezcast";
+				} else if ("type".equals(key)) {
+					return "music";
+				}
+				return null;
+			}
+		};
+		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
+						
+		};
+		assertEquals("ezcastmusic", EZCastFamilyDeviceTypeBuilder.getType(deviceInfo));
+	}
+	public void testEZCastFamilyDeviceTypeBuilderEZCastFamilyCarType() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			public final String getParameter(String key) {
+				if ("family".equals(key)) {
+					return "ezcast";
+				} else if ("type".equals(key)) {
+					return "car";
+				}
+				return null;
+			}
+		};
+		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
+						
+		};
+		assertEquals("ezcastcar", EZCastFamilyDeviceTypeBuilder.getType(deviceInfo));
+	}
+	public void testEZCastFamilyDeviceTypeBuilderEZCastProFamily() {
+		final ProjectorInfo projectorInfo = new ProjectorInfo() {
+			@Override
+			public String getParameter(String key) {
+				if ("family".equals(key)) {
+					return "ezcastpro";
+				} else if ("type".equals(key)) {
+					return "box";
+				}
+				return null;
+			}
+		};
+		final PigeonDeviceInfo deviceInfo = new PigeonDeviceInfo(projectorInfo) {
+						
+		};
+		assertEquals("ezcastpro", EZCastFamilyDeviceTypeBuilder.getType(deviceInfo));
 	}
 }

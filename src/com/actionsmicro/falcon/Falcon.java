@@ -418,7 +418,7 @@ public class Falcon {
 		 * @param key
 		 * @return parameter value from given key
 		 */
-		public final String getParameter(String key) {
+		public String getParameter(String key) {
 			return keyValuePairs.get(key);
 		}
 		public static final int SERVICE_CLIENT_MODE = 0x200000;
