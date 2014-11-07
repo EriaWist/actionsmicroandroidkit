@@ -25,5 +25,7 @@ public class HashUtils {
 	    byte[] sha1hash = md.digest();
 	    return convertToHex(sha1hash);
 	}
-
+	public static String EzCastHash(String appSecret, long expire, String path, String packageId) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		return HashUtils.SHA1(appSecret+"\t"+String.valueOf(expire)+"\t"+path+"\t"+packageId);
+	}
 }

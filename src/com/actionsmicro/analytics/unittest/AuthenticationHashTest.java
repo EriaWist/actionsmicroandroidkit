@@ -16,4 +16,15 @@ public class AuthenticationHashTest extends TestCase {
 			fail(t.getMessage());
 		}
     }
+	public void testEzCastHash() {
+		try {
+			assertEquals("f477ed798b810b4b55a02001c25b9a0041ff5db2", HashUtils.EzCastHash("secret_key", 1413789111L, "/cloud/sdk/api", "com.actions,tw"));
+		} catch (AssertionFailedError t) {
+			throw t;
+		} catch (Throwable t) {
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
+		
+	}
 }
