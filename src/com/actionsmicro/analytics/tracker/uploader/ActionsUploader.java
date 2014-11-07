@@ -7,6 +7,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
+
 import com.actionsmicro.analytics.tracker.HashUtils;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.http.AsyncHttpClient;
@@ -23,6 +25,7 @@ public class ActionsUploader implements Uploader {
 	private String appKey;
 	// make it testable
 	private ResultProcessor resultProcessor = new ResultProcessor();
+	private String packageId;
 	public class ResultProcessor {
 
 		public void processResult(final String jsonBody, final Uploader.RequestHandler requestHandler, JSONObject result) {
@@ -86,12 +89,13 @@ public class ActionsUploader implements Uploader {
 		
 	}
 	
-	public ActionsUploader(String appKey, String appSecret) {
+	public ActionsUploader(Context context, String appKey, String appSecret) {
 		this.appKey = appKey;
 		this.appSecret = appSecret;
+		this.packageId = context.getPackageName();
 	}
 	private String computeHash(long expire) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-		return HashUtils.SHA1(appSecret+"\t"+String.valueOf(expire)+"\t"+PATH_UPLOAD_LOG);
+		return HashUtils.EzCastHash(appSecret, expire, PATH_UPLOAD_LOG, packageId);
 	}
 	@Override
 	public void uploadLog(final String jsonBody, final Uploader.RequestHandler requestHandler) {
