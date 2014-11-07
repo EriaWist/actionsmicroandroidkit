@@ -61,6 +61,7 @@ public class EzCastSdk {
 	private Tracker tracker;
 	private Future<JSONObject> initTask;
 	private boolean initializing;
+	private String packageId;
 	public interface InitializationListener {
 
 		void onInitialized(EzCastSdk ezCastSdk);
@@ -79,6 +80,7 @@ public class EzCastSdk {
 		if (appSecret == null || appSecret.isEmpty()) {
 			throw new InvalidParameterException("App secret should not be empty!");
 		}
+		this.packageId = context.getPackageName();
 		this.appKey = appKey;
 		this.appSecret = appSecret;
 		this.context = context;
@@ -97,7 +99,7 @@ public class EzCastSdk {
 		return sharedEzCastSdk;
 	}
 	private String computeHash(long expire) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-		return HashUtils.SHA1(appSecret+"\t"+String.valueOf(expire)+"\t"+"/cloud/sdk/api/support");
+		return HashUtils.EzCastHash(appSecret, expire, "/cloud/sdk/api/support", packageId);
 	}
 	private Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 	private void doSetupDeviceFinder(final InitializationListener listener) {

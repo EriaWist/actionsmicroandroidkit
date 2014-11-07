@@ -87,7 +87,7 @@ public class ActionsTracker implements Tracker {
 		setupCipher(appKey, appSecret);
 
 		CompoundUploader compoundUploader = new CompoundUploader();
-		compoundUploader.add(new ActionsUploader(appKey, appSecret));
+		compoundUploader.add(new ActionsUploader(context, appKey, appSecret));
 		if (BuildConfig.DEBUG) {
 			compoundUploader.add(new LogUploader());
 		}
