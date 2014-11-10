@@ -45,7 +45,13 @@ import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
 import com.koushikdutta.async.http.AsyncHttpGet;
 import com.koushikdutta.async.http.AsyncHttpResponse;
-
+/**
+ * EZCast SDK object 
+ * 
+ * @author James Chen
+ * @version {SDK_VERSION_STRING}
+ * @since 2.1
+ */
 public class EzCastSdk {
 	private static final String PREF_KEY_SUPPORT_LIST = "support_list";
 	private static final String PREF_NAME_EZCAST_SDK = "ezcastsdk";
@@ -63,13 +69,27 @@ public class EzCastSdk {
 	private boolean initializing;
 	private String packageId;
 	public interface InitializationListener {
-
+		/**
+		 * Called when initialization is successful.
+		 * @param ezCastSdk The EzCastSdk instance which had been initialized.
+		 */
 		void onInitialized(EzCastSdk ezCastSdk);
-
+		
+		/**
+		 * Called when initialization is failed. In most case, it failed because the application key or secret is invalid.
+		 * @param exception Detail about why initialization is failed.
+		 */
 		void onInitializationFailed(Exception exception);
 		
 	}
-	
+	/**
+	 * Create a EzCastSdk instance. You should only create one EzCastSdk instance. 
+	 * Created instance can be access via {@link #getSharedSdk()}.
+	 * @param context Android context
+	 * @param appKey Application key of which has authorized to use EZCast SDK.
+	 * @param appSecret Application secret which is pair with the application key.
+	 * @see getSharedSdk
+	 */
 	public EzCastSdk(Context context, String appKey, String appSecret) {
 		if (sharedEzCastSdk != null) {
 			throw new IllegalStateException("EzCastSdk had been created! Only allow one EzCastSdk instance.");
@@ -98,6 +118,10 @@ public class EzCastSdk {
 			sharedEzCastSdk = this;
 		}
 	}
+	/**
+	 * Get shared instance of EzCastSdk. Return null if none exists.
+	 * @return Shared EzCastSdk instance.
+	 */
 	public static EzCastSdk getSharedSdk() {
 		return sharedEzCastSdk;
 	}
@@ -147,6 +171,12 @@ public class EzCastSdk {
 			deviceFinder.addDeviceFinderImp(falconDeviceFinder);
 		}		
 	}
+	/**
+	 * Initialize EzCastSdk instance. This method is asynchronous.
+	 * You can implement {@link InitializationListener} to receive the result. 
+	 * Throws IllegalStateException when EzCastSdk is initializing or has been initialized.
+	 * @param listener Callback to receive initialization result.
+	 */
 	public void init(final InitializationListener listener) {
 		if (isInitialized()) {
 			throw new IllegalStateException("EzCastSdk was initialized!");
@@ -306,10 +336,20 @@ public class EzCastSdk {
 	protected Context getContext() {
 		return context;
 	}
+	/**
+	 * Determine whether EzCastSdk has been initialized successfully or not. 
+	 * @return Return whether EzCastSdk has been initialized successfully or not
+	 */
 	public boolean isInitialized() {
 		return isInitialized;
 	}
-	
+	/**
+	 * Get the device finder to discover compatible devices.
+	 * This method will be blocked until initialization has finished.
+	 * Throws IllegalStateException is EzCaskSdk is not successfully initialized.
+	 * @return Return the device finder.
+	 * @see DeviceFinder
+	 */
 	public DeviceFinder getDeviceFinder() {
 		if (!isInitialized) {
 			try {
