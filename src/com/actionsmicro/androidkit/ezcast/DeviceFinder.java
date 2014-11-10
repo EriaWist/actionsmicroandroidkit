@@ -27,6 +27,9 @@ public class DeviceFinder {
 	}
 	protected void addDeviceFinderImp(DeviceFinderBase deviceFinderImp) {
 		imps.add(deviceFinderImp);
+		if (searching) {
+			deviceFinderImp.search();
+		}
 	}
 //	/**
 //	 * Get default device finder.
@@ -116,6 +119,7 @@ public class DeviceFinder {
 		});			
 	}
 	private ArrayList<DeviceFinderBase> imps = new ArrayList<DeviceFinderBase>();
+	private boolean searching;
 	/**
 	 * Get those devices which have neen discovered by the device finder.
 	 * @return A list of DeviceInfo which represents devices currently found.
@@ -134,6 +138,7 @@ public class DeviceFinder {
 	 * @since 2.1
 	 */
 	public void stop() {
+		searching = false;
 		for (DeviceFinderBase deviceFinderImp : imps) {
 			deviceFinderImp.stop();
 		}
@@ -143,6 +148,7 @@ public class DeviceFinder {
 	 * @since 2.1
 	 */
 	public void search() {
+		searching = true;
 		for (DeviceFinderBase deviceFinderImp : imps) {
 			deviceFinderImp.search();
 		}
