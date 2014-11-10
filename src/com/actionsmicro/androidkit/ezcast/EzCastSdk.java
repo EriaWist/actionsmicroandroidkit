@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -402,13 +401,17 @@ public class EzCastSdk {
 	protected static void setupDeviceFinder(List<String> supportList, final DeviceFinder deviceFinder) {
 		if (supportList.contains("chromecast")) {
 			// GoogleCastFinder main thread only API
-			mainThreadHandler.post(new Runnable() {
+			if (Looper.myLooper() == Looper.getMainLooper()) {
+				deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));				
+			} else {
+				mainThreadHandler.post(new Runnable() {
 
-				@Override
-				public void run() {
-					deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
-				}			
-			});
+					@Override
+					public void run() {
+						deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
+					}			
+				});
+			}
 		}
 		if (supportList.contains("airplay")) {
 			deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
