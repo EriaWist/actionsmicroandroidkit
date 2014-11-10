@@ -71,6 +71,9 @@ public class EzCastSdk {
 	}
 	
 	public EzCastSdk(Context context, String appKey, String appSecret) {
+		if (sharedEzCastSdk != null) {
+			throw new IllegalStateException("EzCastSdk had been created! Only allow one EzCastSdk instance.");
+		}
 		if (context == null) {
 			throw new InvalidParameterException("Context should not be null!");
 		}
