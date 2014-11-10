@@ -25,11 +25,7 @@ public class DeviceFinder {
 	public DeviceFinder(Context context) {		
 		this.context = context;
 	}
-	/**
-	 * Internal use only, you shouldn't called this method directly.
-	 * @param deviceFinderImp
-	 */
-	public void addDeviceFinderImp(DeviceFinderBase deviceFinderImp) {
+	protected void addDeviceFinderImp(DeviceFinderBase deviceFinderImp) {
 		imps.add(deviceFinderImp);
 	}
 //	/**
