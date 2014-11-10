@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -45,7 +46,13 @@ import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
 import com.koushikdutta.async.http.AsyncHttpGet;
 import com.koushikdutta.async.http.AsyncHttpResponse;
-
+/**
+ * EZCast SDK object 
+ * 
+ * @author James Chen
+ * @version {SDK_VERSION_STRING}
+ * @since 2.1
+ */
 public class EzCastSdk {
 	private static final String PREF_KEY_SUPPORT_LIST = "support_list";
 	private static final String PREF_NAME_EZCAST_SDK = "ezcastsdk";
@@ -63,14 +70,31 @@ public class EzCastSdk {
 	private boolean initializing;
 	private String packageId;
 	public interface InitializationListener {
-
+		/**
+		 * Called when initialization is successful.
+		 * @param ezCastSdk The EzCastSdk instance which had been initialized.
+		 */
 		void onInitialized(EzCastSdk ezCastSdk);
-
+		
+		/**
+		 * Called when initialization is failed. In most case, it failed because the application key or secret is invalid.
+		 * @param exception Detail about why initialization is failed.
+		 */
 		void onInitializationFailed(Exception exception);
 		
 	}
-	
+	/**
+	 * Create a EzCastSdk instance. You should only create one EzCastSdk instance. 
+	 * Created instance can be access via {@link #getSharedSdk()}.
+	 * @param context Android context
+	 * @param appKey Application key of which has authorized to use EZCast SDK.
+	 * @param appSecret Application secret which is pair with the application key.
+	 * @see getSharedSdk
+	 */
 	public EzCastSdk(Context context, String appKey, String appSecret) {
+		if (sharedEzCastSdk != null) {
+			throw new IllegalStateException("EzCastSdk had been created! Only allow one EzCastSdk instance.");
+		}
 		if (context == null) {
 			throw new InvalidParameterException("Context should not be null!");
 		}
@@ -95,35 +119,25 @@ public class EzCastSdk {
 			sharedEzCastSdk = this;
 		}
 	}
+	/**
+	 * Get shared instance of EzCastSdk. Return null if none exists.
+	 * @return Shared EzCastSdk instance.
+	 */
 	public static EzCastSdk getSharedSdk() {
 		return sharedEzCastSdk;
 	}
 	private String computeHash(long expire) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		return HashUtils.EzCastHash(appSecret, expire, "/cloud/sdk/api/support", packageId);
 	}
-	private Handler mainThreadHandler = new Handler(Looper.getMainLooper());
+	private static Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 	private void doSetupDeviceFinder(final InitializationListener listener) {
-		mainThreadHandler.post(new Runnable() {
-
-			@Override
-			public void run() {
-				List<String> supportList = getSupportListFromStore();
-				if (supportList.contains("chromecast")) {
-					deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
-				}
-				if (supportList.contains("airplay")) {
-					deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
-				}
-				if (supportList.contains("ezscreen")) {
-					deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
-				}
-				setupFinderForEzCastAndPro(supportList);
-				finishUpInitialization(listener);
-			}			
-		});
-
+		setupDeviceFinder(getSupportListFromStore(), deviceFinder);
+		finishUpInitialization(listener);
+		synchronized (deviceFinder) {
+			deviceFinder.notifyAll();
+		}
 	}
-	private void setupFinderForEzCastAndPro(final List<String> supportList) {
+	private static void setupFinderForEzCastAndPro(final List<String> supportList, DeviceFinder deviceFinder) {
 		if (supportList.contains("ezcastpro") ||
 				supportList.contains("ezcast") ||
 				supportList.contains("ezcastlite") ||
@@ -144,6 +158,12 @@ public class EzCastSdk {
 			deviceFinder.addDeviceFinderImp(falconDeviceFinder);
 		}		
 	}
+	/**
+	 * Initialize EzCastSdk instance. This method is asynchronous.
+	 * You can implement {@link InitializationListener} to receive the result. 
+	 * Throws IllegalStateException when EzCastSdk is initializing or has been initialized.
+	 * @param listener Callback to receive initialization result.
+	 */
 	public void init(final InitializationListener listener) {
 		if (isInitialized()) {
 			throw new IllegalStateException("EzCastSdk was initialized!");
@@ -166,7 +186,9 @@ public class EzCastSdk {
 				@Override
 				public void onCompleted(Exception e, AsyncHttpResponse source,
 						JSONObject result) {
+					Log.v(TAG, "init oncomplete called");
 					if (e == null) {
+						Log.v(TAG, "init oncomplete successfully");
 						if (result != null) {
 							try {
 								if (result.getBoolean("status")) {
@@ -183,6 +205,7 @@ public class EzCastSdk {
 							}
 						}
 					} else { //network error or json transformation error
+						Log.v(TAG, "init oncomplete timeout");
 						e.printStackTrace();
 						doSetupDeviceFinder(listener);
 					}
@@ -211,7 +234,7 @@ public class EzCastSdk {
 		}
 		return Arrays.asList("ezcast", "ezcastscreen"); // default value
 	}
-	private List<String> convertJsonArrayToList(String supportListString)
+	protected static List<String> convertJsonArrayToList(String supportListString)
 			throws JSONException {
 		JSONArray supportListJson = new JSONArray(supportListString);
 		List<String> supportList = new ArrayList<String>();
@@ -303,18 +326,38 @@ public class EzCastSdk {
 	protected Context getContext() {
 		return context;
 	}
+	/**
+	 * Determine whether EzCastSdk has been initialized successfully or not. 
+	 * @return Return whether EzCastSdk has been initialized successfully or not
+	 */
 	public boolean isInitialized() {
 		return isInitialized;
 	}
-	
+	/**
+	 * Get the device finder to discover compatible devices.
+	 * This method will be blocked until initialization has finished.
+	 * Throws IllegalStateException is EzCaskSdk is not successfully initialized.
+	 * @return Return the device finder.
+	 * @see DeviceFinder
+	 */
 	public DeviceFinder getDeviceFinder() {
 		if (!isInitialized) {
 			try {
 				initTask.get(); // wait until async task done
+				synchronized (deviceFinder) {
+					deviceFinder.wait(1000);
+				}
 			} catch (InterruptedException e) {
 			} catch (ExecutionException e) {
+				e.printStackTrace();
 				Log.d(TAG, "initTask.get() failed:"+e.getCause());
-			} 
+				synchronized (deviceFinder) {
+					try {
+						deviceFinder.wait(1000);
+					} catch (InterruptedException e1) {
+					}
+				}
+			}
 		}
 		if (!isInitialized) {
 			throw new IllegalStateException("EzCastSdk is not successfully initalized!");
@@ -355,5 +398,24 @@ public class EzCastSdk {
 	}
 	protected Tracker getTracker() {
 		return tracker;
+	}
+	protected static void setupDeviceFinder(List<String> supportList, final DeviceFinder deviceFinder) {
+		if (supportList.contains("chromecast")) {
+			// GoogleCastFinder main thread only API
+			mainThreadHandler.post(new Runnable() {
+
+				@Override
+				public void run() {
+					deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
+				}			
+			});
+		}
+		if (supportList.contains("airplay")) {
+			deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
+		}
+		if (supportList.contains("ezscreen")) {
+			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
+		}
+		setupFinderForEzCastAndPro(supportList, deviceFinder);
 	}
 }

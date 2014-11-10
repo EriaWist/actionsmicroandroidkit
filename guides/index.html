@@ -111,14 +111,7 @@ if (!ezCastSdk.isInitialized()) {
 
         @Override
         public void onInitialized(EzCastSdk ezCastSdk) {
-            runOnUiThread(new Runnable() {
-
-                @Override
-                public void run() {
-                    // start working with SDK                    
-                }
-
-            });
+            // start working with SDK                    
         }
     });
 } else {
@@ -376,7 +369,7 @@ if (mediaPlayerApi != null) {
 </pre>
     <h4>Volume Control</h4>
     <div class="alert"><strong>Note:</strong>
-        Only some kind of device support volume control.
+        Only some kind of devices support volume control.
     </div>
 <pre class="prettyprint">
 mediaPlayerApi.increaseVolume();
@@ -445,7 +438,7 @@ protected void onCreate(Bundle savedInstanceState) {
         <div class="navbar navbar-fixed-bottom">
             <div class="navbar-inner">
                 <p class="pull-left" style="margin: 10px;">Copyright © 2014 Actions-Micro Inc. All Rights Reserved.</p>
-                <p class="pull-right" style="margin: 10px;">Updated: 2014-10-15</p>
+                <p class="pull-right" style="margin: 10px;">Updated: 2014-11-10</p>
             </div>
         </div>
     </div>

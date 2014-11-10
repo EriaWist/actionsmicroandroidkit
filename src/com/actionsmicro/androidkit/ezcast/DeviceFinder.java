@@ -25,12 +25,11 @@ public class DeviceFinder {
 	public DeviceFinder(Context context) {		
 		this.context = context;
 	}
-	/**
-	 * Internal use only, you shouldn't called this method directly.
-	 * @param deviceFinderImp
-	 */
-	public void addDeviceFinderImp(DeviceFinderBase deviceFinderImp) {
+	protected void addDeviceFinderImp(DeviceFinderBase deviceFinderImp) {
 		imps.add(deviceFinderImp);
+		if (searching) {
+			deviceFinderImp.search();
+		}
 	}
 //	/**
 //	 * Get default device finder.
@@ -120,6 +119,7 @@ public class DeviceFinder {
 		});			
 	}
 	private ArrayList<DeviceFinderBase> imps = new ArrayList<DeviceFinderBase>();
+	private boolean searching;
 	/**
 	 * Get those devices which have neen discovered by the device finder.
 	 * @return A list of DeviceInfo which represents devices currently found.
@@ -138,6 +138,7 @@ public class DeviceFinder {
 	 * @since 2.1
 	 */
 	public void stop() {
+		searching = false;
 		for (DeviceFinderBase deviceFinderImp : imps) {
 			deviceFinderImp.stop();
 		}
@@ -147,6 +148,7 @@ public class DeviceFinder {
 	 * @since 2.1
 	 */
 	public void search() {
+		searching = true;
 		for (DeviceFinderBase deviceFinderImp : imps) {
 			deviceFinderImp.search();
 		}
@@ -157,5 +159,9 @@ public class DeviceFinder {
 	 */
 	public Context getContext() {
 		return context;
+	}
+	
+	protected ArrayList<DeviceFinderBase> getImps() {
+		return imps;
 	}
 }
