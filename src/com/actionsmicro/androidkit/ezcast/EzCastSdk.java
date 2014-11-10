@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -128,17 +129,13 @@ public class EzCastSdk {
 	private String computeHash(long expire) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		return HashUtils.EzCastHash(appSecret, expire, "/cloud/sdk/api/support", packageId);
 	}
-	private Handler mainThreadHandler = new Handler(Looper.getMainLooper());
+	private static Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 	private void doSetupDeviceFinder(final InitializationListener listener) {
-		mainThreadHandler.post(new Runnable() {
-
-			@Override
-			public void run() {
-				setupDeviceFinder(getSupportListFromStore(), deviceFinder);
-				finishUpInitialization(listener);
-			}			
-		});
-
+		setupDeviceFinder(getSupportListFromStore(), deviceFinder);
+		finishUpInitialization(listener);
+		synchronized (deviceFinder) {
+			deviceFinder.notifyAll();
+		}
 	}
 	private static void setupFinderForEzCastAndPro(final List<String> supportList, DeviceFinder deviceFinder) {
 		if (supportList.contains("ezcastpro") ||
@@ -189,7 +186,9 @@ public class EzCastSdk {
 				@Override
 				public void onCompleted(Exception e, AsyncHttpResponse source,
 						JSONObject result) {
+					Log.v(TAG, "init oncomplete called");
 					if (e == null) {
+						Log.v(TAG, "init oncomplete successfully");
 						if (result != null) {
 							try {
 								if (result.getBoolean("status")) {
@@ -206,6 +205,7 @@ public class EzCastSdk {
 							}
 						}
 					} else { //network error or json transformation error
+						Log.v(TAG, "init oncomplete timeout");
 						e.printStackTrace();
 						doSetupDeviceFinder(listener);
 					}
@@ -344,10 +344,20 @@ public class EzCastSdk {
 		if (!isInitialized) {
 			try {
 				initTask.get(); // wait until async task done
+				synchronized (deviceFinder) {
+					deviceFinder.wait(1000);
+				}
 			} catch (InterruptedException e) {
 			} catch (ExecutionException e) {
+				e.printStackTrace();
 				Log.d(TAG, "initTask.get() failed:"+e.getCause());
-			} 
+				synchronized (deviceFinder) {
+					try {
+						deviceFinder.wait(1000);
+					} catch (InterruptedException e1) {
+					}
+				}
+			}
 		}
 		if (!isInitialized) {
 			throw new IllegalStateException("EzCastSdk is not successfully initalized!");
@@ -389,9 +399,16 @@ public class EzCastSdk {
 	protected Tracker getTracker() {
 		return tracker;
 	}
-	protected static void setupDeviceFinder(List<String> supportList, DeviceFinder deviceFinder) {
+	protected static void setupDeviceFinder(List<String> supportList, final DeviceFinder deviceFinder) {
 		if (supportList.contains("chromecast")) {
-			deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
+			// GoogleCastFinder main thread only API
+			mainThreadHandler.post(new Runnable() {
+
+				@Override
+				public void run() {
+					deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
+				}			
+			});
 		}
 		if (supportList.contains("airplay")) {
 			deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
