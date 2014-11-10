@@ -154,4 +154,8 @@ public class DeviceFinder {
 	public Context getContext() {
 		return context;
 	}
+	
+	protected ArrayList<DeviceFinderBase> getImps() {
+		return imps;
+	}
 }

@@ -134,23 +134,13 @@ public class EzCastSdk {
 
 			@Override
 			public void run() {
-				List<String> supportList = getSupportListFromStore();
-				if (supportList.contains("chromecast")) {
-					deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
-				}
-				if (supportList.contains("airplay")) {
-					deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
-				}
-				if (supportList.contains("ezscreen")) {
-					deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
-				}
-				setupFinderForEzCastAndPro(supportList);
+				setupDeviceFinder(getSupportListFromStore(), deviceFinder);
 				finishUpInitialization(listener);
 			}			
 		});
 
 	}
-	private void setupFinderForEzCastAndPro(final List<String> supportList) {
+	private static void setupFinderForEzCastAndPro(final List<String> supportList, DeviceFinder deviceFinder) {
 		if (supportList.contains("ezcastpro") ||
 				supportList.contains("ezcast") ||
 				supportList.contains("ezcastlite") ||
@@ -244,7 +234,7 @@ public class EzCastSdk {
 		}
 		return Arrays.asList("ezcast", "ezcastscreen"); // default value
 	}
-	private List<String> convertJsonArrayToList(String supportListString)
+	protected static List<String> convertJsonArrayToList(String supportListString)
 			throws JSONException {
 		JSONArray supportListJson = new JSONArray(supportListString);
 		List<String> supportList = new ArrayList<String>();
@@ -398,5 +388,17 @@ public class EzCastSdk {
 	}
 	protected Tracker getTracker() {
 		return tracker;
+	}
+	protected static void setupDeviceFinder(List<String> supportList, DeviceFinder deviceFinder) {
+		if (supportList.contains("chromecast")) {
+			deviceFinder.addDeviceFinderImp(new GoogleCastFinder(deviceFinder));
+		}
+		if (supportList.contains("airplay")) {
+			deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
+		}
+		if (supportList.contains("ezscreen")) {
+			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
+		}
+		setupFinderForEzCastAndPro(supportList, deviceFinder);
 	}
 }
