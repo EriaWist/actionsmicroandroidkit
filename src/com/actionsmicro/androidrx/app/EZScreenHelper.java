@@ -590,14 +590,7 @@ public class EZScreenHelper {
 
 				@Override
 				public void playVideo(String url, String callback) {
-					try {
-						Uri uri = Uri.parse(url);
-						trackScreenHit("ezcastrx.media", 1, uri.getHost());
-					} catch (Exception e) {
-						trackScreenHit("ezcastrx.media");						
-					}
-
-					EZScreenHelper.this.playVideo(url, callback);
+					stateContext.onLoadEzScreenVideo(url, callback);
 				}
 
 				@Override
@@ -1283,6 +1276,18 @@ public class EZScreenHelper {
 			protected void displayUrl(String url) {
 				EZScreenHelper.this.displayUrl(url);
 				
+			}
+
+			@Override
+			protected void loadEzScreenVideo(String url, String callback) {
+				try {
+					Uri uri = Uri.parse(url);
+					trackScreenHit("ezcastrx.media", 1, uri.getHost());
+				} catch (Exception e) {
+					trackScreenHit("ezcastrx.media");						
+				}
+
+				EZScreenHelper.this.playVideo(url, callback);				
 			}
 		};
 		android.net.wifi.WifiManager wifi =

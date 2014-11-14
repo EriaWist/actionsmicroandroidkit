@@ -99,4 +99,13 @@ public class AirPlayPhotoWhenMirrorState implements State {
 		return new EzScreenConnectedState();
 	}
 
+	@Override
+	public State onLoadEzScreenVideo(StateContext stateContext, String url,
+			String callback) {
+		stateContext.hidePhotoView();
+		stateContext.stopMirror();
+		stateContext.loadEzScreenVideo(url, callback);
+		return new EzScreenConnectedState();
+	}
+
 }

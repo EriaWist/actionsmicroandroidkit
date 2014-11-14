@@ -99,5 +99,10 @@ public abstract class StateContext {
 		setCurrentState(currentState.onDisplayUrl(this, url));
 	}
 	protected abstract void displayUrl(String url);
+	public void onLoadEzScreenVideo(String url, String callback) {
+		Log.d(TAG, "onLoadEzScreenVideo");
+		setCurrentState(currentState.onLoadEzScreenVideo(this, url, callback));
+	}
+	protected abstract void loadEzScreenVideo(String url, String callback);
 	
 }
