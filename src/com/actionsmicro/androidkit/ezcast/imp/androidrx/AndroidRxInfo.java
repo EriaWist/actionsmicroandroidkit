@@ -67,13 +67,12 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 
 	@Override
 	protected MessageApi createMessageApi(MessageApiBuilder messageApiBuilder) {
-		return new AndroidRxMessageApi(messageApiBuilder);
+		return null;
 	}
 
 	@Override
 	protected AuthorizationApi createAuthorizationApi(
 			AuthorizationApiBuilder authorizationApiBuilder) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
