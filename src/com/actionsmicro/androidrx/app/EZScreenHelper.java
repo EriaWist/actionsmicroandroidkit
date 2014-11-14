@@ -416,15 +416,16 @@ public class EZScreenHelper {
 
 	private void setViewVisibility(final View view, final int visibility) {
 		if (view != null) {
-			if (view == mjpegView && 
-					visibility != View.VISIBLE && 
-					mjpegView.getVisibility() != visibility) {
-				clearMjpegView();
-			}
+			
 			this.getMainHandler().post(new Runnable() {
 
 				@Override
 				public void run() {
+					if (view == mjpegView && 
+							visibility != View.VISIBLE && 
+							mjpegView.getVisibility() != visibility) {
+						clearMjpegView();
+					}
 					view.setVisibility(visibility);				
 				}
 
@@ -432,10 +433,12 @@ public class EZScreenHelper {
 		}
 	}
 	private void clearMjpegView() {
+		Log.d(TAG, "clearMjpegView");
 		Canvas canvas = mjpegView.lockCanvas();
 		if (canvas != null) {
 			canvas.drawARGB(0xff, 0, 0, 0);
 			mjpegView.unlockCanvasAndPost(canvas);
+			Log.d(TAG, "clearMjpegView done");
 		}
 	}
 
