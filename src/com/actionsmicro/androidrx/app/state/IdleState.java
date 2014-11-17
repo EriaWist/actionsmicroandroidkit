@@ -132,4 +132,12 @@ public class IdleState implements State {
 		stateContext.displayUrl(url);
 		return new EzScreenConnectedState();
 	}
+
+	@Override
+	public State onLoadEzScreenVideo(StateContext stateContext, String url,
+			String callback) {
+		stateContext.informDelegateConnected();
+		stateContext.loadEzScreenVideo(url, callback);
+		return new EzScreenConnectedState();
+	}
 }

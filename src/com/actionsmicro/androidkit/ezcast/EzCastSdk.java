@@ -158,8 +158,9 @@ public class EzCastSdk {
 		}		
 	}
 	/**
-	 * Initialize EzCastSdk instance. This method is asynchronous.
+	 * Initialize EzCastSdk instance. This method is synchronous.
 	 * You can implement {@link InitializationListener} to receive the result. 
+	 * Note: Initialization process is kind of lengthy, suggest to invoke this in non-UI thread.
 	 * Throws IllegalStateException when EzCastSdk is initializing or has been initialized.
 	 * @param listener Callback to receive initialization result.
 	 */
@@ -173,6 +174,18 @@ public class EzCastSdk {
 		initializing = true;
 		fetchSupportListAndInit(listener);		
 		fetchLocationAndLogAppInfo();
+		waitUntilInitTaskDone();
+	}
+	private void waitUntilInitTaskDone() {
+		if (initTask != null) {
+			try {
+				initTask.get();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	private void fetchSupportListAndInit(
 			final InitializationListener listener) {
@@ -340,7 +353,7 @@ public class EzCastSdk {
 	 * @see DeviceFinder
 	 */
 	public DeviceFinder getDeviceFinder() {
-		if (!isInitialized) {
+		if (!isInitialized && initTask != null) {
 			try {
 				initTask.get(); // wait until async task done
 				synchronized (deviceFinder) {

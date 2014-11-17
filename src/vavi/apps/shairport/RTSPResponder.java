@@ -231,7 +231,7 @@ public class RTSPResponder extends Thread{
         		}
         	}
         }  else if (REQ.contentEquals("GET_PARAMETER")){
-        	response.append("volume", "-15");
+        	response.appendBody("volume", "-15");
         }
 //        else if (REQ.contentEquals("POST") && packet.getDirectory().equals("/fp-setup")) {
 //        	String content = packet.getContent();
@@ -387,7 +387,6 @@ public class RTSPResponder extends Thread{
 						}
 					} else {
 						RTSPResponse response = this.handlePacket(request, requestBodyBuffer);		
-						Log.d("ShairPort", response.getRawPacket());
 
 						// Write the response to the wire
 						try {			
@@ -397,6 +396,7 @@ public class RTSPResponder extends Thread{
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
+						Log.d("ShairPort", response.getRawPacket());
 
 						if("TEARDOWN".equals(request.getReq())){
 							releaseAudioServer();

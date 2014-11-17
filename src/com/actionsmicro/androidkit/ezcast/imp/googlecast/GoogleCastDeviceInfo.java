@@ -125,7 +125,7 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	}
 	@Override
 	protected MessageApi createMessageApi(MessageApiBuilder messageApiBuilder) {
-		return new GoogleCastMessageApi(messageApiBuilder);
+		return null;
 	}
 	@Override
 	protected AuthorizationApi createAuthorizationApi(
