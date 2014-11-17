@@ -93,4 +93,11 @@ public class EzScreenConnectedState implements State {
 		stateContext.displayUrl(url);
 		return null;
 	}
+
+	@Override
+	public State onLoadEzScreenVideo(StateContext stateContext, String url,
+			String callback) {
+		stateContext.loadEzScreenVideo(url, callback);
+		return null;
+	}
 }

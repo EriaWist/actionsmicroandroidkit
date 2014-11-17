@@ -36,4 +36,7 @@ public interface State {
 
 	State onDisplayUrl(StateContext stateContext, String url);
 
+	State onLoadEzScreenVideo(StateContext stateContext, String url,
+			String callback);
+
 }

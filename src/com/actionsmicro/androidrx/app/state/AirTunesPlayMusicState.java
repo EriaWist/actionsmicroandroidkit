@@ -102,4 +102,13 @@ public class AirTunesPlayMusicState implements State {
 		stateContext.displayUrl(url);
 		return new EzScreenConnectedState();
 	}
+
+	@Override
+	public State onLoadEzScreenVideo(StateContext stateContext, String url,
+			String callback) {
+		stateContext.stopMusic();
+		stateContext.hideMusicView();
+		stateContext.loadEzScreenVideo(url, callback);
+		return new EzScreenConnectedState();
+	}
 }
