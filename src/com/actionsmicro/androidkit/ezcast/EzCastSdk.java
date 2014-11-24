@@ -306,6 +306,9 @@ public class EzCastSdk {
 				} catch (SecurityException e) {
 					Log.d(TAG, e.getLocalizedMessage());
 					hasPermissionToGetLocation = false;
+				} catch (IllegalArgumentException e) {
+					Log.d(TAG, e.getLocalizedMessage());
+					hasPermissionToGetLocation = false;					
 				}
 				if (hasPermissionToGetLocation) {
 					fetchedlocation = locationManager.getLastKnownLocation(networkProvider);
