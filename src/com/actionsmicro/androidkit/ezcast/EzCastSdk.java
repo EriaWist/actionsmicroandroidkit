@@ -189,7 +189,7 @@ public class EzCastSdk {
 	}
 	private void fetchSupportListAndInit(
 			final InitializationListener listener) {
-		long expire = System.currentTimeMillis() * 1000 + 60;
+		long expire = System.currentTimeMillis() * 1000 + 60 + 90;
 		try {
 			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.iezvu.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire));
 			getSupportList.setTimeout(INITIALIZATION_TIMEOUT_MS);
