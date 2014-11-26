@@ -13,6 +13,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
 import java.security.KeyStore.Entry;
+import java.security.KeyStore.PasswordProtection;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -99,9 +100,10 @@ public class ActionsTracker implements Tracker {
 	}
 	private void setupCipher(String appKey, String appSecret) {		
 		try {
+			PasswordProtection protectionParameter = new KeyStore.PasswordProtection(appSecret.toCharArray());
 			KeyStore ks = getKeyStore(appKey, appSecret);
 			try {
-				Entry keyEntry = ks.getEntry(appKey, null);
+				Entry keyEntry = ks.getEntry(appKey, protectionParameter);
 				if (keyEntry != null) {
 					secretKey = ((KeyStore.SecretKeyEntry) keyEntry).getSecretKey();
 				}
@@ -118,7 +120,7 @@ public class ActionsTracker implements Tracker {
 				FileOutputStream keystoreOutputStream = null;
 				try {
 					secretKey = generateKey(appSecret);
-					ks.setEntry(appKey, new KeyStore.SecretKeyEntry(secretKey), null);
+					ks.setEntry(appKey, new KeyStore.SecretKeyEntry(secretKey), protectionParameter);
 					keystoreOutputStream = new FileOutputStream(getKeyStoreFile(appKey));
 					ks.store(keystoreOutputStream, appSecret.toCharArray());
 				} catch (Exception e) {
