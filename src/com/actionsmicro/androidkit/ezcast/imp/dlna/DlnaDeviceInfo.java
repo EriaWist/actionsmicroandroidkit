@@ -32,13 +32,17 @@ public class DlnaDeviceInfo extends DeviceInfo {
 		}
 	};
 	private Device device;
+	public Device getDevice() {
+		return device;
+	}
+
 	public DlnaDeviceInfo(Device device) {
 		this.device = device;
 	}
 
 	public DlnaDeviceInfo(Parcel in) {
 		String udn = in.readString();
-		this.device = DlnaDeviceFinder.getDeviceById(udn);
+		this.device = UpnpService.getUpnpService().getDeviceById(udn);
 	}
 
 	@Override
