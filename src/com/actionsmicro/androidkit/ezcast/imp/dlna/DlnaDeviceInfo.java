@@ -157,8 +157,7 @@ public class DlnaDeviceInfo extends DeviceInfo {
 	@Override
 	protected MediaPlayerApi createMediaPlayerApi(
 			MediaPlayerApiBuilder mediaPlayerApiBuilder) {
-		// TODO Auto-generated method stub
-		return null;
+		return new DlnaMediaPlayerApi(mediaPlayerApiBuilder);
 	}
 
 	@Override
