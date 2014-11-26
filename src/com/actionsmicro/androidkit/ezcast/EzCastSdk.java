@@ -397,7 +397,7 @@ public class EzCastSdk {
 	}
 	private void logDeviceInfo(DeviceInfo device) {
 		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(context, device, Device.getAppUniqueId(context));
-		if (tracker != null) {
+		if (tracker != null && builder != null) {
 			tracker.log(builder.buildDeviceInfo());
 		}
 	}
