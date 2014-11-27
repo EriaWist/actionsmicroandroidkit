@@ -6,6 +6,7 @@ import java.util.List;
 import org.fourthline.cling.UpnpServiceImpl;
 import org.fourthline.cling.android.AndroidUpnpServiceConfiguration;
 import org.fourthline.cling.controlpoint.ActionCallback;
+import org.fourthline.cling.controlpoint.SubscriptionCallback;
 import org.fourthline.cling.model.message.header.UDADeviceTypeHeader;
 import org.fourthline.cling.model.meta.Device;
 import org.fourthline.cling.model.meta.LocalDevice;
@@ -145,6 +146,9 @@ class UpnpService {
         return devices;
 	}
 	public void execute(ActionCallback action) {
+		upnpService.getControlPoint().execute(action);
+	}
+	public void execute(SubscriptionCallback action) {
 		upnpService.getControlPoint().execute(action);
 	}
 }
