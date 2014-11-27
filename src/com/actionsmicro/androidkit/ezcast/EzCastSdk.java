@@ -256,7 +256,8 @@ public class EzCastSdk {
 		return supportList;
 	}
 	private void finishUpInitialization(InitializationListener listener) {
-		isInitialized = true;		
+		isInitialized = true;
+		initializing = false;
 		if (listener != null) {
 			listener.onInitialized(EzCastSdk.this);
 		}
