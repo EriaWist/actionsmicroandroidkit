@@ -38,6 +38,7 @@ import android.os.HandlerThread;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Utils;
 
 public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 
@@ -203,15 +204,17 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 				public void received(ActionInvocation arg0, int arg1) {
 					Log.d(TAG+".GetVolume", "volume:"+arg1);
 					long newVol = arg1 + volRange.getStep() * factor;
-					UpnpService.getUpnpService().execute(new SetVolume(renderingControl, newVol) {
+					if (newVol >= volRange.getMinimum() && newVol <= volRange.getMaximum()) {
+						UpnpService.getUpnpService().execute(new SetVolume(renderingControl, newVol) {
 
-						@Override
-						public void failure(ActionInvocation arg0,
-								UpnpResponse arg1, String defaultMsg) {
-							Log.e(TAG+".SetVolume", defaultMsg);
-						}
-						
-					});
+							@Override
+							public void failure(ActionInvocation arg0,
+									UpnpResponse arg1, String defaultMsg) {
+								Log.e(TAG+".SetVolume", defaultMsg);
+							}
+
+						});
+					}
 				}
 
 				@Override
@@ -234,7 +237,9 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 	@Override
 	public boolean seek(int position) {
 		if (avtransportService == null) return false;
-        UpnpService.getUpnpService().execute(new Seek(avtransportService, SeekMode.ABS_TIME, "00:03:00") {
+        String relTime = Utils.makeTimeString("%1$d:%3$02d:%5$02d", position);
+    	Log.d(TAG+".seek", "REL_TIME:"+relTime);
+		UpnpService.getUpnpService().execute(new Seek(avtransportService, SeekMode.REL_TIME, relTime) {
 
             @Override
             public void failure(ActionInvocation invocation, UpnpResponse response, String defaultMsg) {
@@ -269,11 +274,11 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 	public boolean play(Context context, String url, String userAgentString,
 			Long mediaContentLength, String title) throws Exception {
 		if (avtransportService == null) return false;
-		UpnpService.getUpnpService().execute(new SetAVTransportURI(avtransportService, url, "NO METADATA") {
+		UpnpService.getUpnpService().execute(new SetAVTransportURI(avtransportService, url, null) {
 			@Override
 			public void failure(ActionInvocation invocation,
 					UpnpResponse response, String defaultMsg) {
-				Log.e(TAG, defaultMsg);
+				Log.e(TAG+".SetAVTransportURI", defaultMsg);
 			}
 			@Override
 			public void success(ActionInvocation invocation) {
@@ -336,7 +341,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			public void received(ActionInvocation arg0,
 					PositionInfo arg1) {
 				schedulePlaybackInfoPoller();
-				int currentPosition = parseFormattedTimeString(arg1.getAbsTime());
+				int currentPosition = parseFormattedTimeString(arg1.getRelTime());
 				Log.d(TAG, "GetPositionInfo received:"+currentPosition);
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerTimeDidChange(DlnaMediaPlayerApi.this, currentPosition);
