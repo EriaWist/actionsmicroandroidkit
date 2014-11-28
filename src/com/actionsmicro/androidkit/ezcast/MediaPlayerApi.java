@@ -172,7 +172,7 @@ public interface MediaPlayerApi extends Api {
 		 */
 		public abstract void mediaPlayerDidFailed(MediaPlayerApi api, int resultCode);
 		/**
-		 * Called when current position of callback is changed.
+		 * Called when current position of playback is changed.
 		 * @param api The media player API object.
 		 * @param time Current position of playback.
 		 * @since 2.1
