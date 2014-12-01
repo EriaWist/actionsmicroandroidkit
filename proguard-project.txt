@@ -63,6 +63,18 @@
   *;
 }
 
+-keep class org.** {
+  *;
+}
+-keep class javax.** {
+  *;
+}
+
+-dontwarn org.fourthline.cling.**
+-dontwarn org.slf4j.**
+-dontwarn org.eclipse.jetty.**
+-dontwarn org.seamless.**
+
 # for Gson
 -keepattributes Signature
 -keepclassmembers class com.actionsmicro.analytics.AppInfo { *; }
