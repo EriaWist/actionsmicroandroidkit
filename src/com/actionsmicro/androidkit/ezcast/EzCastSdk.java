@@ -269,63 +269,68 @@ public class EzCastSdk {
 			
 			@Override
 			public void run() {
-				Looper.prepare();
-				boolean hasPermissionToGetLocation = true;
-				String networkProvider = LocationManager.NETWORK_PROVIDER;
-
-				LocationManager locationManager = (LocationManager)context.getSystemService(Context.LOCATION_SERVICE);
 				try {
-					Log.d(TAG, "requestSingleUpdate");
-					locationManager.requestSingleUpdate(networkProvider, new LocationListener() {
+					Looper.prepare();
+					boolean hasPermissionToGetLocation = true;
+					String networkProvider = LocationManager.NETWORK_PROVIDER;
 
-						@Override
-						public void onLocationChanged(Location location) {
-							Log.d(TAG, "onLocationChanged");
-							fetchedlocation = location;
-							timout.cancel();
-							Looper.myLooper().quit();
-						}
+					LocationManager locationManager = (LocationManager)context.getSystemService(Context.LOCATION_SERVICE);
+					try {
+						Log.d(TAG, "requestSingleUpdate");
+						locationManager.requestSingleUpdate(networkProvider, new LocationListener() {
 
-						@Override
-						public void onProviderDisabled(String provider) {
-							Log.d(TAG, "onProviderDisabled");
-						}
-
-						@Override
-						public void onProviderEnabled(String provider) {
-							Log.d(TAG, "onProviderEnabled");
-
-						}
-
-						@Override
-						public void onStatusChanged(String provider, int status,
-								Bundle extras) {
-							Log.d(TAG, "onStatusChanged:"+status);				
-						}
-
-					}, null);
-				} catch (SecurityException e) {
-					Log.d(TAG, e.getLocalizedMessage());
-					hasPermissionToGetLocation = false;
-				} catch (IllegalArgumentException e) {
-					Log.d(TAG, e.getLocalizedMessage());
-					hasPermissionToGetLocation = false;					
-				}
-				if (hasPermissionToGetLocation) {
-					fetchedlocation = locationManager.getLastKnownLocation(networkProvider);
-					timout.schedule(new TimerTask() {
-
-						@Override
-						public void run() {
-							if (Looper.myLooper() != null) {
+							@Override
+							public void onLocationChanged(Location location) {
+								Log.d(TAG, "onLocationChanged");
+								fetchedlocation = location;
+								timout.cancel();
 								Looper.myLooper().quit();
 							}
-						}
 
-					}, LOCATION_TIMEOUT_MS);
-					Looper.loop();
+							@Override
+							public void onProviderDisabled(String provider) {
+								Log.d(TAG, "onProviderDisabled");
+							}
+
+							@Override
+							public void onProviderEnabled(String provider) {
+								Log.d(TAG, "onProviderEnabled");
+
+							}
+
+							@Override
+							public void onStatusChanged(String provider, int status,
+									Bundle extras) {
+								Log.d(TAG, "onStatusChanged:"+status);				
+							}
+
+						}, null);
+					} catch (SecurityException e) {
+						Log.d(TAG, e.getLocalizedMessage());
+						hasPermissionToGetLocation = false;
+					} catch (IllegalArgumentException e) {
+						Log.d(TAG, e.getLocalizedMessage());
+						hasPermissionToGetLocation = false;					
+					}
+					if (hasPermissionToGetLocation) {
+						fetchedlocation = locationManager.getLastKnownLocation(networkProvider);
+						timout.schedule(new TimerTask() {
+
+							@Override
+							public void run() {
+								if (Looper.myLooper() != null) {
+									Looper.myLooper().quit();
+								}
+							}
+
+						}, LOCATION_TIMEOUT_MS);
+						Looper.loop();
+					}
+				} catch (Throwable t) {
+					Log.e(TAG, t.getLocalizedMessage());					
+				} finally {
+					tracker.log(new AppInfo(context, fetchedlocation));
 				}
-		        tracker.log(new AppInfo(context, fetchedlocation));
 			}
 		}.start();
 		
