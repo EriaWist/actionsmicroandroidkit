@@ -17,10 +17,14 @@ import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.provider.OpenableColumns;
+
+import com.actionsmicro.utils.Log;
+
 import fi.iki.elonen.NanoHTTPD;
 
 public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
+	private static final String TAG = "SimpleContentUriHttpFileServer";
 	private long contentLength = -1;
 	private Context context;
 	private Uri contentUri;
@@ -58,6 +62,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 	}
 	public Response serve(IHTTPSession session) {
 		Map<String, String> header = session.getHeaders();
+		Log.d(TAG, "serve: "+session.getMethod()+" range:"+header.get("range"));
         return serveFile(Collections.unmodifiableMap(header));
 	}
 	private long getContentLength() {
@@ -131,7 +136,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
                     
                     
                     res = createResponse(Response.Status.PARTIAL_CONTENT, mime, in);
-                    res.addHeader("Content-Length", "" + dataLen);
+                    res.addHeader("Content-Length", "" + fileLen);
                     res.addHeader("Content-Range", "bytes " + startFrom + "-" + endAt + "/" + fileLen);
 //                    res.addHeader("ETag", etag);
                 }
@@ -220,6 +225,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
         put("zip", "application/octet-stream");
         put("exe", "application/octet-stream");
         put("class", "application/octet-stream");
+        put("avi", "video/x-msvideo");
     }};
 	public static String getMimeTypeForFile(String uri) {
         int dot = uri.lastIndexOf('.');
