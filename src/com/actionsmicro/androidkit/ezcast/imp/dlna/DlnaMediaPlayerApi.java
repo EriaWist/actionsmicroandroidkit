@@ -1,5 +1,7 @@
 package com.actionsmicro.androidkit.ezcast.imp.dlna;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
@@ -23,15 +25,22 @@ import org.fourthline.cling.support.avtransport.callback.Stop;
 import org.fourthline.cling.support.avtransport.lastchange.AVTransportLastChangeParser;
 import org.fourthline.cling.support.avtransport.lastchange.AVTransportVariable;
 import org.fourthline.cling.support.avtransport.lastchange.AVTransportVariable.CurrentMediaDuration;
+import org.fourthline.cling.support.contentdirectory.DIDLParser;
 import org.fourthline.cling.support.lastchange.LastChange;
+import org.fourthline.cling.support.model.DIDLContent;
 import org.fourthline.cling.support.model.MediaInfo;
 import org.fourthline.cling.support.model.PositionInfo;
+import org.fourthline.cling.support.model.Res;
 import org.fourthline.cling.support.model.SeekMode;
 import org.fourthline.cling.support.model.TransportState;
+import org.fourthline.cling.support.model.item.VideoItem;
 import org.fourthline.cling.support.renderingcontrol.callback.GetVolume;
 import org.fourthline.cling.support.renderingcontrol.callback.SetVolume;
+import org.seamless.util.MimeType;
 
+import android.content.ContentResolver;
 import android.content.Context;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
 
@@ -39,6 +48,7 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
+import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 
 public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 
@@ -49,6 +59,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 	private MediaPlayerStateListener mediaPlayerStateListener;
 	private HandlerThread timerThread;
 	private Handler timerHandler;
+	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 	
 	public DlnaMediaPlayerApi(MediaPlayerApiBuilder apiBuilder) {
 		super(apiBuilder);
@@ -150,7 +161,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 	public void disconnect() {
 		super.disconnect();
 		stopPeriodicalPoller();
-		
+		stopHttpFileServer();
 		if (avtransportSubscription != null) {
 			avtransportSubscription.end();
 			avtransportSubscription = null;
@@ -253,9 +264,12 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 	@Override
 	public boolean stop() {
 		if (avtransportService == null) return false;
-        UpnpService.getUpnpService().execute(new Stop(avtransportService) {
+		final SimpleContentUriHttpFileServer detachedFileServer = simpleHttpFileServer; // since it's asynchronous, we need to detach the file server first to prevent stop wrong file server.
+		simpleHttpFileServer = null;
+		UpnpService.getUpnpService().execute(new Stop(avtransportService) {
         	@Override
 			public void success(ActionInvocation invocation) {
+        		detachedFileServer.stop();
         		stopPeriodicalPoller();
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerDidStop(DlnaMediaPlayerApi.this);
@@ -264,17 +278,52 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
             @Override
             public void failure(ActionInvocation invocation, UpnpResponse response, String defaultMsg) {
             	Log.e(TAG, defaultMsg);
+            	detachedFileServer.stop();
             }
         });
         
 		return true;
 	}
-
+	private void stopHttpFileServer() {
+		if (simpleHttpFileServer != null) {
+			simpleHttpFileServer.stop();
+			simpleHttpFileServer = null;
+		}
+	}
 	@Override
 	public boolean play(Context context, String url, String userAgentString,
 			Long mediaContentLength, String title) throws Exception {
 		if (avtransportService == null) return false;
-		UpnpService.getUpnpService().execute(new SetAVTransportURI(avtransportService, url, null) {
+		
+		stopHttpFileServer();
+		Uri mediaUri = null;
+		try {
+			mediaUri = Uri.parse(url);
+			if (mediaUri.getScheme() == null) {
+				mediaUri = mediaUri.buildUpon().scheme("file").build();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			mediaUri = Uri.fromFile(new File(url));
+		}
+		String mediaUriString = url;
+		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
+				mediaUri.getScheme().equalsIgnoreCase("file")) {
+			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			try {
+				simpleHttpFileServer.start();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			mediaUriString = simpleHttpFileServer.getServerUrl();
+		}
+		Log.d(TAG+".SetAVTransportURI", "play: "+mediaUriString);
+		DIDLContent didl = new DIDLContent();
+		MimeType mimeType = new MimeType("video", "*");
+        didl.addItem(new VideoItem("1", "0", null, null, new Res(mimeType, 0l, null, null, mediaUriString)));
+		
+		String metadata = new DIDLParser().generate(didl);
+		UpnpService.getUpnpService().execute(new SetAVTransportURI(avtransportService, mediaUriString, metadata) {
 			@Override
 			public void failure(ActionInvocation invocation,
 					UpnpResponse response, String defaultMsg) {
