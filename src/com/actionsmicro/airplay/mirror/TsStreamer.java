@@ -109,7 +109,7 @@ public class TsStreamer {
 			});
 
 		} catch (Throwable t) {
-
+			t.printStackTrace();
 		}
 	}
 	private void releaseAvcEncoder() {
