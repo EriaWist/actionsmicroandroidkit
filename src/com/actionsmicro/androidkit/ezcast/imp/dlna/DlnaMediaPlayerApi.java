@@ -153,8 +153,6 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			
 		};
 		UpnpService.getUpnpService().execute(avtransportSubscription);
-//		LastChange das;
-//		SubscriptionCallback dsa;
 		super.connect();
 	}
 	@Override
@@ -317,6 +315,11 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			}
 			mediaUriString = simpleHttpFileServer.getServerUrl();
 		}
+		setAvTransportUri(mediaUriString);
+
+		return true;
+	}
+	private void setAvTransportUri(String mediaUriString) throws Exception {
 		Log.d(TAG+".SetAVTransportURI", "play: "+mediaUriString);
 		DIDLContent didl = new DIDLContent();
 		MimeType mimeType = new MimeType("video", "*");
@@ -339,8 +342,6 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 				getMediaInfo();
 			}
 		});
-
-		return true;
 	}
 	private void playImp() {
 		if (avtransportService == null) return;
@@ -431,14 +432,6 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			}
 			
 		});
-	}
-	private static int parseFormattedTimeString(String durationStr) {
-		String time[] = durationStr.split(":");
-		int duration = 0;
-		for (int i = 0; i < time.length ; i++) {
-			duration = duration * 60 + Integer.valueOf(time[i]);
-		}
-		return duration;
 	}
 
 }

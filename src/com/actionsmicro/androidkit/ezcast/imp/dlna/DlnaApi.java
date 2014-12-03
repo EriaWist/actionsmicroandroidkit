@@ -8,6 +8,15 @@ import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.androidkit.ezcast.helper.ReferenceCounter;
 
 public class DlnaApi extends TrackableApi implements Api {
+	protected static int parseFormattedTimeString(String durationStr) {
+		String time[] = durationStr.split(":");
+		int duration = 0;
+		for (int i = 0; i < time.length ; i++) {
+			duration = duration * 60 + Integer.valueOf(time[i]);
+		}
+		return duration;
+	}
+
 	private ApiBuilder<?> apiBuilder;
 
 	public DlnaApi(ApiBuilder<?> apiBuilder) {
