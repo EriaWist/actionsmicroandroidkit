@@ -16,6 +16,7 @@ public class AppInfo extends Record {
 	private String app_id;
 	private String package_id;
 	private String app_version;
+	private String sdk_version;
 	private String os_type = "android";
 	private String os_version;
 	private String manufacturer;
@@ -33,15 +34,16 @@ public class AppInfo extends Record {
 	private String language;
 	private String country;
 	private String time_zone;
-	public AppInfo(Context context, String appId, String appVersion, Point screenSize, Location location) {
+	public AppInfo(Context context, String appId, String appVersion, Point screenSize, Location location, String sdkVersion) {
 		super("app", "2014-10-24");
-		fill(context, appId, appVersion, screenSize, location);
+		fill(context, appId, appVersion, screenSize, location, sdkVersion);
 	}
 	private void fill(Context context, String appId, String appVersion,
-			Point screenSize, Location location) {
+			Point screenSize, Location location, String sdkVersion) {
 		package_id = context.getPackageName();
 		app_id = appId;
 		app_version = appVersion;
+		sdk_version = sdkVersion;
 		os_version = android.os.Build.VERSION.RELEASE;
 		manufacturer = android.os.Build.MANUFACTURER;
 		model = android.os.Build.MODEL;
@@ -57,10 +59,10 @@ public class AppInfo extends Record {
 		country = Locale.getDefault().getCountry();
 		time_zone = TimeZone.getDefault().getID();
 	}
-	public AppInfo(Context context, Location location)  {
+	public AppInfo(Context context, Location location, String sdkVersion)  {
 		super("app", "2014-10-24");
 		Point screenSize = new Point();
 		Screen.getResolution(context, screenSize);
-		fill(context, Device.getAppUniqueId(context), PackageUtils.getAppVersion(context), screenSize, location);
+		fill(context, Device.getAppUniqueId(context), PackageUtils.getAppVersion(context), screenSize, location, sdkVersion);
 	}
 }

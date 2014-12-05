@@ -41,7 +41,8 @@ public class AppInfoArchiverTest extends TestCase {
 			final String mockAppVersion = "1.1.499";			
 			final int mockResWidth = 1024;
 			final int mockResHeight = 768;
-			JSONObject jsonObject = new JSONObject(gson.toJson(new AppInfo(mockAndroidContext, mockMacAddress, mockAppVersion, new Point(mockResWidth, mockResHeight), mockLocation)));
+			final String mockSdkVersion = "2.1.3";
+			JSONObject jsonObject = new JSONObject(gson.toJson(new AppInfo(mockAndroidContext, mockMacAddress, mockAppVersion, new Point(mockResWidth, mockResHeight), mockLocation, mockSdkVersion)));
 			assertEquals("app", jsonObject.get("type"));			
 			assertEquals("2014-10-24", jsonObject.get("schema_version"));
 			assertTrue(jsonObject.has("app_id"));
@@ -49,6 +50,8 @@ public class AppInfoArchiverTest extends TestCase {
 			assertEquals(packageName, jsonObject.get("package_id"));			
 			assertTrue(jsonObject.has("app_version"));
 			assertEquals(mockAppVersion, jsonObject.get("app_version"));
+			assertTrue(jsonObject.has("sdk_version"));
+			assertEquals(mockSdkVersion, jsonObject.get("sdk_version"));
 			assertEquals("android", jsonObject.get("os_type"));
 			assertTrue(jsonObject.has("os_version"));
 			assertTrue(jsonObject.has("manufacturer"));

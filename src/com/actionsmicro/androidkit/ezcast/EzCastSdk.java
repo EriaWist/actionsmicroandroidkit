@@ -53,6 +53,7 @@ import com.koushikdutta.async.http.AsyncHttpResponse;
  * @since 2.1
  */
 public class EzCastSdk {
+	private static final String SDK_VERSION_STRING = "{SDK_VERSION_STRING}";
 	private static final String PREF_KEY_SUPPORT_LIST = "support_list";
 	private static final String PREF_NAME_EZCAST_SDK = "ezcastsdk";
 	private static final int INITIALIZATION_TIMEOUT_MS = 3000;
@@ -191,7 +192,7 @@ public class EzCastSdk {
 			final InitializationListener listener) {
 		long expire = System.currentTimeMillis() * 1000 + 60 + 90;
 		try {
-			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.iezvu.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire));
+			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.iezvu.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1&o=android&v="+SDK_VERSION_STRING);
 			getSupportList.setTimeout(INITIALIZATION_TIMEOUT_MS);
 			initTask = AsyncHttpClient.getDefaultInstance().executeJSONObject(getSupportList, new JSONObjectCallback() {
 
@@ -269,63 +270,68 @@ public class EzCastSdk {
 			
 			@Override
 			public void run() {
-				Looper.prepare();
-				boolean hasPermissionToGetLocation = true;
-				String networkProvider = LocationManager.NETWORK_PROVIDER;
-
-				LocationManager locationManager = (LocationManager)context.getSystemService(Context.LOCATION_SERVICE);
 				try {
-					Log.d(TAG, "requestSingleUpdate");
-					locationManager.requestSingleUpdate(networkProvider, new LocationListener() {
+					Looper.prepare();
+					boolean hasPermissionToGetLocation = true;
+					String networkProvider = LocationManager.NETWORK_PROVIDER;
 
-						@Override
-						public void onLocationChanged(Location location) {
-							Log.d(TAG, "onLocationChanged");
-							fetchedlocation = location;
-							timout.cancel();
-							Looper.myLooper().quit();
-						}
+					LocationManager locationManager = (LocationManager)context.getSystemService(Context.LOCATION_SERVICE);
+					try {
+						Log.d(TAG, "requestSingleUpdate");
+						locationManager.requestSingleUpdate(networkProvider, new LocationListener() {
 
-						@Override
-						public void onProviderDisabled(String provider) {
-							Log.d(TAG, "onProviderDisabled");
-						}
-
-						@Override
-						public void onProviderEnabled(String provider) {
-							Log.d(TAG, "onProviderEnabled");
-
-						}
-
-						@Override
-						public void onStatusChanged(String provider, int status,
-								Bundle extras) {
-							Log.d(TAG, "onStatusChanged:"+status);				
-						}
-
-					}, null);
-				} catch (SecurityException e) {
-					Log.d(TAG, e.getLocalizedMessage());
-					hasPermissionToGetLocation = false;
-				} catch (IllegalArgumentException e) {
-					Log.d(TAG, e.getLocalizedMessage());
-					hasPermissionToGetLocation = false;					
-				}
-				if (hasPermissionToGetLocation) {
-					fetchedlocation = locationManager.getLastKnownLocation(networkProvider);
-					timout.schedule(new TimerTask() {
-
-						@Override
-						public void run() {
-							if (Looper.myLooper() != null) {
+							@Override
+							public void onLocationChanged(Location location) {
+								Log.d(TAG, "onLocationChanged");
+								fetchedlocation = location;
+								timout.cancel();
 								Looper.myLooper().quit();
 							}
-						}
 
-					}, LOCATION_TIMEOUT_MS);
-					Looper.loop();
+							@Override
+							public void onProviderDisabled(String provider) {
+								Log.d(TAG, "onProviderDisabled");
+							}
+
+							@Override
+							public void onProviderEnabled(String provider) {
+								Log.d(TAG, "onProviderEnabled");
+
+							}
+
+							@Override
+							public void onStatusChanged(String provider, int status,
+									Bundle extras) {
+								Log.d(TAG, "onStatusChanged:"+status);				
+							}
+
+						}, null);
+					} catch (SecurityException e) {
+						Log.d(TAG, e.getLocalizedMessage());
+						hasPermissionToGetLocation = false;
+					} catch (IllegalArgumentException e) {
+						Log.d(TAG, e.getLocalizedMessage());
+						hasPermissionToGetLocation = false;					
+					}
+					if (hasPermissionToGetLocation) {
+						fetchedlocation = locationManager.getLastKnownLocation(networkProvider);
+						timout.schedule(new TimerTask() {
+
+							@Override
+							public void run() {
+								if (Looper.myLooper() != null) {
+									Looper.myLooper().quit();
+								}
+							}
+
+						}, LOCATION_TIMEOUT_MS);
+						Looper.loop();
+					}
+				} catch (Throwable t) {
+					Log.e(TAG, t.getLocalizedMessage());					
+				} finally {
+					tracker.log(new AppInfo(context, fetchedlocation, SDK_VERSION_STRING));
 				}
-		        tracker.log(new AppInfo(context, fetchedlocation));
 			}
 		}.start();
 		
