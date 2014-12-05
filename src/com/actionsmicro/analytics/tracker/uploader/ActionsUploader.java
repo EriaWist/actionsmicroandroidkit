@@ -108,7 +108,7 @@ public class ActionsUploader implements Uploader {
 		} catch (JSONException e1) {
 		}
 		try {
-			AsyncHttpPost post = new AsyncHttpPost(BASE_URL+PATH_UPLOAD_LOG+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire));
+			AsyncHttpPost post = new AsyncHttpPost(BASE_URL+PATH_UPLOAD_LOG+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1");
 			post.setTimeout(10000);
 			post.setBody(new StringBody(jsonBody));
 			if (isArray) {
