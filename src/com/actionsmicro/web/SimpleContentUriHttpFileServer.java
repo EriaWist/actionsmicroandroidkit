@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 import android.content.ContentResolver;
@@ -17,8 +16,10 @@ import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.provider.OpenableColumns;
+import android.webkit.MimeTypeMap;
 
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Utils;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -195,44 +196,12 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
     }
 	public static final String MIME_DEFAULT_BINARY = "application/octet-stream";
     
-	/**
-     * Hashtable mapping (String)FILENAME_EXTENSION -> (String)MIME_TYPE
-     */
-    private static final Map<String, String> MIME_TYPES = new HashMap<String, String>() {{
-        put("css", "text/css");
-        put("htm", "text/html");
-        put("html", "text/html");
-        put("xml", "text/xml");
-        put("java", "text/x-java-source, text/java");
-        put("md", "text/plain");
-        put("txt", "text/plain");
-        put("asc", "text/plain");
-        put("gif", "image/gif");
-        put("jpg", "image/jpeg");
-        put("jpeg", "image/jpeg");
-        put("png", "image/png");
-        put("mp3", "audio/mpeg");
-        put("m3u", "audio/mpeg-url");
-        put("mp4", "video/mp4");
-        put("ogv", "video/ogg");
-        put("flv", "video/x-flv");
-        put("mov", "video/quicktime");
-        put("swf", "application/x-shockwave-flash");
-        put("js", "application/javascript");
-        put("pdf", "application/pdf");
-        put("doc", "application/msword");
-        put("ogg", "application/x-ogg");
-        put("zip", "application/octet-stream");
-        put("exe", "application/octet-stream");
-        put("class", "application/octet-stream");
-        put("avi", "video/x-msvideo");
-    }};
 	public static String getMimeTypeForFile(String uri) {
-        int dot = uri.lastIndexOf('.');
-        String mime = null;
-        if (dot >= 0) {
-            mime = MIME_TYPES.get(uri.substring(dot + 1).toLowerCase());
+        String ext = Utils.getFileExtension(uri);
+        String mime = MIME_DEFAULT_BINARY;
+        if (ext != null) {
+        	mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
         }
-        return mime == null ? MIME_DEFAULT_BINARY : mime;
+        return mime;
     }
 }
