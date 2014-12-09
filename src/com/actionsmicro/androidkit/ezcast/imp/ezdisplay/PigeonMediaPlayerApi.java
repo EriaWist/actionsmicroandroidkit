@@ -2,6 +2,7 @@ package com.actionsmicro.androidkit.ezcast.imp.ezdisplay;
 
 import java.io.File;
 import java.io.InputStream;
+import java.net.URLDecoder;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -13,7 +14,6 @@ import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
 import com.actionsmicro.pigeon.MediaStreamingContentUriDataSource;
-import com.actionsmicro.pigeon.MediaStreamingFileBaseDataSource;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.pigeon.MediaStreamingHttpDataSource;
 import com.actionsmicro.pigeon.MediaStreamingStateListener;
@@ -42,10 +42,17 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 	@Override
 	public void uploadSubtitle(InputStream is, String fileType)
 			throws Exception {
+		String serverAddress;
+		String webroot = projectorInfo.getParameter("webroot");
+		if (webroot != null && !webroot.isEmpty()) {
+			serverAddress = URLDecoder.decode(webroot, "UTF-8");
+		} else {
+			serverAddress = "http://" + pigeonClient.getServerAddress();
+		}
 		Utils.uploadInputStreamToServer(
 				is, 
 				"ezsubtitle" + fileType,
-				pigeonClient.getServerAddress(), "/cgi-bin/upload.cgi");
+				serverAddress, "cgi-bin/upload.cgi");
 	}
 	@Override
 	public State getState() {

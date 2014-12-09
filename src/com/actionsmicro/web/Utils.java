@@ -21,7 +21,7 @@ public class Utils {
 	public static HttpResponse uploadInputStreamToServer(InputStream source, String fileName, String server, String dir) throws IOException {
 		HttpResponse response = null;
 		try {
-			URI dest = new URI("http://"+server + dir);
+			URI dest = new URI(server + dir);
 			final HttpParams httpParams = new BasicHttpParams();
 		    HttpConnectionParams.setConnectionTimeout(httpParams, 1000);
 		    HttpConnectionParams.setSoTimeout(httpParams, 1000);
