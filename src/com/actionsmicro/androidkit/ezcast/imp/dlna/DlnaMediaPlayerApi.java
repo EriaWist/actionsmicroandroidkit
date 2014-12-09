@@ -33,6 +33,8 @@ import org.fourthline.cling.support.model.PositionInfo;
 import org.fourthline.cling.support.model.Res;
 import org.fourthline.cling.support.model.SeekMode;
 import org.fourthline.cling.support.model.TransportState;
+import org.fourthline.cling.support.model.TransportStatus;
+import org.fourthline.cling.support.model.item.AudioItem;
 import org.fourthline.cling.support.model.item.VideoItem;
 import org.fourthline.cling.support.renderingcontrol.callback.GetVolume;
 import org.fourthline.cling.support.renderingcontrol.callback.SetVolume;
@@ -46,6 +48,7 @@ import android.os.HandlerThread;
 
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
+import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
@@ -95,7 +98,6 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 					try {
 						LastChange lastChange = new LastChange(new AVTransportLastChangeParser(), values.get("LastChange").toString());
 						updateStateIfNeeded(lastChange);
-						updateDurationIfNeeded(lastChange);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -117,20 +119,34 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 
 
 			private void updateStateIfNeeded(LastChange lastChange) {
-				org.fourthline.cling.support.avtransport.lastchange.AVTransportVariable.TransportState eventedValue = lastChange.getEventedValue(0, AVTransportVariable.TransportState.class);
-				if (eventedValue == null) return;
-				TransportState transportState = eventedValue.getValue();
+				org.fourthline.cling.support.avtransport.lastchange.AVTransportVariable.TransportState stateValue = lastChange.getEventedValue(0, AVTransportVariable.TransportState.class);
+				if (stateValue == null) return;
+				TransportState transportState = stateValue.getValue();
+				org.fourthline.cling.support.avtransport.lastchange.AVTransportVariable.TransportStatus statusValue = lastChange.getEventedValue(0, AVTransportVariable.TransportStatus.class);
+				
 				if (transportState != null) {
 					Log.d(TAG+".SubscriptionCallback", "transportState:"+transportState);
 					if (TransportState.PLAYING == transportState) {
 						state = State.PLAYING;
 						startPeriodicalPoller();
 						getMediaInfo();
+						if (mediaPlayerStateListener != null) {
+							mediaPlayerStateListener.mediaPlayerDidStart(DlnaMediaPlayerApi.this);
+						}
 					} else if (TransportState.PAUSED_PLAYBACK == transportState) {
 						state = State.PAUSED;
 					} else if (TransportState.STOPPED == transportState) {
 						state = State.STOPPED;
 						stopPeriodicalPoller();
+						if (statusValue != null) {
+							TransportStatus transportStatus = statusValue.getValue();
+							if (transportStatus != null && transportStatus.getValue().equals("ERROR_OCCURRED")) {
+								if (mediaPlayerStateListener != null) {
+									// TODO mapping error
+									mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC);
+								}
+							}
+						}
 						if (mediaPlayerStateListener != null) {
 							mediaPlayerStateListener.mediaPlayerDidStop(DlnaMediaPlayerApi.this);
 						}
@@ -305,6 +321,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			mediaUri = Uri.fromFile(new File(url));
 		}
 		String mediaUriString = url;
+		boolean isAudio = false;
 		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
 				mediaUri.getScheme().equalsIgnoreCase("file")) {
 			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
@@ -313,24 +330,37 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			String mimeType = simpleHttpFileServer.getMimeType();
+			if ((mimeType != null && mimeType.startsWith("audio")) || 
+					MediaStreamingFileDataSource.isAudioFileExt(Utils.getFileExtension(mediaUriString.toString()))) {
+				isAudio = true;
+			}
 			mediaUriString = simpleHttpFileServer.getServerUrl();
 		}
-		setAvTransportUri(mediaUriString);
+		setAvTransportUri(mediaUriString, title, isAudio);
 
 		return true;
 	}
-	private void setAvTransportUri(String mediaUriString) throws Exception {
+	private void setAvTransportUri(String mediaUriString, String title, boolean isAudio) throws Exception {
 		Log.d(TAG+".SetAVTransportURI", "play: "+mediaUriString);
 		DIDLContent didl = new DIDLContent();
-		MimeType mimeType = new MimeType("video", "*");
-        didl.addItem(new VideoItem("1", "0", null, null, new Res(mimeType, 0l, null, null, mediaUriString)));
-		
+		if (isAudio)  {
+			MimeType mimeType = new MimeType("audio", "*");			
+			didl.addItem(new AudioItem("1", "0", title, null, new Res(mimeType, 0l, null, null, mediaUriString)));			
+		} else {
+			MimeType mimeType = new MimeType("video", "*");			
+			didl.addItem(new VideoItem("1", "0", null, null, new Res(mimeType, 0l, null, null, mediaUriString)));
+		}
 		String metadata = new DIDLParser().generate(didl);
 		UpnpService.getUpnpService().execute(new SetAVTransportURI(avtransportService, mediaUriString, metadata) {
 			@Override
 			public void failure(ActionInvocation invocation,
 					UpnpResponse response, String defaultMsg) {
 				Log.e(TAG+".SetAVTransportURI", defaultMsg);
+				if (mediaPlayerStateListener != null) {
+					// TODO mapping error
+					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC);
+				}
 			}
 			@Override
 			public void success(ActionInvocation invocation) {
@@ -339,7 +369,6 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 					mediaPlayerStateListener.mediaPlayerDidStart(DlnaMediaPlayerApi.this);
 				}
 				playImp();
-				getMediaInfo();
 			}
 		});
 	}
