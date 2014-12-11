@@ -137,7 +137,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
                     
                     
                     res = createResponse(Response.Status.PARTIAL_CONTENT, mime, in);
-                    res.addHeader("Content-Length", "" + fileLen);
+                    res.addHeader("Content-Length", "" + dataLen);
                     res.addHeader("Content-Range", "bytes " + startFrom + "-" + endAt + "/" + fileLen);
 //                    res.addHeader("ETag", etag);
                 }
