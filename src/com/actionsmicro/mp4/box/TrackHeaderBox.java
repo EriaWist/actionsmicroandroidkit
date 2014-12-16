@@ -7,12 +7,13 @@ public class TrackHeaderBox extends FullBox {
 	private int creationTime;
 	private int modificationTime;
 	private int trackId;
+	private int reserved = 0;
 	private int duration;
-	private int reserved[] = {0, 0};
+	private int reserved2[] = {0, 0};
 	private short layer = 0;
 	private short alternateGroup = 0;
 	private short volume = 0;
-	private short reserved2 = 0;
+	private short reserved3 = 0;
 	private int matrix[] = { 0x00010000,0,0,0,0x00010000,0,0,0,0x40000000 };
 	private int width;
 	private int height;
@@ -33,14 +34,15 @@ public class TrackHeaderBox extends FullBox {
 		byteBuffer.putInt(creationTime);
 		byteBuffer.putInt(modificationTime);
 		byteBuffer.putInt(trackId);
+		byteBuffer.putInt(reserved);
 		byteBuffer.putInt(duration);
-		for (int r : reserved) {
+		for (int r : reserved2) {
 			byteBuffer.putInt(r);
 		}
 		byteBuffer.putShort(layer);
 		byteBuffer.putShort(alternateGroup);
 		byteBuffer.putShort(volume);
-		byteBuffer.putShort(reserved2);
+		byteBuffer.putShort(reserved3);
 		for (int m : matrix) {
 			byteBuffer.putInt(m);
 		}
@@ -49,6 +51,6 @@ public class TrackHeaderBox extends FullBox {
 	}
 	@Override
 	protected int getBodySize() {
-		return super.getBodySize() + 4 + 4 + 4 + 4 + 2*4 + 2 + 2 + 2 + 2 + 9*4 + 4 + 4;
+		return super.getBodySize() + 4 + 4 + 4 + 4 + 4 + 2*4 + 2 + 2 + 2 + 2 + 9*4 + 4 + 4;
 	}
 }
