@@ -20,5 +20,8 @@ public class FullBox extends Box {
 	protected int getBodySize() {
 		return 4;
 	}
+	public int getFlags() {
+		return versionAndFlags & 0x00FFFFFF;
+	}
 	
 }

@@ -3,9 +3,9 @@ package com.actionsmicro.mp4.box;
 import java.nio.ByteBuffer;
 
 public class MPEG4BitRateBox extends Box {
-	private int bufferSizeDB; // 0x000294E3
-	private int maxBitrate; // 0x00AFFEC8
-	private int avgBitrate; // 0x0025C4F8
+	private int bufferSizeDB = 0x000294E3;
+	private int maxBitrate = 0x00AFFEC8;
+	private int avgBitrate = 0x0025C4F8;
 	public MPEG4BitRateBox() {
 		super(FourCharCode("btrt"));
 		

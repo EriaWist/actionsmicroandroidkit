@@ -4,7 +4,11 @@ import java.nio.ByteBuffer;
 
 public class SampleEntry extends Box {
 	private byte reserved[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-	private short dataReferenceIndex;
+
+	// data_reference_index is an integer that contains the index of the data reference to use to retrieve
+	// data associated with samples that use this sample description. Data references are stored in Data
+	// Reference Boxes. The index ranges from 1 to the number of data references
+	private short dataReferenceIndex; 
 	public SampleEntry(int type, short dataReferenceIndex) {
 		super(type);
 		this.dataReferenceIndex = dataReferenceIndex;
