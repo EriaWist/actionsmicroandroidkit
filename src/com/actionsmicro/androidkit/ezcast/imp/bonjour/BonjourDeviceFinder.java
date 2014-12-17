@@ -17,10 +17,14 @@ import android.net.wifi.WifiManager.MulticastLock;
 import com.actionsmicro.androidkit.ezcast.DeviceFinder;
 import com.actionsmicro.androidkit.ezcast.DeviceFinderBase;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
+import com.actionsmicro.bonjour.NetworkTopologyDiscoveryHelper;
 import com.actionsmicro.utils.Log;
 
 public abstract class BonjourDeviceFinder<T extends BonjourDeviceInfo> extends DeviceFinderBase {
 
+	static {
+		NetworkTopologyDiscoveryHelper.init();
+	}
 	private static final String TAG = "BonjourDeviceFinder";
 	private List<T> devices = new ArrayList<T>();
 	private boolean searching;
