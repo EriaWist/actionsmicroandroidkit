@@ -17,6 +17,8 @@ public class VisualSampleEntry extends SampleEntry {
 	private short preDefined3 = -1;
 	public VisualSampleEntry(int type, short dataReferenceIndex, short width, short height) {
 		super(type, dataReferenceIndex);
+		this.width = width;
+		this.height = height;
 		
 	}
 	@Override
