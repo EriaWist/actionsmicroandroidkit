@@ -5,14 +5,13 @@ import com.koushikdutta.async.DataEmitter;
 import com.koushikdutta.async.DataSink;
 import com.koushikdutta.async.LineEmitter;
 import com.koushikdutta.async.LineEmitter.StringCallback;
-import com.koushikdutta.async.NullDataCallback;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.callback.ContinuationCallback;
 import com.koushikdutta.async.callback.DataCallback;
 import com.koushikdutta.async.future.Continuation;
 import com.koushikdutta.async.http.AsyncHttpRequest;
+import com.koushikdutta.async.http.Headers;
 import com.koushikdutta.async.http.Multimap;
-import com.koushikdutta.async.http.libcore.RawHeaders;
 import com.koushikdutta.async.http.server.BoundaryEmitter;
 
 import java.io.File;
@@ -21,7 +20,7 @@ import java.util.UUID;
 
 public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpRequestBody<Multimap> {
     LineEmitter liner;
-    RawHeaders formData;
+    Headers formData;
     ByteBufferList last;
     String lastName;
 
@@ -40,7 +39,7 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
             return;
         
         if (formData == null)
-            formData = new RawHeaders();
+            formData = new Headers();
         
         formData.add(lastName, last.peekString());
         
@@ -62,7 +61,7 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
     
     @Override
     protected void onBoundaryStart() {
-        final RawHeaders headers = new RawHeaders();
+        final Headers headers = new Headers();
         liner = new LineEmitter();
         liner.setLineCallback(new StringCallback() {
             @Override
@@ -100,7 +99,8 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
     }
 
     public static final String CONTENT_TYPE = "multipart/form-data";
-    public MultipartFormDataBody(String contentType, String[] values) {
+    String contentType = CONTENT_TYPE;
+    public MultipartFormDataBody(String[] values) {
         for (String value: values) {
             String[] splits = value.split("=");
             if (splits.length != 2)
@@ -125,11 +125,9 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
     int written;
     @Override
     public void write(AsyncHttpRequest request, final DataSink sink, final CompletedCallback completed) {
-        if (mParts == null) {
-            sink.end();
+        if (mParts == null)
             return;
-        }
-        
+
         Continuation c = new Continuation(new CompletedCallback() {
             @Override
             public void onCompleted(Exception ex) {
@@ -145,8 +143,7 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
             c.add(new ContinuationCallback() {
                 @Override
                 public void onContinue(Continuation continuation, CompletedCallback next) throws Exception {
-                    part.getRawHeaders().setStatusLine(getBoundaryStart());
-                    byte[] bytes = part.getRawHeaders().toHeaderString().getBytes();
+                    byte[] bytes = part.getRawHeaders().toPrefixString(getBoundaryStart()).getBytes();
                     com.koushikdutta.async.Util.writeAll(sink, bytes, next);
                     written += bytes.length;
                 }
@@ -154,7 +151,9 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
             .add(new ContinuationCallback() {
                 @Override
                 public void onContinue(Continuation continuation, CompletedCallback next) throws Exception {
-                    written += part.length();
+                    long partLength = part.length();
+                    if (partLength >= 0)
+                        written += partLength;
                     part.write(sink, next);
                 }
             })
@@ -202,10 +201,10 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
 
         int length = 0;
         for (final Part part: mParts) {
-            part.getRawHeaders().setStatusLine(getBoundaryStart());
+            String partHeader = part.getRawHeaders().toPrefixString(getBoundaryStart());
             if (part.length() == -1)
                 return -1;
-            length += part.length() + part.getRawHeaders().toHeaderString().getBytes().length + "\r\n".length();
+            length += part.length() + partHeader.getBytes().length + "\r\n".length();
         }
         length += (getBoundaryEnd()).getBytes().length;
         return totalToWrite = length;
@@ -213,7 +212,11 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
     
     public MultipartFormDataBody() {
     }
-    
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
+    }
+
     public void addFilePart(String name, File file) {
         addPart(new FilePart(name, file));
     }
@@ -231,6 +234,6 @@ public class MultipartFormDataBody extends BoundaryEmitter implements AsyncHttpR
 
     @Override
     public Multimap get() {
-        return new Multimap(formData);
+        return new Multimap(formData.getMultiMap());
     }
 }

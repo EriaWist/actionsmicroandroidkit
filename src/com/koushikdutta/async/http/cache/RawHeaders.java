@@ -1,4 +1,4 @@
-package com.koushikdutta.async.http.libcore;
+package com.koushikdutta.async.http.cache;
 
 /*
  *  Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,6 +16,8 @@ package com.koushikdutta.async.http.libcore;
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import android.text.TextUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,7 +44,7 @@ import java.util.TreeMap;
  * <p>This class trims whitespace from values. It never returns values with
  * leading or trailing whitespace.
  */
-public final class RawHeaders {
+final class RawHeaders {
     private static final Comparator<String> FIELD_NAME_COMPARATOR = new Comparator<String>() {
         @Override public int compare(String a, String b) {
             if (a == b) {
@@ -296,5 +298,22 @@ public final class RawHeaders {
             }
         }
         return result;
+    }
+
+    public static RawHeaders parse(String payload) {
+        String[] lines = payload.split("\n");
+
+        RawHeaders headers = new RawHeaders();
+        for (String line: lines) {
+            line = line.trim();
+            if (TextUtils.isEmpty(line))
+                continue;
+
+            if (headers.getStatusLine() == null)
+                headers.setStatusLine(line);
+            else
+                headers.addLine(line);
+        }
+        return headers;
     }
 }

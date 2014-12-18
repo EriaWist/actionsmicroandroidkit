@@ -1,15 +1,20 @@
 package com.koushikdutta.async;
 
+import android.annotation.TargetApi;
+import android.os.Build;
 import android.os.Looper;
 
-import java.nio.Buffer;
+import com.koushikdutta.async.util.Charsets;
+
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
+import java.nio.charset.Charset;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.PriorityQueue;
 
+@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 public class ByteBufferList {
     ArrayDeque<ByteBuffer> mBuffers = new ArrayDeque<ByteBuffer>();
     
@@ -36,17 +41,33 @@ public class ByteBufferList {
         add(b);
     }
 
-    public void addAll(ByteBuffer... bb) {
+    public ByteBufferList addAll(ByteBuffer... bb) {
         for (ByteBuffer b: bb)
             add(b);
+        return this;
+    }
+
+    public ByteBufferList addAll(ByteBufferList... bb) {
+        for (ByteBufferList b: bb)
+            b.get(this);
+        return this;
+    }
+
+    public byte[] getBytes(int length) {
+        byte[] ret = new byte[length];
+        get(ret);
+        return ret;
     }
 
     public byte[] getAllByteArray() {
         // fast path to return the contents of the first and only byte buffer,
         // if that's what we're looking for. avoids allocation.
-        if (mBuffers.size() == 1 && mBuffers.peek().capacity() == remaining()) {
-            remaining = 0;
-            return mBuffers.remove().array();
+        if (mBuffers.size() == 1) {
+            ByteBuffer peek = mBuffers.peek();
+            if (peek.capacity() == remaining() && peek.isDirect()) {
+                remaining = 0;
+                return mBuffers.remove().array();
+            }
         }
 
         byte[] ret = new byte[remaining()];
@@ -75,7 +96,30 @@ public class ByteBufferList {
     public boolean hasRemaining() {
         return remaining() > 0;
     }
-    
+
+    public short peekShort() {
+        return read(2).duplicate().getShort();
+    }
+
+    public int peekInt() {
+        return read(4).duplicate().getInt();
+    }
+
+    public long peekLong() {
+        return read(8).duplicate().getLong();
+    }
+
+    public byte[] peekBytes(int size) {
+        byte[] ret = new byte[size];
+        read(size).duplicate().get(ret);
+        return ret;
+    }
+
+    public ByteBufferList skip(int length) {
+        get(null, 0, length);
+        return this;
+    }
+
     public int getInt() {
         int ret = read(4).getInt();
         remaining -= 4;
@@ -88,8 +132,8 @@ public class ByteBufferList {
         return ret;
     }
     
-    public int getShort() {
-        int ret = read(2).getShort();
+    public short getShort() {
+        short ret = read(2).getShort();
         remaining -= 2;
         return ret;
     }
@@ -118,7 +162,8 @@ public class ByteBufferList {
         while (need > 0) {
             ByteBuffer b = mBuffers.peek();
             int read = Math.min(b.remaining(), need);
-            b.get(bytes, offset, read);
+            if (bytes != null)
+                b.get(bytes, offset, read);
             need -= read;
             offset += read;
             if (b.remaining() == 0) {
@@ -203,46 +248,7 @@ public class ByteBufferList {
             return first.order(order);
         }
 
-        ByteBuffer ret = null;
-        int retOffset = 0;
-        int allocSize = 0;
-
-        // attempt to find a buffer that can fit this, and the necessary
-        // alloc size to not leave anything leftover in the final buffer.
-        for (ByteBuffer b: mBuffers) {
-            if (allocSize >= count)
-                break;
-            // see if this fits...
-            if ((ret == null || b.capacity() > ret.capacity()) && b.capacity() >= count) {
-                ret = b;
-                retOffset = allocSize;
-            }
-            allocSize += b.remaining();
-        }
-
-        if (ret != null && ret.capacity() > allocSize) {
-            // move the current contents of the target bytebuffer around to its final position
-            System.arraycopy(ret.array(), ret.arrayOffset() + ret.position(), ret.array(), ret.arrayOffset() + retOffset, ret.remaining());
-            int retRemaining = ret.remaining();
-            ret.position(0);
-            ret.limit(allocSize);
-            allocSize = 0;
-            while (allocSize < count) {
-                ByteBuffer b = mBuffers.remove();
-                if (b != ret) {
-                    System.arraycopy(b.array(), b.arrayOffset() + b.position(), ret.array(), ret.arrayOffset() + allocSize, b.remaining());
-                    allocSize += b.remaining();
-                    reclaim(b);
-                }
-                else {
-                    allocSize += retRemaining;
-                }
-            }
-            mBuffers.addFirst(ret);
-            return ret.order(order);
-        }
-
-        ret = obtain(count);
+        ByteBuffer ret = obtain(count);
         ret.limit(count);
         byte[] bytes = ret.array();
         int offset = 0;
@@ -269,12 +275,17 @@ public class ByteBufferList {
         // this clears out buffers that are empty in the beginning of the list
         read(0);
     }
-    
-    public void add(ByteBuffer b) {
+
+    public ByteBufferList add(ByteBufferList b) {
+        b.get(this);
+        return this;
+    }
+
+    public ByteBufferList add(ByteBuffer b) {
         if (b.remaining() <= 0) {
 //            System.out.println("reclaiming remaining: " + b.remaining());
             reclaim(b);
-            return;
+            return this;
         }
         addRemaining(b.remaining());
         // see if we can fit the entirety of the buffer into the end
@@ -290,11 +301,12 @@ public class ByteBufferList {
                 last.reset();
                 reclaim(b);
                 trim();
-                return;
+                return this;
             }
         }
         mBuffers.add(b);
         trim();
+        return this;
     }
 
     public void addFirst(ByteBuffer b) {
@@ -346,24 +358,43 @@ public class ByteBufferList {
         System.out.println(peekString());
     }
 
-    // not doing toString as this is really nasty in the debugger...
     public String peekString() {
+        return peekString(null);
+    }
+
+    // not doing toString as this is really nasty in the debugger...
+    public String peekString(Charset charset) {
+        if (charset == null)
+            charset = Charsets.US_ASCII;
         StringBuilder builder = new StringBuilder();
         for (ByteBuffer bb: mBuffers) {
-            builder.append(new String(bb.array(), bb.arrayOffset() + bb.position(), bb.remaining()));
+            byte[] bytes;
+            int offset;
+            int length;
+            if (bb.isDirect()) {
+                bytes = new byte[bb.remaining()];
+                offset = 0;
+                length = bb.remaining();
+                bb.get(bytes);
+            }
+            else {
+                bytes = bb.array();
+                offset = bb.arrayOffset() + bb.position();
+                length = bb.remaining();
+            }
+            builder.append(new String(bytes, offset, length, charset));
         }
         return builder.toString();
     }
 
     public String readString() {
-        StringBuilder builder = new StringBuilder();
-        while (mBuffers.size() > 0) {
-            ByteBuffer bb = mBuffers.remove();
-            builder.append(new String(bb.array(), bb.arrayOffset() + bb.position(), bb.remaining()));
-            reclaim(bb);
-        }
-        remaining = 0;
-        return builder.toString();
+        return readString(null);
+    }
+
+    public String readString(Charset charset) {
+        String ret = peekString(charset);
+        recycle();
+        return ret;
     }
 
     static class Reclaimer implements Comparator<ByteBuffer> {
@@ -387,7 +418,7 @@ public class ByteBufferList {
     }
 
     private static int MAX_SIZE = 1024 * 1024;
-    private static int MAX_ITEM_SIZE = 1024 * 256;
+    public static int MAX_ITEM_SIZE = 1024 * 256;
     static int currentSize = 0;
     static int maxItem = 0;
 
@@ -503,4 +534,22 @@ public class ByteBufferList {
     }
 
     public static final ByteBuffer EMPTY_BYTEBUFFER = ByteBuffer.allocate(0);
+
+    public static void writeOutputStream(OutputStream out, ByteBuffer b) throws IOException {
+        byte[] bytes;
+        int offset;
+        int length;
+        if (b.isDirect()) {
+            bytes = new byte[b.remaining()];
+            offset = 0;
+            length = b.remaining();
+            b.get(bytes);
+        }
+        else {
+            bytes = b.array();
+            offset = b.arrayOffset() + b.position();
+            length = b.remaining();
+        }
+        out.write(bytes, offset, length);
+    }
 }
