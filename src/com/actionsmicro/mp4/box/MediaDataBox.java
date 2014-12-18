@@ -33,4 +33,7 @@ public class MediaDataBox extends Box {
 	protected int getBodySize() {
 		return super.getBodySize() + buffer.toByteArray().length;
 	}
+	public int getDataSize() {
+		return buffer.toByteArray().length;
+	}
 }
