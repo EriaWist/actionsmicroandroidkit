@@ -88,4 +88,96 @@ public class FragmentedMP4Serializer {
 		MediaBox mdia = new MediaBox();
 		trak.addChild(mdia);
 		mdia.addChild(new MediaHeaderBox(now, now, 0x0000BB80, 0));
-		mdia.addChild(new HandlerBox(Box.FourCharCode("vide"), "VideoHandler
+		mdia.addChild(new HandlerBox(Box.FourCharCode("vide"), "VideoHandler"));
+		
+		MediaInformationBox minf = new MediaInformationBox();
+		mdia.addChild(minf);
+		minf.addChild(new VideoMediaHeaderBox());
+		DataInformationBox dinf = new DataInformationBox();
+		minf.addChild(dinf);
+		DataReferenceBox dref = new DataReferenceBox();
+		dinf.addChild(dref);
+		dref.addDataEntry(new DataEntryUrlBox());
+		SampleTableBox stbl = new SampleTableBox();
+		minf.addChild(stbl);
+		SampleDescriptionBox stsd = new SampleDescriptionBox();
+		stbl.addChild(stsd);
+		AvcSampleEntry avc1 = new AvcSampleEntry((short) 1, (short)width, (short)height,
+				avcProfileIndication, profileCompatibility, avcLevelIndication, sps, ps);
+		stsd.addSampleEntry(avc1);
+		
+		stbl.addChild(new TimeToSampleBox());
+		stbl.addChild(new SampleToChunkBox());
+		stbl.addChild(new SampleSizeBox());
+		stbl.addChild(new ChunkOffsetBox());
+		
+		return moov;
+	}
+	private long currentOffset;
+	private TrackRunBox trun;
+	private MediaDataBox mdat;
+	private TrackFragmentBox traf;
+	private void finalizeFragment() {
+		long baseDataOffset = currentOffset + moof.getBoxSize();
+		if (tfhd != null) {
+			tfhd.setBaseDataOffset(baseDataOffset+8); //8 bytes box header (length + fourcc) 
+		}
+		currentOffset += moof.getBoxSize() + mdat.getBoxSize();
+		if (outputListener != null) {
+			ByteBuffer buffer = ByteBuffer.allocate(moof.getBoxSize() + mdat.getBoxSize());
+			moof.write(buffer);
+			mdat.write(buffer);
+			outputListener.fragmentDataReady(buffer.array(), 0, buffer.position());
+		}
+		moof = null;
+		mdat = null;
+		trun = null;
+	}
+	public void prepare(int width, int height, 
+			byte avcProfileIndication, byte profileCompatibility, byte avcLevelIndication, byte[] sps, byte[] ps) {
+		ByteBuffer buffer = ByteBuffer.allocate(2048);
+		
+		buildMovieHeader(buffer, width, height,
+				avcProfileIndication, profileCompatibility, avcLevelIndication, sps, ps);
+		
+		if (outputListener != null) {
+			outputListener.headerReady(buffer.array(), 0, buffer.position());
+		}
+		
+		currentOffset = buffer.position();
+	}
+	private static final int FRAGMENT_SIZE = 64*1024;
+	public void addH264Frame(byte[] h264, int offset, int len) {
+		if (moof == null) {
+			moof = new MovieFragmentBox();
+			moof.addChild(new MovieFragmentHeaderBox(sequenceNumber));
+			traf = new TrackFragmentBox();
+			moof.addChild(traf);
+			tfhd = new TrackFragmentHeaderBox(1);
+			traf.addChild(tfhd);
+			mdat = new MediaDataBox(FRAGMENT_SIZE);
+			sequenceNumber++;		
+		}
+		byte naluType = (byte) (h264[offset] & 0x1F);
+		if (naluType == 5) { // IDR
+			int mdatOffset = mdat.getDataSize();
+			if (mdatOffset != 0) {
+				trun = new TrackRunBox(0, mdatOffset);
+			} else {
+				trun = new TrackRunBox(0);				
+			}
+			traf.addChild(trun);
+		} else {
+			if (trun == null) {
+				trun = new TrackRunBox();
+				traf.addChild(trun);
+			}
+		}
+		trun.addSampleSize(len+4); // four bytes mp4 NALU header
+		mdat.addSlice(h264, offset, len);
+		int mdatSize = mdat.getBoxSize();
+		if (mdatSize >= (FRAGMENT_SIZE-1024)) {
+			finalizeFragment();
+		}
+	}
+}
