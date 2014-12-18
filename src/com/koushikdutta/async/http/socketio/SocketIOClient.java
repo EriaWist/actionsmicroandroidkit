@@ -1,36 +1,19 @@
 package com.koushikdutta.async.http.socketio;
 
-import android.os.Handler;
 import android.text.TextUtils;
 
-import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.future.Future;
 import com.koushikdutta.async.future.SimpleFuture;
 import com.koushikdutta.async.http.AsyncHttpClient;
-import com.koushikdutta.async.http.WebSocket;
+import com.koushikdutta.async.http.socketio.transport.SocketIOTransport;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+@Deprecated
 public class SocketIOClient extends EventEmitter {
     boolean connected;
     boolean disconnected;
-
-    private static void reportError(SimpleFuture<SocketIOClient> future, Handler handler, final ConnectCallback callback, final Exception e) {
-        if (!future.setComplete(e))
-            return;
-        if (handler != null) {
-            AsyncServer.post(handler, new Runnable() {
-                @Override
-                public void run() {
-                    callback.onConnectCompleted(e, null);
-                }
-            });
-        }
-        else {
-            callback.onConnectCompleted(e, null);
-        }
-    }
 
     private void emitRaw(int type, String message, Acknowledge acknowledge) {
         connection.emitRaw(type, this, message, acknowledge);
@@ -199,7 +182,7 @@ public class SocketIOClient extends EventEmitter {
         connection.reconnect(null);
     }
 
-    public WebSocket getWebSocket() {
-        return connection.webSocket;
+    public SocketIOTransport getTransport() {
+        return connection.transport;
     }
 }

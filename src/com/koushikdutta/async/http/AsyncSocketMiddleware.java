@@ -1,13 +1,15 @@
 package com.koushikdutta.async.http;
 
+import android.net.Uri;
+
 import com.koushikdutta.async.ArrayDeque;
 import com.koushikdutta.async.AsyncSocket;
 import com.koushikdutta.async.ByteBufferList;
 import com.koushikdutta.async.DataEmitter;
-import com.koushikdutta.async.NullDataCallback;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.callback.ConnectCallback;
 import com.koushikdutta.async.callback.ContinuationCallback;
+import com.koushikdutta.async.callback.DataCallback;
 import com.koushikdutta.async.future.Cancellable;
 import com.koushikdutta.async.future.Continuation;
 import com.koushikdutta.async.future.SimpleCancellable;
@@ -15,20 +17,25 @@ import com.koushikdutta.async.future.TransformFuture;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.util.HashSet;
 import java.util.Hashtable;
 
 public class AsyncSocketMiddleware extends SimpleMiddleware {
     String scheme;
     int port;
+    // 5 min idle timeout
+    int idleTimeoutMs = 300 * 1000;
+
     public AsyncSocketMiddleware(AsyncHttpClient client, String scheme, int port) {
         mClient = client;
         this.scheme = scheme;
         this.port = port;
     }
+
+    public void setIdleTimeoutMs(int idleTimeoutMs) {
+        this.idleTimeoutMs = idleTimeoutMs;
+    }
     
-    public int getSchemePort(URI uri) {
+    public int getSchemePort(Uri uri) {
         if (uri.getScheme() == null || !uri.getScheme().equals(scheme))
             return -1;
         if (uri.getPort() == -1) {
@@ -43,10 +50,9 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
         this(client, "http", 80);
     }
 
-    AsyncHttpClient mClient;
-    private Hashtable<String, HashSet<AsyncSocket>> mSockets = new Hashtable<String, HashSet<AsyncSocket>>();
+    protected AsyncHttpClient mClient;
 
-    protected ConnectCallback wrapCallback(ConnectCallback callback, URI uri, int port) {
+    protected ConnectCallback wrapCallback(GetSocketData data, Uri uri, int port, boolean proxied, ConnectCallback callback) {
         return callback;
     }
 
@@ -75,46 +81,33 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
         proxyAddress = null;
     }
 
-    String computeLookup(URI uri, int port, AsyncHttpRequest request) {
+    String computeLookup(Uri uri, int port, String proxyHost, int proxyPort) {
         String proxy;
         if (proxyHost != null)
             proxy = proxyHost + ":" + proxyPort;
         else
             proxy = "";
 
-        if (request.proxyHost != null)
-            proxy = request.getProxyHost() + ":" + request.proxyPort;
+        if (proxyHost != null)
+            proxy = proxyHost + ":" + proxyPort;
 
         return uri.getScheme() + "//" + uri.getHost() + ":" + port + "?proxy=" + proxy;
+    }
+
+    class IdleSocketHolder {
+        public IdleSocketHolder(AsyncSocket socket) {
+            this.socket = socket;
+        }
+        AsyncSocket socket;
+        long idleTime = System.currentTimeMillis();
     }
 
     static class ConnectionInfo {
         int openCount;
         ArrayDeque<GetSocketData> queue = new ArrayDeque<GetSocketData>();
+        ArrayDeque<IdleSocketHolder> sockets = new ArrayDeque<IdleSocketHolder>();
     }
     Hashtable<String, ConnectionInfo> connectionInfo = new Hashtable<String, ConnectionInfo>();
-
-    private static String getConnectionKey(String scheme, String host, int port) {
-        return scheme + "://" + host + ":" + port;
-    }
-
-    public int getOpenConnectionCount(String scheme, String host, int port) {
-        String key = getConnectionKey(scheme, host, port);
-        ConnectionInfo info = connectionInfo.get(key);
-        if (info == null)
-            return 0;
-        return info.openCount;
-    }
-
-    private ConnectionInfo getConnectionInfo(String scheme, String host, int port) {
-        String key = getConnectionKey(scheme, host, port);
-        ConnectionInfo info = connectionInfo.get(key);
-        if (info == null) {
-            info = new ConnectionInfo();
-            connectionInfo.put(key, info);
-        }
-        return info;
-    }
 
     int maxConnectionCount = Integer.MAX_VALUE;
 
@@ -128,44 +121,44 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
 
     @Override
     public Cancellable getSocket(final GetSocketData data) {
-        final URI uri = data.request.getUri();
+        final Uri uri = data.request.getUri();
         final int port = getSchemePort(data.request.getUri());
         if (port == -1) {
             return null;
         }
 
-        ConnectionInfo info = getConnectionInfo(uri.getScheme(), uri.getHost(), port);
-        if (info.openCount >= maxConnectionCount) {
-            // wait for a connection queue to free up
-            SimpleCancellable queueCancel = new SimpleCancellable();
-            info.queue.add(data);
-            return queueCancel;
-        }
+        data.state.put("socket-owner", this);
 
-        info.openCount++;
+        final String lookup = computeLookup(uri, port, data.request.getProxyHost(), data.request.getProxyPort());
+        ConnectionInfo info = getOrCreateConnectionInfo(lookup);
+        synchronized (AsyncSocketMiddleware.this) {
+            if (info.openCount >= maxConnectionCount) {
+                // wait for a connection queue to free up
+                SimpleCancellable queueCancel = new SimpleCancellable();
+                info.queue.add(data);
+                return queueCancel;
+            }
 
-        final String lookup = computeLookup(uri, port, data.request);
-        
-        data.state.putBoolean(getClass().getCanonicalName() + ".owned", true);
+            info.openCount++;
 
-        synchronized (this) {
-            final HashSet<AsyncSocket> sockets = mSockets.get(lookup);
-            if (sockets != null) {
-                for (final AsyncSocket socket: sockets) {
-                    if (socket.isOpen()) {
-                        sockets.remove(socket);
-                        socket.setClosedCallback(null);
-                        mClient.getServer().post(new Runnable() {
-                            @Override
-                            public void run() {
-                                data.request.logd("Reusing keep-alive socket");
-                                data.connectCallback.onConnectCompleted(null, socket);
-                            }
-                        });
-                        // just a noop/dummy, as this can't actually be cancelled.
-                        return new SimpleCancellable();
-                    }
+
+            while (!info.sockets.isEmpty()) {
+                IdleSocketHolder idleSocketHolder = info.sockets.pop();
+                final AsyncSocket socket = idleSocketHolder.socket;
+                if (idleSocketHolder.idleTime + idleTimeoutMs < System.currentTimeMillis()) {
+                    socket.close();
+                    continue;
                 }
+                if (!socket.isOpen())
+                    continue;
+
+                data.request.logd("Reusing keep-alive socket");
+                data.connectCallback.onConnectCompleted(null, socket);
+
+                // just a noop/dummy, as this can't actually be cancelled.
+                SimpleCancellable ret = new SimpleCancellable();
+                ret.setComplete();
+                return ret;
             }
         }
 
@@ -174,23 +167,23 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
             data.request.logd("Connecting socket");
             String unresolvedHost;
             int unresolvedPort;
+            boolean proxied = false;
             if (data.request.getProxyHost() != null) {
                 unresolvedHost = data.request.getProxyHost();
                 unresolvedPort = data.request.getProxyPort();
-                // set the host and port explicitly for proxied connections
-                data.request.getHeaders().getHeaders().setStatusLine(data.request.getProxyRequestLine().toString());
+                proxied = true;
             }
             else if (proxyHost != null) {
                 unresolvedHost = proxyHost;
                 unresolvedPort = proxyPort;
-                // set the host and port explicitly for proxied connections
-                data.request.getHeaders().getHeaders().setStatusLine(data.request.getProxyRequestLine().toString());
+                proxied = true;
             }
             else {
                 unresolvedHost = uri.getHost();
                 unresolvedPort = port;
             }
-            return mClient.getServer().connectSocket(unresolvedHost, unresolvedPort, wrapCallback(data.connectCallback, uri, port));
+            return mClient.getServer().connectSocket(unresolvedHost, unresolvedPort,
+                wrapCallback(data, uri, port, proxied, data.connectCallback));
         }
 
         // try to connect to everything...
@@ -213,7 +206,9 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
                         // if it completed, that means that the connection failed
                         if (lastException == null)
                             lastException = new ConnectionFailedException("Unable to connect to remote address");
-                        setComplete(lastException);
+                        if (setComplete(lastException)) {
+                            data.connectCallback.onConnectCompleted(lastException, null);
+                        }
                     }
                 });
 
@@ -221,7 +216,8 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
                     keepTrying.add(new ContinuationCallback() {
                         @Override
                         public void onContinue(Continuation continuation, final CompletedCallback next) throws Exception {
-                            mClient.getServer().connectSocket(new InetSocketAddress(address, port), wrapCallback(new ConnectCallback() {
+                            mClient.getServer().connectSocket(new InetSocketAddress(address, port),
+                                wrapCallback(data, uri, port, false, new ConnectCallback() {
                                 @Override
                                 public void onConnectCompleted(Exception ex, AsyncSocket socket) {
                                     if (isDone()) {
@@ -246,10 +242,10 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
                                     }
 
                                     if (setComplete(null, socket)) {
-                                        data.connectCallback.onConnectCompleted(ex, socket);
+                                        data.connectCallback.onConnectCompleted(null, socket);
                                     }
                                 }
-                            }, uri, port));
+                            }));
                         }
                     });
                 }
@@ -259,49 +255,68 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
         });
     }
 
-    public int getConnectionPoolCount() {
-        int ret = 0;
-        synchronized (this) {
-            for (HashSet<AsyncSocket> sockets: mSockets.values()) {
-                ret += sockets.size();
-            }
+    private ConnectionInfo getOrCreateConnectionInfo(String lookup) {
+        ConnectionInfo info = connectionInfo.get(lookup);
+        if (info == null) {
+            info = new ConnectionInfo();
+            connectionInfo.put(lookup, info);
         }
-        return ret;
+        return info;
+    }
+
+    private void maybeCleanupConnectionInfo(String lookup) {
+        ConnectionInfo info = connectionInfo.get(lookup);
+        if (info == null)
+            return;
+        while (!info.sockets.isEmpty()) {
+            IdleSocketHolder idleSocketHolder = info.sockets.peekLast();
+            AsyncSocket socket = idleSocketHolder.socket;
+            if (idleSocketHolder.idleTime + idleTimeoutMs > System.currentTimeMillis())
+                break;
+            info.sockets.pop();
+            socket.close();
+        }
+        if (info.openCount == 0 && info.queue.isEmpty() && info.sockets.isEmpty())
+            connectionInfo.remove(lookup);
     }
 
     private void recycleSocket(final AsyncSocket socket, AsyncHttpRequest request) {
         if (socket == null)
             return;
-        URI uri = request.getUri();
+        Uri uri = request.getUri();
         int port = getSchemePort(uri);
-        String lookup = computeLookup(uri, port, request);
-        // nothing here will block...
-        synchronized (this) {
-            HashSet<AsyncSocket> sockets = mSockets.get(lookup);
-            if (sockets == null) {
-                sockets = new HashSet<AsyncSocket>();
-                mSockets.put(lookup, sockets);
-            }
-            final HashSet<AsyncSocket> ss = sockets;
-            sockets.add(socket);
-            // should not get any data after this point...
-            // if so, eat it and disconnect.
-            socket.setClosedCallback(new CompletedCallback() {
-                @Override
-                public void onCompleted(Exception ex) {
-                    synchronized (AsyncSocketMiddleware.this) {
-                        ss.remove(socket);
-                    }
-                    socket.setClosedCallback(null);
-                }
-            });
+        final String lookup = computeLookup(uri, port, request.getProxyHost(), request.getProxyPort());
+        final ArrayDeque<IdleSocketHolder> sockets;
+        final IdleSocketHolder idleSocketHolder = new IdleSocketHolder(socket);
+        synchronized (AsyncSocketMiddleware.this) {
+            ConnectionInfo info = getOrCreateConnectionInfo(lookup);
+            sockets = info.sockets;
+            sockets.push(idleSocketHolder);
         }
+        socket.setClosedCallback(new CompletedCallback() {
+            @Override
+            public void onCompleted(Exception ex) {
+                synchronized (AsyncSocketMiddleware.this) {
+                    sockets.remove(idleSocketHolder);
+                    socket.setClosedCallback(null);
+                    maybeCleanupConnectionInfo(lookup);
+                }
+            }
+        });
     }
 
     private void idleSocket(final AsyncSocket socket) {
-        socket.setEndCallback(null);
+        // must listen for socket close, otherwise log will get spammed.
+        socket.setEndCallback(new CompletedCallback() {
+            @Override
+            public void onCompleted(Exception ex) {
+                socket.close();
+            }
+        });
         socket.setWriteableCallback(null);
-        socket.setDataCallback(new NullDataCallback() {
+        // should not get any data after this point...
+        // if so, eat it and disconnect.
+        socket.setDataCallback(new DataCallback.NullDataCallback() {
             @Override
             public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
                 super.onDataAvailable(emitter, bb);
@@ -311,25 +326,31 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
         });
     }
 
-    private void nextConnection(URI uri) {
+    private void nextConnection(AsyncHttpRequest request) {
+        Uri uri = request.getUri();
         final int port = getSchemePort(uri);
-        ConnectionInfo info = getConnectionInfo(uri.getScheme(), uri.getHost(), port);
-        --info.openCount;
-        while (info.openCount < maxConnectionCount && info.queue.size() > 0) {
-            GetSocketData gsd = info.queue.remove();
-            SimpleCancellable socketCancellable = (SimpleCancellable)gsd.socketCancellable;
-            if (socketCancellable.isCancelled())
-                continue;
-            Cancellable connect = getSocket(gsd);
-            socketCancellable.setParent(connect);
+        String key = computeLookup(uri, port, request.getProxyHost(), request.getProxyPort());
+        synchronized (AsyncSocketMiddleware.this) {
+            ConnectionInfo info = connectionInfo.get(key);
+            if (info == null)
+                return;
+            --info.openCount;
+            while (info.openCount < maxConnectionCount && info.queue.size() > 0) {
+                GetSocketData gsd = info.queue.remove();
+                SimpleCancellable socketCancellable = (SimpleCancellable)gsd.socketCancellable;
+                if (socketCancellable.isCancelled())
+                    continue;
+                Cancellable connect = getSocket(gsd);
+                socketCancellable.setParent(connect);
+            }
+            maybeCleanupConnectionInfo(key);
         }
     }
 
     @Override
-    public void onRequestComplete(final OnRequestCompleteData data) {
-        if (!data.state.getBoolean(getClass().getCanonicalName() + ".owned", false)) {
+    public void onResponseComplete(final OnResponseCompleteDataOnRequestSentData data) {
+        if (data.state.get("socket-owner") != this)
             return;
-        }
 
         try {
             idleSocket(data.socket);
@@ -339,7 +360,8 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
                 data.socket.close();
                 return;
             }
-            if (!HttpUtil.isKeepAlive(data.headers.getHeaders())) {
+            if (!HttpUtil.isKeepAlive(data.response.protocol(), data.response.headers())
+                || !HttpUtil.isKeepAlive(Protocol.HTTP_1_1, data.request.getHeaders())) {
                 data.request.logv("closing out socket (not keep alive)");
                 data.socket.close();
                 return;
@@ -348,7 +370,7 @@ public class AsyncSocketMiddleware extends SimpleMiddleware {
             recycleSocket(data.socket, data.request);
         }
         finally {
-            nextConnection(data.request.getUri());
+            nextConnection(data.request);
         }
     }
 }
