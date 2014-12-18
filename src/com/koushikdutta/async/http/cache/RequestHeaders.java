@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package com.koushikdutta.async.http.libcore;
+package com.koushikdutta.async.http.cache;
 
-import java.net.URI;
+import android.net.Uri;
+
+import com.koushikdutta.async.http.HttpDate;
+
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +27,8 @@ import java.util.Map;
 /**
  * Parsed HTTP request headers.
  */
-public final class RequestHeaders {
-    private final URI uri;
+final class RequestHeaders {
+    private final Uri uri;
     private final RawHeaders headers;
 
     /** Don't use a cache to satisfy this request. */
@@ -61,7 +64,7 @@ public final class RequestHeaders {
     private String ifNoneMatch;
     private String proxyAuthorization;
 
-    public RequestHeaders(URI uri, RawHeaders headers) {
+    public RequestHeaders(Uri uri, RawHeaders headers) {
         this.uri = uri;
         this.headers = headers;
 
@@ -127,7 +130,7 @@ public final class RequestHeaders {
         return "close".equalsIgnoreCase(connection);
     }
 
-    public URI getUri() {
+    public Uri getUri() {
         return uri;
     }
 
@@ -211,7 +214,9 @@ public final class RequestHeaders {
         if (this.contentLength != -1) {
             headers.removeAll("Content-Length");
         }
-        headers.add("Content-Length", Integer.toString(contentLength));
+        if (contentLength != -1) {
+            headers.add("Content-Length", Integer.toString(contentLength));
+        }
         this.contentLength = contentLength;
     }
 

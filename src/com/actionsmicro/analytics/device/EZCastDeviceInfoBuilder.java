@@ -15,6 +15,7 @@ import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.future.Future;
 import com.koushikdutta.async.http.AsyncHttpClient;
+import com.koushikdutta.async.http.AsyncHttpGet;
 
 public class EZCastDeviceInfoBuilder extends DeviceInfoBuilder<PigeonDeviceInfo> {
 
@@ -23,7 +24,7 @@ public class EZCastDeviceInfoBuilder extends DeviceInfoBuilder<PigeonDeviceInfo>
 	}
 	protected JSONObject getDongleInfo() {
 		final String dongoleInfoUrl = "http://"+getDevice().getIpAddress().getHostAddress()+"/dongleInfo.json";
-		Future<JSONObject> syncObject = AsyncHttpClient.getDefaultInstance().getJSONObject(dongoleInfoUrl, null);
+		Future<JSONObject> syncObject = AsyncHttpClient.getDefaultInstance().executeJSONObject(new AsyncHttpGet(dongoleInfoUrl), null);
 		try {
 			return syncObject.get(3, TimeUnit.SECONDS);
 		} catch (InterruptedException e1) {

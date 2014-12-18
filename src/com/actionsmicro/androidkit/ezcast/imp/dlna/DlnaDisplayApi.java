@@ -227,8 +227,9 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 	}
 	private AsyncHttpServer m3u8Server = new AsyncHttpServer() {
 		@Override
-		protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-			Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+		protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+			Log.d(TAG, "onRequest:"+request.getPath());
+			return false;
 		}
 	};
 	private void initM3u8ServerForTsStreamer() {

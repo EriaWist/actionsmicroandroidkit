@@ -1,5 +1,8 @@
 package com.koushikdutta.async.http;
 
+import android.annotation.SuppressLint;
+import android.net.Uri;
+import android.os.Build;
 import android.text.TextUtils;
 
 import com.koushikdutta.async.AsyncSSLException;
@@ -7,17 +10,16 @@ import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncSocket;
 import com.koushikdutta.async.ByteBufferList;
 import com.koushikdutta.async.DataEmitter;
-import com.koushikdutta.async.NullDataCallback;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.callback.ConnectCallback;
+import com.koushikdutta.async.callback.DataCallback;
 import com.koushikdutta.async.future.Cancellable;
 import com.koushikdutta.async.future.Future;
 import com.koushikdutta.async.future.FutureCallback;
 import com.koushikdutta.async.future.SimpleFuture;
-import com.koushikdutta.async.http.AsyncHttpClientMiddleware.OnRequestCompleteData;
 import com.koushikdutta.async.http.callback.HttpConnectCallback;
 import com.koushikdutta.async.http.callback.RequestCallback;
-import com.koushikdutta.async.http.libcore.RawHeaders;
+import com.koushikdutta.async.http.spdy.SpdyMiddleware;
 import com.koushikdutta.async.parser.AsyncParser;
 import com.koushikdutta.async.parser.ByteBufferListParser;
 import com.koushikdutta.async.parser.JSONArrayParser;
@@ -35,9 +37,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 public class AsyncHttpClient {
@@ -57,20 +64,59 @@ public class AsyncHttpClient {
         mMiddleware.add(0, middleware);
     }
 
-    AsyncSSLSocketMiddleware sslSocketMiddleware;
+    SpdyMiddleware sslSocketMiddleware;
     AsyncSocketMiddleware socketMiddleware;
+    HttpTransportMiddleware httpTransportMiddleware;
     AsyncServer mServer;
     public AsyncHttpClient(AsyncServer server) {
         mServer = server;
         insertMiddleware(socketMiddleware = new AsyncSocketMiddleware(this));
-        insertMiddleware(sslSocketMiddleware = new AsyncSSLSocketMiddleware(this));
+        insertMiddleware(sslSocketMiddleware = new SpdyMiddleware(this));
+        insertMiddleware(httpTransportMiddleware = new HttpTransportMiddleware());
+        sslSocketMiddleware.addEngineConfigurator(new SSLEngineSNIConfigurator());
+    }
+
+    @SuppressLint("NewApi")
+    private static void setupAndroidProxy(AsyncHttpRequest request) {
+        // using a explicit proxy?
+        if (request.proxyHost != null)
+            return;
+
+        List<Proxy> proxies;
+        try {
+            proxies = ProxySelector.getDefault().select(URI.create(request.getUri().toString()));
+        }
+        catch (Exception e) {
+            // uri parsing craps itself sometimes.
+            return;
+        }
+        if (proxies.isEmpty())
+            return;
+        Proxy proxy = proxies.get(0);
+        if (proxy.type() != Proxy.Type.HTTP)
+            return;
+        if (!(proxy.address() instanceof InetSocketAddress))
+            return;
+        InetSocketAddress proxyAddress = (InetSocketAddress) proxy.address();
+        String proxyHost;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            proxyHost = proxyAddress.getHostString();
+        }
+        else {
+            InetAddress address = proxyAddress.getAddress();
+            if (address!=null)
+                proxyHost = address.getHostAddress();
+            else
+                proxyHost = proxyAddress.getHostName();
+        }
+        request.enableProxy(proxyHost, proxyAddress.getPort());
     }
 
     public AsyncSocketMiddleware getSocketMiddleware() {
         return socketMiddleware;
     }
 
-    public AsyncSSLSocketMiddleware getSSLSocketMiddleware() {
+    public SpdyMiddleware getSSLSocketMiddleware() {
         return sslSocketMiddleware;
     }
 
@@ -78,6 +124,10 @@ public class AsyncHttpClient {
         FutureAsyncHttpResponse ret;
         execute(request, 0, ret = new FutureAsyncHttpResponse(), callback);
         return ret;
+    }
+
+    public Future<AsyncHttpResponse> execute(String uri, final HttpConnectCallback callback) {
+        return execute(new AsyncHttpGet(uri), callback);
     }
 
     private static final String LOGTAG = "AsyncHttp";
@@ -92,7 +142,7 @@ public class AsyncHttpClient {
                 return false;
 
             if (socket != null) {
-                socket.setDataCallback(new NullDataCallback());
+                socket.setDataCallback(new DataCallback.NullDataCallback());
                 socket.close();
             }
 
@@ -105,6 +155,7 @@ public class AsyncHttpClient {
 
     private void reportConnectedCompleted(FutureAsyncHttpResponse cancel, Exception ex, AsyncHttpResponseImpl response, AsyncHttpRequest request, final HttpConnectCallback callback) {
         assert callback != null;
+        mServer.removeAllCallbacks(cancel.scheduled);
         boolean complete;
         if (ex != null) {
             request.loge("Connection error", ex);
@@ -116,13 +167,13 @@ public class AsyncHttpClient {
         }
         if (complete) {
             callback.onConnectCompleted(ex, response);
-            assert ex != null || response.getSocket() == null || response.getDataCallback() != null || response.isPaused();
+            assert ex != null || response.socket() == null || response.getDataCallback() != null || response.isPaused();
             return;
         }
 
         if (response != null) {
             // the request was cancelled, so close up shop, and eat any pending data
-            response.setDataCallback(new NullDataCallback());
+            response.setDataCallback(new DataCallback.NullDataCallback());
             response.close();
         }
     }
@@ -147,18 +198,30 @@ public class AsyncHttpClient {
         return request.getTimeout();
     }
 
+    private static void copyHeader(AsyncHttpRequest from, AsyncHttpRequest to, String header) {
+        String value = from.getHeaders().get(header);
+        if (!TextUtils.isEmpty(value))
+            to.getHeaders().set(header, value);
+    }
+
     private void executeAffinity(final AsyncHttpRequest request, final int redirectCount, final FutureAsyncHttpResponse cancel, final HttpConnectCallback callback) {
         assert mServer.isAffinityThread();
         if (redirectCount > 15) {
             reportConnectedCompleted(cancel, new RedirectLimitExceededException("too many redirects"), null, request, callback);
             return;
         }
-        final URI uri = request.getUri();
-        final OnRequestCompleteData data = new OnRequestCompleteData();
+        final Uri uri = request.getUri();
+        final AsyncHttpClientMiddleware.OnResponseCompleteDataOnRequestSentData data = new AsyncHttpClientMiddleware.OnResponseCompleteDataOnRequestSentData();
         request.executionTime = System.currentTimeMillis();
         data.request = request;
 
         request.logd("Executing request.");
+
+        synchronized (mMiddleware) {
+            for (AsyncHttpClientMiddleware middleware: mMiddleware) {
+                middleware.onRequest(data);
+            }
+        }
 
         // flow:
         // 1) set a connect timeout
@@ -189,8 +252,19 @@ public class AsyncHttpClient {
 
         // 2) wait for a connect
         data.connectCallback = new ConnectCallback() {
+            boolean reported;
             @Override
             public void onConnectCompleted(Exception ex, AsyncSocket socket) {
+                if (reported) {
+                    if (socket != null) {
+                        socket.setDataCallback(new DataCallback.NullDataCallback());
+                        socket.setEndCallback(new CompletedCallback.NullCompletedCallback());
+                        socket.close();
+                        throw new AssertionError("double connect callback");
+                    }
+                }
+                reported = true;
+
                 request.logv("socket connected");
                 if (cancel.isCancelled()) {
                     if (socket != null)
@@ -202,164 +276,28 @@ public class AsyncHttpClient {
                 if (cancel.timeoutRunnable != null)
                     mServer.removeAllCallbacks(cancel.scheduled);
 
-                data.socket = socket;
-                synchronized (mMiddleware) {
-                    for (AsyncHttpClientMiddleware middleware: mMiddleware) {
-                        middleware.onSocket(data);
-                    }
-                }
-
-                cancel.socket = socket;
-
                 if (ex != null) {
                     reportConnectedCompleted(cancel, ex, null, request, callback);
                     return;
                 }
 
-                // 4) wait for request to be sent fully
-                // and
-                // 6) wait for headers
-                final AsyncHttpResponseImpl ret = new AsyncHttpResponseImpl(request) {
-                    @Override
-                    protected void onRequestCompleted(Exception ex) {
-                        request.logv("request completed");
-                        if (cancel.isCancelled())
-                            return;
-                        // 5) after request is sent, set a header timeout
-                        if (cancel.timeoutRunnable != null && data.headers == null) {
-                            mServer.removeAllCallbacks(cancel.scheduled);
-                            cancel.scheduled = mServer.postDelayed(cancel.timeoutRunnable, getTimeoutRemaining(request));
-                        }
-                    }
+                data.socket = socket;
+                cancel.socket = socket;
 
-                    @Override
-                    public void setDataEmitter(DataEmitter emitter) {
-                        data.bodyEmitter = emitter;
-                        synchronized (mMiddleware) {
-                            for (AsyncHttpClientMiddleware middleware: mMiddleware) {
-                                middleware.onBodyDecoder(data);
-                            }
-                        }
-                        mHeaders = data.headers;
-
-                        super.setDataEmitter(data.bodyEmitter);
-
-                        RawHeaders headers = mHeaders.getHeaders();
-                        int responseCode = headers.getResponseCode();
-                        if ((responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP || responseCode == 307) && request.getFollowRedirect()) {
-                            String location = headers.get("Location");
-                            URI redirect = URI.create(location);
-                            if (redirect == null || redirect.getScheme() == null) {
-                                try {
-                                    redirect = new URL(uri.toURL(), location).toURI();
-                                }
-                                catch (Exception e) {
-                                    reportConnectedCompleted(cancel, e, this, request, callback);
-                                    return;
-                                }
-                            }
-                            final String method = request.getMethod().equals(AsyncHttpHead.METHOD) ? AsyncHttpHead.METHOD : AsyncHttpGet.METHOD;
-                            AsyncHttpRequest newReq = new AsyncHttpRequest(redirect, method);
-                            newReq.executionTime = request.executionTime;
-                            newReq.logLevel = request.logLevel;
-                            newReq.LOGTAG = request.LOGTAG;
-                            newReq.proxyHost = request.proxyHost;
-                            newReq.proxyPort = request.proxyPort;
-                            String userAgent = request.getHeaders().getHeaders().get("User-Agent");
-                            if (!TextUtils.isEmpty(userAgent))
-                                newReq.getHeaders().getHeaders().set("User-Agent", userAgent);
-                            request.logi("Redirecting");
-                            newReq.logi("Redirected");
-                            execute(newReq, redirectCount + 1, cancel, callback);
-
-                            setDataCallback(new NullDataCallback());
-                            return;
-                        }
-
-                        request.logv("Final (post cache response) headers:\n" + mHeaders.getHeaders().toHeaderString());
-
-                        // at this point the headers are done being modified
-                        reportConnectedCompleted(cancel, null, this, request, callback);
-                    }
-
-                    protected void onHeadersReceived() {
-                        try {
-                            if (cancel.isCancelled())
-                                return;
-
-                            // 7) on headers, cancel timeout
-                            if (cancel.timeoutRunnable != null)
-                                mServer.removeAllCallbacks(cancel.scheduled);
-
-                            // allow the middleware to massage the headers before the body is decoded
-                            request.logv("Received headers:\n" + mHeaders.getHeaders().toHeaderString());
-
-                            data.headers = mHeaders;
-                            synchronized (mMiddleware) {
-                                for (AsyncHttpClientMiddleware middleware: mMiddleware) {
-                                    middleware.onHeadersReceived(data);
-                                }
-                            }
-                            mHeaders = data.headers;
-
-                            // drop through, and setDataEmitter will be called for the body decoder.
-                            // headers will be further massaged in there.
-                        }
-                        catch (Exception ex) {
-                            reportConnectedCompleted(cancel, ex, null, request, callback);
-                        }
-                    }
-
-                    @Override
-                    protected void report(Exception ex) {
-                        if (ex != null)
-                            request.loge("exception during response", ex);
-                        if (cancel.isCancelled())
-                            return;
-                        if (ex instanceof AsyncSSLException) {
-                            request.loge("SSL Exception", ex);
-                            AsyncSSLException ase = (AsyncSSLException)ex;
-                            request.onHandshakeException(ase);
-                            if (ase.getIgnore())
-                                return;
-                        }
-                        final AsyncSocket socket = getSocket();
-                        if (socket == null)
-                            return;
-                        super.report(ex);
-                        if (!socket.isOpen() || ex != null) {
-                            if (getHeaders() == null && ex != null)
-                                reportConnectedCompleted(cancel, ex, null, request, callback);
-                        }
-
-                        data.exception = ex;
-                        synchronized (mMiddleware) {
-                            for (AsyncHttpClientMiddleware middleware: mMiddleware) {
-                                middleware.onRequestComplete(data);
-                            }
-                        }
-                    }
-
-
-                    @Override
-                    public AsyncSocket detachSocket() {
-                        request.logd("Detaching socket");
-                        AsyncSocket socket = getSocket();
-                        if (socket == null)
-                            return null;
-                        socket.setWriteableCallback(null);
-                        socket.setClosedCallback(null);
-                        socket.setEndCallback(null);
-                        socket.setDataCallback(null);
-                        setSocket(null);
-                        return socket;
-                    }
-                };
-
-                ret.setSocket(socket);
+                executeSocket(request, redirectCount, cancel, callback, data);
             }
         };
 
+        // set up the system default proxy and connect
+        setupAndroidProxy(request);
+
+        // set the implicit content type
+        if (request.getBody() != null) {
+            if (request.getHeaders().get("Content-Type") == null)
+                request.getHeaders().set("Content-Type", request.getBody().getContentType());
+        }
+
+        final Exception unsupportedURI;
         synchronized (mMiddleware) {
             for (AsyncHttpClientMiddleware middleware: mMiddleware) {
                 Cancellable socketCancellable = middleware.getSocket(data);
@@ -369,21 +307,190 @@ public class AsyncHttpClient {
                     return;
                 }
             }
+            unsupportedURI = new IllegalArgumentException("invalid uri="+request.getUri()+" middlewares="+mMiddleware);
         }
-        reportConnectedCompleted(cancel, new IllegalArgumentException("invalid uri"), null, request, callback);
+        reportConnectedCompleted(cancel, unsupportedURI, null, request, callback);
     }
 
-    public Future<AsyncHttpResponse> execute(URI uri, final HttpConnectCallback callback) {
-        return execute(new AsyncHttpGet(uri), callback);
-    }
+    private void executeSocket(final AsyncHttpRequest request, final int redirectCount,
+                               final FutureAsyncHttpResponse cancel, final HttpConnectCallback callback,
+                               final AsyncHttpClientMiddleware.OnResponseCompleteDataOnRequestSentData data) {
+        // 4) wait for request to be sent fully
+        // and
+        // 6) wait for headers
+        final AsyncHttpResponseImpl ret = new AsyncHttpResponseImpl(request) {
+            @Override
+            protected void onRequestCompleted(Exception ex) {
+                if (ex != null) {
+                    reportConnectedCompleted(cancel, ex, null, request, callback);
+                    return;
+                }
 
-    public Future<AsyncHttpResponse> execute(String uri, final HttpConnectCallback callback) {
-        return execute(new AsyncHttpGet(URI.create(uri)), callback);
+                request.logv("request completed");
+                if (cancel.isCancelled())
+                    return;
+                // 5) after request is sent, set a header timeout
+                if (cancel.timeoutRunnable != null && mHeaders == null) {
+                    mServer.removeAllCallbacks(cancel.scheduled);
+                    cancel.scheduled = mServer.postDelayed(cancel.timeoutRunnable, getTimeoutRemaining(request));
+                }
+
+                synchronized (mMiddleware) {
+                    for (AsyncHttpClientMiddleware middleware: mMiddleware) {
+                        middleware.onRequestSent(data);
+                    }
+                }
+            }
+
+            @Override
+            public void setDataEmitter(DataEmitter emitter) {
+                data.bodyEmitter = emitter;
+                synchronized (mMiddleware) {
+                    for (AsyncHttpClientMiddleware middleware: mMiddleware) {
+                        middleware.onBodyDecoder(data);
+                    }
+                }
+
+                super.setDataEmitter(data.bodyEmitter);
+
+                Headers headers = mHeaders;
+                int responseCode = code();
+                if ((responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP || responseCode == 307) && request.getFollowRedirect()) {
+                    String location = headers.get("Location");
+                    Uri redirect;
+                    try {
+                        redirect = Uri.parse(location);
+                        if (redirect.getScheme() == null) {
+                            redirect = Uri.parse(new URL(new URL(request.getUri().toString()), location).toString());
+                        }
+                    }
+                    catch (Exception e) {
+                        reportConnectedCompleted(cancel, e, this, request, callback);
+                        return;
+                    }
+                    final String method = request.getMethod().equals(AsyncHttpHead.METHOD) ? AsyncHttpHead.METHOD : AsyncHttpGet.METHOD;
+                    AsyncHttpRequest newReq = new AsyncHttpRequest(redirect, method);
+                    newReq.executionTime = request.executionTime;
+                    newReq.logLevel = request.logLevel;
+                    newReq.LOGTAG = request.LOGTAG;
+                    newReq.proxyHost = request.proxyHost;
+                    newReq.proxyPort = request.proxyPort;
+                    setupAndroidProxy(newReq);
+                    copyHeader(request, newReq, "User-Agent");
+                    copyHeader(request, newReq, "Range");
+                    request.logi("Redirecting");
+                    newReq.logi("Redirected");
+                    execute(newReq, redirectCount + 1, cancel, callback);
+
+                    setDataCallback(new NullDataCallback());
+                    return;
+                }
+
+                request.logv("Final (post cache response) headers:\n" + toString());
+
+                // at this point the headers are done being modified
+                reportConnectedCompleted(cancel, null, this, request, callback);
+            }
+
+            protected void onHeadersReceived() {
+                super.onHeadersReceived();
+                if (cancel.isCancelled())
+                    return;
+
+                // 7) on headers, cancel timeout
+                if (cancel.timeoutRunnable != null)
+                    mServer.removeAllCallbacks(cancel.scheduled);
+
+                // allow the middleware to massage the headers before the body is decoded
+                request.logv("Received headers:\n" + toString());
+
+                synchronized (mMiddleware) {
+                    for (AsyncHttpClientMiddleware middleware: mMiddleware) {
+                        middleware.onHeadersReceived(data);
+                    }
+                }
+
+                // drop through, and setDataEmitter will be called for the body decoder.
+                // headers will be further massaged in there.
+            }
+
+            @Override
+            protected void report(Exception ex) {
+                if (ex != null)
+                    request.loge("exception during response", ex);
+                if (cancel.isCancelled())
+                    return;
+                if (ex instanceof AsyncSSLException) {
+                    request.loge("SSL Exception", ex);
+                    AsyncSSLException ase = (AsyncSSLException)ex;
+                    request.onHandshakeException(ase);
+                    if (ase.getIgnore())
+                        return;
+                }
+                final AsyncSocket socket = socket();
+                if (socket == null)
+                    return;
+                super.report(ex);
+                if (!socket.isOpen() || ex != null) {
+                    if (headers() == null && ex != null)
+                        reportConnectedCompleted(cancel, ex, null, request, callback);
+                }
+
+                data.exception = ex;
+                synchronized (mMiddleware) {
+                    for (AsyncHttpClientMiddleware middleware: mMiddleware) {
+                        middleware.onResponseComplete(data);
+                    }
+                }
+            }
+
+            @Override
+            public AsyncSocket detachSocket() {
+                request.logd("Detaching socket");
+                AsyncSocket socket = socket();
+                if (socket == null)
+                    return null;
+                socket.setWriteableCallback(null);
+                socket.setClosedCallback(null);
+                socket.setEndCallback(null);
+                socket.setDataCallback(null);
+                setSocket(null);
+                return socket;
+            }
+        };
+
+        data.sendHeadersCallback = new CompletedCallback() {
+            @Override
+            public void onCompleted(Exception ex) {
+                if (ex != null)
+                    ret.report(ex);
+                else
+                    ret.onHeadersSent();
+            }
+        };
+        data.receiveHeadersCallback = new CompletedCallback() {
+            @Override
+            public void onCompleted(Exception ex) {
+                if (ex != null)
+                    ret.report(ex);
+                else
+                    ret.onHeadersReceived();
+            }
+        };
+        data.response = ret;
+        ret.setSocket(data.socket);
+
+        synchronized (mMiddleware) {
+            for (AsyncHttpClientMiddleware middleware: mMiddleware) {
+                if (middleware.exchangeHeaders(data))
+                    break;
+            }
+        }
     }
 
     public static abstract class RequestCallbackBase<T> implements RequestCallback<T> {
         @Override
-        public void onProgress(AsyncHttpResponse response, int downloaded, int total) {
+        public void onProgress(AsyncHttpResponse response, long downloaded, long total) {
         }
         @Override
         public void onConnect(AsyncHttpResponse response) {
@@ -405,87 +512,18 @@ public class AsyncHttpClient {
     public static abstract class FileCallback extends RequestCallbackBase<File> {
     }
 
-    @Deprecated
-    public Future<ByteBufferList> get(String uri, DownloadCallback callback) {
-        return getByteBufferList(uri, callback);
-    }
-
-    public Future<ByteBufferList> getByteBufferList(String uri) {
-        return getByteBufferList(uri, null);
-    }
-    public Future<ByteBufferList> getByteBufferList(String uri, DownloadCallback callback) {
-        return executeByteBufferList(new AsyncHttpGet(uri), callback);
-    }
-
     public Future<ByteBufferList> executeByteBufferList(AsyncHttpRequest request, DownloadCallback callback) {
         return execute(request, new ByteBufferListParser(), callback);
     }
 
-    @Deprecated
-    public Future<String> get(String uri, final StringCallback callback) {
-        return executeString(new AsyncHttpGet(uri), callback);
-    }
-    @Deprecated
-    public Future<String> execute(AsyncHttpRequest req, final StringCallback callback) {
-        return executeString(req, callback);
-    }
-
-    public Future<String> getString(String uri) {
-        return executeString(new AsyncHttpGet(uri), null);
-    }
-    public Future<String> getString(String uri, final StringCallback callback) {
-        return executeString(new AsyncHttpGet(uri), callback);
-    }
-
-    public Future<String> executeString(AsyncHttpRequest req) {
-        return executeString(req, null);
-    }
     public Future<String> executeString(AsyncHttpRequest req, final StringCallback callback) {
         return execute(req, new StringParser(), callback);
     }
 
-    @Deprecated
-    public Future<JSONObject> get(String uri, final JSONObjectCallback callback) {
-        return executeJSONObject(new AsyncHttpGet(uri), callback);
-    }
-    @Deprecated
-    public Future<JSONObject> execute(AsyncHttpRequest req, final JSONObjectCallback callback) {
-        return executeJSONObject(req, callback);
-    }
-
-    public Future<JSONObject> getJSONObject(String uri) {
-        return getJSONObject(uri, null);
-    }
-    public Future<JSONObject> getJSONObject(String uri, final JSONObjectCallback callback) {
-        return executeJSONObject(new AsyncHttpGet(uri), callback);
-    }
-
-    public Future<JSONObject> executeJSONObject(AsyncHttpRequest req) {
-        return executeJSONObject(req, null);
-    }
     public Future<JSONObject> executeJSONObject(AsyncHttpRequest req, final JSONObjectCallback callback) {
         return execute(req, new JSONObjectParser(), callback);
     }
 
-    @Deprecated
-    public Future<JSONArray> get(String uri, final JSONArrayCallback callback) {
-        return executeJSONArray(new AsyncHttpGet(uri), callback);
-    }
-    @Deprecated
-    public Future<JSONArray> execute(AsyncHttpRequest req, final JSONArrayCallback callback) {
-        return executeJSONArray(req, callback);
-    }
-
-    public Future<JSONArray> getJSONArray(String uri) {
-        return getJSONArray(uri, null);
-    }
-    public Future<JSONArray> getJSONArray(String uri, final JSONArrayCallback callback) {
-        return executeJSONArray(new AsyncHttpGet(uri), callback);
-    }
-
-    public Future<JSONArray> executeJSONArray(AsyncHttpRequest req) {
-        return executeJSONArray(req, null);
-    }
     public Future<JSONArray> executeJSONArray(AsyncHttpRequest req, final JSONArrayCallback callback) {
         return execute(req, new JSONArrayParser(), callback);
     }
@@ -512,7 +550,7 @@ public class AsyncHttpClient {
         mServer.post(runnable);
     }
 
-    private void invokeProgress(final RequestCallback callback, final AsyncHttpResponse response, final int downloaded, final int total) {
+    private void invokeProgress(final RequestCallback callback, final AsyncHttpResponse response, final long downloaded, final long total) {
         if (callback != null)
             callback.onProgress(response, downloaded, total);
     }
@@ -522,25 +560,6 @@ public class AsyncHttpClient {
             callback.onConnect(response);
     }
 
-    @Deprecated
-    public Future<File> get(String uri, final String filename, final FileCallback callback) {
-        return executeFile(new AsyncHttpGet(uri), filename, callback);
-    }
-    @Deprecated
-    public Future<File> execute(AsyncHttpRequest req, final String filename, final FileCallback callback) {
-        return executeFile(req, filename, callback);
-    }
-
-    public Future<File> getFile(String uri, final String filename) {
-        return getFile(uri, filename, null);
-    }
-    public Future<File> getFile(String uri, final String filename, final FileCallback callback) {
-        return executeFile(new AsyncHttpGet(uri), filename, callback);
-    }
-
-    public Future<File> executeFile(AsyncHttpRequest req, final String filename) {
-        return executeFile(req, filename, null);
-    }
     public Future<File> executeFile(AsyncHttpRequest req, final String filename, final FileCallback callback) {
         final File file = new File(filename);
         file.getParentFile().mkdirs();
@@ -558,7 +577,7 @@ public class AsyncHttpClient {
             @Override
             public void cancelCleanup() {
                 try {
-                    cancel.get().setDataCallback(new NullDataCallback());
+                    cancel.get().setDataCallback(new DataCallback.NullDataCallback());
                     cancel.get().close();
                 }
                 catch (Exception e) {
@@ -573,7 +592,7 @@ public class AsyncHttpClient {
         };
         ret.setParent(cancel);
         execute(req, 0, cancel, new HttpConnectCallback() {
-            int mDownloaded = 0;
+            long mDownloaded = 0;
 
             @Override
             public void onConnectCompleted(Exception ex, final AsyncHttpResponse response) {
@@ -589,7 +608,7 @@ public class AsyncHttpClient {
                 }
                 invokeConnect(callback, response);
 
-                final int contentLength = response.getHeaders().getContentLength();
+                final long contentLength = HttpUtil.contentLength(response.headers());
 
                 response.setDataCallback(new OutputStreamDataCallback(fout) {
                     @Override
@@ -622,7 +641,7 @@ public class AsyncHttpClient {
         return ret;
     }
 
-    private <T> SimpleFuture<T> execute(AsyncHttpRequest req, final AsyncParser<T> parser, final RequestCallback<T> callback) {
+    public <T> SimpleFuture<T> execute(AsyncHttpRequest req, final AsyncParser<T> parser, final RequestCallback<T> callback) {
         final FutureAsyncHttpResponse cancel = new FutureAsyncHttpResponse();
         final SimpleFuture<T> ret = new SimpleFuture<T>();
         execute(req, 0, cancel, new HttpConnectCallback() {
@@ -633,8 +652,6 @@ public class AsyncHttpClient {
                     return;
                 }
                 invokeConnect(callback, response);
-
-                final int contentLength = response.getHeaders().getContentLength();
 
                 Future<T> parsed = parser.parse(response)
                 .setCallback(new FutureCallback<T>() {
@@ -669,7 +686,7 @@ public class AsyncHttpClient {
                     }
                     return;
                 }
-                WebSocket ws = WebSocketImpl.finishHandshake(req.getHeaders().getHeaders(), response);
+                WebSocket ws = WebSocketImpl.finishHandshake(req.getHeaders(), response);
                 if (ws == null) {
                     if (!ret.setComplete(new WebSocketHandshakeException("Unable to complete websocket handshake")))
                         return;

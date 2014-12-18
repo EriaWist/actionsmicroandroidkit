@@ -186,8 +186,9 @@ public class AirPlayServer {
 	private void initAirplayService() {
 		mirrorServer = new AsyncHttpServer() {
 			@Override
-			protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-				Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+			protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+				Log.d(TAG, "onRequest:"+request.getPath());
+				return false;
 		    }
 		};
 		mirrorServer.get("/stream.xml", new HttpServerRequestCallback() {
@@ -238,15 +239,15 @@ public class AirPlayServer {
 								}
 								byte responseData[] = FairPlay.setupPhase1(body, body.length, false);
 								response.setContentType("application/octet-stream");
-								response.getHeaders().getHeaders().add("Server", "AirTunes/150.33");
+								response.getHeaders().add("Server", "AirTunes/150.33");
 								response.sendStream(new ByteArrayInputStream(responseData), responseData.length);
 							} else if (body[6] == 3) {
 								byte responseData[] = FairPlay.setupPhase2(body, body.length, false);
 								response.setContentType("application/octet-stream");
-								response.getHeaders().getHeaders().add("Server", "AirTunes/150.33");
+								response.getHeaders().add("Server", "AirTunes/150.33");
 								response.sendStream(new ByteArrayInputStream(responseData), responseData.length);
 							} else {
-								response.responseCode(404);
+								response.code(404);
 								response.end();
 							}
 							response.setClosedCallback(new CompletedCallback() {
