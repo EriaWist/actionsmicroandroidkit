@@ -1,19 +1,5 @@
 package com.koushikdutta.async;
 
-import android.os.Build;
-import android.os.Handler;
-import android.util.Log;
-
-import com.koushikdutta.async.callback.CompletedCallback;
-import com.koushikdutta.async.callback.ConnectCallback;
-import com.koushikdutta.async.callback.ListenCallback;
-import com.koushikdutta.async.future.Cancellable;
-import com.koushikdutta.async.future.Future;
-import com.koushikdutta.async.future.FutureCallback;
-import com.koushikdutta.async.future.SimpleFuture;
-import com.koushikdutta.async.future.TransformFuture;
-import com.koushikdutta.async.util.StreamUtility;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -30,13 +16,26 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import android.os.Build;
+import android.os.Handler;
+import android.util.Log;
+
+import com.koushikdutta.async.callback.CompletedCallback;
+import com.koushikdutta.async.callback.ConnectCallback;
+import com.koushikdutta.async.callback.ListenCallback;
+import com.koushikdutta.async.future.Cancellable;
+import com.koushikdutta.async.future.Future;
+import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.async.future.SimpleFuture;
+import com.koushikdutta.async.future.TransformFuture;
+import com.koushikdutta.async.util.StreamUtility;
 
 public class AsyncServer {
     public static final String LOGTAG = "NIO";
@@ -159,7 +158,7 @@ public class AsyncServer {
             mQueue.add(s = new Scheduled(runnable, time));
             // start the server up if necessary
             if (mSelector == null)
-                run(true);
+                run(true, false);
             if (!isAffinityThread()) {
                 wakeup(mSelector);
             }
@@ -541,7 +540,7 @@ public class AsyncServer {
     }
 
     Thread mAffinity;
-    public void run(boolean newThread) {
+    public void run(boolean newThread, final boolean keepRunning) {
         final SelectorWrapper selector;
         final PriorityQueue<Scheduled> queue;
         boolean reentrant = false;
@@ -565,7 +564,7 @@ public class AsyncServer {
                 if (newThread) {
                     mAffinity = new Thread(mName) {
                         public void run() {
-                            AsyncServer.run(AsyncServer.this, selector, queue);
+                            AsyncServer.run(AsyncServer.this, selector, queue, keepRunning);
                         }
                     };
                 }
@@ -609,10 +608,10 @@ public class AsyncServer {
             return;
         }
 
-        run(this, selector, queue);
+        run(this, selector, queue, keepRunning);
     }
 
-    private static void run(final AsyncServer server, final SelectorWrapper selector, final PriorityQueue<Scheduled> queue) {
+    private static void run(final AsyncServer server, final SelectorWrapper selector, final PriorityQueue<Scheduled> queue, final boolean keepRunning) {
 //        Log.i(LOGTAG, "****AsyncServer is starting.****");
         // at this point, this local queue and selector are owned
         // by this thread.
@@ -636,7 +635,7 @@ public class AsyncServer {
             }
             // see if we keep looping, this must be in a synchronized block since the queue is accessed.
             synchronized (server) {
-                if (selector.isOpen() && (selector.keys().size() > 0 || queue.size() > 0))
+                if (selector.isOpen() && (selector.keys().size() > 0 || keepRunning || queue.size() > 0))
                     continue;
 
                 shutdownEverything(selector);
