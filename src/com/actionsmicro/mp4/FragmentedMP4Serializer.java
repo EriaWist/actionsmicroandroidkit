@@ -1,6 +1,8 @@
 package com.actionsmicro.mp4;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.TimeZone;
@@ -23,6 +25,7 @@ import com.actionsmicro.mp4.box.MovieExtendsHeaderBox;
 import com.actionsmicro.mp4.box.MovieFragmentBox;
 import com.actionsmicro.mp4.box.MovieFragmentHeaderBox;
 import com.actionsmicro.mp4.box.MovieHeaderBox;
+import com.actionsmicro.mp4.box.ObjectDescriptorBox;
 import com.actionsmicro.mp4.box.SampleDescriptionBox;
 import com.actionsmicro.mp4.box.SampleSizeBox;
 import com.actionsmicro.mp4.box.SampleTableBox;
@@ -63,7 +66,8 @@ public class FragmentedMP4Serializer {
 	private TrackFragmentHeaderBox tfhd;
 	private void buildMovieHeader(ByteBuffer byteBuffer, int width, int height, 
 			byte avcProfileIndication, byte profileCompatibility, byte avcLevelIndication, byte[] sps, byte[] ps) {
-		FileTypeBox ftyp = new FileTypeBox(Box.FourCharCode("mp42"), 1, null);
+		FileTypeBox ftyp = new FileTypeBox(Box.FourCharCode("mp42"), 1, 
+				Arrays.asList(Box.FourCharCode("isom"), Box.FourCharCode("mp42"), Box.FourCharCode("dash")));
 		
 		MovieBox moov = buildMoov(width, height,
 				avcProfileIndication, profileCompatibility, avcLevelIndication, sps, ps);		
@@ -76,6 +80,7 @@ public class FragmentedMP4Serializer {
 		MovieBox moov = new MovieBox();
 		int now = (int)((new GregorianCalendar(TimeZone.getTimeZone("UTC")).getTimeInMillis() - REFERENCE_TIME) * 1000);
 		moov.addChild(new MovieHeaderBox(0, now, now, 2));
+		moov.addChild(new ObjectDescriptorBox());
 		
 		MovieExtendsBox mvex = new MovieExtendsBox();
 		moov.addChild(mvex);
