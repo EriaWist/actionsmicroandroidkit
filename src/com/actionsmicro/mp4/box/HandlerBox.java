@@ -21,9 +21,10 @@ public class HandlerBox extends FullBox {
 			byteBuffer.putInt(r);
 		}
 		byteBuffer.put(name); 
+		byteBuffer.put((byte)0x00);
 	}
 	@Override
 	protected int getBodySize() {
-		return super.getBodySize() + 4 + 4 + 3*4 + name.length;
+		return super.getBodySize() + 4 + 4 + 3*4 + name.length + 1;
 	}
 }
