@@ -215,9 +215,10 @@ public class TsStreamer {
 						}
 						if (tsBuffer != null) {
 							tsBuffer.rewind();
+							ByteBufferList byteBufferList = new ByteBufferList(tsBuffer);
 							do {
-								response.write(new ByteBufferList(tsBuffer));
-							} while (tsBuffer.hasRemaining() && !stop);
+								response.write(byteBufferList);
+							} while (byteBufferList.hasRemaining() && !stop);
 							idleBuffers.add(tsBuffer);
 							if (debugCounter++%1000==0) {
 								Log.d(TAG, "packet write out:"+debugCounter);
