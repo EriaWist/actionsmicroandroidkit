@@ -13,10 +13,12 @@ import android.os.Build;
 
 import com.actionsmicro.airplay.mirror.AvcEncoder;
 import com.actionsmicro.mp4.FragmentedMP4Serializer.OutputListener;
+import com.actionsmicro.mp4.box.MediaDataBox;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncServerSocket;
 import com.koushikdutta.async.ByteBufferList;
+import com.koushikdutta.async.callback.WritableCallback;
 import com.koushikdutta.async.http.server.AsyncHttpServer;
 import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
@@ -50,9 +52,9 @@ public class Mp4Streamer {
 				delegate.onSizeChanged();
 			}
 		}
-		if (currentConnection == null) {
-			return;
-		}
+//		if (currentConnection == null) {
+//			return;
+//		}
 
 		if (avcEncoder != null) {
 			frameCount ++;
@@ -67,7 +69,7 @@ public class Mp4Streamer {
 		releaseAvcEncoder();
 		try {
 
-			avcEncoder = new AvcEncoder(width, height, 5*1024*1024, 20, 10) {
+			avcEncoder = new AvcEncoder(width, height, 1024*1024, 20, 10) {
 				protected void onOutputForamtChanged(MediaFormat outputFormat) {
 					
 				}
@@ -79,7 +81,7 @@ public class Mp4Streamer {
 					Mp4Streamer.this.pps = pps;
 					mp4Serializer = new FragmentedMP4Serializer();
 					mp4Serializer.setOutputListener(new OutputListener() {
-
+						boolean firstFragment = true;
 						@Override
 						public void headerReady(byte[] data, int offset,
 								int length) {
@@ -95,9 +97,9 @@ public class Mp4Streamer {
 
 							mp4Header = ByteBuffer.allocate(length);
 							mp4Header.put(data, offset, length);
-							if (currentConnection != null) {
-								writeResponse(currentConnection, mp4Header);
-							}
+//							if (currentConnection != null) {
+//								writeResponse(currentConnection, mp4Header);
+//							}
 							
 						}
 
@@ -109,6 +111,43 @@ public class Mp4Streamer {
 								buffer.put(data, offset, length);
 								writeResponse(currentConnection, buffer);
 							}
+						}
+
+						@Override
+						public boolean shouldFinalizeMdat(MediaDataBox mdat) {
+							int mdatSize = mdat.getBoxSize();
+							if (firstFragment) {
+								if (mdatSize > 256*1024 && currentConnection != null) {
+									firstFragment = false;
+									
+									synchronized (currentConnection) {
+										currentConnection.setWriteableCallback(new WritableCallback() {
+
+											@Override
+											public void onWriteable() {
+												synchronized (currentConnection) {
+													if (currentConnection != null) {
+														writeResponse(currentConnection, mp4Header);
+													}
+													currentConnection.notifyAll();
+												}
+											}
+
+										});
+										currentConnection.writeHead();
+										try {
+											currentConnection.wait();
+										} catch (InterruptedException e) {
+											// TODO Auto-generated catch block
+											e.printStackTrace();
+										}
+									}
+									return true;
+								}
+							} else {
+								return true;
+							}
+							return false;
 						}
 						
 					});
@@ -177,7 +216,14 @@ public class Mp4Streamer {
 		}
 	};
 	private AsyncServerSocket serverSocket;
-	private AsyncServer httpAsyncServer = new AsyncServer();
+	private int totalTransmitted = 0;
+	private AsyncServer httpAsyncServer = new AsyncServer() {
+		@Override
+		protected void onDataSent(int transmitted) {
+			totalTransmitted += transmitted;
+			Log.d(TAG, "transmitted:"+transmitted+", total:"+totalTransmitted);
+		}
+	};
 	protected AsyncHttpServerResponse currentConnection;
 	private int totalWrite; 
 	private void startHttpServer() {
@@ -194,20 +240,16 @@ public class Mp4Streamer {
 				
 				response.getHeaders().add("Content-Type", "video/mp4");
 				response.code(200);
-//				synchronized (httpServer) {
-//					if (mp4Header == null) {
-//						try {
-//							httpServer.wait(3000);
-//						} catch (InterruptedException e) {
-//							e.printStackTrace();
-//						}
+				currentConnection = response;
+//				response.setWriteableCallback(new WritableCallback() {
+//
+//					@Override
+//					public void onWriteable() {
+//						Mp4Streamer.this.currentConnection = response;
 //					}
-//				}
-//				if (mp4Header != null) {
-//					Log.d(TAG, "write mp4Header");
-//					writeResponse(response, mp4Header);
-					Mp4Streamer.this.currentConnection = response;
-//				}
+//					
+//				});
+//				response.writeHead();
 			}			
 		});
 	}
@@ -232,12 +274,12 @@ public class Mp4Streamer {
 			response.write(bb);
 			Log.d(TAG, "currentConnection write remaining:"+bb.remaining());
 			tryCount++;
-			if (tryCount > 1) {
+			if (tryCount > 0 && bb.hasRemaining()) {
 				Log.w(TAG, "drop this frame");
 				break;
 			}
 		} while (bb.hasRemaining() && !stop);
-		if (!buffer.hasRemaining()) {
+		if (!bb.hasRemaining()) {
 			totalWrite += buffer.array().length;
 			if (mp4FileOut != null) {
 				try {
