@@ -5,12 +5,15 @@ import android.os.Build;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.callback.DataCallback;
 import com.koushikdutta.async.callback.WritableCallback;
+import com.koushikdutta.async.util.Allocator;
 import com.koushikdutta.async.wrapper.AsyncSocketWrapper;
 
 import org.apache.http.conn.ssl.StrictHostnameVerifier;
 
 import java.nio.ByteBuffer;
+import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 
 import javax.net.ssl.HostnameVerifier;
@@ -25,122 +28,27 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
 public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket {
+    public interface HandshakeCallback {
+        public void onHandshakeCompleted(Exception e, AsyncSSLSocket socket);
+    }
+
+    static SSLContext defaultSSLContext;
+
     AsyncSocket mSocket;
-    BufferedDataEmitter mEmitter;
     BufferedDataSink mSink;
-    ByteBuffer mReadTmp = ByteBufferList.obtain(8192);
-    boolean mUnwrapping = false;
+    boolean mUnwrapping;
+    SSLEngine engine;
+    boolean finishedHandshake;
+    private int mPort;
+    private String mHost;
+    private boolean mWrapping;
     HostnameVerifier hostnameVerifier;
-
-    @Override
-    public void end() {
-        mSocket.end();
-    }
-
-    public AsyncSSLSocketWrapper(AsyncSocket socket, String host, int port) {
-        this(socket, host, port, sslContext, null, null, true);
-    }
-
+    HandshakeCallback handshakeCallback;
+    X509Certificate[] peerCertificates;
+    WritableCallback mWriteableCallback;
+    DataCallback mDataCallback;
     TrustManager[] trustManagers;
     boolean clientMode;
-
-    public AsyncSSLSocketWrapper(AsyncSocket socket, String host, int port, SSLContext sslContext, TrustManager[] trustManagers, HostnameVerifier verifier, boolean clientMode) {
-        mSocket = socket;
-        hostnameVerifier = verifier;
-        this.clientMode = clientMode;
-        this.trustManagers = trustManagers;
-
-        if (sslContext == null)
-            sslContext = AsyncSSLSocketWrapper.sslContext;
-
-        if (host != null) {
-            engine = sslContext.createSSLEngine(host, port);
-        }
-        else {
-            engine = sslContext.createSSLEngine();
-        }
-        mHost = host;
-        mPort = port;
-        engine.setUseClientMode(clientMode);
-        mSink = new BufferedDataSink(socket);
-        mSink.setWriteableCallback(new WritableCallback() {
-            @Override
-            public void onWriteable() {
-                if (mWriteableCallback != null)
-                    mWriteableCallback.onWriteable();
-            }
-        });
-
-        // SSL needs buffering of data written during handshake.
-        // aka exhcange.setDatacallback
-        mEmitter = new BufferedDataEmitter(socket);
-
-        final ByteBufferList transformed = new ByteBufferList();
-        mEmitter.setDataCallback(new DataCallback() {
-            @Override
-            public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
-                if (mUnwrapping)
-                    return;
-                try {
-                    mUnwrapping = true;
-
-                    mReadTmp.position(0);
-                    mReadTmp.limit(mReadTmp.capacity());
-
-                    ByteBuffer b = ByteBufferList.EMPTY_BYTEBUFFER;
-                    while (true) {
-                        if (b.remaining() == 0 && bb.size() > 0) {
-                            b = bb.remove();
-                        }
-                        int remaining = b.remaining();
-
-                        SSLEngineResult res = engine.unwrap(b, mReadTmp);
-                        if (res.getStatus() == Status.BUFFER_OVERFLOW) {
-                            addToPending(transformed);
-                            mReadTmp = ByteBufferList.obtain(mReadTmp.remaining() * 2);
-                            remaining = -1;
-                        }
-                        else if (res.getStatus() == Status.BUFFER_UNDERFLOW) {
-                            bb.addFirst(b);
-                            if (bb.size() <= 1) {
-                                break;
-                            }
-                            // pack it
-                            remaining = -1;
-                            b = bb.getAll();
-                            bb.addFirst(b);
-                            b = ByteBufferList.EMPTY_BYTEBUFFER;
-                        }
-                        handleResult(res);
-                        if (b.remaining() == remaining) {
-                            bb.addFirst(b);
-                            break;
-                        }
-                    }
-
-                    addToPending(transformed);
-                    Util.emitAllData(AsyncSSLSocketWrapper.this, transformed);
-                }
-                catch (Exception ex) {
-                    ex.printStackTrace();
-                    report(ex);
-                }
-                finally {
-                    mUnwrapping = false;
-                }
-            }
-        });
-    }
-
-    void addToPending(ByteBufferList out) {
-        if (mReadTmp.position() > 0) {
-            mReadTmp.flip();
-            out.add(mReadTmp);
-            mReadTmp = ByteBufferList.obtain(mReadTmp.capacity());
-        }
-    }
-
-    static SSLContext sslContext;
 
     static {
         // following is the "trust the system" certs setup
@@ -152,11 +60,11 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
             // fallback is to use a custom SSLContext, and hack around the x509 extension.
             if (Build.VERSION.SDK_INT <= 15)
                 throw new Exception();
-            sslContext = SSLContext.getInstance("Default");
+            defaultSSLContext = SSLContext.getInstance("Default");
         }
         catch (Exception ex) {
             try {
-                sslContext = SSLContext.getInstance("TLS");
+                defaultSSLContext = SSLContext.getInstance("TLS");
                 TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
                     public java.security.cert.X509Certificate[] getAcceptedIssuers() {
                         return new X509Certificate[0];
@@ -172,7 +80,7 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
                         }
                     }
                 } };
-                sslContext.init(null, trustAllCerts, null);
+                defaultSSLContext.init(null, trustAllCerts, null);
             }
             catch (Exception ex2) {
                 ex.printStackTrace();
@@ -181,33 +89,192 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
         }
     }
 
-    SSLEngine engine;
-    boolean finishedHandshake = false;
+    public static SSLContext getDefaultSSLContext() {
+        return defaultSSLContext;
+    }
 
-    private String mHost;
+    public static void handshake(AsyncSocket socket,
+                                 String host, int port,
+                                 SSLEngine sslEngine,
+                                 TrustManager[] trustManagers, HostnameVerifier verifier, boolean clientMode,
+                                 final HandshakeCallback callback) {
+        AsyncSSLSocketWrapper wrapper = new AsyncSSLSocketWrapper(socket, host, port, sslEngine, trustManagers, verifier, clientMode);
+        wrapper.handshakeCallback = callback;
+        socket.setClosedCallback(new CompletedCallback() {
+            @Override
+            public void onCompleted(Exception ex) {
+                callback.onHandshakeCompleted(new SSLException(ex), null);
+            }
+        });
+        try {
+            wrapper.engine.beginHandshake();
+            wrapper.handleHandshakeStatus(wrapper.engine.getHandshakeStatus());
+        } catch (SSLException e) {
+            wrapper.report(e);
+        }
+    }
+
+    boolean mEnded;
+    Exception mEndException;
+    final ByteBufferList pending = new ByteBufferList();
+
+    private AsyncSSLSocketWrapper(AsyncSocket socket,
+                                  String host, int port,
+                                  SSLEngine sslEngine,
+                                  TrustManager[] trustManagers, HostnameVerifier verifier, boolean clientMode) {
+        mSocket = socket;
+        hostnameVerifier = verifier;
+        this.clientMode = clientMode;
+        this.trustManagers = trustManagers;
+        this.engine = sslEngine;
+
+        mHost = host;
+        mPort = port;
+        engine.setUseClientMode(clientMode);
+        mSink = new BufferedDataSink(socket);
+        mSink.setWriteableCallback(new WritableCallback() {
+            @Override
+            public void onWriteable() {
+                if (mWriteableCallback != null)
+                    mWriteableCallback.onWriteable();
+            }
+        });
+
+        // on pause, the emitter is paused to prevent the buffered
+        // socket and itself from firing.
+        // on resume, emitter is resumed, ssl buffer is flushed as well
+        mSocket.setEndCallback(new CompletedCallback() {
+            @Override
+            public void onCompleted(Exception ex) {
+                if (mEnded)
+                    return;
+                mEnded = true;
+                mEndException = ex;
+                if (!pending.hasRemaining() && mEndCallback != null)
+                    mEndCallback.onCompleted(ex);
+            }
+        });
+
+        mSocket.setDataCallback(dataCallback);
+    }
+
+    final DataCallback dataCallback = new DataCallback() {
+        final Allocator allocator = new Allocator().setMinAlloc(8192);
+        final ByteBufferList buffered = new ByteBufferList();
+
+        @Override
+        public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
+            if (mUnwrapping)
+                return;
+            try {
+                mUnwrapping = true;
+
+                bb.get(buffered);
+
+                if (buffered.hasRemaining()) {
+                    ByteBuffer all = buffered.getAll();
+                    buffered.add(all);
+                }
+
+                ByteBuffer b = ByteBufferList.EMPTY_BYTEBUFFER;
+                while (true) {
+                    if (b.remaining() == 0 && buffered.size() > 0) {
+                        b = buffered.remove();
+                    }
+                    int remaining = b.remaining();
+                    int before = pending.remaining();
+
+                    SSLEngineResult res;
+                    {
+                        // wrap to prevent access to the readBuf
+                        ByteBuffer readBuf = allocator.allocate();
+                        res = engine.unwrap(b, readBuf);
+                        addToPending(pending, readBuf);
+                        allocator.track(pending.remaining() - before);
+                    }
+                    if (res.getStatus() == Status.BUFFER_OVERFLOW) {
+                        allocator.setMinAlloc(allocator.getMinAlloc() * 2);
+                        remaining = -1;
+                    }
+                    else if (res.getStatus() == Status.BUFFER_UNDERFLOW) {
+                        buffered.addFirst(b);
+                        if (buffered.size() <= 1) {
+                            break;
+                        }
+                        // pack it
+                        remaining = -1;
+                        b = buffered.getAll();
+                        buffered.addFirst(b);
+                        b = ByteBufferList.EMPTY_BYTEBUFFER;
+                    }
+                    handleHandshakeStatus(res.getHandshakeStatus());
+                    if (b.remaining() == remaining && before == pending.remaining()) {
+                        buffered.addFirst(b);
+                        break;
+                    }
+                }
+
+                AsyncSSLSocketWrapper.this.onDataAvailable();
+            }
+            catch (SSLException ex) {
+                ex.printStackTrace();
+                report(ex);
+            }
+            finally {
+                mUnwrapping = false;
+            }
+        }
+    };
+
+    public void onDataAvailable() {
+        Util.emitAllData(this, pending);
+
+        if (mEnded && !pending.hasRemaining() && mEndCallback != null)
+            mEndCallback.onCompleted(mEndException);
+    }
+
+
+    @Override
+    public SSLEngine getSSLEngine() {
+        return engine;
+    }
+
+    void addToPending(ByteBufferList out, ByteBuffer mReadTmp) {
+        mReadTmp.flip();
+        if (mReadTmp.hasRemaining()) {
+            out.add(mReadTmp);
+        }
+        else {
+            ByteBufferList.reclaim(mReadTmp);
+        }
+    }
+
+
+    @Override
+    public void end() {
+        mSocket.end();
+    }
 
     public String getHost() {
         return mHost;
     }
 
-    private int mPort;
-
     public int getPort() {
         return mPort;
     }
 
-    private void handleResult(SSLEngineResult res) {
-        if (res.getHandshakeStatus() == HandshakeStatus.NEED_TASK) {
+    private void handleHandshakeStatus(HandshakeStatus status) {
+        if (status == HandshakeStatus.NEED_TASK) {
             final Runnable task = engine.getDelegatedTask();
             task.run();
         }
 
-        if (res.getHandshakeStatus() == HandshakeStatus.NEED_WRAP) {
-            write(ByteBufferList.EMPTY_BYTEBUFFER);
+        if (status == HandshakeStatus.NEED_WRAP) {
+            write(writeList);
         }
 
-        if (res.getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP) {
-            mEmitter.onDataAvailable();
+        if (status == HandshakeStatus.NEED_UNWRAP) {
+            dataCallback.onDataAvailable(this, new ByteBufferList());
         }
 
         try {
@@ -220,6 +287,7 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
                         trustManagers = tmf.getTrustManagers();
                     }
                     boolean trusted = false;
+                    Exception peerUnverifiedCause = null;
                     for (TrustManager tm : trustManagers) {
                         try {
                             X509TrustManager xtm = (X509TrustManager) tm;
@@ -237,88 +305,51 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
                             trusted = true;
                             break;
                         }
-                        catch (Exception ex) {
-                            ex.printStackTrace();
+                        catch (GeneralSecurityException ex) {
+                            peerUnverifiedCause = ex;
+                        }
+                        catch (SSLException ex) {
+                            peerUnverifiedCause = ex;
                         }
                     }
                     finishedHandshake = true;
                     if (!trusted) {
-                        AsyncSSLException e = new AsyncSSLException();
+                        AsyncSSLException e = new AsyncSSLException(peerUnverifiedCause);
                         report(e);
                         if (!e.getIgnore())
                             throw e;
                     }
                 }
+                else {
+                    finishedHandshake = true;
+                }
+                handshakeCallback.onHandshakeCompleted(null, this);
+                handshakeCallback = null;
                 if (mWriteableCallback != null)
                     mWriteableCallback.onWriteable();
-                mEmitter.onDataAvailable();
+                onDataAvailable();
             }
         }
-        catch (Exception ex) {
+        catch (NoSuchAlgorithmException ex) {
+            throw new RuntimeException(ex);
+        }
+        catch (GeneralSecurityException ex) {
+            report(ex);
+        }
+        catch (AsyncSSLException ex) {
             report(ex);
         }
     }
-
-    private void writeTmp(ByteBuffer mWriteTmp) {
-        mWriteTmp.flip();
-        if (mWriteTmp.remaining() > 0)
-            mSink.write(mWriteTmp);
-        assert !mWriteTmp.hasRemaining();
-    }
-
-    private boolean mWrapping = false;
 
     int calculateAlloc(int remaining) {
         // alloc 50% more than we need for writing
         int alloc = remaining * 3 / 2;
         if (alloc == 0)
-            alloc = 8182;
+            alloc = 8192;
         return alloc;
     }
 
-    @Override
-    public void write(ByteBuffer bb) {
-        if (mWrapping)
-            return;
-        if (mSink.remaining() > 0)
-            return;
-        mWrapping = true;
-        int remaining;
-        SSLEngineResult res = null;
-        ByteBuffer mWriteTmp = ByteBufferList.obtain(calculateAlloc(bb.remaining()));
-        do {
-            // if the handshake is finished, don't send
-            // 0 bytes of data, since that makes the ssl connection die.
-            // it wraps a 0 byte package, and craps out.
-            if (finishedHandshake && bb.remaining() == 0) {
-                mWrapping = false;
-                return;
-            }
-            remaining = bb.remaining();
-            try {
-                res = engine.wrap(bb, mWriteTmp);
-                writeTmp(mWriteTmp);
-                int previousCapacity = mWriteTmp.capacity();
-                ByteBufferList.reclaim(mWriteTmp);
-                mWriteTmp = null;
-                if (res.getStatus() == Status.BUFFER_OVERFLOW) {
-                    mWriteTmp = ByteBufferList.obtain(previousCapacity * 2);
-                    remaining = -1;
-                }
-                else {
-                    mWriteTmp = ByteBufferList.obtain(calculateAlloc(bb.remaining()));
-                }
-                handleResult(res);
-            }
-            catch (SSLException e) {
-                report(e);
-            }
-        }
-        while ((remaining != bb.remaining() || (res != null && res.getHandshakeStatus() == HandshakeStatus.NEED_WRAP)) && mSink.remaining() == 0);
-        ByteBufferList.reclaim(mWriteTmp);
-        mWrapping = false;
-    }
-
+    ByteBufferList writeList = new ByteBufferList();
     @Override
     public void write(ByteBufferList bb) {
         if (mWrapping)
@@ -328,43 +359,42 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
         mWrapping = true;
         int remaining;
         SSLEngineResult res = null;
-        ByteBuffer mWriteTmp = ByteBufferList.obtain(calculateAlloc(bb.remaining()));
+        ByteBuffer writeBuf = ByteBufferList.obtain(calculateAlloc(bb.remaining()));
         do {
             // if the handshake is finished, don't send
             // 0 bytes of data, since that makes the ssl connection die.
             // it wraps a 0 byte package, and craps out.
-            if (finishedHandshake && bb.remaining() == 0) {
-                mWrapping = false;
-                return;
-            }
+            if (finishedHandshake && bb.remaining() == 0)
+                break;
             remaining = bb.remaining();
             try {
                 ByteBuffer[] arr = bb.getAllArray();
-                res = engine.wrap(arr, mWriteTmp);
+                res = engine.wrap(arr, writeBuf);
                 bb.addAll(arr);
-                writeTmp(mWriteTmp);
-                int previousCapacity = mWriteTmp.capacity();
-                ByteBufferList.reclaim(mWriteTmp);
-                mWriteTmp = null;
+                writeBuf.flip();
+                writeList.add(writeBuf);
+                assert !writeList.hasRemaining();
+                if (writeList.remaining() > 0)
+                    mSink.write(writeList);
+                int previousCapacity = writeBuf.capacity();
+                writeBuf = null;
                 if (res.getStatus() == Status.BUFFER_OVERFLOW) {
-                    mWriteTmp = ByteBufferList.obtain(previousCapacity * 2);
+                    writeBuf = ByteBufferList.obtain(previousCapacity * 2);
                     remaining = -1;
                 }
                 else {
-                    mWriteTmp = ByteBufferList.obtain(calculateAlloc(bb.remaining()));
+                    writeBuf = ByteBufferList.obtain(calculateAlloc(bb.remaining()));
+                    handleHandshakeStatus(res.getHandshakeStatus());
                 }
-                handleResult(res);
             }
             catch (SSLException e) {
                 report(e);
             }
         }
         while ((remaining != bb.remaining() || (res != null && res.getHandshakeStatus() == HandshakeStatus.NEED_WRAP)) && mSink.remaining() == 0);
-        ByteBufferList.reclaim(mWriteTmp);
         mWrapping = false;
+        ByteBufferList.reclaim(writeBuf);
     }
-
-    WritableCallback mWriteableCallback;
 
     @Override
     public void setWriteableCallback(WritableCallback handler) {
@@ -377,12 +407,20 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
     }
 
     private void report(Exception e) {
+        final HandshakeCallback hs = handshakeCallback;
+        if (hs != null) {
+            handshakeCallback = null;
+            mSocket.setDataCallback(new DataCallback.NullDataCallback());
+            mSocket.end();
+            mSocket.close();
+            hs.onHandshakeCompleted(e, null);
+            return;
+        }
+
         CompletedCallback cb = getEndCallback();
         if (cb != null)
             cb.onCompleted(e);
     }
-
-    DataCallback mDataCallback;
 
     @Override
     public void setDataCallback(DataCallback callback) {
@@ -419,14 +457,15 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
         return mSocket.getClosedCallback();
     }
 
+    CompletedCallback mEndCallback;
     @Override
     public void setEndCallback(CompletedCallback callback) {
-        mSocket.setEndCallback(callback);
+        mEndCallback = callback;
     }
 
     @Override
     public CompletedCallback getEndCallback() {
-        return mSocket.getEndCallback();
+        return mEndCallback;
     }
 
     @Override
@@ -437,6 +476,7 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
     @Override
     public void resume() {
         mSocket.resume();
+        onDataAvailable();
     }
 
     @Override
@@ -459,10 +499,13 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
         return mSocket;
     }
 
-    X509Certificate[] peerCertificates;
-
     @Override
     public X509Certificate[] getPeerCertificates() {
         return peerCertificates;
+    }
+
+    @Override
+    public String charset() {
+        return null;
     }
 }

@@ -5,28 +5,28 @@ import com.koushikdutta.async.DataEmitter;
 import com.koushikdutta.async.FilteredDataEmitter;
 
 public class ContentLengthFilter extends FilteredDataEmitter {
-    public ContentLengthFilter(int contentLength) {
+    public ContentLengthFilter(long contentLength) {
         this.contentLength = contentLength;
     }
 
     @Override
     protected void report(Exception e) {
         if (e == null && totalRead != contentLength)
-            e = new PrematureDataEndException("End of data reached before content length was read");
+            e = new PrematureDataEndException("End of data reached before content length was read: " + totalRead + "/" + contentLength + " Paused: " + isPaused());
         super.report(e);
     }
 
-    int contentLength;
-    int totalRead;
+    long contentLength;
+    long totalRead;
     ByteBufferList transformed = new ByteBufferList();
     @Override
     public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
         assert totalRead < contentLength;
 
         int remaining = bb.remaining();
-        int toRead = Math.min(contentLength - totalRead, remaining);
+        long toRead = Math.min(contentLength - totalRead, remaining);
 
-        bb.get(transformed, toRead);
+        bb.get(transformed, (int)toRead);
 
         int beforeRead = transformed.remaining();
 

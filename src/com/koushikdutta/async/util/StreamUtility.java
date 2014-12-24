@@ -90,6 +90,8 @@ public class StreamUtility {
     }
     
     public static void closeQuietly(Closeable... closeables) {
+        if (closeables == null)
+            return;
         for (Closeable closeable : closeables) {
             if (closeable != null) {
                 try {
@@ -97,9 +99,13 @@ public class StreamUtility {
                 } catch (IOException e) {
                     // http://stackoverflow.com/a/156525/9636
                 }
-                return;
             }
         }
+    }
+
+    public static void eat(InputStream input) throws IOException {
+        byte[] stuff = new byte[1024];
+        while (input.read(stuff) != -1);
     }
 }
 

@@ -1,7 +1,36 @@
 package com.koushikdutta.async.http.server;
 
+import android.annotation.TargetApi;
+import android.content.Context;
+import android.content.res.AssetManager;
+import android.os.Build;
+import android.text.TextUtils;
+
+import com.koushikdutta.async.AsyncSSLSocket;
+import com.koushikdutta.async.AsyncSSLSocketWrapper;
+import com.koushikdutta.async.AsyncServer;
+import com.koushikdutta.async.AsyncServerSocket;
+import com.koushikdutta.async.AsyncSocket;
+import com.koushikdutta.async.ByteBufferList;
+import com.koushikdutta.async.DataEmitter;
+import com.koushikdutta.async.Util;
+import com.koushikdutta.async.callback.CompletedCallback;
+import com.koushikdutta.async.callback.ListenCallback;
+import com.koushikdutta.async.http.AsyncHttpGet;
+import com.koushikdutta.async.http.AsyncHttpHead;
+import com.koushikdutta.async.http.AsyncHttpPost;
+import com.koushikdutta.async.http.Headers;
+import com.koushikdutta.async.http.HttpUtil;
+import com.koushikdutta.async.http.Multimap;
+import com.koushikdutta.async.http.Protocol;
+import com.koushikdutta.async.http.WebSocket;
+import com.koushikdutta.async.http.WebSocketImpl;
+import com.koushikdutta.async.http.body.AsyncHttpRequestBody;
+import com.koushikdutta.async.util.StreamUtility;
+
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -13,32 +42,7 @@ import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 
-import android.content.Context;
-import android.content.res.AssetManager;
-import android.text.TextUtils;
-
-import com.koushikdutta.async.AsyncSSLSocketWrapper;
-import com.koushikdutta.async.AsyncServer;
-import com.koushikdutta.async.AsyncServerSocket;
-import com.koushikdutta.async.AsyncSocket;
-import com.koushikdutta.async.ByteBufferList;
-import com.koushikdutta.async.DataEmitter;
-import com.koushikdutta.async.NullDataCallback;
-import com.koushikdutta.async.Util;
-import com.koushikdutta.async.callback.CompletedCallback;
-import com.koushikdutta.async.callback.ListenCallback;
-import com.koushikdutta.async.http.AsyncHttpGet;
-import com.koushikdutta.async.http.AsyncHttpHead;
-import com.koushikdutta.async.http.AsyncHttpPost;
-import com.koushikdutta.async.http.HttpUtil;
-import com.koushikdutta.async.http.Multimap;
-import com.koushikdutta.async.http.WebSocket;
-import com.koushikdutta.async.http.WebSocketImpl;
-import com.koushikdutta.async.http.body.AsyncHttpRequestBody;
-import com.koushikdutta.async.http.libcore.IoUtils;
-import com.koushikdutta.async.http.libcore.RawHeaders;
-import com.koushikdutta.async.http.libcore.RequestHeaders;
-
+@TargetApi(Build.VERSION_CODES.ECLAIR)
 public class AsyncHttpServer {
     ArrayList<AsyncServerSocket> mListeners = new ArrayList<AsyncServerSocket>();
     public void stop() {
@@ -49,10 +53,16 @@ public class AsyncHttpServer {
         }
     }
     
-    protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+    protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+        return false;
     }
 
-    protected AsyncHttpRequestBody onUnknownBody(RawHeaders headers) {
+    protected void onRequest(HttpServerRequestCallback callback, AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+        if (callback != null)
+            callback.onRequest(request, response);
+    }
+
+    protected AsyncHttpRequestBody onUnknownBody(Headers headers) {
         return new UnknownRequestBody(headers.get("Content-Type"));
     }
 
@@ -90,8 +100,14 @@ public class AsyncHttpServer {
         AsyncServer.getDefault().listen(null, port, new ListenCallback() {
             @Override
             public void onAccepted(AsyncSocket socket) {
-                AsyncSSLSocketWrapper sslSocket = new AsyncSSLSocketWrapper(socket, null, port, sslContext, null, null, false);
-                mListenCallback.onAccepted(sslSocket);
+                AsyncSSLSocketWrapper.handshake(socket, null, port, sslContext.createSSLEngine(), null, null, false,
+                new AsyncSSLSocketWrapper.HandshakeCallback() {
+                    @Override
+                    public void onHandshakeCompleted(Exception e, AsyncSSLSocket socket) {
+                        if (socket != null)
+                            mListenCallback.onAccepted(socket);
+                    }
+                });
             }
 
             @Override
@@ -124,7 +140,7 @@ public class AsyncHttpServer {
         HttpServerRequestCallback callback;
     }
     
-    Hashtable<String, ArrayList<Pair>> mActions = new Hashtable<String, ArrayList<Pair>>();
+    final Hashtable<String, ArrayList<Pair>> mActions = new Hashtable<String, ArrayList<Pair>>();
     
     public void addAction(String action, String regex, HttpServerRequestCallback callback) {
         Pair p = new Pair();
@@ -142,7 +158,7 @@ public class AsyncHttpServer {
     }
 
     public static interface WebSocketRequestCallback {
-        public void onConnected(WebSocket webSocket, RequestHeaders headers);
+        public void onConnected(WebSocket webSocket, AsyncHttpServerRequest request);
     }
 
     public void websocket(String regex, final WebSocketRequestCallback callback) {
@@ -154,7 +170,7 @@ public class AsyncHttpServer {
             @Override
             public void onRequest(final AsyncHttpServerRequest request, final AsyncHttpServerResponse response) {
                 boolean hasUpgrade = false;
-                String connection = request.getHeaders().getHeaders().get("Connection");
+                String connection = request.getHeaders().get("Connection");
                 if (connection != null) {
                     String[] connections = connection.split(",");
                     for (String c: connections) {
@@ -164,18 +180,18 @@ public class AsyncHttpServer {
                         }
                     }
                 }
-                if (!"websocket".equalsIgnoreCase(request.getHeaders().getHeaders().get("Upgrade")) || !hasUpgrade) {
-                    response.responseCode(404);
+                if (!"websocket".equalsIgnoreCase(request.getHeaders().get("Upgrade")) || !hasUpgrade) {
+                    response.code(404);
                     response.end();
                     return;
                 }
-                String peerProtocol = request.getHeaders().getHeaders().get("Sec-WebSocket-Protocol");
+                String peerProtocol = request.getHeaders().get("Sec-WebSocket-Protocol");
                 if (!TextUtils.equals(protocol, peerProtocol)) {
-                    response.responseCode(404);
+                    response.code(404);
                     response.end();
                     return;
                 }
-                callback.onConnected(new WebSocketImpl(request, response), request.getHeaders());
+                callback.onConnected(new WebSocketImpl(request, response), request);
             }
         });
     }
@@ -237,20 +253,20 @@ public class AsyncHttpServer {
             public void onRequest(AsyncHttpServerRequest request, final AsyncHttpServerResponse response) {
                 String path = request.getMatcher().replaceAll("");
                 android.util.Pair<Integer, InputStream> pair = getAssetStream(_context, assetPath + path);
-                final InputStream is = pair.second;
-                response.getHeaders().getHeaders().set("Content-Length", String.valueOf(pair.first));
-                if (is == null) {
-                    response.responseCode(404);
+                if (pair == null || pair.second == null) {
+                    response.code(404);
                     response.end();
                     return;
                 }
-                response.responseCode(200);
-                response.getHeaders().getHeaders().add("Content-Type", getContentType(assetPath + path));
+                final InputStream is = pair.second;
+                response.getHeaders().set("Content-Length", String.valueOf(pair.first));
+                response.code(200);
+                response.getHeaders().add("Content-Type", getContentType(assetPath + path));
                 Util.pump(is, response, new CompletedCallback() {
                     @Override
                     public void onCompleted(Exception ex) {
                         response.end();
-                        IoUtils.closeQuietly(is);
+                        StreamUtility.closeQuietly(is);
                     }
                 });
             }
@@ -260,16 +276,16 @@ public class AsyncHttpServer {
             public void onRequest(AsyncHttpServerRequest request, final AsyncHttpServerResponse response) {
                 String path = request.getMatcher().replaceAll("");
                 android.util.Pair<Integer, InputStream> pair = getAssetStream(_context, assetPath + path);
-                final InputStream is = pair.second;
-                IoUtils.closeQuietly(is);
-                response.getHeaders().getHeaders().set("Content-Length", String.valueOf(pair.first));
-                if (is == null) {
-                    response.responseCode(404);
+                if (pair == null || pair.second == null) {
+                    response.code(404);
                     response.end();
                     return;
                 }
-                response.responseCode(200);
-                response.getHeaders().getHeaders().add("Content-Type", getContentType(assetPath + path));
+                final InputStream is = pair.second;
+                StreamUtility.closeQuietly(is);
+                response.getHeaders().set("Content-Length", String.valueOf(pair.first));
+                response.code(200);
+                response.getHeaders().add("Content-Type", getContentType(assetPath + path));
                 response.writeHead();
                 response.end();
             }
@@ -313,13 +329,13 @@ public class AsyncHttpServer {
                     return;
                 }
                 if (!file.isFile()) {
-                    response.responseCode(404);
+                    response.code(404);
                     response.end();
                     return;
                 }
                 try {
                     FileInputStream is = new FileInputStream(file);
-                    response.responseCode(200);
+                    response.code(200);
                     Util.pump(is, response, new CompletedCallback() {
                         @Override
                         public void onCompleted(Exception ex) {
@@ -327,18 +343,17 @@ public class AsyncHttpServer {
                         }
                     });
                 }
-                catch (Exception ex) {
-                    response.responseCode(404);
+                catch (FileNotFoundException ex) {
+                    response.code(404);
                     response.end();
-                    return;
                 }
             }
         });
     }
-    
+
     public void establishConnection(final AsyncSocket socket) {
 		AsyncHttpServerRequestImpl req = new AsyncHttpServerRequestImpl() {
-		    Pair match;
+		    HttpServerRequestCallback match;
 		    String fullPath;
 		    String path;
 		    boolean responseComplete;
@@ -347,13 +362,13 @@ public class AsyncHttpServer {
 		    boolean hasContinued;
 
 		    @Override
-		    protected AsyncHttpRequestBody onUnknownBody(RawHeaders headers) {
+		    protected AsyncHttpRequestBody onUnknownBody(Headers headers) {
 		        return AsyncHttpServer.this.onUnknownBody(headers);
 		    }
 
 		    @Override
 		    protected void onHeadersReceived() {
-		        RawHeaders headers = getRawHeaders();
+		        Headers headers = getHeaders();
 
 		        // should the negotiation of 100 continue be here, or in the request impl?
 		        // probably here, so AsyncResponse can negotiate a 100 continue.
@@ -376,7 +391,7 @@ public class AsyncHttpServer {
 		        }
 //                    System.out.println(headers.toHeaderString());
 		        
-		        String statusLine = headers.getStatusLine();
+		        String statusLine = getStatusLine();
 		        String[] parts = statusLine.split(" ");
 		        fullPath = parts[1];
 		        path = fullPath.split("\\?")[0];
@@ -388,13 +403,23 @@ public class AsyncHttpServer {
 		                    Matcher m = p.regex.matcher(path);
 		                    if (m.matches()) {
 		                        mMatcher = m;
-		                        match = p;
+		                        match = p.callback;
 		                        break;
 		                    }
 		                }
 		            }
 		        }
 		        res = new AsyncHttpServerResponseImpl(socket, this) {
+		            @Override
+		            protected void report(Exception e) {
+		                super.report(e);
+		                if (e != null) {
+		                    socket.setDataCallback(new NullDataCallback());
+		                    socket.setEndCallback(new NullCompletedCallback());
+		                    socket.close();
+		                }
+		            }
+
 		            @Override
 		            protected void onEnd() {
 		                super.onEnd();
@@ -405,26 +430,26 @@ public class AsyncHttpServer {
 		            }
 		        };
 		        
-		        onRequest(this, res);
-		        
-		        if (match == null) {
-		            res.responseCode(404);
+		        boolean handled = onRequest(this, res);
+
+		        if (match == null && !handled) {
+		            res.code(404);
 		            res.end();
 		            return;
 		        }
 
 		        if (!getBody().readFullyOnRequest()) {
-		            match.callback.onRequest(this, res);
+		            onRequest(match, this, res);
 		        }
 		        else if (requestComplete) {
-		            match.callback.onRequest(this, res);
+		            onRequest(match, this, res);
 		        }
 		    }
 
 		    @Override
 		    public void onCompleted(Exception e) {
 		        // if the protocol was switched off http, ignore this request/response.
-		        if (res.getHeaders().getHeaders().getResponseCode() == 101)
+		        if (res.code() == 101)
 		            return;
 		        requestComplete = true;
 		        super.onCompleted(e);
@@ -440,15 +465,14 @@ public class AsyncHttpServer {
 		        handleOnCompleted();
 
 		        if (getBody().readFullyOnRequest()) {
-		            if (match != null)
-		                match.callback.onRequest(this, res);
+		            onRequest(match, this, res);
 		        }
 		    }
 		    
 		    private void handleOnCompleted() {
 		        if (requestComplete && responseComplete) {
-		            if (HttpUtil.isKeepAlive(getHeaders().getHeaders())) {
-		            	establishConnection(socket);
+		            if (HttpUtil.isKeepAlive(Protocol.HTTP_1_1, getHeaders())) {
+		            	mListenCallback.onAccepted(socket);
 		            }
 		            else {
 		                socket.close();

@@ -5,10 +5,12 @@ import android.util.Log;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.callback.DataCallback;
 import com.koushikdutta.async.callback.WritableCallback;
+import com.koushikdutta.async.util.Allocator;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -29,7 +31,7 @@ public class AsyncNetworkSocket implements AsyncSocket {
     InetSocketAddress socketAddress;
     void attach(SocketChannel channel, InetSocketAddress socketAddress) throws IOException {
         this.socketAddress = socketAddress;
-        maxAlloc = 256 * 1024; // 256K
+        allocator = new Allocator();
         mChannel = new SocketChannelWrapper(channel);
     }
     
@@ -37,7 +39,7 @@ public class AsyncNetworkSocket implements AsyncSocket {
         mChannel = new DatagramChannelWrapper(channel);
         // keep udp at roughly the mtu, which is 1540 or something
         // letting it grow freaks out nio apparently.
-        maxAlloc = 8192;
+        allocator = new Allocator(8192);
     }
     
     ChannelWrapper getChannel() {
@@ -76,10 +78,12 @@ public class AsyncNetworkSocket implements AsyncSocket {
         }
 
         try {
+            int before = list.remaining();
             ByteBuffer[] arr = list.getAllArray();
             mChannel.write(arr);
             list.addAll(arr);
             handleRemaining(list.remaining());
+            mServer.onDataSent(before - list.remaining());
         }
         catch (IOException e) {
             closeInternal();
@@ -88,7 +92,9 @@ public class AsyncNetworkSocket implements AsyncSocket {
         }
     }
     
-    private void handleRemaining(int remaining) {
+    private void handleRemaining(int remaining) throws IOException {
+        if (!mKey.isValid())
+            throw new IOException(new CancelledKeyException());
         if (remaining > 0) {
             // chunked channels should not fail
             assert !mChannel.isChunked();
@@ -99,41 +105,10 @@ public class AsyncNetworkSocket implements AsyncSocket {
             mKey.interestOps(SelectionKey.OP_READ);
         }
     }
-
-    @Override
-    public void write(final ByteBuffer b) {
-        if (mServer.getAffinity() != Thread.currentThread()) {
-            mServer.run(new Runnable() {
-                @Override
-                public void run() {
-                    write(b);
-                }
-            });
-            return;
-        }
-        try {
-            if (!mChannel.isConnected()) {
-                assert !mChannel.isChunked();
-                return;
-            }
-
-            // keep writing until the the socket can't write any more, or the
-            // data is exhausted.
-            mChannel.write(b);
-            handleRemaining(b.remaining());
-        }
-        catch (IOException ex) {
-            closeInternal();
-            reportEndPending(ex);
-            reportClose(ex);
-        }
-    }
-
     private ByteBufferList pending = new ByteBufferList();
 //    private ByteBuffer[] buffers = new ByteBuffer[8];
 
-    int maxAlloc;
-    int mToAlloc = 0;
+    Allocator allocator;
     int onReadable() {
         spitPending();
         // even if the socket is paused,
@@ -146,7 +121,7 @@ public class AsyncNetworkSocket implements AsyncSocket {
             boolean closed = false;
 
 //            ByteBufferList.obtainArray(buffers, Math.min(Math.max(mToAlloc, 2 << 11), maxAlloc));
-            ByteBuffer b = ByteBufferList.obtain(Math.min(Math.max(mToAlloc, 2 << 11), maxAlloc));
+            ByteBuffer b = allocator.allocate();
             // keep track of the max mount read during this read cycle
             // so we can be quicker about allocations during the next
             // time this socket reads.
@@ -159,7 +134,7 @@ public class AsyncNetworkSocket implements AsyncSocket {
                 total += read;
             }
             if (read > 0) {
-                mToAlloc = (int)read * 2;
+                allocator.track(read);
                 b.flip();
 //                for (int i = 0; i < buffers.length; i++) {
 //                    ByteBuffer b = buffers[i];
@@ -170,6 +145,9 @@ public class AsyncNetworkSocket implements AsyncSocket {
                 pending.add(b);
                 Util.emitAllData(this, pending);
             }
+            else {
+                ByteBufferList.reclaim(b);
+            }
 
             if (closed) {
                 reportEndPending(null);
@@ -177,7 +155,6 @@ public class AsyncNetworkSocket implements AsyncSocket {
             }
         }
         catch (Exception e) {
-        	e.printStackTrace();
             closeInternal();
             reportEndPending(e);
             reportClose(e);
@@ -357,5 +334,10 @@ public class AsyncNetworkSocket implements AsyncSocket {
 
     public Object getSocket() {
         return getChannel().getSocket();
+    }
+
+    @Override
+    public String charset() {
+        return null;
     }
 }
