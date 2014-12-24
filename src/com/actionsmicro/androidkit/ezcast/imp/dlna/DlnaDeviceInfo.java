@@ -150,8 +150,8 @@ public class DlnaDeviceInfo extends DeviceInfo {
 
 	@Override
 	protected DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder) {
-		return new DlnaDisplayApi(displayApiBuilder);
-//		return null;
+//		return new DlnaDisplayApi(displayApiBuilder);
+		return null;
 	}
 
 	@Override
