@@ -324,7 +324,12 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 		boolean isAudio = false;
 		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
 				mediaUri.getScheme().equalsIgnoreCase("file")) {
-			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0) {
+				@Override
+				protected long getContentLengthForByteRangeResponse(final long fileLen, final long dataLen) {
+					return fileLen;
+				}
+			};
 			try {
 				simpleHttpFileServer.start();
 			} catch (IOException e) {
