@@ -51,6 +51,8 @@ public class FragmentedMP4Serializer {
 		void headerReady(byte[] data, int offset, int length);
 		
 		void fragmentDataReady(byte[] data, int offset, int length);
+
+		boolean shouldFinalizeMdat(MediaDataBox mdat);
 		
 	}
 	private OutputListener outputListener;
@@ -78,20 +80,22 @@ public class FragmentedMP4Serializer {
 			byte avcProfileIndication, byte profileCompatibility, byte avcLevelIndication, byte[] sps, byte[] ps) {
 		MovieBox moov = new MovieBox();
 		int now = (int)((new GregorianCalendar(TimeZone.getTimeZone("UTC")).getTimeInMillis() - REFERENCE_TIME) * 1000);
-		moov.addChild(new MovieHeaderBox(0, now, now, 2));
+		int timescale = 0x0000BB80; // 48000
+		moov.addChild(new MovieHeaderBox(0, now, now, 2, timescale));
 		moov.addChild(new ObjectDescriptorBox());
 		
 		MovieExtendsBox mvex = new MovieExtendsBox();
 		moov.addChild(mvex);
 		mvex.addChild(new MovieExtendsHeaderBox(0));
-		mvex.addChild(new TrackExtendsBox(1, 1, 0x000007D2, 0, 0x00010000));
+		int defaultSampleDuration = timescale/24; // 2002
+		mvex.addChild(new TrackExtendsBox(1, 1, defaultSampleDuration, 0, 0x00010000));
 		
 		TrackBox trak = new TrackBox();
 		moov.addChild(trak);
 		trak.addChild(new TrackHeaderBox(0x00000f, now, now, 1, 0, width, height));
 		MediaBox mdia = new MediaBox();
 		trak.addChild(mdia);
-		mdia.addChild(new MediaHeaderBox(now, now, 0x0000BB80, 0));
+		mdia.addChild(new MediaHeaderBox(now, now, timescale, 0)); //0x0000BB80
 		mdia.addChild(new HandlerBox(Box.FourCharCode("vide"), "VideoHandler"));
 		
 		MediaInformationBox minf = new MediaInformationBox();
@@ -150,7 +154,7 @@ public class FragmentedMP4Serializer {
 		
 		currentOffset = buffer.position();
 	}
-	private static final int FRAGMENT_SIZE = 64*1024;
+	private static final int FRAGMENT_SIZE = 64*1024*4;
 	public void addH264Frame(byte[] h264, int offset, int len) {
 		if (moof == null) {
 			moof = new MovieFragmentBox();
@@ -179,9 +183,14 @@ public class FragmentedMP4Serializer {
 		}
 		trun.addSampleSize(len+4); // four bytes mp4 NALU header
 		mdat.addSlice(h264, offset, len);
-		int mdatSize = mdat.getBoxSize();
-		if (mdatSize >= (FRAGMENT_SIZE-1024)) {
+		
+		if (outputListener != null && outputListener.shouldFinalizeMdat(mdat)) {
 			finalizeFragment();
 		}
+//		int mdatSize = mdat.getBoxSize();
+//		if (mdatSize >= (FRAGMENT_SIZE-1024)) {
+////		if (mdat.getSliceCount()%3 == 0) {
+//					finalizeFragment();
+//		}
 	}
 }

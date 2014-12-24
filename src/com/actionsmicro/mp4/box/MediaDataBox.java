@@ -10,11 +10,13 @@ public class MediaDataBox extends Box {
 	private ByteArrayOutputStream buffer;
 	public MediaDataBox(int size) {
 		super(FourCharCode("mdat"));
-		buffer = new ByteArrayOutputStream(size);
+		buffer = new ByteArrayOutputStream(size * 2);
 		length.order(ByteOrder.BIG_ENDIAN);
 	}
 	private ByteBuffer length = ByteBuffer.allocate(4);
+	private int sliceCount;
 	public void addSlice(byte[] slice, int offset, int len) {
+		sliceCount++;
 		length.clear();
 		length.putInt(len);
 		try {
@@ -23,6 +25,9 @@ public class MediaDataBox extends Box {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	public int getSliceCount() {
+		return sliceCount;
 	}
 	@Override
 	protected void writeBody(ByteBuffer byteBuffer) {

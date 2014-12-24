@@ -15,11 +15,12 @@ public class MovieHeaderBox extends FullBox {
 	private int matrix[] = { 0x00010000,0,0,0,0x00010000,0,0,0,0x40000000 };
 	private int preDefined[] = {0,0,0,0,0,0};
 	private int nextTrackId = 0;
-	public MovieHeaderBox(int flags, int creationＴime, int modificationTime, int nextTrackId) {
+	public MovieHeaderBox(int flags, int creationＴime, int modificationTime, int nextTrackId, int timescale) {
 		super(FourCharCode("mvhd"), (char)0x00, flags);
 		this.creationTime = creationＴime;
 		this.modificationTime = modificationTime;
 		this.nextTrackId = nextTrackId;
+		this.timescale = timescale;
 	}
 	public void setNextTrackId(int nextTrackId) {
 		this.nextTrackId = nextTrackId;
