@@ -32,15 +32,11 @@ import android.graphics.YuvImage;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 
-import com.actionsmicro.airplay.mirror.TsStreamer;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.DisplayApiBuilder;
+import com.actionsmicro.mp4.Mp4Streamer;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.AsyncServerSocket;
-import com.koushikdutta.async.http.server.AsyncHttpServer;
-import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
-import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
-import com.koushikdutta.async.http.server.HttpServerRequestCallback;
 
 public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 
@@ -49,7 +45,7 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 	private SubscriptionCallback avtransportSubscription;
 	private Context context;
 	protected TransportState currentTransportState;
-	private TsStreamer tsStreamer;
+	private Mp4Streamer mp4Streamer;
 	private AsyncServerSocket m3u8ServerSocket;
 
 	public DlnaDisplayApi(DisplayApiBuilder apiBuilder) {
@@ -118,6 +114,12 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 				if (transportState != null) {
 					Log.d(TAG+".SubscriptionCallback", "transportState:"+transportState);
 					currentTransportState = transportState;
+					if (currentTransportState == TransportState.STOPPED) {
+						if (mp4Streamer != null) {
+//							mp4Streamer.release();
+//							mp4Streamer = null;
+						}
+					}
 				}
 			}
 
@@ -147,8 +149,6 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 		}
 		avtransportService = null;
 		releaseTsStreamer();
-		stopM3u8Server();
-		m3u8Server = null;
 	}
 	@Override
 	public void startDisplaying() {
@@ -178,28 +178,24 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 		displayYuvImageViaTsStreamer(yuvImage);
 	}
 	private void displayYuvImageViaTsStreamer(YuvImage yuvImage) {
-		if (tsStreamer != null) {
-			tsStreamer.displayYuvImage(yuvImage);
+		if (mp4Streamer != null) {
+			mp4Streamer.displayYuvImage(yuvImage);
 		}
 	}
 	private void requestRemoteToPlayTsStreamer() {
-		if (tsStreamer == null) {
-			tsStreamer = new TsStreamer();
-			tsStreamer.setDelegate(new TsStreamer.Delegate() {
+		if (mp4Streamer == null) {
+			mp4Streamer = new Mp4Streamer();
+			mp4Streamer.setDelegate(new Mp4Streamer.Delegate() {
 				
 				@Override
 				public void onSizeChanged() {
 					stopVideo();
 					releaseTsStreamer();
-					stopM3u8Server();
 					requestRemoteToPlayTsStreamer();
 				}
 			});
-			tsStreamer.start();
+			mp4Streamer.start();
 			Log.d(TAG, "tsStreamer running at:" + getTsServerUrl());
-			initM3u8ServerForTsStreamer();
-			m3u8ServerSocket = m3u8Server.listen(0);
-			Log.d(TAG, "m3u8Server running at:" + getM3u8ServerUrl());
 			
 			try {
 				setAVTransportURI(getTsServerUrl());
@@ -208,53 +204,12 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 				e.printStackTrace();
 			}
 		}
-	}
-	private void stopM3u8Server() {
-		if (m3u8Server != null) {
-			m3u8Server.stop();
-		}
-	}
-	private String getM3u8ServerUrl() {
-		if (m3u8ServerSocket != null) {
-			try {
-				return new URL("http", getIPAddress(true), m3u8ServerSocket.getLocalPort(), "").toString();
-			} catch (MalformedURLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		return null;
-	}
-	private AsyncHttpServer m3u8Server = new AsyncHttpServer() {
-		@Override
-		protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-			Log.d(TAG, "onRequest:"+request.getPath());
-			return false;
-		}
-	};
-	private void initM3u8ServerForTsStreamer() {
-		m3u8Server.get("/", new HttpServerRequestCallback() {
+	}	
 
-			@Override
-			public void onRequest(AsyncHttpServerRequest request,
-					AsyncHttpServerResponse response) {
-				response.setContentType("application/x-mpegURL");
-				StringBuilder sb = new StringBuilder();
-				sb.append("#EXTM3U\n" +
-						"#EXT-X-TARGETDURATION:1\n" +
-						"#EXT-X-VERSION:3\n" +
-						"#EXT-X-MEDIA-SEQUENCE:1\n" +
-						"#EXTINF:0.3,\n" +
-						getTsServerUrl());
-				response.send(sb.toString());
-			}
-			
-		});
-	}
 	private String getTsServerUrl() {
-		if (tsStreamer != null) {
+		if (mp4Streamer != null) {
 			try {
-				return new URL("http", getIPAddress(true), tsStreamer.getListeningPort(), "").toString();
+				return new URL("http", getIPAddress(true), mp4Streamer.getListeningPort(), "").toString();
 			} catch (MalformedURLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -263,9 +218,9 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 		return null;
 	}
 	private void releaseTsStreamer() {
-		if (tsStreamer != null) {
-			tsStreamer.release();
-			tsStreamer = null;
+		if (mp4Streamer != null) {
+			mp4Streamer.release();
+			mp4Streamer = null;
 		}
 	}
 	protected void stopVideo() {
