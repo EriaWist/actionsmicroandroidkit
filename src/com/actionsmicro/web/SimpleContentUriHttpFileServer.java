@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 
 import android.content.ContentResolver;
@@ -200,7 +201,10 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
         String ext = Utils.getFileExtension(uri);
         String mime = MIME_DEFAULT_BINARY;
         if (ext != null) {
-        	mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+        	mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.toLowerCase(Locale.getDefault()));
+        	if (mime == null) {
+        		mime = MIME_DEFAULT_BINARY;
+        	}
         }
         return mime;
     }
