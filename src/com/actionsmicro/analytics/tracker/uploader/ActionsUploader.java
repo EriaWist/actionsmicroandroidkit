@@ -9,6 +9,7 @@ import org.json.JSONObject;
 
 import android.content.Context;
 
+import com.actionsmicro.BuildConfig;
 import com.actionsmicro.analytics.tracker.HashUtils;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.http.AsyncHttpClient;
@@ -20,6 +21,7 @@ import com.koushikdutta.async.http.body.StringBody;
 
 public class ActionsUploader implements Uploader {
 	private static final String BASE_URL = "https://cloud.iezvu.com";
+	private static final String DEV_BASE_URL = "https://aws-dev.iezvu.com";
 	private static final String PATH_UPLOAD_LOG = "/cloud/sdk/api";
 	private String appSecret;
 	private String appKey;
@@ -108,7 +110,11 @@ public class ActionsUploader implements Uploader {
 		} catch (JSONException e1) {
 		}
 		try {
-			AsyncHttpPost post = new AsyncHttpPost(BASE_URL+PATH_UPLOAD_LOG+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire));
+			String uriString = BASE_URL+PATH_UPLOAD_LOG+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1";
+			if (BuildConfig.DEBUG) {
+				uriString = DEV_BASE_URL+PATH_UPLOAD_LOG+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1&validator=1";				
+			}
+			AsyncHttpPost post = new AsyncHttpPost(uriString);
 			post.setTimeout(10000);
 			post.setBody(new StringBody(jsonBody));
 			if (isArray) {

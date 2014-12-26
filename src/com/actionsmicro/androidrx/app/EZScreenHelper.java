@@ -486,29 +486,32 @@ public class EZScreenHelper {
 				@Override
 				public void onJpegAvaiable(byte[] jpegData, int size) {
 					if (EZScreenHelper.this.getMjpegView() != null && jpegData != null) {
-						
-						Bitmap bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size);
-						if (bitmap != null) {
-//									drawOnSurface(bitmap);
-							Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
-							if (canvas != null) {
-								final int savedState = canvas.save();
-								try {
-									Log.d(TAG, "canvas width:"+canvas.getWidth()+", height:"+canvas.getHeight()+ "; bitmap width:"+bitmap.getWidth()+", height:"+bitmap.getHeight());
-									final float scaleFactor = Math.min( (float)canvas.getWidth() / (float)bitmap.getWidth(), (float)canvas.getHeight() / (float)bitmap.getHeight() );
-									final float finalWidth = (float)bitmap.getWidth() * scaleFactor;
-									final float finalHeight = (float)bitmap.getHeight() * scaleFactor;
-									final float leftPadding = ((float)canvas.getWidth() - finalWidth)/2;
-									final float topPadding =  ((float)canvas.getHeight() - finalHeight)/2;
-									canvas.drawColor(Color.BLACK);
-									canvas.translate(leftPadding, topPadding);
-									canvas.scale(scaleFactor, scaleFactor);
-									canvas.drawBitmap(bitmap, 0, 0, null);
-								} finally {
-									canvas.restoreToCount(savedState);
-									EZScreenHelper.this.getMjpegView().unlockCanvasAndPost(canvas);
+						try {
+							Bitmap bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size);
+							if (bitmap != null) {
+								//									drawOnSurface(bitmap);
+								Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
+								if (canvas != null) {
+									final int savedState = canvas.save();
+									try {
+										Log.d(TAG, "canvas width:"+canvas.getWidth()+", height:"+canvas.getHeight()+ "; bitmap width:"+bitmap.getWidth()+", height:"+bitmap.getHeight());
+										final float scaleFactor = Math.min( (float)canvas.getWidth() / (float)bitmap.getWidth(), (float)canvas.getHeight() / (float)bitmap.getHeight() );
+										final float finalWidth = (float)bitmap.getWidth() * scaleFactor;
+										final float finalHeight = (float)bitmap.getHeight() * scaleFactor;
+										final float leftPadding = ((float)canvas.getWidth() - finalWidth)/2;
+										final float topPadding =  ((float)canvas.getHeight() - finalHeight)/2;
+										canvas.drawColor(Color.BLACK);
+										canvas.translate(leftPadding, topPadding);
+										canvas.scale(scaleFactor, scaleFactor);
+										canvas.drawBitmap(bitmap, 0, 0, null);
+									} finally {
+										canvas.restoreToCount(savedState);
+										EZScreenHelper.this.getMjpegView().unlockCanvasAndPost(canvas);
+									}
 								}
 							}
+						} catch (OutOfMemoryError oom) {
+							Log.e(TAG, "OOM: jpeg size:"+size);
 						}
 					}
 				}

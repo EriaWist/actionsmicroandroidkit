@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package com.koushikdutta.async.http.libcore;
+package com.koushikdutta.async.http.cache;
+
+import com.koushikdutta.async.util.Charsets;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -41,7 +43,7 @@ import java.nio.charset.Charset;
  * We currently check in constructor that the charset is one of US-ASCII, UTF-8 and ISO-8859-1.
  * The default charset is US_ASCII.
  */
-public class StrictLineReader implements Closeable {
+class StrictLineReader implements Closeable {
     private static final byte CR = (byte)'\r';
     private static final byte LF = (byte)'\n';
 

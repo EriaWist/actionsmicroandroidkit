@@ -13,6 +13,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
 import java.security.KeyStore.Entry;
+import java.security.KeyStore.PasswordProtection;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -49,13 +50,14 @@ import com.actionsmicro.analytics.tracker.uploader.LogUploader;
 import com.actionsmicro.analytics.tracker.uploader.Uploader;
 import com.actionsmicro.utils.Log;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class ActionsTracker implements Tracker {
 	private static final int RETRY_DELAY = 60;
 	private static final int DEFAULT_UPLOAD_DELAY = 60;
 	private static final String TAG = "ActionsTracker";
 	private final Uploader uploader;
-	private final Gson gson = new Gson();
+	private final Gson gson = new GsonBuilder().serializeNulls().create();
 	private ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
 	private Context context;
 	private String appKey;
@@ -99,9 +101,10 @@ public class ActionsTracker implements Tracker {
 	}
 	private void setupCipher(String appKey, String appSecret) {		
 		try {
+			PasswordProtection protectionParameter = new KeyStore.PasswordProtection(appSecret.toCharArray());
 			KeyStore ks = getKeyStore(appKey, appSecret);
 			try {
-				Entry keyEntry = ks.getEntry(appKey, null);
+				Entry keyEntry = ks.getEntry(appKey, protectionParameter);
 				if (keyEntry != null) {
 					secretKey = ((KeyStore.SecretKeyEntry) keyEntry).getSecretKey();
 				}
@@ -118,7 +121,7 @@ public class ActionsTracker implements Tracker {
 				FileOutputStream keystoreOutputStream = null;
 				try {
 					secretKey = generateKey(appSecret);
-					ks.setEntry(appKey, new KeyStore.SecretKeyEntry(secretKey), null);
+					ks.setEntry(appKey, new KeyStore.SecretKeyEntry(secretKey), protectionParameter);
 					keystoreOutputStream = new FileOutputStream(getKeyStoreFile(appKey));
 					ks.store(keystoreOutputStream, appSecret.toCharArray());
 				} catch (Exception e) {

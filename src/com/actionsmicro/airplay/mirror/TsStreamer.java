@@ -19,6 +19,7 @@ import com.actionsmicro.androidkit.ezcast.imp.airplay.SimpleMpegTsPacketizer;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncServerSocket;
+import com.koushikdutta.async.ByteBufferList;
 import com.koushikdutta.async.callback.WritableCallback;
 import com.koushikdutta.async.http.server.AsyncHttpServer;
 import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
@@ -175,8 +176,9 @@ public class TsStreamer {
 	}
 	private AsyncHttpServer httpServer = new AsyncHttpServer() {
 		@Override
-		protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-			Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+		protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+			Log.d(TAG, "onRequest:"+request.getPath());
+			return false;
 		}
 	};
 	private static final int NUMBER_OF_PACKET_BUFFER = 256;
@@ -201,8 +203,8 @@ public class TsStreamer {
 			public void onRequest(AsyncHttpServerRequest request,
 					final AsyncHttpServerResponse response) {
 				Log.d(TAG, "onRequest");
-				response.getHeaders().getHeaders().add("Content-Type", "video/MP2T");
-				response.responseCode(200);
+				response.getHeaders().add("Content-Type", "video/MP2T");
+				response.code(200);
 				WritableCallback writer = new WritableCallback() {
 					private int debugCounter = 0;
 					@Override
@@ -217,7 +219,8 @@ public class TsStreamer {
 								}
 								if (tsBuffer != null) {
 									tsBuffer.rewind();
-									response.write(tsBuffer);
+									
+									response.write(new ByteBufferList(tsBuffer));
 									if (tsBuffer.hasRemaining()) {
 										Log.w(TAG, "socket can't write out:"+debugCounter);
 										debugCounter = 0;
