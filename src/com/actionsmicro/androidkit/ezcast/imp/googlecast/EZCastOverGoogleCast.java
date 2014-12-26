@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -101,20 +102,20 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 				.builder(castDevice, new Listener() {
 					@Override
 					public void onApplicationDisconnected (int statusCode) {
-						Log.d(TAG, EZCastOverGoogleCast.this + ": onApplicationDisconnected");
+						Log.d(TAG,   ": onApplicationDisconnected");
 //						notifyConnectionManagerDidFailed(new Exception("Google Cast API: onApplicationDisconnected : " + statusCode)); //TODO create custom exception
 //						teardown();
 					}
 					@Override
 					public void onApplicationStatusChanged () {
 						if (googleCastApiClient != null) {
-							Log.d(TAG, EZCastOverGoogleCast.this + ": onApplicationStatusChanged: "
+							Log.d(TAG,   ": onApplicationStatusChanged: "
 									+ Cast.CastApi.getApplicationStatus(googleCastApiClient));
 						}
 					}
 					@Override
 					public void onVolumeChanged () {
-						Log.d(TAG, EZCastOverGoogleCast.this + ": onVolumeChanged");
+						Log.d(TAG,   ": onVolumeChanged");
 					}
 				});
 
@@ -137,7 +138,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 			@Override
 			public void onConnectionSuspended(int arg0) {
-				Log.d(TAG , EZCastOverGoogleCast.this + ": onConnectionSuspended:");
+				Log.d(TAG ,   ": onConnectionSuspended:");
 				waitingForReconnect = true;
 
 			}
@@ -147,14 +148,14 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 			@Override
 			public void onConnectionFailed(ConnectionResult arg0) {
-				Log.d(TAG, EZCastOverGoogleCast.this + ": onConnectionFailed:");
+				Log.d(TAG,   ": onConnectionFailed:");
 				notifyConnectionManagerDidFailed(new Exception("Google Cast API: onConnectionFailed : " + arg0)); //TODO create custom exception
 				teardown();
 			}
 
 		})
 		.build();
-		Log.d(TAG, EZCastOverGoogleCast.this + ": GoogleApiClient.connect");
+		Log.d(TAG,   ": GoogleApiClient.connect");
 		googleCastApiClient.connect();
 	}
 
@@ -165,9 +166,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		return false;
 	}
 	public synchronized void sendJpegEncodedScreenData(InputStream input, long length) {
-//		Log.d(TAG, EZCastOverGoogleCast.this + ": try to sendJpegEncodedScreenData");		
+//		Log.d(TAG,   ": try to sendJpegEncodedScreenData");		
 		if (simpleMotionJpegHttpServer != null) {
-//			Log.d(TAG, EZCastOverGoogleCast.this + ": sendJpegEncodedScreenData");
+//			Log.d(TAG,   ": sendJpegEncodedScreenData");
 			simpleMotionJpegHttpServer.sendJpegStream(input, length);
 		}
 	}
@@ -185,13 +186,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			}
 		}
 		isDisplaying = true;
-		if (!isCurrentApplicationEzCast() && !isPendingApplicationEzCastApp()) {
-			launcheEZCastApp(true);			
-		} else if (!isPendingApplicationEzCastApp()) {
-			startDisplayingImp(null);
-		}
+		launcheEZCastApp(true);			
 	}
 	private void startDisplayingImp(ResultCallback<Status> resultCallback) {
+		Log.d(TAG,   ": startDisplayingImp");
 		if (simpleMotionJpegHttpServer == null || ezcastChannel == null) {
 			connectEzCastChannel();
 			createMjpegServer();	
@@ -202,9 +200,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private boolean isCurrentApplicationEzCast() {
 		return (currentApplication != null && currentApplication.getAppId().equals(getEzCastAppId()) && currentApplication.isApplicationStarted());
 	}
-	private boolean isPendingApplicationEzCastApp() {
-		return pendingApplicationId != null && pendingApplicationId.equals(getEzCastAppId());
-	}
 
 	@Override
 	public void stopDisplaying() {
@@ -214,16 +209,25 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		isDisplaying = false;
 		stopDisplayingImp(null);
 	}
-	private void stopDisplayingImp(ResultCallback<Status> resultCallback) {
-		Log.d(TAG, EZCastOverGoogleCast.this + ": stopDisplayingImp");
+	private void stopDisplayingImp(final ResultCallback<Status> resultCallback) {
+		Log.d(TAG,   ": stopDisplayingImp");
 		
-		sendMessage("{\"jsonrpc\": \"2.0\", \"method\": \"stopDisplay\"}", resultCallback);
-		try {
-			disconnectEzCastChannel();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		releaserMjpegServer();
+		sendMessage("{\"jsonrpc\": \"2.0\", \"method\": \"stopDisplay\"}", new ResultCallback<Status>() {
+
+			@Override
+			public void onResult(Status result) {
+				try {
+					disconnectEzCastChannel();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				releaserMjpegServer();
+				if (resultCallback != null) {
+					resultCallback.onResult(result);
+				}
+			}
+			
+		});
 	}
 
 	@Override
@@ -250,7 +254,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		return compressionBuffer;
 	}
 	private void teardown() {
-		Log.d(TAG, EZCastOverGoogleCast.this + ": teardown");
+		Log.d(TAG,   ": teardown");
 		stopStreamPositionTimer();
 		if (googleCastApiClient != null) {
 			stopDisplayingImp(null);
@@ -273,19 +277,50 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 
 	}
-	private void stopCurrentApplication(ResultCallback<Status> resultCallback) {
-		if (currentApplication != null) {
-			currentApplication.stopApplication(resultCallback);
-		} else {
-			if (resultCallback != null) {
-				resultCallback.onResult(null);
-			}
-		}
+	private void stopCurrentApplication(final ResultCallback<Status> resultCallback) {
+		stopApplication(currentApplication, resultCallback);
+		currentApplication = null;
+	}
+	private List<Runnable> pendingTasks = new ArrayList<Runnable>();
+	public void stopApplication(final GoogleCastApp application,
+			final ResultCallback<Status> resultCallback) {
+		Runnable stopApp = new Runnable() {
+
+			@Override
+			public void run() {
+				Log.d(TAG, "stopApplication:"+(application!=null?application.getAppId():application));
+				if (application != null) {
+					final Runnable runnable = this;
+					final String appId = application.getAppId();
+					application.stopApplication(new ResultCallback<Status>() {
+
+						@Override
+						public void onResult(Status result) {
+							if (result != null && !result.isSuccess()) {
+								Log.d(TAG, "stopApplication -> failed onResult:"+result);
+							}
+							Log.d(TAG, "application " + appId+" stopped");
+							
+							if (resultCallback != null) {
+								resultCallback.onResult(result);
+							}
+							finishPendingTask(runnable);
+						}				
+					});
+				} else {
+					if (resultCallback != null) {
+						resultCallback.onResult(null);
+					}
+					finishPendingTask(this);
+				}
+			}			
+		};
+		executeOrSchedule("stopApp", stopApp);
 	}
 	private void disconnectEzCastChannel() throws IOException {
 		if (googleCastApiClient != null) {
 			if (ezcastChannel != null) {          
-				Log.d(TAG, EZCastOverGoogleCast.this + ": Remove Custom channel : removeMessageReceivedCallbacks");
+				Log.d(TAG,   ": Remove Custom channel : removeMessageReceivedCallbacks");
 				Cast.CastApi.removeMessageReceivedCallbacks(googleCastApiClient, ezcastChannel.getNamespace());
 				ezcastChannel = null;
 			}	
@@ -293,7 +328,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	private void releaserMjpegServer() {
 		if (simpleMotionJpegHttpServer != null) {
-			Log.d(TAG, EZCastOverGoogleCast.this + ": releaserMjpegServer");
+			Log.d(TAG,   ": releaserMjpegServer");
 			simpleMotionJpegHttpServer.cleanup();
 			simpleMotionJpegHttpServer = null;
 		}
@@ -304,7 +339,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			ezcastChannel = new EZCastChannel();
 			if (ezcastChannel != null && googleCastApiClient != null) {
 				try {
-					Log.d(TAG, EZCastOverGoogleCast.this + ": Create Custom channel : setMessageReceivedCallbacks");
+					Log.d(TAG,   ": Create Custom channel : setMessageReceivedCallbacks");
 					Cast.CastApi.setMessageReceivedCallbacks(googleCastApiClient,
 							ezcastChannel.getNamespace(),
 							ezcastChannel);
@@ -320,30 +355,34 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			public void onClientConnected(SimpleMotionJpegHttpServer simpleMotionJpegHttpServer) {
 			}
 		});
-		Log.d(TAG, EZCastOverGoogleCast.this + ": createMjpegServer");
+		Log.d(TAG,   ": createMjpegServer");
 		
 	}
 	private void sendMessage(final String message, final ResultCallback<Status> resultCallback) {
 		if (googleCastApiClient != null && googleCastApiClient.isConnected() && ezcastChannel != null) {
 			try {
-				Log.d(TAG, EZCastOverGoogleCast.this + ": sendMessage:"+message);
+				Log.d(TAG, ": sendMessage:"+message);
 				Cast.CastApi.sendMessage(googleCastApiClient, ezcastChannel.getNamespace(), message)
 				.setResultCallback(
 						new ResultCallback<Status>() {
 							@Override
 							public void onResult(Status result) {
-								Log.d(TAG, EZCastOverGoogleCast.this + ": sendMessage("+message+").onResult:"+result);
+								Log.d(TAG, ": sendMessage("+message+").onResult:"+result);
 								if (!result.isSuccess()) {
 									Log.e(TAG, "Sending message failed");
 								}
-								if (resultCallback != null) {
-									resultCallback.onResult(result);
-								}
+//								if (resultCallback != null) {
+//									resultCallback.onResult(result);
+//								}
 							}
 						});
 			} catch (Exception e) {
 				Log.e(TAG, "Exception while sending message", e);
 			}
+		} else {
+		}
+		if (resultCallback != null) {
+			resultCallback.onResult(null);
 		}
 	}
 	class EZCastChannel implements MessageReceivedCallback {
@@ -353,7 +392,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 		@Override
 		public void onMessageReceived(CastDevice castDevice, String namespace,String message) {
-			Log.d(TAG, EZCastOverGoogleCast.this + ": onMessageReceived: " + message);
+			Log.d(TAG,   ": onMessageReceived: " + message);
 		}
 	}
 	public static synchronized EZCastOverGoogleCast createClient(Context context,
@@ -456,18 +495,56 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	public boolean stop() {
 		if (mRemoteMediaPlayer != null &&
 				playerState != State.STOPPED) {
-			mRemoteMediaPlayer.stop(googleCastApiClient);
-			playerState = State.STOPPED;
-			handleMediaPlayerStop();
-			if (trackableApi != null) {
-				trackableApi.commitMediaUsageTracking();
-			}
+			Runnable stopPlaying = new Runnable() {
+
+				@Override
+				public void run() {
+					final Runnable runnable = this;
+					if (mRemoteMediaPlayer != null &&
+							playerState != State.STOPPED) {
+						mRemoteMediaPlayer.stop(googleCastApiClient).setResultCallback(new ResultCallback<MediaChannelResult>() {
+
+							@Override
+							public void onResult(MediaChannelResult result) {
+								
+								if (result.getStatus().isSuccess()) {
+									Log.d(TAG, "mRemoteMediaPlayer.stop success!");									
+								} else {
+									Log.d(TAG, "mRemoteMediaPlayer.stop failed: code:"+result.getStatus().getStatusCode() + ";" + result.getStatus().getStatus());									
+									
+								}
+								playerState = State.STOPPED;
+								handleMediaPlayerStop();
+								if (trackableApi != null) {
+									trackableApi.commitMediaUsageTracking();
+								}						
+								finishPendingTask(runnable);
+							}
+							
+						});
+					}
+				}
+
+			};
+			executeOrSchedule("stopPlaying", stopPlaying);
 			return true;
 		}
 		return false;
 	}
+	private void executeOrSchedule(String taskName, Runnable pendingTask) {
+		synchronized (pendingTasks) {
+			pendingTasks.add(pendingTask);
+			if (pendingTasks.size() == 1) {
+				Log.d(TAG, "run "+taskName+" directly");
+				pendingTask.run();
+			} else {
+				Log.d(TAG, "schedule "+taskName);
+			}
+		}
+	}
 	@Override
 	public boolean play(final Context context, final String url, final String userAgentString, Long mediaContentLength, final String title) throws Exception {
+		Log.d(TAG, "play "+url);
 		stopDisplayingImp(new ResultCallback<Status>() {
 
 			@Override
@@ -484,8 +561,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 			@Override
 			public void onResult(Cast.ApplicationConnectionResult result) {
-				Status status = result.getStatus();
-				if (status.isSuccess()) {
+				if (result == null || result.getStatus().isSuccess()) {
 					stopHttpFileServer();
 					String mimeType = "video/mp4";
 					Uri mediaUri = null;
@@ -571,10 +647,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDidFailed(EZCastOverGoogleCast.this, AV_RESULT_ERROR_START_INIT_FAILED);
 					}
-					if (trackableApi != null) {
-						trackableApi.setMediaUsageResultCode(String.valueOf(status.getStatusCode()), AV_RESULT_ERROR_START_INIT_FAILED);
-						trackableApi.commitMediaUsageTracking();
-					}
 					launcheEZCastApp(isDisplaying);
 				}
 			}
@@ -590,7 +662,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private State playerState = State.STOPPED;
 	private Timer mSeekbarTimer;
 	private boolean isDisplaying;
-	private String pendingApplicationId;
 
 	private void createMediaPlayerIfNeeded() {
 		if (mRemoteMediaPlayer == null && googleCastApiClient != null) {
@@ -602,7 +673,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 						@Override
 						public void onStatusUpdated() {
 							MediaStatus mediaStatus = mRemoteMediaPlayer.getMediaStatus();
-							Log.d(TAG, EZCastOverGoogleCast.this +": onStatusUpdated:" + mediaStatus.getPlayerState() +
+							Log.d(TAG,  ": onStatusUpdated:" + mediaStatus.getPlayerState() +
 									" duration:" + mRemoteMediaPlayer.getStreamDuration() + 
 									" position:"+ mRemoteMediaPlayer.getApproximateStreamPosition());
 							switch (mediaStatus.getPlayerState()) {
@@ -632,7 +703,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					new RemoteMediaPlayer.OnMetadataUpdatedListener() {
 						@Override
 						public void onMetadataUpdated() {
-							Log.d(TAG, EZCastOverGoogleCast.this +": onMetadataUpdated."+
+							Log.d(TAG,  ": onMetadataUpdated."+
 									" duration:" + mRemoteMediaPlayer.getStreamDuration() + 
 									" position:"+ mRemoteMediaPlayer.getApproximateStreamPosition());
 							MediaInfo mediaInfo = mRemoteMediaPlayer.getMediaInfo();
@@ -668,44 +739,60 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 	}
 	private void launcheApplication(final String castAppId, final ResultCallback<Cast.ApplicationConnectionResult> resultCallback) {
-		if ((currentApplication == null || !currentApplication.getAppId().equals(castAppId)) && (pendingApplicationId == null || !pendingApplicationId.equals(castAppId))) {	
-			pendingApplicationId = castAppId;
-			stopCurrentApplication(new ResultCallback<Status>() {
-				@Override
-				public void onResult(Status result) {
-					if (result != null && !result.isSuccess()) {
-						Log.d(TAG, "stopApplication -> onResult: stopping " + "application failed:"+result);
-					}
-					if (currentApplication != null) {
-						Log.d(TAG, "stopApplication:" + currentApplication.getAppId());
-						currentApplication = null;
-					}					
-					if (googleCastApiClient != null) {
-						Log.d(TAG, "launcheApplication:" + castAppId);
-						currentApplication = new GoogleCastApp(googleCastApiClient, castAppId);
-						currentApplication.launcheApplication(new ResultCallback<Cast.ApplicationConnectionResult>() {
+		Runnable launchApp = new Runnable() {
 
-							@Override
-							public void onResult(
-									ApplicationConnectionResult result) {
-								pendingApplicationId = null;
-								if (resultCallback != null) {
-									resultCallback.onResult(result);
-								}
-							}							
-						});
-					}					
-				}				
-			});
-		}
+			@Override
+			public void run() {
+				final Runnable runnable = this;
+				Log.d(TAG, "launcheApplication:"+castAppId+", currentApplication:"+(currentApplication!=null?currentApplication.getAppId():null));
+				if ((currentApplication == null || !currentApplication.getAppId().equals(castAppId))) {
+					GoogleCastApp appToBeStopped = currentApplication;
+					final GoogleCastApp appToBeLaunched = new GoogleCastApp(googleCastApiClient, castAppId);
+					currentApplication = null;
+					stopApplication(appToBeStopped, new ResultCallback<Status>() {
+						@Override
+						public void onResult(Status result) {
+							
+						}				
+					});
+					Runnable doLaunchApp = new Runnable() {
+
+						@Override
+						public void run() {
+							final Runnable runnable = this;
+							appToBeLaunched.launcheApplication(new ResultCallback<Cast.ApplicationConnectionResult>() {
+
+								@Override
+								public void onResult(
+										ApplicationConnectionResult result) {
+									currentApplication = appToBeLaunched;
+									if (resultCallback != null) {
+										resultCallback.onResult(result);
+									}
+									finishPendingTask(runnable);
+								}							
+							});
+						}
+
+					};
+					executeOrSchedule("doLaunchApp", doLaunchApp);
+					finishPendingTask(runnable);						
+				} else {
+					if (resultCallback != null) {
+						resultCallback.onResult(null);
+					}
+					finishPendingTask(runnable);
+				}
+			}
+		};
+		executeOrSchedule("launchApp", launchApp);		
 	}
 	private void launcheEZCastApp(final boolean startDisplaying) {
 		launcheApplication(getEzCastAppId(), new ResultCallback<Cast.ApplicationConnectionResult>() {
 
 			@Override
 			public void onResult(Cast.ApplicationConnectionResult result) {
-				Status status = result.getStatus();
-				if (status.isSuccess()) {
+				if (result == null || result.getStatus().isSuccess()) {
 					if (startDisplaying) {
 						startDisplayingImp(null);
 					}
@@ -726,12 +813,21 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	private void handleMediaPlayerStop() {
 		stopHttpFileServer();		
-		launcheEZCastApp(isDisplaying);
+//		launcheEZCastApp(isDisplaying);
 		if (mediaPlayerStateListener != null) {
 			mediaPlayerStateListener.mediaPlayerDidStop(EZCastOverGoogleCast.this);
 		}
 		if (trackableApi != null) {
 			trackableApi.commitMediaUsageTracking();
+		}
+	}
+	private void finishPendingTask(Runnable pendingTask) {
+		synchronized (pendingTasks) {
+			pendingTasks.remove(pendingTask);
+			Log.d(TAG, "finishPendingTask pendingTasks left:"+pendingTasks.size());
+			if (pendingTasks.size() > 0) {
+				pendingTasks.get(0).run();
+			}
 		}
 	}
 	private class UpdateStreamPositionTask extends TimerTask {

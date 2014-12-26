@@ -246,7 +246,7 @@ public class EzCastSdk {
 				e.printStackTrace();
 			}
 		}
-		return Arrays.asList("ezcast", "ezcastscreen", "ezcastpro"); // default value
+		return Arrays.asList("ezcast", "ezscreen", "ezcastpro"); // default value
 	}
 	protected static List<String> convertJsonArrayToList(String supportListString)
 			throws JSONException {

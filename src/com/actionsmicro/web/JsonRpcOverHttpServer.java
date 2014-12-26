@@ -10,7 +10,7 @@ import android.net.wifi.WifiManager;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.AsyncServerSocket;
 import com.koushikdutta.async.callback.CompletedCallback;
-import com.koushikdutta.async.http.libcore.RawHeaders;
+import com.koushikdutta.async.http.Headers;
 import com.koushikdutta.async.http.server.AsyncHttpServer;
 import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
@@ -36,8 +36,9 @@ public class JsonRpcOverHttpServer {
 		this.portNumber = portNumber;
 		httpServer = new AsyncHttpServer() {
 			@Override
-			protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-				Log.d(TAG, "onRequest:"+request.getMethod()+" "+request.getHeaders().getHeaders().getStatusLine());
+			protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+				Log.d(TAG, "onRequest:"+request.getMethod()+" "+request.getPath());
+				return false;
 		    }
 		};
 		httpServer.post(path, new HttpServerRequestCallback() {
@@ -53,19 +54,19 @@ public class JsonRpcOverHttpServer {
 					if (resp != null) {
 						String jsonResponse = resp.toString();
 						response.setContentType("application/json");
-						response.getHeaders().getHeaders().add("Access-Control-Allow-Origin", "*");
+						response.getHeaders().add("Access-Control-Allow-Origin", "*");
 						response.send("application/json", jsonResponse);
 						Log.d(TAG, "response:"+jsonResponse);
 					}
 				} else if (message instanceof JSONRPC2Notification) {
 					dispatcher.process((JSONRPC2Notification) message, null);
-					response.responseCode(200);
-					response.getHeaders().getHeaders().add("Access-Control-Allow-Origin", "*");
+					response.code(200);
+					response.getHeaders().add("Access-Control-Allow-Origin", "*");
 					response.end();
 				}		
 				} catch (JSONRPC2ParseException e) {
-					response.responseCode(400);
-					response.getHeaders().getHeaders().add("Access-Control-Allow-Origin", "*");
+					response.code(400);
+					response.getHeaders().add("Access-Control-Allow-Origin", "*");
 					response.end();
 				} finally {
 					
@@ -86,7 +87,7 @@ public class JsonRpcOverHttpServer {
 			@Override
 			public void onRequest(AsyncHttpServerRequest request,
 					AsyncHttpServerResponse response) {
-				RawHeaders headers = response.getHeaders().getHeaders();
+				Headers headers = response.getHeaders();
 				headers.add("Access-Control-Allow-Origin", "*");
 				headers.add("Access-Control-Allow-Methods", "POST, OPTIONS");
 				headers.add("Access-Control-Allow-Headers", "X-Requested-With, accept, content-type");
