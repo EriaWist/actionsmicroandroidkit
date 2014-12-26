@@ -120,7 +120,10 @@ public class HttpUtil {
         // connection is always keep alive as this is an http/1.1 client
         String connection = headers.get("Connection");
         if (connection == null)
-            return protocol == Protocol.HTTP_1_1;
+            return protocol == Protocol.HTTP_1_1;        
+        if ("upgrade".equalsIgnoreCase(connection)) {
+        	return true;
+        }
         return "keep-alive".equalsIgnoreCase(connection);
     }
 
@@ -129,6 +132,9 @@ public class HttpUtil {
         String connection = headers.get("Connection");
         if (connection == null)
             return Protocol.get(protocol) == Protocol.HTTP_1_1;
+        if ("upgrade".equalsIgnoreCase(connection)) {
+        	return true;
+        }
         return "keep-alive".equalsIgnoreCase(connection);
     }
 

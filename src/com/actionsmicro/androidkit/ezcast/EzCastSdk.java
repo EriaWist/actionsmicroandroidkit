@@ -1,6 +1,7 @@
 package com.actionsmicro.androidkit.ezcast;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -192,7 +193,7 @@ public class EzCastSdk {
 			final InitializationListener listener) {
 		long expire = System.currentTimeMillis() * 1000 + 60 + 90;
 		try {
-			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.iezvu.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1&o=android&v="+SDK_VERSION_STRING);
+			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.iezvu.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1&o=android&v="+URLEncoder.encode(SDK_VERSION_STRING, "utf-8"));
 			getSupportList.setTimeout(INITIALIZATION_TIMEOUT_MS);
 			initTask = AsyncHttpClient.getDefaultInstance().executeJSONObject(getSupportList, new JSONObjectCallback() {
 
