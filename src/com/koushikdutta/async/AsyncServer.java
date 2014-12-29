@@ -564,7 +564,7 @@ public class AsyncServer {
                 if (newThread) {
                     mAffinity = new Thread(mName) {
                         public void run() {
-                            AsyncServer.run(AsyncServer.this, selector, queue);
+                            AsyncServer.run(AsyncServer.this, selector, queue, keepRunning);
                         }
                     };
                 }

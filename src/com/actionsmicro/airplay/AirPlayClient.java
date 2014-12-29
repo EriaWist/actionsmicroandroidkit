@@ -155,7 +155,7 @@ public class AirPlayClient {
 	public AirPlayClient(Context context, InetAddress inetAddress) {
 		this.context = context;
 		this.serverAddress = inetAddress;
-		reverseConnectionForEvent.run(true);
+		reverseConnectionForEvent.run(true, true);
 		inqueryServerInfo();
 		prepareEventServer();
 		establishReverseHttpConnectionForEvent();
