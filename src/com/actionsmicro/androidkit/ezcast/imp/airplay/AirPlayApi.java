@@ -38,9 +38,11 @@ public class AirPlayApi extends TrackableApi implements Api {
 
 	@Override
 	public void disconnect() {
-		airPlayClientManager.release(airPlayClient, apiBuilder);
-		airPlayClient.removeConnectionManager(connectionManagerWrapper);
-		airPlayClient = null;
+		if (airPlayClient != null) {
+			airPlayClientManager.release(airPlayClient, apiBuilder);
+			airPlayClient.removeConnectionManager(connectionManagerWrapper);
+			airPlayClient = null;
+		}
 		super.disconnect();
 	}
 
