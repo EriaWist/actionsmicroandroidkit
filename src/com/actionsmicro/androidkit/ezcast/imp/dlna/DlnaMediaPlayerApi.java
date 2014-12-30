@@ -354,7 +354,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			didl.addItem(new AudioItem("1", "0", title, null, new Res(mimeType, 0l, null, null, mediaUriString)));			
 		} else {
 			MimeType mimeType = new MimeType("video", "*");			
-			didl.addItem(new VideoItem("1", "0", null, null, new Res(mimeType, 0l, null, null, mediaUriString)));
+			didl.addItem(new VideoItem("1", "0", title, null, new Res(mimeType, 0l, null, null, mediaUriString)));
 		}
 		String metadata = new DIDLParser().generate(didl);
 		UpnpService.getUpnpService().execute(new SetAVTransportURI(avtransportService, mediaUriString, metadata) {
