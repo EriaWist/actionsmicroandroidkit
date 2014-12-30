@@ -17,6 +17,7 @@ import org.fourthline.cling.model.state.StateVariableValue;
 import org.fourthline.cling.model.types.UDAServiceId;
 import org.fourthline.cling.support.avtransport.callback.GetMediaInfo;
 import org.fourthline.cling.support.avtransport.callback.GetPositionInfo;
+import org.fourthline.cling.support.avtransport.callback.GetTransportInfo;
 import org.fourthline.cling.support.avtransport.callback.Pause;
 import org.fourthline.cling.support.avtransport.callback.Play;
 import org.fourthline.cling.support.avtransport.callback.Seek;
@@ -32,6 +33,7 @@ import org.fourthline.cling.support.model.MediaInfo;
 import org.fourthline.cling.support.model.PositionInfo;
 import org.fourthline.cling.support.model.Res;
 import org.fourthline.cling.support.model.SeekMode;
+import org.fourthline.cling.support.model.TransportInfo;
 import org.fourthline.cling.support.model.TransportState;
 import org.fourthline.cling.support.model.TransportStatus;
 import org.fourthline.cling.support.model.item.AudioItem;
@@ -467,5 +469,25 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			
 		});
 	}
+	private void getTransportInfo() {
+		UpnpService.getUpnpService().execute(new GetTransportInfo(avtransportService) {
 
+			@Override
+			public void failure(ActionInvocation arg0,
+					UpnpResponse arg1, String arg2) {
+				if (mediaPlayerStateListener != null) {
+					// TODO mapping error
+					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC);
+				}
+			}
+
+			@Override
+			public void received(ActionInvocation arg0, TransportInfo transportInfo) {
+				TransportStatus transportStatus = transportInfo.getCurrentTransportStatus();
+				Log.d(TAG, "GetTransportInfo:received: transportStatus:"+transportStatus.getValue());
+			}
+			
+		});
+	}
+	
 }
