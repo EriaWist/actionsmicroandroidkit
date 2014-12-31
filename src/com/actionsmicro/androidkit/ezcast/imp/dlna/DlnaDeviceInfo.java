@@ -19,6 +19,7 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.androidkit.ezcast.MessageApi;
 import com.actionsmicro.androidkit.ezcast.MessageApiBuilder;
+import com.actionsmicro.utils.Log;
 
 public class DlnaDeviceInfo extends DeviceInfo {
 
@@ -120,6 +121,7 @@ public class DlnaDeviceInfo extends DeviceInfo {
 	private static final long SERVICE_NEWS			= 0x40000;
 	private static final long SERVICE_MESSAGES		= 0x80000;
 	private static final long SERVICE_SOCIAL			= 0x100000;
+	private static final String TAG = "DlnaDeviceInfo";
 	
 	@Override
 	public String getParameter(String key) {
@@ -163,6 +165,26 @@ public class DlnaDeviceInfo extends DeviceInfo {
 	@Override
 	public boolean supportMediaFileExtension(String fileExtension) {
 		return true;
+	}
+
+	public String getManufacturer() {
+		try {
+			String manufacturer = device.getDetails().getManufacturerDetails().getManufacturer();
+			return manufacturer;
+		} catch(Throwable e) {
+			Log.e(TAG, "getManufacturer", e);
+		}
+		return null;
+	}
+
+	public String getModel() {
+		try {
+			String model = device.getDetails().getModelDetails().getModelName();
+			return model;
+		} catch(Throwable e) {
+			Log.e(TAG, "getManufacturer", e);
+		}
+		return null;		
 	}
 
 }
