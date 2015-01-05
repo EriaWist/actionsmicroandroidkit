@@ -152,6 +152,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 						if (mediaPlayerStateListener != null) {
 							mediaPlayerStateListener.mediaPlayerDidStop(DlnaMediaPlayerApi.this);
 						}
+						commitMediaUsageTracking();
 					}
 				}
 			}
@@ -297,7 +298,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
             	detachedFileServer.stop();
             }
         });
-        
+        commitMediaUsageTracking();
 		return true;
 	}
 	private void stopHttpFileServer() {
@@ -345,7 +346,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 			mediaUriString = simpleHttpFileServer.getServerUrl();
 		}
 		setAvTransportUri(mediaUriString, title, isAudio);
-
+		beginMediaUsageTracking(context, url, userAgentString, title);
 		return true;
 	}
 	private void setAvTransportUri(String mediaUriString, String title, boolean isAudio) throws Exception {
