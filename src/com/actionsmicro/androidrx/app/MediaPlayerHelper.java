@@ -1,6 +1,7 @@
 package com.actionsmicro.androidrx.app;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnBufferingUpdateListener;
@@ -14,6 +15,9 @@ import android.view.TextureView;
 import android.view.TextureView.SurfaceTextureListener;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.FrameLayout;
+import android.widget.MediaController;
 
 import com.actionsmicro.utils.Log;
 
@@ -25,6 +29,8 @@ public class MediaPlayerHelper {
 	private ViewGroup container;
 	private PlayerListener playerListener;
 	private boolean stopped;
+	private MediaController mediaController;
+	protected int bufferPercentage;
 	public interface PlayerListener {
 		public void onDurationChange(int seconds);
 		public void onLoadStart();
@@ -42,7 +48,104 @@ public class MediaPlayerHelper {
 		this.container = container;
 		this.playerListener = playerListener;
 		initTextureView(context, container, initMediaPlayer());
-		
+		initMediaController(context, container);
+	}
+
+	private void initMediaController(final Context context,
+			final ViewGroup container) {
+		container.post(new Runnable() {
+			private int getNavBarHeight() {
+				Resources resources = context.getResources();
+				int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
+				if (resourceId > 0) {
+				    return resources.getDimensionPixelSize(resourceId);
+				}
+				return 96;
+			}
+			@Override
+			public void run() {
+				
+				mediaController = new MediaController(context);
+				FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+				params.bottomMargin = getNavBarHeight();
+				mediaController.setLayoutParams(params);
+				mediaController.setAnchorView(textureView);
+				mediaController.setMediaPlayer(new MediaController.MediaPlayerControl() {
+					
+					@Override
+					public void start() {
+						Log.v(TAG, "MediaPlayerControl.start");
+					}
+					
+					@Override
+					public void seekTo(int pos) {
+						Log.v(TAG, "MediaPlayerControl.seekTo:"+pos);
+						
+					}
+					
+					@Override
+					public void pause() {
+						Log.v(TAG, "MediaPlayerControl.pause:");
+						
+					}
+					
+					@Override
+					public boolean isPlaying() {
+						if (mediaPlayer != null) {
+							return mediaPlayer.isPlaying();
+						}
+						return false;
+					}
+					
+					@Override
+					public int getDuration() {
+						Log.v(TAG, "MediaPlayerControl.getDuration:");
+						if (mediaPlayer != null) {
+							Log.v(TAG, "MediaPlayerControl.getDuration:"+mediaPlayer.getDuration());
+							return mediaPlayer.getDuration();
+						}
+						return 0;
+					}
+					
+					@Override
+					public int getCurrentPosition() {
+						Log.v(TAG, "MediaPlayerControl.getCurrentPosition:");
+						if (mediaPlayer != null) {
+							Log.v(TAG, "MediaPlayerControl.getCurrentPosition:"+mediaPlayer.getCurrentPosition());
+							return mediaPlayer.getCurrentPosition();
+						}
+						return 0;
+					}
+					
+					@Override
+					public int getBufferPercentage() {
+						return bufferPercentage;
+					}
+					
+					@Override
+					public int getAudioSessionId() {
+						// TODO Auto-generated method stub
+						return 0;
+					}
+					
+					@Override
+					public boolean canSeekForward() {
+						return true;
+					}
+					
+					@Override
+					public boolean canSeekBackward() {
+						return true;
+					}
+					
+					@Override
+					public boolean canPause() {
+						return false;
+					}
+				});
+			}
+			
+		});
 	}
 
 	private void initTextureView(final Context context,
@@ -102,8 +205,8 @@ public class MediaPlayerHelper {
 
 			@Override
 			public void onBufferingUpdate(MediaPlayer mp, int percent) {
-				// TODO Auto-generated method stub
 				Log.v(TAG, "onBufferingUpdate:"+percent+"%");
+				bufferPercentage = percent;
 			}
 			
 		});
@@ -212,6 +315,8 @@ public class MediaPlayerHelper {
 				mediaPlayer.reset();
 				mediaPlayer.setDataSource(url);
 				mediaPlayer.prepare();			
+				showControl();
+
 			} catch (Throwable e) {
 				e.printStackTrace();
 			}
@@ -226,9 +331,29 @@ public class MediaPlayerHelper {
 					mediaPlayer.seekTo(startpos);
 				}
 				mediaPlayer.start();
+				showControl();
 			} catch (Throwable e) {
 				e.printStackTrace();
 			}
+		}
+	}
+
+	private void showControl() {
+		if (textureView != null) {
+			textureView.post(new Runnable() {
+
+				@Override
+				public void run() {
+					try {
+						if (mediaController != null) {
+							mediaController.show();
+						}
+					} catch (Throwable e) {
+						e.printStackTrace();
+					}
+				}
+
+			});
 		}
 	}
 
@@ -278,6 +403,7 @@ public class MediaPlayerHelper {
 		if (mediaPlayer != null) {
 			try {
 				mediaPlayer.pause();
+				showControl();
 				if (playerListener != null) {
 					playerListener.onPaused();
 				}
@@ -292,6 +418,7 @@ public class MediaPlayerHelper {
 		if (mediaPlayer != null) {
 			try {
 				mediaPlayer.start();
+				showControl();
 				if (playerListener != null) {
 					playerListener.onPlaying();
 				}
@@ -317,6 +444,8 @@ public class MediaPlayerHelper {
 		if (mediaPlayer != null) {
 			try {
 				mediaPlayer.seekTo(msec);
+				showControl();
+
 			} catch (Throwable e) {
 				e.printStackTrace();
 			}
