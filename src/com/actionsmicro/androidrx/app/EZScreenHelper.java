@@ -51,6 +51,7 @@ import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.airplay.clock.SimplePlaybackClock;
 import com.actionsmicro.airplay.mirror.MirrorClock;
 import com.actionsmicro.androidrx.EzScreenServer;
+import com.actionsmicro.androidrx.app.MediaPlayerHelper.PlayerListener;
 import com.actionsmicro.androidrx.app.state.IdleState;
 import com.actionsmicro.androidrx.app.state.StateContext;
 import com.actionsmicro.utils.Log;
@@ -62,7 +63,7 @@ import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.analytics.Tracker;
 import com.yutel.silver.vo.AirplayState;
 
-public class EZScreenHelper {
+public class EZScreenHelper implements PlayerListener {
 	public interface ConnectionListener {
 		public void onConnected();
 		public void onDisconnected();
@@ -263,22 +264,29 @@ public class EZScreenHelper {
 		trackScreenHit("home");
 	}
 	private void stopVideo() {
-		invokeJavascript("javascript:stopVideo();");
+		stopMediaPlayer();
 	}
 	private void pauseVideo() {
-		invokeJavascript("javascript:pauseVideo();");
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.pause();
+		}
 	}
 	private void resumeVideo() {
-		invokeJavascript("javascript:resumeVideo();");
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.resume();
+		}
 	}
 	private void setVolume(float volume) {
-		invokeJavascript("javascript:setVolume("+volume+");");
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.setVolume(volume);
+		}
 	}
 	private void seek(long time) {
-		invokeJavascript("javascript:seek("+time+");");
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.seek((int)time*1000);
+		}
 	}
-	
-	
+
 	private void invokeJavascript(final String javascript) {
 		if (webView != null) {
 			webView.post(new Runnable() {
@@ -477,6 +485,12 @@ public class EZScreenHelper {
 		}
 	}
 
+	private void stopMediaPlayer() {
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.stop();
+			mediaPlayerHelper = null;
+		}
+	}
 	private void displayMotionJpeg(final String url) {
 		stopMJpegClient();
 		showMjpegView();
@@ -553,12 +567,7 @@ public class EZScreenHelper {
 		return Formatter.formatIpAddress(wim.getConnectionInfo().getIpAddress());
 	}
 	private void playVideo(final String url, String callback) {
-		if (callback != null) {
-			invokeJavascript("javascript:playVideo(\""+url+"\",'"+callback+"');");
-		} else {
-			invokeJavascript("javascript:playVideo(\""+url+"\", null);");			
-		}
-		showWebView();
+		playVideo(url, callback, true, 0);
 	}
 	private void initEzAndroidRx() {
 		try {
@@ -661,6 +670,7 @@ public class EZScreenHelper {
 	private boolean ezScreenInitialized;
 	protected boolean alreadyFailed;
 	private StateContext stateContext;
+	private MediaPlayerHelper mediaPlayerHelper;
 	
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void initAirplay() {
@@ -1024,12 +1034,11 @@ public class EZScreenHelper {
 	}
 
 	private void playVideo(String url, String callback, boolean autoplay, int startpos) {
-		if (callback != null) {
-			invokeJavascript("javascript:playVideoImp(\""+url+"\",'"+callback+"'"+ (autoplay?"true, ":"false, ")+ startpos+");");
-		} else {
-			invokeJavascript("javascript:playVideoImp(\""+url+"\", null, "+ (autoplay?"true, ":"false, ")+ startpos+");");			
+		mediaPlayerHelper = new MediaPlayerHelper(context, container, this);
+		mediaPlayerHelper.load(url);
+		if (autoplay) {
+			mediaPlayerHelper.play(startpos);
 		}
-		showWebView();
 	}
 	@SuppressLint({ "NewApi", "SetJavaScriptEnabled" })
 	private void initWebView() {
@@ -1095,6 +1104,7 @@ public class EZScreenHelper {
 		});
 	}
 	private void hideAllViewsExcept(View exception) {
+		stopMediaPlayer();
 		for (View view : allViews) {
 			if (view != exception) {
 				setViewVisibility(view, View.INVISIBLE);
