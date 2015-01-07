@@ -7,10 +7,13 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.SocketException;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -54,6 +57,7 @@ import com.actionsmicro.androidrx.EzScreenServer;
 import com.actionsmicro.androidrx.app.MediaPlayerHelper.PlayerListener;
 import com.actionsmicro.androidrx.app.state.IdleState;
 import com.actionsmicro.androidrx.app.state.StateContext;
+import com.actionsmicro.ezcom.jsonrpc.JSONRPC2Session;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
@@ -61,6 +65,8 @@ import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.JpegCallback;
 import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.analytics.Tracker;
+import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
+import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 import com.yutel.silver.vo.AirplayState;
 
 public class EZScreenHelper implements PlayerListener {
@@ -157,6 +163,21 @@ public class EZScreenHelper implements PlayerListener {
 //		} catch (IOException e) {
 //			e.printStackTrace();
 //		}
+		
+	}
+	private void createNetworkThread() {
+		if (networkThread == null) {
+			networkThread = new LooperThread();
+			networkThread.start();
+		}
+		try {
+			synchronized(networkThread) {
+				networkThread.wait();
+			}
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	private void hidePhotoView() {
 		setViewVisibility(photoView, View.INVISIBLE);
@@ -310,6 +331,9 @@ public class EZScreenHelper implements PlayerListener {
 	@JavascriptInterface
 	public void onDurationChange(int seconds) {
 		Log.d(TAG, "onDurationChange:"+seconds);
+		Map<String, Object> namedParams = new HashMap<String, Object>();
+		namedParams.put("duration", Float.valueOf(seconds));
+		sendCallbackNotification("ezcastplayer.ondurationchange", namedParams);
 		if (this.isMetadataLoaded()) {
 			if (getAirplayService() != null) {
 				this.getAirplayService().sendEvent();
@@ -322,25 +346,60 @@ public class EZScreenHelper implements PlayerListener {
 			}
 		}
 	}
+	private void sendCallbackNotification(final String notificationName,
+			final Map<String, Object> namedParams) {
+		
+		Runnable runnable = new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					if (mediaCallbackRpc != null) {
+						JSONRPC2Notification notification = new JSONRPC2Notification(notificationName);
+						if (namedParams != null) {
+							notification.setNamedParams(namedParams);
+						}
+						mediaCallbackRpc.send(notification);
+					}
+				} catch (JSONRPC2SessionException e) {
+					e.printStackTrace();
+				} finally {
+
+				}
+			}
+		};
+			
+		performOnNetworkThread(runnable);		
+		
+	}
 	@JavascriptInterface
 	public void onLoadStart() {
 		Log.d(TAG, "onLoadStart:");
+		sendCallbackNotification("ezcastplayer.onloadstart", null);
+		
 //		state = AirplayState.CACHING;
 //		airplayService.sendEvent();
 	}
 	@JavascriptInterface
 	public void onPlay() {
 		Log.d(TAG, "onPlay:");
-		
+		sendCallbackNotification("ezcastplayer.onplay", null);
+
 	}
 	@JavascriptInterface
 	public void onTimeUpdate(int currentTime) {
 		Log.d(TAG, "onTimeUpdate:"+currentTime);
+		Map<String, Object> namedParams = new HashMap<String, Object>();
+		namedParams.put("time", Float.valueOf(currentTime));
+		sendCallbackNotification("ezcastplayer.ontimeupdate", namedParams);
 		this.setCurrentTime(currentTime);
 	}
 	@JavascriptInterface
 	public void onError(int error) {
 		Log.d(TAG, "onError:"+error);
+		Map<String, Object> namedParams = new HashMap<String, Object>();
+		namedParams.put("error", Float.valueOf(error));
+		sendCallbackNotification("ezcastplayer.onerror", namedParams);
 		this.setState(AirplayState.ERROR);
 		if (getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
@@ -352,6 +411,7 @@ public class EZScreenHelper implements PlayerListener {
 	@JavascriptInterface
 	public void onEnded() {
 		Log.d(TAG, "onEnded:");
+		sendCallbackNotification("ezcastplayer.onended", null);
 		resetStates();
 		if (this.getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
@@ -361,6 +421,7 @@ public class EZScreenHelper implements PlayerListener {
 	@JavascriptInterface
 	public void onPaused() {
 		Log.d(TAG, "onPaused:");
+		sendCallbackNotification("ezcastplayer.onpause", null);
 		this.setState(AirplayState.PAUSING);
 		if (getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
@@ -377,6 +438,7 @@ public class EZScreenHelper implements PlayerListener {
 	@JavascriptInterface
 	public void onWaiting() {
 		Log.d(TAG, "onWaiting:");
+		sendCallbackNotification("ezcastplayer.onwaiting", null);
 		this.setState(AirplayState.CACHING);
 		if (getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
@@ -385,6 +447,7 @@ public class EZScreenHelper implements PlayerListener {
 	@JavascriptInterface
 	public void onSeeked() {
 		Log.d(TAG, "onSeeked:");
+		sendCallbackNotification("ezcastplayer.onseeked", null);
 		this.setPendingStartingPosition(-1);
 //		resumeVideo();
 //		state = AirplayState.PLAYING;
@@ -396,6 +459,8 @@ public class EZScreenHelper implements PlayerListener {
 	@JavascriptInterface
 	public void onPlaying() {
 		Log.d(TAG, "onPlaying:");
+		sendCallbackNotification("ezcastplayer.onplaying", null);
+
 //		if (pendingStartingPosition == -1 || pendingStartingPosition == 0) {
 //			state = AirplayState.PLAYING;
 //			airplayService.sendEvent();
@@ -408,6 +473,7 @@ public class EZScreenHelper implements PlayerListener {
 	@JavascriptInterface
 	public void onLoadedMetadata() {
 		Log.d(TAG, "onLoadedMetadata:");
+		sendCallbackNotification("ezcastplayer.onloadedmetadata", null);
 		this.setState(AirplayState.CACHING);
 		this.setMetadataLoaded(true);		
 	}
@@ -671,6 +737,7 @@ public class EZScreenHelper implements PlayerListener {
 	protected boolean alreadyFailed;
 	private StateContext stateContext;
 	private MediaPlayerHelper mediaPlayerHelper;
+	private JSONRPC2Session mediaCallbackRpc;
 	
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void initAirplay() {
@@ -1034,10 +1101,23 @@ public class EZScreenHelper implements PlayerListener {
 	}
 
 	private void playVideo(String url, String callback, boolean autoplay, int startpos) {
+		closeMediaCallbackRpcSessionIfNeeded();
+		createMediaCallbackRpcSession(callback);
 		mediaPlayerHelper = new MediaPlayerHelper(context, container, this);
 		mediaPlayerHelper.load(url);
 		if (autoplay) {
 			mediaPlayerHelper.play(startpos);
+		}
+	}
+	private void createMediaCallbackRpcSession(String callback) {
+		if (callback != null) {
+			try {
+				mediaCallbackRpc = new JSONRPC2Session(new URL(callback));
+				
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	@SuppressLint({ "NewApi", "SetJavaScriptEnabled" })
@@ -1322,6 +1402,7 @@ public class EZScreenHelper implements PlayerListener {
 
 			}).start();
 		}
+		createNetworkThread();
 	}
 	public void stop() {
 		stopMirrorDecoding();
@@ -1336,6 +1417,26 @@ public class EZScreenHelper implements PlayerListener {
 		ezScreenInitialized = false;
 		airplayInitialized = false;
 		cleanUpAirPlayCache();
+		
+		stopNetworkThread();
+		closeMediaCallbackRpcSessionIfNeeded();
+	}
+	private void stopNetworkThread() {
+		if (networkThread != null) {
+			networkThread.stopLooper();
+			try {
+				networkThread.join(3000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			networkThread = null;
+		}
+	}
+	private void closeMediaCallbackRpcSessionIfNeeded() {
+		if (mediaCallbackRpc != null) {
+			mediaCallbackRpc.close();
+			mediaCallbackRpc = null;
+		}
 	}
 
 	private void cleanUpAirPlayCache() {
@@ -1519,5 +1620,40 @@ public class EZScreenHelper implements PlayerListener {
 			airPlayCacheDir.mkdirs();
 		}
 		return airPlayCacheDir;
+	}
+	private void performOnNetworkThread(Runnable runnable) {
+		Handler handler = getNetworkHandler();
+		if (handler != null) {
+			handler.post(runnable);			
+		}
+	}
+	private LooperThread networkThread;
+	protected Handler getNetworkHandler() {
+		if (networkThread != null) {
+			return networkThread.getHandler();
+		}
+		return null;
+	}
+	private class LooperThread extends Thread {
+		private Looper myLooper;
+		private Handler handler;
+		protected Handler getHandler() {
+			return handler;
+		}
+		@Override
+		public void run() {
+			Looper.prepare();
+			myLooper = Looper.myLooper();
+			handler = new Handler();
+			synchronized(this) {
+				this.notifyAll();
+			}
+			Looper.loop();
+		}
+		public void stopLooper() {
+			if (myLooper != null) {
+				myLooper.quit();
+			}
+		}
 	}
 }
