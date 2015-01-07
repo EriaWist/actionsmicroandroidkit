@@ -998,7 +998,7 @@ public class EZScreenHelper implements PlayerListener {
 				public void onAirPlayStart() {
 					// TODO Auto-generated method stub
 					Log.d(TAG, "onAirPlayStart");
-					
+					showConnectedIndicator();
 				}
 
 				@Override
