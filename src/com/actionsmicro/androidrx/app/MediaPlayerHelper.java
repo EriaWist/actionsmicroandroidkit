@@ -226,10 +226,40 @@ public class MediaPlayerHelper {
 			@Override
 			public boolean onError(MediaPlayer mp, int what, int extra) {
 				Log.v(TAG, "onError: what:"+what+", extra:"+extra);
-				if (playerListener != null) {
-					playerListener.onError(what);
+				if (what != -38) { // MediaPlayer keeps sending -38 for unknown reason after error occurs. Let's filter it.
+					if (playerListener != null) {
+						playerListener.onError(convertErrorCode(what, extra));
+					}					
 				}
 				return false;
+			}
+			private int convertErrorCode(int what, int extra) {
+//				http://dev.w3.org/html5/spec-author-view/video.html#error-codes
+//				interface MediaError {
+//					  const unsigned short MEDIA_ERR_ABORTED = 1;
+//					  const unsigned short MEDIA_ERR_NETWORK = 2;
+//					  const unsigned short MEDIA_ERR_DECODE = 3;
+//					  const unsigned short MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
+//					  readonly attribute unsigned short code;
+//				};
+				int convertedError = 4;
+				switch (extra) {
+				case MediaPlayer.MEDIA_ERROR_TIMED_OUT:
+				case MediaPlayer.MEDIA_ERROR_IO:
+					convertedError = 2;
+					break;
+				case MediaPlayer.MEDIA_ERROR_UNSUPPORTED:
+				case MediaPlayer.MEDIA_ERROR_MALFORMED:
+					convertedError = 4;
+					break;
+				default:
+					if (MediaPlayer.MEDIA_ERROR_SERVER_DIED == what) {
+						convertedError = 2;
+						
+					}
+					break;
+				}
+				return convertedError;
 			}
 			
 		});
@@ -262,13 +292,7 @@ public class MediaPlayerHelper {
 			public void onPrepared(MediaPlayer mp) {
 				Log.v(TAG, "onPrepared:");
 				if (playerListener != null) {
-					playerListener.onLoadStart();
-				}
-				if (playerListener != null) {
 					playerListener.onLoadedMetadata();
-				}
-				if (playerListener != null) {
-					playerListener.onPlay();
 				}
 				scheduleInfoPoller();
 			}
@@ -314,10 +338,16 @@ public class MediaPlayerHelper {
 			try {
 				mediaPlayer.reset();
 				mediaPlayer.setDataSource(url);
+				if (playerListener != null) {
+					playerListener.onLoadStart();
+				}
 				mediaPlayer.prepare();			
 				showControl();
 
 			} catch (Throwable e) {
+				if (playerListener != null) {
+					playerListener.onError(4);
+				}
 				e.printStackTrace();
 			}
 		}
@@ -332,6 +362,9 @@ public class MediaPlayerHelper {
 				}
 				mediaPlayer.start();
 				showControl();
+				if (playerListener != null) {
+					playerListener.onPlay();
+				}
 			} catch (Throwable e) {
 				e.printStackTrace();
 			}
@@ -366,12 +399,16 @@ public class MediaPlayerHelper {
 					playerListener.onEnded();
 				}
 				final MediaPlayer mediaPlayerToBeReleased = mediaPlayer;
+				final MediaController mc = mediaController;
 				textureView.post(new Runnable() {
 
 					@Override
 					public void run() {
 						try {
 							mediaPlayerToBeReleased.release();
+							if (mc != null) {
+								mc.hide();
+							}
 						} catch (Throwable e) {
 							e.printStackTrace();
 						}
