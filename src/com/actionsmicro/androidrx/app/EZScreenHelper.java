@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.SocketException;
@@ -566,32 +567,39 @@ public class EZScreenHelper implements PlayerListener {
 				@Override
 				public void onJpegAvaiable(byte[] jpegData, int size) {
 					if (EZScreenHelper.this.getMjpegView() != null && jpegData != null) {
+						Bitmap bitmap = null;
 						try {
-							Bitmap bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size);
-							if (bitmap != null) {
-								//									drawOnSurface(bitmap);
-								Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
-								if (canvas != null) {
-									final int savedState = canvas.save();
-									try {
-										Log.d(TAG, "canvas width:"+canvas.getWidth()+", height:"+canvas.getHeight()+ "; bitmap width:"+bitmap.getWidth()+", height:"+bitmap.getHeight());
-										final float scaleFactor = Math.min( (float)canvas.getWidth() / (float)bitmap.getWidth(), (float)canvas.getHeight() / (float)bitmap.getHeight() );
-										final float finalWidth = (float)bitmap.getWidth() * scaleFactor;
-										final float finalHeight = (float)bitmap.getHeight() * scaleFactor;
-										final float leftPadding = ((float)canvas.getWidth() - finalWidth)/2;
-										final float topPadding =  ((float)canvas.getHeight() - finalHeight)/2;
-										canvas.drawColor(Color.BLACK);
-										canvas.translate(leftPadding, topPadding);
-										canvas.scale(scaleFactor, scaleFactor);
-										canvas.drawBitmap(bitmap, 0, 0, null);
-									} finally {
-										canvas.restoreToCount(savedState);
-										EZScreenHelper.this.getMjpegView().unlockCanvasAndPost(canvas);
-									}
+							bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size);							
+						} catch (OutOfMemoryError oom) {
+							try {
+								Log.e(TAG, "OOM: jpeg size:"+size);
+								BitmapFactory.Options options = new BitmapFactory.Options(); 
+								options.inSampleSize = 2; 
+								bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size, options);
+							} catch (Throwable t) {
+								t.printStackTrace();
+							}
+						}
+						if (bitmap != null) {
+							Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
+							if (canvas != null) {
+								final int savedState = canvas.save();
+								try {
+									Log.d(TAG, "canvas width:"+canvas.getWidth()+", height:"+canvas.getHeight()+ "; bitmap width:"+bitmap.getWidth()+", height:"+bitmap.getHeight());
+									final float scaleFactor = Math.min( (float)canvas.getWidth() / (float)bitmap.getWidth(), (float)canvas.getHeight() / (float)bitmap.getHeight() );
+									final float finalWidth = (float)bitmap.getWidth() * scaleFactor;
+									final float finalHeight = (float)bitmap.getHeight() * scaleFactor;
+									final float leftPadding = ((float)canvas.getWidth() - finalWidth)/2;
+									final float topPadding =  ((float)canvas.getHeight() - finalHeight)/2;
+									canvas.drawColor(Color.BLACK);
+									canvas.translate(leftPadding, topPadding);
+									canvas.scale(scaleFactor, scaleFactor);
+									canvas.drawBitmap(bitmap, 0, 0, null);
+								} finally {
+									canvas.restoreToCount(savedState);
+									EZScreenHelper.this.getMjpegView().unlockCanvasAndPost(canvas);
 								}
 							}
-						} catch (OutOfMemoryError oom) {
-							Log.e(TAG, "OOM: jpeg size:"+size);
 						}
 					}
 				}
@@ -1350,7 +1358,16 @@ public class EZScreenHelper implements PlayerListener {
 
 						@Override
 						public void run() {
-							photoView.setImageURI(Uri.fromFile(cacheFile));						
+							Uri cacheFileUri = Uri.fromFile(cacheFile);
+							try {
+								photoView.setImageURI(cacheFileUri);
+							} catch (OutOfMemoryError oom) {
+								try {
+									photoView.setImageBitmap(readBitmapInHalfSize(cacheFileUri, context));
+								} catch (Throwable t) {
+									t.printStackTrace();
+								}
+							}
 						}
 
 					});
@@ -1403,6 +1420,26 @@ public class EZScreenHelper implements PlayerListener {
 			}).start();
 		}
 		createNetworkThread();
+	}
+	private static Bitmap readBitmapInHalfSize(Uri imageFile, Context context) { 
+		Bitmap bitmap = null; 
+		InputStream stream = null;
+        try {
+            stream = context.getContentResolver().openInputStream(imageFile);
+            BitmapFactory.Options options = new BitmapFactory.Options(); 
+    		options.inSampleSize = 2; 
+			bitmap = BitmapFactory.decodeStream(stream, null, options);					
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to open content: " + imageFile, e);
+        } finally {
+            if (stream != null) {
+                try {
+                    stream.close();
+                } catch (IOException e) {
+                }
+            }
+        }
+		return bitmap; 
 	}
 	public void stop() {
 		stopMirrorDecoding();
