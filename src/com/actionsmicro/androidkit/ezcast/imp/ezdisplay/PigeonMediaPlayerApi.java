@@ -47,7 +47,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		if (webroot != null && !webroot.isEmpty()) {
 			serverAddress = URLDecoder.decode(webroot, "UTF-8");
 		} else {
-			serverAddress = "http://" + pigeonClient.getServerAddress();
+			serverAddress = "http://" + pigeonClient.getServerAddress() + "/";
 		}
 		Utils.uploadInputStreamToServer(
 				is, 
