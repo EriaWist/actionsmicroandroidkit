@@ -182,10 +182,23 @@ public class EzCastSdk {
 		if (initTask != null) {
 			try {
 				initTask.get();
+				synchronized (deviceFinder) {
+					try {
+						deviceFinder.wait(1000);
+					} catch (InterruptedException e1) {
+					}
+				}
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch (ExecutionException e) {
 				e.printStackTrace();
+				Log.d(TAG, "initTask.get() failed:"+e.getCause());
+				synchronized (deviceFinder) {
+					try {
+						deviceFinder.wait(1000);
+					} catch (InterruptedException e1) {
+					}
+				}
 			}
 		}
 	}
