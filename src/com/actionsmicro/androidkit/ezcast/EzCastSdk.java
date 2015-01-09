@@ -184,10 +184,7 @@ public class EzCastSdk {
 			try {
 				initTask.get();
 				synchronized (deviceFinder) {
-					try {
-						deviceFinder.wait(1000);
-					} catch (InterruptedException e1) {
-					}
+					deviceFinder.wait(1000);
 				}
 			} catch (InterruptedException e) {
 				e.printStackTrace();
