@@ -1,9 +1,6 @@
 package org.jcodec.common;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
 import java.util.concurrent.Callable;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RunnableFuture;
@@ -11,17 +8,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.jcodec.codecs.h264.H264Decoder;
-import org.jcodec.codecs.mpeg12.MPEGDecoder;
-import org.jcodec.codecs.ppm.PPMEncoder;
-import org.jcodec.codecs.prores.ProresDecoder;
-import org.jcodec.common.model.ColorSpace;
-import org.jcodec.common.model.Picture;
 import org.jcodec.common.tools.MathUtil;
-import org.jcodec.containers.mp4.demuxer.MP4Demuxer;
-import org.jcodec.containers.mps.MPSDemuxer;
-import org.jcodec.containers.mps.MTSDemuxer;
-import org.jcodec.scale.ColorUtil;
-import org.jcodec.scale.Transform;
 
 /**
  * This class is part of JCodec ( www.jcodec.org ) This software is distributed
@@ -32,31 +19,10 @@ import org.jcodec.scale.Transform;
  */
 public class JCodecUtil {
 
-    private static final VideoDecoder[] knownDecoders = new VideoDecoder[] { new ProresDecoder(), new MPEGDecoder(),
-            new H264Decoder() };
+    private static final VideoDecoder[] knownDecoders = new VideoDecoder[] { new H264Decoder() };
 
     public enum Format {
         MOV, MPEG_PS, MPEG_TS
-    }
-
-    public static Format detectFormat(File f) throws IOException {
-        return detectFormat(NIOUtils.fetchFrom(f, 200 * 1024));
-    }
-    
-    public static Format detectFormat(ReadableByteChannel f) throws IOException {
-        return detectFormat(NIOUtils.fetchFrom(f, 200 * 1024));
-    }
-
-    public static Format detectFormat(ByteBuffer b) {
-        int movScore = MP4Demuxer.probe(b.duplicate());
-        int psScore = MPSDemuxer.probe(b.duplicate());
-        int tsScore = MTSDemuxer.probe(b.duplicate());
-
-        if (movScore == 0 && psScore == 0 && tsScore == 0)
-            return null;
-
-        return movScore > psScore ? (movScore > tsScore ? Format.MOV : Format.MPEG_TS)
-                : (psScore > tsScore ? Format.MPEG_PS : Format.MPEG_TS);
     }
 
     public static VideoDecoder detectDecoder(ByteBuffer b) {
@@ -70,23 +36,6 @@ public class JCodecUtil {
             }
         }
         return selected;
-    }
-
-    public static VideoDecoder getVideoDecoder(String fourcc) {
-        if ("apch".equals(fourcc) || "apcs".equals(fourcc) || "apco".equals(fourcc) || "apcn".equals(fourcc)
-                || "ap4h".equals(fourcc))
-            return new ProresDecoder();
-        else if ("m2v1".equals(fourcc))
-            return new MPEGDecoder();
-        else
-            return null;
-    }
-
-    public static void savePictureAsPPM(Picture pic, File file) throws IOException {
-        Transform transform = ColorUtil.getTransform(pic.getColor(), ColorSpace.RGB);
-        Picture rgb = Picture.create(pic.getWidth(), pic.getHeight(), ColorSpace.RGB);
-        transform.transform(pic, rgb);
-        NIOUtils.writeTo(new PPMEncoder().encodeFrame(rgb), file);
     }
 
     public static byte[] asciiString(String fourcc) {
