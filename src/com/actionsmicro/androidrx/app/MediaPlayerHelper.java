@@ -31,6 +31,7 @@ public class MediaPlayerHelper {
 	private boolean stopped;
 	private MediaController mediaController;
 	protected int bufferPercentage;
+	protected int duration = -1;
 	public interface PlayerListener {
 		public void onDurationChange(int seconds);
 		public void onLoadStart();
@@ -161,13 +162,15 @@ public class MediaPlayerHelper {
 						@Override
 						public void onSurfaceTextureAvailable(SurfaceTexture surface,
 								int width, int height) {
+							Log.v(TAG, "onSurfaceTextureAvailable:"+surface);
+							
 							mediaPlayer.setSurface(new Surface(surface));
 						}
 
 						@Override
 						public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
 							// TODO Auto-generated method stub
-							return false;
+							return true;
 						}
 
 						@Override
@@ -179,7 +182,8 @@ public class MediaPlayerHelper {
 
 						@Override
 						public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-							// TODO Auto-generated method stub
+							Log.v(TAG, "onSurfaceTextureUpdated:"+surface);
+							mediaPlayer.setSurface(new Surface(surface));
 
 						}
 
@@ -215,6 +219,7 @@ public class MediaPlayerHelper {
 			@Override
 			public void onCompletion(MediaPlayer mp) {
 				Log.v(TAG, "onCompletion:");
+				stop();
 				if (playerListener != null) {
 					playerListener.onEnded();
 				}
@@ -268,18 +273,17 @@ public class MediaPlayerHelper {
 			@Override
 			public boolean onInfo(MediaPlayer mp, int what, int extra) {
 				Log.v(TAG, "onInfo: what:"+what+", extra:"+extra);
-				Log.v(TAG, "onInfo: duration:"+(mp.getDuration()/1000));
+				Log.v(TAG, "onInfo: duration:"+mp.getDuration()/1000);
 				switch (what) {
 				case MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
 					if (playerListener != null) {
 						playerListener.onPlaying();
 					}
-					if (playerListener != null) {
-						playerListener.onDurationChange(mp.getDuration()/1000);
-					}
+					setDuration(mp.getDuration()/1000);					
 					break;
 				case MediaPlayer.MEDIA_INFO_METADATA_UPDATE:
-					Log.v(TAG, "onInfo: duration:"+(mp.getDuration()/1000));
+					Log.v(TAG, "onInfo: duration:"+mp.getDuration()/1000);
+					setDuration(mp.getDuration()/1000);					
 					break;
 				}
 				return false;
@@ -312,6 +316,15 @@ public class MediaPlayerHelper {
 		return mediaPlayer;		
 	}
 
+	private void setDuration(int duration) {
+		if (this.duration != duration) {
+			this.duration = duration;
+			if (playerListener != null) {
+				playerListener.onDurationChange(duration);
+			}
+		}
+	}
+
 	private void scheduleInfoPoller() {
 		if (textureView != null) {
 			textureView.postDelayed(new Runnable() {
@@ -323,6 +336,7 @@ public class MediaPlayerHelper {
 							if (playerListener != null) {
 								playerListener.onTimeUpdate(mediaPlayer.getCurrentPosition()/1000);
 							}
+							setDuration(mediaPlayer.getDuration()/1000);
 							scheduleInfoPoller();
 						}
 					}
@@ -394,9 +408,8 @@ public class MediaPlayerHelper {
 		Log.v(TAG, "stop:");
 		if (mediaPlayer != null) {
 			try {
-				mediaPlayer.stop();
-				if (playerListener != null) {
-					playerListener.onEnded();
+				if (mediaPlayer.isPlaying()) {
+					mediaPlayer.stop();
 				}
 				final MediaPlayer mediaPlayerToBeReleased = mediaPlayer;
 				final MediaController mc = mediaController;
@@ -433,6 +446,7 @@ public class MediaPlayerHelper {
 			textureView = null;
 		}
 		stopped = true;
+		duration = -1;
 	}
 
 	public void pause() {

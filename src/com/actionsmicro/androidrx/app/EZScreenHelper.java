@@ -412,6 +412,7 @@ public class EZScreenHelper implements PlayerListener {
 	@JavascriptInterface
 	public void onEnded() {
 		Log.d(TAG, "onEnded:");
+		stopMediaPlayer();
 		sendCallbackNotification("ezcastplayer.onended", null);
 		resetStates();
 		if (this.getAirplayService() != null) {
@@ -1111,6 +1112,7 @@ public class EZScreenHelper implements PlayerListener {
 	private void playVideo(String url, String callback, boolean autoplay, int startpos) {
 		closeMediaCallbackRpcSessionIfNeeded();
 		createMediaCallbackRpcSession(callback);
+		stopMediaPlayer();
 		mediaPlayerHelper = new MediaPlayerHelper(context, container, this);
 		mediaPlayerHelper.load(url);
 		if (autoplay) {
