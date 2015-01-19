@@ -1459,6 +1459,7 @@ public class EZScreenHelper implements PlayerListener {
 		
 		stopNetworkThread();
 		closeMediaCallbackRpcSessionIfNeeded();
+		releasePlaybackClock();
 	}
 	private void stopNetworkThread() {
 		if (networkThread != null) {
@@ -1561,10 +1562,7 @@ public class EZScreenHelper implements PlayerListener {
 	private void doAirPlayMirror(InetAddress remoteAddress) {
 		showMirrorView();
 		stopMirrorDecoding();
-		if (playbackClock != null) {
-			playbackClock.release();
-			playbackClock = null;
-		}
+		releasePlaybackClock();
 		try {
 			playbackClock = new MirrorClock(remoteAddress, 7010, 100, 25);
 		} catch (SocketException e1) {
@@ -1621,6 +1619,9 @@ public class EZScreenHelper implements PlayerListener {
 		inputBuffers = null; 
 		closeTestFile();
 		hideMirrorView();
+		releasePlaybackClock();
+	}
+	private void releasePlaybackClock() {
 		if (playbackClock != null) {
 			playbackClock.release();
 			playbackClock = null;
