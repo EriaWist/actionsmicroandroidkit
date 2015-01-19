@@ -321,7 +321,7 @@ public class EZScreenHelper implements PlayerListener {
 		}
 	}
 
-	private void resetStates() {
+	private void resetPlaybackStates() {
 		this.setState(AirplayState.STOPPED);
 		this.setDuration(0);
 		this.setCurrentTime(0);
@@ -414,7 +414,7 @@ public class EZScreenHelper implements PlayerListener {
 		Log.d(TAG, "onEnded:");
 		stopMediaPlayer();
 		sendCallbackNotification("ezcastplayer.onended", null);
-		resetStates();
+		resetPlaybackStates();
 		if (this.getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
 		}
@@ -1552,7 +1552,7 @@ public class EZScreenHelper implements PlayerListener {
 	}
 
 	private void loadAirPlayVideo(String url, float rate, float position) {
-		resetStates();
+		resetPlaybackStates();
 		EZScreenHelper.this.setPendingStartingPosition(position);
 		playVideo(url, null, true/*rate!=0*/, 0);
 	}
