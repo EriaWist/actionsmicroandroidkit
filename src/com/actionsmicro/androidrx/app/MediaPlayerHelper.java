@@ -182,9 +182,6 @@ public class MediaPlayerHelper {
 
 						@Override
 						public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-							Log.v(TAG, "onSurfaceTextureUpdated:"+surface);
-							mediaPlayer.setSurface(new Surface(surface));
-
 						}
 
 					});
