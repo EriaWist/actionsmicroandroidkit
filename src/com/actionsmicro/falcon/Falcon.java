@@ -931,7 +931,6 @@ public class Falcon {
 				projectorInfo.name = keyValuePairs.get("hostname");
 			}
 			projectorInfo.keyValuePairs.putAll(keyValuePairs);
-			projectorInfo.osVerion = parameters[1];
 		}
 	}
 	private ProjectorInfo getProjectorInfoWithAddressInList(InetAddress address, List<ProjectorInfo> list) {
