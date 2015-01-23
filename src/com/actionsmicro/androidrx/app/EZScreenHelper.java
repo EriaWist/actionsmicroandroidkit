@@ -1005,9 +1005,8 @@ public class EZScreenHelper implements PlayerListener {
 
 				@Override
 				public void onAirPlayStart() {
-					// TODO Auto-generated method stub
 					Log.d(TAG, "onAirPlayStart");
-					showConnectedIndicator();
+					stateContext.onAirPlayStart();
 				}
 
 				@Override
@@ -1400,6 +1399,11 @@ public class EZScreenHelper implements PlayerListener {
 				}
 
 				EZScreenHelper.this.playVideo(url, callback);				
+			}
+
+			@Override
+			protected void hideMirrorView() {
+				EZScreenHelper.this.hideMirrorView();				
 			}
 		};
 		android.net.wifi.WifiManager wifi =

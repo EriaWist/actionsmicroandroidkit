@@ -72,6 +72,10 @@ public abstract class StateContext {
 		setCurrentState(currentState.onStopAirPlayVideo(this));
 	}
 	protected abstract void showMirrorView();
+	public synchronized void onAirPlayStart() {
+		Log.d(TAG, "onAirPlayStart");
+		setCurrentState(currentState.onAirPlayStart(this));
+	}
 	public synchronized void onAirPlayStop() {
 		Log.d(TAG, "onAirPlayStop");
 		setCurrentState(currentState.onAirPlayStop(this));
@@ -104,5 +108,6 @@ public abstract class StateContext {
 		setCurrentState(currentState.onLoadEzScreenVideo(this, url, callback));
 	}
 	protected abstract void loadEzScreenVideo(String url, String callback);
+	protected abstract void hideMirrorView();
 	
 }

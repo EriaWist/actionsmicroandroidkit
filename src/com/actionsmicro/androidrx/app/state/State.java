@@ -39,4 +39,6 @@ public interface State {
 	State onLoadEzScreenVideo(StateContext stateContext, String url,
 			String callback);
 
+	State onAirPlayStart(StateContext stateContext);
+
 }
