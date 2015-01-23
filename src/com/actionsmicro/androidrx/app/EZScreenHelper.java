@@ -287,6 +287,12 @@ public class EZScreenHelper implements PlayerListener {
 	}
 	private void stopVideo() {
 		stopMediaPlayer();
+		this.setState(AirplayState.STOPPED);		
+		sendCallbackNotification("ezcastplayer.onended", null);
+		resetPlaybackStates();
+		if (this.getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}	
 	}
 	private void pauseVideo() {
 		if (mediaPlayerHelper != null) {
@@ -385,7 +391,7 @@ public class EZScreenHelper implements PlayerListener {
 	public void onPlay() {
 		Log.d(TAG, "onPlay:");
 		sendCallbackNotification("ezcastplayer.onplay", null);
-
+		this.setState(AirplayState.PLAYING);		
 	}
 	@JavascriptInterface
 	public void onTimeUpdate(int currentTime) {
@@ -413,6 +419,7 @@ public class EZScreenHelper implements PlayerListener {
 	public void onEnded() {
 		Log.d(TAG, "onEnded:");
 		stopMediaPlayer();
+		this.setState(AirplayState.STOPPED);		
 		sendCallbackNotification("ezcastplayer.onended", null);
 		resetPlaybackStates();
 		if (this.getAirplayService() != null) {
@@ -1397,7 +1404,7 @@ public class EZScreenHelper implements PlayerListener {
 				} catch (Exception e) {
 					trackScreenHit("ezcastrx.media");						
 				}
-
+				EZScreenHelper.this.hideAllViewsExcept(null);
 				EZScreenHelper.this.playVideo(url, callback);				
 			}
 
