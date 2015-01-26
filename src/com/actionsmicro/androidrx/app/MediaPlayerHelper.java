@@ -225,7 +225,7 @@ public class MediaPlayerHelper {
 				if (playerListener != null) {
 					playerListener.onLoadStart();
 				}
-				showControl();
+				showControl(0);
 
 			} catch (Throwable e) {
 				if (playerListener != null) {
@@ -264,7 +264,7 @@ public class MediaPlayerHelper {
 		}
 	}
 
-	private void showControl() {
+	private void showControl(final int timeout) {
 		if (videoView != null) {
 			videoView.post(new Runnable() {
 
@@ -272,7 +272,7 @@ public class MediaPlayerHelper {
 				public void run() {
 					try {
 						if (mediaController != null) {
-							mediaController.show();
+							mediaController.show(timeout);
 						}
 					} catch (Throwable e) {
 						e.printStackTrace();
@@ -282,7 +282,9 @@ public class MediaPlayerHelper {
 			});
 		}
 	}
-
+	private void showControl() {
+		showControl(3000);
+	}
 	public void stop() {
 		Log.v(TAG, "stop:");
 		runOnUiThread(new Runnable() {
@@ -326,7 +328,7 @@ public class MediaPlayerHelper {
 		if (videoView != null) {
 			try {
 				videoView.pause();
-				showControl();
+				showControl(0);
 				if (playerListener != null) {
 					playerListener.onPaused();
 				}
@@ -386,9 +388,12 @@ public class MediaPlayerHelper {
 	private void seekImp(int msec) {
 		if (videoView != null) {
 			try {
+				if (videoView.isPlaying()) {
+					showControl();
+				} else {
+					showControl(0);					
+				}
 				videoView.seekTo(msec);
-				showControl();
-
 			} catch (Throwable e) {
 				e.printStackTrace();
 			}
