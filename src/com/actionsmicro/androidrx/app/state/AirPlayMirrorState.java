@@ -19,6 +19,7 @@ public class AirPlayMirrorState implements State {
 	@Override
 	public State onLoadAirPlayVideo(StateContext stateContext, String url,
 			float rate, float position) {
+		stateContext.hideMirrorView();
 		stateContext.loadVideo(url, rate, position);
 		return new AirPlayPlayVideoWhenMirrorState();
 	}
@@ -107,6 +108,12 @@ public class AirPlayMirrorState implements State {
 		stateContext.stopMirror();
 		stateContext.loadEzScreenVideo(url, callback);
 		return new EzScreenConnectedState();
+	}
+
+	@Override
+	public State onAirPlayStart(StateContext stateContext) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

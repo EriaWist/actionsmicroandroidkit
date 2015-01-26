@@ -140,4 +140,10 @@ public class IdleState implements State {
 		stateContext.loadEzScreenVideo(url, callback);
 		return new EzScreenConnectedState();
 	}
+
+	@Override
+	public State onAirPlayStart(StateContext stateContext) {
+		stateContext.informDelegateConnected();
+		return null;
+	}
 }
