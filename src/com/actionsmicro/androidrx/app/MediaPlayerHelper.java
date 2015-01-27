@@ -79,6 +79,9 @@ public class MediaPlayerHelper {
 			@Override
 			public void onCompletion(MediaPlayer mp) {
 				Log.v(TAG, "onCompletion:");
+				if (playerListener != null) {
+					playerListener.onTimeUpdate(videoView.getCurrentPosition()/1000);
+				}
 				stop();
 				if (playerListener != null) {
 					playerListener.onEnded();
