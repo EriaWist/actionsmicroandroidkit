@@ -13,6 +13,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
+import java.util.Locale;
 
 import javax.jmdns.ServiceInfo;
 
@@ -711,7 +712,7 @@ public class AirPlayServer {
 			txt.put("rmodel", "EZAir1,1");
 			txt.put("am", AIRPLAY_MODEL);
 			txt.put("sf", "0x4");
-			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create("_raop._tcp.local.", macAddressWithoutCol+"@"+name, RAOP_PORTNUMBER, 0, 0, txt));
+			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create("_raop._tcp.local.", macAddressWithoutCol.toUpperCase(Locale.getDefault())+"@"+name, RAOP_PORTNUMBER, 0, 0, txt));
 			bonjourServiceAdvertiser.register();
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
