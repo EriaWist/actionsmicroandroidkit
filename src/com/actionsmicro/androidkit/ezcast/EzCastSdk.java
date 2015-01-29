@@ -35,6 +35,7 @@ import com.actionsmicro.analytics.tracker.HashUtils;
 import com.actionsmicro.analytics.tracker.LogTracker;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
+import com.actionsmicro.androidkit.ezcast.imp.dlna.DlnaDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder.ProjectorInfoFilter;
 import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastFinder;
@@ -182,10 +183,20 @@ public class EzCastSdk {
 		if (initTask != null) {
 			try {
 				initTask.get();
+				synchronized (deviceFinder) {
+					deviceFinder.wait(1000);
+				}
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch (ExecutionException e) {
 				e.printStackTrace();
+				Log.d(TAG, "initTask.get() failed:"+e.getCause());
+				synchronized (deviceFinder) {
+					try {
+						deviceFinder.wait(1000);
+					} catch (InterruptedException e1) {
+					}
+				}
 			}
 		}
 	}
@@ -246,7 +257,7 @@ public class EzCastSdk {
 				e.printStackTrace();
 			}
 		}
-		return Arrays.asList("ezcast", "ezcastscreen", "ezcastpro"); // default value
+		return Arrays.asList("ezcast", "ezscreen", "ezcastpro"); // default value
 	}
 	protected static List<String> convertJsonArrayToList(String supportListString)
 			throws JSONException {
@@ -442,6 +453,9 @@ public class EzCastSdk {
 		}
 		if (supportList.contains("ezscreen")) {
 			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
+		}
+		if (supportList.contains("dlna")) {
+			deviceFinder.addDeviceFinderImp(new DlnaDeviceFinder(deviceFinder));
 		}
 		setupFinderForEzCastAndPro(supportList, deviceFinder);
 	}

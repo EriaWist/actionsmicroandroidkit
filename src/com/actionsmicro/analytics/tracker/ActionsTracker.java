@@ -50,13 +50,14 @@ import com.actionsmicro.analytics.tracker.uploader.LogUploader;
 import com.actionsmicro.analytics.tracker.uploader.Uploader;
 import com.actionsmicro.utils.Log;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class ActionsTracker implements Tracker {
 	private static final int RETRY_DELAY = 60;
 	private static final int DEFAULT_UPLOAD_DELAY = 60;
 	private static final String TAG = "ActionsTracker";
 	private final Uploader uploader;
-	private final Gson gson = new Gson();
+	private final Gson gson = new GsonBuilder().serializeNulls().create();
 	private ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
 	private Context context;
 	private String appKey;

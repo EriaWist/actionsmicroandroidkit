@@ -12,28 +12,28 @@ public class GoogleCastApp {
 	private static final String TAG = "GoogleCastApp";
 	private boolean applicationStarted;
 	private GoogleApiClient googleCastApiClient;
-	private String castAppId;
+	private final String castAppId;
 
 	public GoogleCastApp(GoogleApiClient googleApiClient, String castAppId) {
 		this.googleCastApiClient = googleApiClient;
 		this.castAppId = castAppId;
 	}
 
-
 	public boolean isApplicationStarted() {
 		return applicationStarted;
 	}
-
+	
 	public void launcheApplication(final ResultCallback<Cast.ApplicationConnectionResult> resultCallback) {
 		if (googleCastApiClient != null && !applicationStarted) {
 			try {
+				Log.d(TAG, "launching application("+castAppId);
 				Cast.CastApi.launchApplication(googleCastApiClient, castAppId, false)
 				.setResultCallback(
 						new ResultCallback<Cast.ApplicationConnectionResult>() {
 							@Override
 							public void onResult(Cast.ApplicationConnectionResult result) {
 								Status status = result.getStatus();
-								Log.d(TAG, GoogleCastApp.this + ": launchApplication("+castAppId+").onResult:"+status);
+								Log.d(TAG, "launchApplication("+castAppId+").onResult:"+status);
 								if (status.isSuccess()) {
 									ApplicationMetadata applicationMetadata = result.getApplicationMetadata();
 									String sessionId = result.getSessionId();
@@ -51,18 +51,29 @@ public class GoogleCastApp {
 			} catch (Exception e) {
 				Log.e(TAG, "Failed to launch application", e);
 			}
+		} else {
+			if (resultCallback != null) {
+				resultCallback.onResult(null);
+			}
 		}
 	}
 
-	public void stopApplication(ResultCallback<Status> resultCallback) {
+	public void stopApplication(final ResultCallback<Status> resultCallback) {
 		if (googleCastApiClient != null && applicationStarted) {
 			applicationStarted = false;
 			if (googleCastApiClient != null && googleCastApiClient.isConnected()) {
+				Log.d(TAG, "stopping application("+castAppId);
 				PendingResult<Status> pendingResult = Cast.CastApi.stopApplication(googleCastApiClient);
-				if (resultCallback != null) {
-					pendingResult.setResultCallback(resultCallback);
-					return;
-				}
+				pendingResult.setResultCallback(new ResultCallback<Status>() {
+
+					@Override
+					public void onResult(Status result) {
+						if (resultCallback != null) {
+							resultCallback.onResult(result);
+						}
+					}					
+				});
+				return;
 			}
 		}
 		if (resultCallback != null) {

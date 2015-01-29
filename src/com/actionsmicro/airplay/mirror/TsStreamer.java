@@ -19,7 +19,7 @@ import com.actionsmicro.androidkit.ezcast.imp.airplay.SimpleMpegTsPacketizer;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncServerSocket;
-import com.koushikdutta.async.callback.WritableCallback;
+import com.koushikdutta.async.ByteBufferList;
 import com.koushikdutta.async.http.server.AsyncHttpServer;
 import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
@@ -49,7 +49,7 @@ public class TsStreamer {
 		releaseAvcEncoder();
 		try {
 
-			avcEncoder = new AvcEncoder(width, height, 5400000, 25, 5) {
+			avcEncoder = new AvcEncoder(width, height, 2*1024*1024, 30, 5) {
 				protected void onOutputForamtChanged(MediaFormat outputFormat) {
 					closeTsFileOutput();
 //					tsFileOutputStream = new FileOutputStream("/sdcard/test.ts");
@@ -109,7 +109,7 @@ public class TsStreamer {
 			});
 
 		} catch (Throwable t) {
-
+			t.printStackTrace();
 		}
 	}
 	private void releaseAvcEncoder() {
@@ -175,8 +175,9 @@ public class TsStreamer {
 	}
 	private AsyncHttpServer httpServer = new AsyncHttpServer() {
 		@Override
-		protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-			Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+		protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+			Log.d(TAG, "onRequest:"+request.getPath());
+			return false;
 		}
 	};
 	private static final int NUMBER_OF_PACKET_BUFFER = 256;
@@ -201,49 +202,35 @@ public class TsStreamer {
 			public void onRequest(AsyncHttpServerRequest request,
 					final AsyncHttpServerResponse response) {
 				Log.d(TAG, "onRequest");
-				response.getHeaders().getHeaders().add("Content-Type", "video/MP2T");
-				response.responseCode(200);
-				WritableCallback writer = new WritableCallback() {
-					private int debugCounter = 0;
-					@Override
-					public void onWriteable() {
-						try {
-							while (!stop) {
-								boolean shouldPollItOut = true;
-								ByteBuffer tsBuffer = tsBuffers.peek();
-								if (tsBuffer == null) {
-									shouldPollItOut = false;
-									tsBuffer = tsBuffers.poll(1, TimeUnit.SECONDS);
-								}
-								if (tsBuffer != null) {
-									tsBuffer.rewind();
-									response.write(tsBuffer);
-									if (tsBuffer.hasRemaining()) {
-										Log.w(TAG, "socket can't write out:"+debugCounter);
-										debugCounter = 0;
-										return;
-									} else {
-										if (shouldPollItOut) {
-											tsBuffers.poll();
-										}
-										idleBuffers.add(tsBuffer);
-										if (debugCounter++%1000==0) {
-											Log.d(TAG, "packet write out:"+debugCounter);
-										}
-									}
-								} else {
-									Log.w(TAG, "TS Buffer under-run!");
-								}
-							};
-						} catch (InterruptedException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}						
-					}
-
-				};
-				response.setWriteableCallback(writer);
-				writer.onWriteable();
+				response.getHeaders().add("Content-Type", "video/MP2T");
+				response.code(200);
+				int debugCounter = 0;
+				try {
+					while (!stop) {
+						ByteBuffer tsBuffer = tsBuffers.peek();
+						if (tsBuffer == null) {
+							tsBuffer = tsBuffers.poll(1, TimeUnit.SECONDS);
+						} else {
+							tsBuffers.poll();							
+						}
+						if (tsBuffer != null) {
+							tsBuffer.rewind();
+							ByteBufferList byteBufferList = new ByteBufferList(tsBuffer);
+							do {
+								response.write(byteBufferList);
+							} while (byteBufferList.hasRemaining() && !stop);
+							idleBuffers.add(tsBuffer);
+							if (debugCounter++%1000==0) {
+								Log.d(TAG, "packet write out:"+debugCounter);
+							}
+						} else {
+							Log.w(TAG, "TS Buffer under-run!");
+						}
+					};
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}	
 			}			
 		});
 	}

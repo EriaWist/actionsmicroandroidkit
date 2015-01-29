@@ -1,17 +1,11 @@
 package com.actionsmicro.bonjour;
 
 import java.io.IOException;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
 
 import javax.jmdns.JmmDNS;
-import javax.jmdns.NetworkTopologyDiscovery;
-import javax.jmdns.NetworkTopologyDiscovery.Factory.ClassDelegate;
 import javax.jmdns.NetworkTopologyEvent;
 import javax.jmdns.NetworkTopologyListener;
 import javax.jmdns.ServiceInfo;
-import javax.jmdns.impl.NetworkTopologyDiscoveryImpl;
 
 import com.actionsmicro.utils.Log;
 
@@ -20,26 +14,7 @@ public class BonjourServiceAdvertiser {
 	private JmmDNS jmDNS;
 	private ServiceInfo serviceInfo;
 	static {
-		NetworkTopologyDiscovery.Factory.setClassDelegate(new ClassDelegate() {
-
-			@Override
-			public NetworkTopologyDiscovery newNetworkTopologyDiscovery() {
-				return new NetworkTopologyDiscoveryImpl() {
-					@Override
-					public boolean useInetAddress(NetworkInterface networkInterface, InetAddress interfaceAddress) {
-						if (interfaceAddress instanceof Inet6Address) { // support no IPv6 address since it has issue.
-							return false;
-						}
-						if (networkInterface.getName().startsWith("usb")) { // rule out some redundant interfaces for performance
-							return false;
-						}
-						return super.useInetAddress(networkInterface, interfaceAddress);
-					}
-
-				};
-			}
-			
-		});
+		NetworkTopologyDiscoveryHelper.init();
 	}
 	public BonjourServiceAdvertiser(ServiceInfo serviceInfo) {
 		jmDNS = JmmDNS.Factory.newJmmDNS();

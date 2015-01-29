@@ -74,11 +74,11 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 			
 			@Override
 			public void onVideoStopped() {
+				commitMediaUsageTracking();
+				state = State.STOPPED;
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerDidStop(AirPlayMediaPlayerApi.this);
 				}
-				commitMediaUsageTracking();
-				state = State.STOPPED;
 			}
 			
 			@Override
@@ -88,10 +88,10 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 			
 			@Override
 			public void onVideoPlayed() {
+				state = State.PLAYING;				
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerDidStart(AirPlayMediaPlayerApi.this);
 				}
-				state = State.PLAYING;				
 			}
 			
 			@Override
@@ -108,18 +108,18 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 			
 			@Override
 			public void onDurationChanged(float duration) {
+				setMediaUsageDuration((int) duration);
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerDurationIsReady(AirPlayMediaPlayerApi.this, (long) duration);
 				}
-				setMediaUsageDuration((int) duration);
 			}
 
 			@Override
 			public void onVideoError(int errorCode) {
+				setMediaUsageResultCode(String.valueOf(errorCode), mappingAirPlayError(errorCode));
 				if (mediaPlayerStateListener != null) {
 					mediaPlayerStateListener.mediaPlayerDidFailed(AirPlayMediaPlayerApi.this, mappingAirPlayError(errorCode));
 				}
-				setMediaUsageResultCode(String.valueOf(errorCode), mappingAirPlayError(errorCode));
 			}
 		});
 		return true;

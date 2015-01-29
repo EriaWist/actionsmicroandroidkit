@@ -3,14 +3,18 @@ package com.koushikdutta.async.http.socketio;
 import android.net.Uri;
 import android.text.TextUtils;
 
-import com.koushikdutta.async.NullDataCallback;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.future.Cancellable;
 import com.koushikdutta.async.future.DependentCancellable;
+import com.koushikdutta.async.future.Future;
 import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.async.future.SimpleFuture;
 import com.koushikdutta.async.future.TransformFuture;
 import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.WebSocket;
+import com.koushikdutta.async.http.socketio.transport.SocketIOTransport;
+import com.koushikdutta.async.http.socketio.transport.WebSocketTransport;
+import com.koushikdutta.async.http.socketio.transport.XHRPollingTransport;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -26,17 +30,19 @@ import java.util.Hashtable;
 class SocketIOConnection {
     AsyncHttpClient httpClient;
     int heartbeat;
+    long reconnectDelay;
     ArrayList<SocketIOClient> clients = new ArrayList<SocketIOClient>();
-    WebSocket webSocket;
+    SocketIOTransport transport;
     SocketIORequest request;
 
     public SocketIOConnection(AsyncHttpClient httpClient, SocketIORequest request) {
         this.httpClient = httpClient;
         this.request = request;
+        this.reconnectDelay = this.request.config.reconnectDelay;
     }
 
     public boolean isConnected() {
-        return webSocket != null && webSocket.isOpen();
+        return transport != null && transport.isConnected();
     }
 
     Hashtable<String, Acknowledge> acknowledges = new Hashtable<String, Acknowledge>();
@@ -48,13 +54,13 @@ class SocketIOConnection {
             ack =  id + "+";
             acknowledges.put(id, acknowledge);
         }
-        webSocket.send(String.format("%d:%s:%s:%s", type, ack, client.endpoint, message));
+        transport.send(String.format("%d:%s:%s:%s", type, ack, client.endpoint, message));
     }
 
     public void connect(SocketIOClient client) {
         if (!clients.contains(client))
             clients.add(client);
-        webSocket.send(String.format("1::%s", client.endpoint));
+        transport.send(String.format("1::%s", client.endpoint));
     }
 
     public void disconnect(SocketIOClient client) {
@@ -72,17 +78,17 @@ class SocketIOConnection {
             }
         }
 
-        if (needsEndpointDisconnect && webSocket != null)
-            webSocket.send(String.format("0::%s", client.endpoint));
+        if (needsEndpointDisconnect && transport != null)
+            transport.send(String.format("0::%s", client.endpoint));
 
         // and see if we can disconnect the socket completely
-        if (clients.size() > 0 || webSocket == null)
+        if (clients.size() > 0 || transport == null)
             return;
 
-        webSocket.setStringCallback(null);
-        webSocket.setClosedCallback(null);
-        webSocket.close();
-        webSocket = null;
+        transport.setStringCallback(null);
+        transport.setClosedCallback(null);
+        transport.disconnect();
+        transport = null;
     }
 
     Cancellable connecting;
@@ -100,12 +106,12 @@ class SocketIOConnection {
 
         request.logi("Reconnecting socket.io");
 
-        Cancellable connecting = httpClient.executeString(request)
-        .then(new TransformFuture<WebSocket, String>() {
+        connecting = httpClient.executeString(request, null)
+        .then(new TransformFuture<SocketIOTransport, String>() {
             @Override
             protected void transform(String result) throws Exception {
                 String[] parts = result.split(":");
-                String session = parts[0];
+                final String sessionId = parts[0];
                 if (!"".equals(parts[1]))
                     heartbeat = Integer.parseInt(parts[1]) / 2 * 1000;
                 else
@@ -114,26 +120,47 @@ class SocketIOConnection {
                 String transportsLine = parts[3];
                 String[] transports = transportsLine.split(",");
                 HashSet<String> set = new HashSet<String>(Arrays.asList(transports));
-                if (!set.contains("websocket"))
-                    throw new SocketIOException("websocket not supported");
+                final SimpleFuture<SocketIOTransport> transport = new SimpleFuture<SocketIOTransport>();
 
-                final String sessionUrl = Uri.parse(request.getUri().toString()).buildUpon()
-                		.appendPath("websocket").appendPath(session)
-                		.build().toString();
+                if (set.contains("websocket")) {
+                    final String sessionUrl = Uri.parse(request.getUri().toString()).buildUpon()
+                            .appendPath("websocket").appendPath(sessionId)
+                            .build().toString();
 
-                setComplete(httpClient.websocket(sessionUrl, null, null));
+                    httpClient.websocket(sessionUrl, null, null)
+                    .setCallback(new FutureCallback<WebSocket>() {
+                        @Override
+                        public void onCompleted(Exception e, WebSocket result) {
+                            if (e != null) {
+                                transport.setComplete(e);
+                                return;
+                            }
+                            transport.setComplete(new WebSocketTransport(result, sessionId));
+                        }
+                    });
+                } else if (set.contains("xhr-polling")) {
+                    final String sessionUrl = Uri.parse(request.getUri().toString()).buildUpon()
+                            .appendPath("xhr-polling").appendPath(sessionId)
+                            .build().toString();
+                    XHRPollingTransport xhrPolling = new XHRPollingTransport(httpClient, sessionUrl, sessionId);
+                    transport.setComplete(xhrPolling);
+                } else {
+                    throw new SocketIOException("transport not supported");
+                }
+
+                setComplete(transport);
             }
         })
-        .setCallback(new FutureCallback<WebSocket>() {
+        .setCallback(new FutureCallback<SocketIOTransport>() {
             @Override
-            public void onCompleted(Exception e, WebSocket result) {
+            public void onCompleted(Exception e, SocketIOTransport result) {
                 if (e != null) {
                     reportDisconnect(e);
                     return;
                 }
 
-                reconnectDelay = 1000L;
-                SocketIOConnection.this.webSocket = result;
+                reconnectDelay = request.config.reconnectDelay;
+                SocketIOConnection.this.transport = result;
                 attach();
             }
         });
@@ -143,14 +170,14 @@ class SocketIOConnection {
     }
 
     void setupHeartbeat() {
-        final WebSocket ws = webSocket;
+        final SocketIOTransport ts = transport;
         Runnable heartbeatRunner = new Runnable() {
             @Override
             public void run() {
-                if (heartbeat <= 0 || ws != webSocket || ws == null || !ws.isOpen())
+                if (heartbeat <= 0 || ts != transport || ts == null || !ts.isConnected())
                     return;
-                webSocket.send("2:::");
-                webSocket.getServer().postDelayed(this, heartbeat);
+                transport.send("2:::");
+                transport.getServer().postDelayed(this, heartbeat);
             }
         };
         heartbeatRunner.run();
@@ -169,7 +196,7 @@ class SocketIOConnection {
     }
 
     private void delayReconnect() {
-        if (webSocket != null || clients.size() == 0)
+        if (transport != null || clients.size() == 0)
             return;
 
         // see if any client has disconnected,
@@ -190,11 +217,23 @@ class SocketIOConnection {
             public void run() {
                 reconnect(null);
             }
-        }, reconnectDelay);
-        reconnectDelay *= 2;
+        }, nextReconnectDelay(reconnectDelay));
+
+        reconnectDelay = reconnectDelay * 2;
+        if (request.config.reconnectDelayMax > 0L) {
+            reconnectDelay = Math.min(reconnectDelay, request.config.reconnectDelayMax);
+        }
     }
 
-    long reconnectDelay = 1000L;
+    private long nextReconnectDelay(long targetDelay) {
+        if (targetDelay < 2L || targetDelay > (Long.MAX_VALUE >> 1) ||
+            !request.config.randomizeReconnectDelay)
+        {
+            return targetDelay;
+        }
+        return (targetDelay >> 1) + (long) (targetDelay * Math.random());
+    }
+
     private void reportDisconnect(final Exception ex) {
         if (ex != null) {
             request.loge("socket.io disconnected", ex);
@@ -305,9 +344,9 @@ class SocketIOConnection {
                 String data = "";
                 if (arguments != null)
                     data += "+" + arguments.toString();
-                WebSocket webSocket = SocketIOConnection.this.webSocket;
-                if (webSocket == null) {
-                    final Exception e = new SocketIOException("websocket is not connected");
+                SocketIOTransport transport = SocketIOConnection.this.transport;
+                if (transport == null) {
+                    final Exception e = new SocketIOException("not connected to server");
                     select(endpoint, new SelectCallback() {
                         @Override
                         public void onSelect(SocketIOClient client) {
@@ -318,24 +357,24 @@ class SocketIOConnection {
                     });
                     return;
                 }
-                webSocket.send(String.format("6:::%s%s", messageId, data));
+                transport.send(String.format("6:::%s%s", messageId, data));
             }
         };
     }
 
     private void attach() {
-        setupHeartbeat();
+        if (transport.heartbeats())
+            setupHeartbeat();
 
-        webSocket.setDataCallback(new NullDataCallback());
-        webSocket.setClosedCallback(new CompletedCallback() {
+        transport.setClosedCallback(new CompletedCallback() {
             @Override
             public void onCompleted(final Exception ex) {
-                webSocket = null;
+                transport = null;
                 reportDisconnect(ex);
             }
         });
 
-        webSocket.setStringCallback(new WebSocket.StringCallback() {
+        transport.setStringCallback(new SocketIOTransport.StringCallback() {
             @Override
             public void onStringAvailable(String message) {
                 try {
@@ -345,7 +384,7 @@ class SocketIOConnection {
                     switch (code) {
                         case 0:
                             // disconnect
-                            webSocket.close();
+                            transport.disconnect();
                             reportDisconnect(null);
                             break;
                         case 1:
@@ -354,7 +393,7 @@ class SocketIOConnection {
                             break;
                         case 2:
                             // heartbeat
-                            webSocket.send("2::");
+                            transport.send("2::");
                             break;
                         case 3: {
                             // message
@@ -399,9 +438,9 @@ class SocketIOConnection {
                     }
                 }
                 catch (Exception ex) {
-                    webSocket.setClosedCallback(null);
-                    webSocket.close();
-                    webSocket = null;
+                    transport.setClosedCallback(null);
+                    transport.disconnect();
+                    transport = null;
                     reportDisconnect(ex);
                 }
             }

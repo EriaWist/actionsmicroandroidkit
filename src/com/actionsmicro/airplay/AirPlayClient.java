@@ -46,16 +46,17 @@ import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncServerSocket;
 import com.koushikdutta.async.AsyncSocket;
 import com.koushikdutta.async.callback.CompletedCallback;
+import com.koushikdutta.async.future.Future;
 import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpClient.StringCallback;
 import com.koushikdutta.async.http.AsyncHttpGet;
 import com.koushikdutta.async.http.AsyncHttpPost;
 import com.koushikdutta.async.http.AsyncHttpRequest;
 import com.koushikdutta.async.http.AsyncHttpResponse;
+import com.koushikdutta.async.http.Headers;
 import com.koushikdutta.async.http.body.AsyncHttpRequestBody;
 import com.koushikdutta.async.http.body.StreamBody;
 import com.koushikdutta.async.http.body.StringBody;
-import com.koushikdutta.async.http.libcore.RawHeaders;
 import com.koushikdutta.async.http.server.AsyncHttpServer;
 import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
@@ -90,29 +91,32 @@ public class AirPlayClient {
 	private AsyncServer reverseConnectionForEvent = new AsyncServer();
 	private AsyncHttpServer eventServer = new AsyncHttpServer() {
 		@Override
-		protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-			Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+		protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+			Log.d(TAG, "onRequest:"+request.getPath());
+			return false;
 		}
 		@Override
-		protected AsyncHttpRequestBody<String> onUnknownBody(RawHeaders headers) {
+		protected AsyncHttpRequestBody<String> onUnknownBody(Headers headers) {
 			return new PlistBody();
 		}
 	};
 	private AsyncServer reverseConnectionForSlideshow = new AsyncServer();
 	private AsyncHttpServer slideshowServer = new AsyncHttpServer() {
 		@Override
-		protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-			Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+		protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+			Log.d(TAG, "onRequest:"+request.getPath());
+			return false;
 		}
 		@Override
-		protected AsyncHttpRequestBody<String> onUnknownBody(RawHeaders headers) {
+		protected AsyncHttpRequestBody<String> onUnknownBody(Headers headers) {
 			return new PlistBody();
 		}
 	};
 	private AsyncHttpServer m3u8Server = new AsyncHttpServer() {
 		@Override
-		protected void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-			Log.d(TAG, "onRequest:"+request.getHeaders().getHeaders().getStatusLine());
+		protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+			Log.d(TAG, "onRequest:"+request.getPath());
+			return false;
 		}
 	};
 	private HandlerThread timerThread;
@@ -124,6 +128,7 @@ public class AirPlayClient {
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 	private Context context;
 	private List<ConnectionManager> managers = new ArrayList<ConnectionManager>();
+	protected int currentSessionId;
 	public void addConnectionManager(ConnectionManager listener) {
 		synchronized(managers) {
 			if (!managers.contains(listener)) {
@@ -159,7 +164,7 @@ public class AirPlayClient {
 	}
 	
 	private void inqueryServerInfo() {
-		RawHeaders headers = new RawHeaders();
+		Headers headers = new Headers();
 		headers.add("Content-Lengthe", "0");
 		headers.add("User-Agent", USER_AGENT_STRING);
 		headers.add("X-Apple-Session-ID", getSessionId());
@@ -217,25 +222,36 @@ public class AirPlayClient {
 					final AsyncHttpServerResponse response) {
 				try {
 					NSDictionary event = (NSDictionary)XMLPropertyListParser.parse(request.getBody().get().toString().getBytes());
-					Log.d(TAG, "Event:\n"+event.toXMLPropertyList());
+					Log.v(TAG, "Event:\n"+event.toXMLPropertyList());
 					if (event.containsKey("category")) {
 						if (event.get("category").toString().equals("video")) {
 							if (event.containsKey("state")) {
 								String state = event.get("state").toString();
-								Log.d(TAG, "Event state:"+state);
+								NSNumber sessionIdObject = (NSNumber)event.get("sessionID");
+								int sessionId = sessionIdObject!=null?sessionIdObject.intValue():0;
+								Log.d(TAG, "Event state:"+state+ " session:"+sessionId);
 								// maintain a state machine to distinguish play and resume
 								if (state.equals("playing")) {
+									currentSessionId = sessionId;
 									if (videoStateListener != null) {
 										videoStateListener.onVideoResumed();
 									}
 								} else if (state.equals("paused")) {
-									if (videoStateListener != null) {
-										videoStateListener.onVideoPaused();
+									if (currentSessionId == sessionId) {
+										if (videoStateListener != null) {
+											videoStateListener.onVideoPaused();
+										}
 									}
 								} else if (state.equals("stopped")) {
-									if (videoStateListener != null) {
-										videoStateListener.onVideoStopped();
+									if (currentSessionId == sessionId) {
+										currentSessionId = -1;
+										isPlayingVideo = false;
+										if (videoStateListener != null) {
+											videoStateListener.onVideoStopped();
+										}
 									}
+								} else if (state.equals("loading")) {
+									currentSessionId = sessionId;
 								}
 							}
 							if (event.containsKey("error")) {
@@ -251,30 +267,17 @@ public class AirPlayClient {
 							}
 						}
 					}
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (PropertyListFormatException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (ParserConfigurationException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (ParseException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (SAXException e) {
-					// TODO Auto-generated catch block
+				} catch (Throwable e) {
 					e.printStackTrace();
 				}
-				response.responseCode(200);
+				response.code(200);
 				response.end();
 			}			
 		});
 	}
 	private void establishReverseHttpConnectionForEvent() {
 		try {			
-			RawHeaders headers = new RawHeaders();
+			Headers headers = new Headers();
 			headers.add("Upgrade", "PTTH/1.0");
 			headers.add("Connection", "Upgrade");
 			headers.add("X-Apple-Purpose", "event");
@@ -293,7 +296,7 @@ public class AirPlayClient {
 			            return;
 			        }
 			        AsyncSocket socket = source.detachSocket();
-			        Log.d(TAG, "Server says: " + source.getHeaders().getHeaders().getStatusLine());
+			        Log.d(TAG, "establishReverseHttpConnectionForEvent Server says: " + source.message());
 			        
 			        eventServer.establishConnection(socket);
 			        socket.setClosedCallback(new CompletedCallback() {
@@ -313,7 +316,7 @@ public class AirPlayClient {
 		}
 	}
 	private int slideshowAssetsId = 1;
-	private boolean attempToPlayVideo;
+	private boolean isPlayingVideo;
 	private void prepareSlideshowServer() {
 		slideshowServer.get("/slideshows/1/assets/1", new HttpServerRequestCallback() {
 
@@ -340,7 +343,7 @@ public class AirPlayClient {
 	}
 	private void establishReverseHttpConnectionForSlideshow() {
 		try {			
-			RawHeaders headers = new RawHeaders();
+			Headers headers = new Headers();
 			headers.add("Upgrade", "PTTH/1.0");
 			headers.add("Connection", "Upgrade");
 			headers.add("X-Apple-Purpose", "slideshow");
@@ -358,7 +361,7 @@ public class AirPlayClient {
 			            handleNetworkException(e);			            
 			        } else {
 			        	AsyncSocket socket = source.detachSocket();
-			        	Log.d(TAG, "Server says: " + source.getHeaders().getHeaders().getStatusLine());
+			        	Log.d(TAG, "Server says: " + source.message());
 
 			        	slideshowServer.establishConnection(socket);
 			        	socket.setClosedCallback(new CompletedCallback() {
@@ -392,80 +395,98 @@ public class AirPlayClient {
 	private String getSessionId() {
 		return sessionId;//"368e90a4-5de6-4196-9e58-9917bdd4ffd7";
 	}
-	public void playVideo(String url, VideoStateListener videoStateListener) {
-		attempToPlayVideo = true;
-		stopHttpFileServer();	
-		
-		duration = -1;
-		position = 0;
-		rate = 0;
-		
-		Uri mediaUri = null;
-		try {
-			mediaUri = Uri.parse(url);
-			if (mediaUri.getScheme() == null) {
-				mediaUri = mediaUri.buildUpon().scheme("file").build();
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			mediaUri = Uri.fromFile(new File(url));
-		}
-		String mediaUriString = url;
-		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
-				mediaUri.getScheme().equalsIgnoreCase("file")) {
-			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
-			try {
-				simpleHttpFileServer.start();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			mediaUriString = simpleHttpFileServer.getServerUrl();
-		}
-		this.videoStateListener = videoStateListener;
-		try {
-			RawHeaders headers = new RawHeaders();
-			headers.add("User-Agent", USER_AGENT_STRING);
-			headers.add("X-Apple-Session-ID", getSessionId());
-			headers.add("Content-Type", "application/x-apple-binary-plist");
-			AsyncHttpPost playVideo = new AsyncHttpPost(getServerUri("/play"), headers);
-			NSDictionary playbackInfo = new NSDictionary();
-			playbackInfo.put("Content-Location", mediaUriString);
-			playbackInfo.put("Start-Position", 0.0);
-			ByteArrayOutputStream binaryPlist = new ByteArrayOutputStream();
-			BinaryPropertyListWriter.write(binaryPlist, playbackInfo);
-			StreamBody body = new StreamBody(new ByteArrayInputStream(binaryPlist.toByteArray()), binaryPlist.size());
-			playVideo.setBody(body);
-			getHttpClient().executeString(playVideo, new StringCallback() {
-			    @Override
-			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
-			    	attempToPlayVideo = false;
-			        if (e != null) {
-			            e.printStackTrace();
-			            handleNetworkException(e);
-			            return;
-			        }
-			        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
-			        if (AirPlayClient.this.videoStateListener != null) {
-			        	AirPlayClient.this.videoStateListener.onVideoPlayed();
-			        }
-			        startPeriodicalPoller();
-			    }
-			});
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+	public void playVideo(final String url, final VideoStateListener videoStateListener) {
+		isPlayingVideo = true;
+		Runnable playVideo = new Runnable() {
+
+			@Override
+			public void run() {
+				Log.d(TAG, "playVideo:"+url);
+				final Runnable self = this;
+				stopHttpFileServer();	
+				
+				duration = -1;
+				position = 0;
+				rate = 0;
+				
+				Uri mediaUri = null;
+				try {
+					mediaUri = Uri.parse(url);
+					if (mediaUri.getScheme() == null) {
+						mediaUri = mediaUri.buildUpon().scheme("file").build();
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					mediaUri = Uri.fromFile(new File(url));
+				}
+				String mediaUriString = url;
+				if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
+						mediaUri.getScheme().equalsIgnoreCase("file")) {
+					simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+					try {
+						simpleHttpFileServer.start();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					mediaUriString = simpleHttpFileServer.getServerUrl();
+				}
+				AirPlayClient.this.videoStateListener = videoStateListener;
+				try {
+					Headers headers = new Headers();
+					headers.add("User-Agent", USER_AGENT_STRING);
+					headers.add("X-Apple-Session-ID", getSessionId());
+					headers.add("Content-Type", "application/x-apple-binary-plist");
+					final AsyncHttpPost playVideo = new AsyncHttpPost(getServerUri("/play"), headers);
+					NSDictionary playbackInfo = new NSDictionary();
+					playbackInfo.put("Content-Location", mediaUriString);
+					playbackInfo.put("Start-Position", 0.0);
+					ByteArrayOutputStream binaryPlist = new ByteArrayOutputStream();
+					BinaryPropertyListWriter.write(binaryPlist, playbackInfo);
+					StreamBody body = new StreamBody(new ByteArrayInputStream(binaryPlist.toByteArray()), binaryPlist.size());
+					playVideo.setBody(body);
+					synchronized (playVideo) {
+						getHttpClient().executeString(playVideo, new StringCallback() {
+							@Override
+							public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
+								if (e != null) {
+									e.printStackTrace();
+									handleNetworkException(e);
+									return;
+								}
+								Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
+								if (AirPlayClient.this.videoStateListener != null) {
+									AirPlayClient.this.videoStateListener.onVideoPlayed();
+								}
+								startPeriodicalPoller();
+								finishPendingTask(self);
+								synchronized (playVideo) {
+									playVideo.notifyAll();
+								}
+							}
+						});
+						playVideo.wait(5000);
+					}
+					
+				} catch (URISyntaxException e) {
+					e.printStackTrace();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+					finishPendingTask(self);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}			
+		};
+		executeOrSchedule("playVideo", playVideo);
 	}
-	private URI getServerUri(String path) throws URISyntaxException {
+	private Uri getServerUri(String path) throws URISyntaxException {
 		return getServerUri(path, 7000, null);
 	}
-	private URI getServerUri(String path, int port) throws URISyntaxException {
+	private Uri getServerUri(String path, int port) throws URISyntaxException {
 		return getServerUri(path, port, null);
 	}
-	private URI getServerUri(String path, int port, String query) throws URISyntaxException {
-		return new URI("http", null, serverAddress.getHostAddress(), port, path, query, null);
+	private Uri getServerUri(String path, int port, String query) throws URISyntaxException {
+		return Uri.parse(new URI("http", null, serverAddress.getHostAddress(), port, path, query, null).toASCIIString());
 	}
 	public void close() {
 		if (reverseConnectionForEvent != null) {
@@ -479,6 +500,7 @@ public class AirPlayClient {
 		releaseTsStreamer();
 		stopM3u8Server();
 		m3u8Server = null;
+		isPlayingVideo = false;
 	}
 	private void stopM3u8Server() {
 		if (m3u8Server != null) {
@@ -499,7 +521,7 @@ public class AirPlayClient {
 		}
 	}
 	public void scrubVideo(float position) {
-		RawHeaders headers = new RawHeaders();
+		Headers headers = new Headers();
 		headers.add("User-Agent", USER_AGENT_STRING);
 		headers.add("Content-Lengthe", "0");
 		try {
@@ -521,33 +543,78 @@ public class AirPlayClient {
 			e1.printStackTrace();
 		}
 	}
-	public void stopVideo() {
-		RawHeaders headers = new RawHeaders();
-		headers.add("User-Agent", USER_AGENT_STRING);
-		headers.add("Content-Lengthe", "0");
-		final SimpleContentUriHttpFileServer detachedFileServer = simpleHttpFileServer; // since it's asynchronous, we need to detach the file server first to prevent stop wrong file server.
-		simpleHttpFileServer = null;
-		try {
-			AsyncHttpPost stop = new AsyncHttpPost(getServerUri("/stop"));
-			getHttpClient().executeString(stop, new StringCallback() {
-			    @Override
-			    public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
-			        if (e != null) {
-			            e.printStackTrace();
-			            handleNetworkException(e);
-			            return;
-			        }
-			        Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
-			        if (detachedFileServer != null) {
-			        	detachedFileServer.stop();			        	
-			        }
-			    }
-			});
-		} catch (URISyntaxException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+	private List<Runnable> pendingTasks = new ArrayList<Runnable>();
+	private void executeOrSchedule(String taskName, Runnable pendingTask) {
+		synchronized (pendingTasks) {
+			pendingTasks.add(pendingTask);
+			if (pendingTasks.size() == 1) {
+				Log.d(TAG, "run "+taskName+" directly");
+				pendingTask.run();
+			} else {
+				Log.d(TAG, "schedule "+taskName);
+			}
 		}
-		stopPeriodicalPoller();
+	}
+	private void finishPendingTask(Runnable pendingTask) {
+		synchronized (pendingTasks) {
+			pendingTasks.remove(pendingTask);
+			Log.d(TAG, "finishPendingTask pendingTasks left:"+pendingTasks.size());
+			if (pendingTasks.size() > 0) {
+				pendingTasks.get(0).run();
+			}
+		}
+	}
+	public void stopVideo() {
+		isPlayingVideo = false;
+		Runnable stopVideo = new Runnable() {
+
+			@Override
+			public void run() {
+				Log.d(TAG, "stopVideo");
+				final Runnable self = this;
+				Headers headers = new Headers();
+				headers.add("User-Agent", USER_AGENT_STRING);
+				headers.add("Content-Lengthe", "0");
+				final SimpleContentUriHttpFileServer detachedFileServer = simpleHttpFileServer; // since it's asynchronous, we need to detach the file server first to prevent stop wrong file server.
+				simpleHttpFileServer = null;
+				try {
+					final AsyncHttpPost stop = new AsyncHttpPost(getServerUri("/stop"));
+					synchronized (stop) {
+						Future<String> stopFuture = getHttpClient().executeString(stop, new StringCallback() {
+							@Override
+							public void onCompleted(Exception e, AsyncHttpResponse source, String result) {
+								if (e != null) {
+									e.printStackTrace();
+									handleNetworkException(e);
+									return;
+								}
+								currentSessionId = -1;
+								Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
+								if (detachedFileServer != null) {
+									detachedFileServer.stop();			        	
+								}
+								if (videoStateListener != null) {
+									videoStateListener.onVideoStopped();
+								}
+								finishPendingTask(self);
+								synchronized (stop) {
+									stop.notifyAll();
+								}
+							}
+						});
+						// make it synchronous to prevent overlapping with play command.
+						stop.wait(5000);
+					}
+				} catch (URISyntaxException e1) {
+					e1.printStackTrace();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+				stopPeriodicalPoller();
+			}
+			
+		};
+		executeOrSchedule("stopVideo", stopVideo);
 	}
 	public void resumeVideo() {
 		setVideoRate(1, new StringCallback() {
@@ -582,7 +649,7 @@ public class AirPlayClient {
 		});
 	}
 	private void setVideoRate(float rate, StringCallback callback) {
-		RawHeaders headers = new RawHeaders();
+		Headers headers = new Headers();
 		headers.add("User-Agent", USER_AGENT_STRING);
 		headers.add("Content-Lengthe", "0");
 		try {
@@ -644,7 +711,7 @@ public class AirPlayClient {
 	}
 	private void inqueryPlaybackInfo() {
 		try {
-			RawHeaders headers = new RawHeaders();
+			Headers headers = new Headers();
 			headers.add("Content-Lengthe", "0");
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
@@ -660,7 +727,7 @@ public class AirPlayClient {
 			            return;
 			        }
 					schedulePlaybackInfoPoller();
-					Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
+					Log.v(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
 					try {
 						NSDictionary playbackInfo = (NSDictionary)XMLPropertyListParser.parse(result.getBytes());
 						if (playbackInfo.containsKey("duration")) {
@@ -681,23 +748,9 @@ public class AirPlayClient {
 						}
 						Log.d(TAG, "playback-info: readyToPlay:" +(readyToPlay?"true":"false")+", duration:"+duration+", position:"+position+", rate:"+rate);
 						
-					} catch (ParserConfigurationException e1) {
-						// TODO Auto-generated catch block
+					} catch (Throwable e1) {
 						e1.printStackTrace();
-					} catch (ParseException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} catch (SAXException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} catch (PropertyListFormatException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} catch (IOException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-					
+					}					
 				}
 
 				
@@ -714,6 +767,8 @@ public class AirPlayClient {
 		}
 	}
 	protected void handleNetworkException(Exception e) {
+		isPlayingVideo = false;
+
 		if (videoStateListener != null) {
 			videoStateListener.onVideoError(-1004); //TODO refactor the error code with domain for client to distinguish.
 		}
@@ -726,7 +781,7 @@ public class AirPlayClient {
 	public void startSlideshow() {
 		
 		try {
-			RawHeaders headers = new RawHeaders();
+			Headers headers = new Headers();
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
 			headers.add("Content-Type", "text/x-apple-plist+xml");
@@ -755,7 +810,7 @@ public class AirPlayClient {
 		}
 	}
 	public void displayPhoto(InputStream jpegStream, long length) {
-		if (attempToPlayVideo) {
+		if (isPlayingVideo) {
 			return;
 		}
 		if (semaphore.tryAcquire()) {
@@ -771,7 +826,7 @@ public class AirPlayClient {
 				}
 			}
 			Log.d(TAG, "send /photo request");
-			RawHeaders headers = new RawHeaders();
+			Headers headers = new Headers();
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-AssetAction", "cacheOnly");
 			headers.add("X-Apple-Session-ID", getSessionId());
@@ -787,9 +842,14 @@ public class AirPlayClient {
 					@Override
 					public void onCompleted(Exception e, AsyncHttpResponse source,
 							String result) {
-						Log.d(TAG, "send /photo request - cache complete\n"+source.getHeaders().getHeaders().getResponseMessage());
+						if (e != null) {
+							e.printStackTrace();
+				            handleNetworkException(e);
+				            return;
+						}
+						Log.d(TAG, "send /photo request - cache complete\n"+source.message());
 						semaphore.release();									
-						RawHeaders headers = new RawHeaders();
+						Headers headers = new Headers();
 						headers.add("User-Agent", USER_AGENT_STRING);
 						headers.add("X-Apple-AssetAction", "displayCached");
 						headers.add("X-Apple-Session-ID", getSessionId());
@@ -804,7 +864,11 @@ public class AirPlayClient {
 								@Override
 								public void onCompleted(Exception e,
 										AsyncHttpResponse source, String result) {
-									Log.d(TAG, "send /photo request - display cached complete\n"+source.getHeaders().getHeaders().getResponseMessage());
+									if (e != null) {
+										Log.e(TAG, "PUT /photo, displayCached", e);
+										return;
+									}
+									Log.d(TAG, "send /photo request - display cached complete\n"+source.message());
 								}
 								
 							});
@@ -835,11 +899,11 @@ public class AirPlayClient {
 				info.put("id", slideshowAssetsId);
 				info.put("key", 1);
 				slideshowAsset.put("info", info);
-				response.getHeaders().getHeaders().add("Content-Type", "application/x-apple-binary-plist");
+				response.getHeaders().add("Content-Type", "application/x-apple-binary-plist");
 				ByteArrayOutputStream binaryPlist = new ByteArrayOutputStream();
 				BinaryPropertyListWriter.write(binaryPlist, slideshowAsset);
 				response.sendStream(new ByteArrayInputStream(binaryPlist.toByteArray()), binaryPlist.size());
-				response.responseCode(200);
+				response.code(200);
 				response.end();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block

@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 
 import android.content.ContentResolver;
@@ -137,7 +138,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
                     
                     
                     res = createResponse(Response.Status.PARTIAL_CONTENT, mime, in);
-                    res.addHeader("Content-Length", "" + dataLen);
+                    res.addHeader("Content-Length", "" + getContentLengthForByteRangeResponse(fileLen, dataLen));
                     res.addHeader("Content-Range", "bytes " + startFrom + "-" + endAt + "/" + fileLen);
 //                    res.addHeader("ETag", etag);
                 }
@@ -157,6 +158,10 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
         return res;
     }
+
+	protected long getContentLengthForByteRangeResponse(final long fileLen, final long dataLen) {
+		return dataLen;
+	}
 	private InputStream getInputStream(long startFrom, final long dataLen) throws IOException {
 		InputStream in = null;
 		if (contentUri.getScheme().equals(ContentResolver.SCHEME_CONTENT)) {
@@ -200,7 +205,10 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
         String ext = Utils.getFileExtension(uri);
         String mime = MIME_DEFAULT_BINARY;
         if (ext != null) {
-        	mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+        	mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.toLowerCase(Locale.getDefault()));
+        	if (mime == null) {
+        		mime = MIME_DEFAULT_BINARY;
+        	}
         }
         return mime;
     }

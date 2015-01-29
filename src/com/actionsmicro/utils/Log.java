@@ -11,13 +11,15 @@ public class Log {
 	}
 
 	public static void i(String tag, String string) {
-		android.util.Log.i(tag, string);
+		if (BuildConfig.DEBUG) {
+			android.util.Log.i(tag, string);
+		}
 	}
 
 	public static void e(String tag, String string) {
 		android.util.Log.e(tag, string);
 	}
-	public static void e(String tag, String string, Exception e) {
+	public static void e(String tag, String string, Throwable e) {
 		android.util.Log.e(tag, string,e );
 	}
 	public static void v(String tag, String string) {

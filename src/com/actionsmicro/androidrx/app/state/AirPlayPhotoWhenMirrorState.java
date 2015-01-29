@@ -108,4 +108,10 @@ public class AirPlayPhotoWhenMirrorState implements State {
 		return new EzScreenConnectedState();
 	}
 
+	@Override
+	public State onAirPlayStart(StateContext stateContext) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

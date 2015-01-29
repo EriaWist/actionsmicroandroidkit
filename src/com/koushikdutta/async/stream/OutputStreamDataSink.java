@@ -17,7 +17,14 @@ public class OutputStreamDataSink implements DataSink {
 
     @Override
     public void end() {
-        close();
+        try {
+            if (mStream != null)
+                mStream.close();
+            reportClose(null);
+        }
+        catch (IOException e) {
+            reportClose(e);
+        }
     }
 
     AsyncServer server;
@@ -33,43 +40,6 @@ public class OutputStreamDataSink implements DataSink {
     
     public OutputStream getOutputStream() throws IOException {
         return mStream;
-    }
-
-    private boolean doPending() {
-        try {
-            while (pending.size() > 0) {
-                ByteBuffer b;
-                synchronized (pending) {
-                    b = pending.remove();
-                }
-                int rem = b.remaining();
-                getOutputStream().write(b.array(), b.arrayOffset() + b.position(), b.remaining());
-                totalWritten += rem;
-                ByteBufferList.reclaim(b);
-            }
-            return true;
-        }
-        catch (Exception e) {
-            pending.recycle();
-            closeReported = true;
-            closeException = e;
-            return false;
-        }
-    }
-
-    final ByteBufferList pending = new ByteBufferList();
-    int totalWritten;
-
-    @Override
-    public void write(final ByteBuffer bb) {
-        try {
-            getOutputStream().write(bb.array(), bb.arrayOffset() + bb.position(), bb.remaining());
-        }
-        catch (IOException e) {
-            reportClose(e);
-        }
-        bb.position(0);
-        bb.limit(0);
     }
 
     @Override
@@ -103,18 +73,6 @@ public class OutputStreamDataSink implements DataSink {
     @Override
     public boolean isOpen() {
         return closeReported;
-    }
-    
-    @Override
-    public void close() {
-        try {
-            if (mStream != null)
-                mStream.close();
-            reportClose(null);
-        }
-        catch (IOException e) {
-            reportClose(e);
-        }
     }
 
     boolean closeReported;

@@ -6,6 +6,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 
+import com.actionsmicro.BuildConfig;
 import com.actionsmicro.analytics.Tracker;
 import com.actionsmicro.analytics.usage.LocalAudioUsage;
 import com.actionsmicro.analytics.usage.LocalVideoUsage;
@@ -18,7 +19,7 @@ import com.actionsmicro.utils.Utils;
 
 public abstract class TrackableApi implements Api {
 
-	private static final String TAG = null;
+	private static final String TAG = "TrackableApi";
 	private EzCastSdk sdk;
 	private DeviceInfo device;
 	private Context context;
@@ -49,6 +50,7 @@ public abstract class TrackableApi implements Api {
 		return context;
 	}
 	public void startTrackingWifiDisplay() {
+		Log.d(TAG, "startTrackingWifiDisplay");
 		if (wifiDisplayUsage != null) {
 			Log.e(TAG, "startDisplaying is called more than once");
 			stopTrackingWifiDisplay();
@@ -56,6 +58,7 @@ public abstract class TrackableApi implements Api {
 		wifiDisplayUsage = (WifiDisplayUsage) new WifiDisplayUsage(getTracker(), getContext(), getDevice()).begin();
 	}
 	public void stopTrackingWifiDisplay() {
+		Log.d(TAG, "stopTrackingWifiDisplay");
 		if (wifiDisplayUsage != null) {
 			wifiDisplayUsage.commit();
 			wifiDisplayUsage = null;
@@ -64,80 +67,96 @@ public abstract class TrackableApi implements Api {
 	private MediaUsage mediaUsage;
 	private synchronized void beginRemoteMediaUsageTracking(String mediaUriString,
 			String userAgentString, String title) {
+		Log.d(TAG, "beginRemoteMediaUsageTracking:"+mediaUriString);
 		if (title == null || title.length() == 0) {
 			title = com.actionsmicro.utils.Utils.getLastPathComponent(mediaUriString);
 		}
 		if (mediaUsage != null) {
-			throw new IllegalStateException("un-committed media usage exists.");
+			if (BuildConfig.DEBUG) {
+				throw new IllegalStateException("un-committed media usage exists.");
+			}
 		}
 		mediaUsage = (MediaUsage) new WebVideoUsage(getTracker(), getContext(), getDevice(), mediaUriString).setUserAgent(userAgentString).setTitle(title).begin();
 	}	
 	private synchronized void beginLocalAudioUsageTracking(String url, String title) {
+		Log.d(TAG, "beginLocalAudioUsageTracking:"+url);
 		if (title == null || title.length() == 0) {
 			title = com.actionsmicro.utils.Utils.getLastPathComponent(url);
 		}
 		if (mediaUsage != null) {
-			throw new IllegalStateException("un-committed media usage exists.");
+			if (BuildConfig.DEBUG) {
+				throw new IllegalStateException("un-committed media usage exists.");
+			}
 		}
 		mediaUsage = (MediaUsage) new LocalAudioUsage(getTracker(), getContext(), getDevice()).setTitle(title).begin();
 	}
 	private synchronized void beginLocalVideoUsageTracking(String url, String title) {
+		Log.d(TAG, "beginLocalVideoUsageTracking:"+url);
 		if (title == null || title.length() == 0) {
 			title = com.actionsmicro.utils.Utils.getLastPathComponent(url);
 		}
 		if (mediaUsage != null) {
-			throw new IllegalStateException("un-committed media usage exists.");
+			if (BuildConfig.DEBUG) {
+				throw new IllegalStateException("un-committed media usage exists.");
+			}
 		}
 		mediaUsage = (MediaUsage) new LocalVideoUsage(getTracker(), getContext(), getDevice()).setTitle(title).begin();
 	}
 	public synchronized void commitMediaUsageTracking() {
 		if (mediaUsage != null) {
+			Log.d(TAG, "commitMediaUsageTracking:"+mediaUsage);
 			mediaUsage.commit();
 			mediaUsage = null;
 		}
 	}
 	public synchronized void setMediaUsageResultCode(String resultString, int resultCode) {
+		Log.d(TAG, "setMediaUsageResultCode:"+mediaUsage);
 		if (mediaUsage != null) {
 			mediaUsage.setResult(resultString, resultCode);
 		} else {
-			throw new IllegalStateException("mediaUsage doesn't exist.");
+			if (BuildConfig.DEBUG) {
+				throw new IllegalStateException("mediaUsage doesn't exist.");
+			}
 		}
 	}
 	public synchronized void setMediaUsageDuration(int duration) {
+		Log.d(TAG, "setMediaUsageDuration:"+mediaUsage);
 		if (mediaUsage != null) {
 			mediaUsage.setDuration(duration);
 		} else {
-			throw new IllegalStateException("mediaUsage doesn't exist.");
+			if (BuildConfig.DEBUG) {
+				throw new IllegalStateException("mediaUsage doesn't exist.");
+			}
 		}
 	}
 	public void beginMediaUsageTracking(Context context, String url,
 			String userAgentString, String title) {
-				Uri mediaUri = null;
-				try {
-					mediaUri = Uri.parse(url);
-					if (mediaUri.getScheme() == null) {
-						mediaUri = mediaUri.buildUpon().scheme("file").build();
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-					mediaUri = Uri.fromFile(new File(url));
-				}
-				if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT)) {
-					String mimeType = context.getContentResolver().getType(mediaUri);
-					if (mimeType != null && mimeType.startsWith("audio")) {
-						beginLocalAudioUsageTracking(url, title);
-					} else {
-						beginLocalVideoUsageTracking(url, title);
-					}
-				} else if (mediaUri.getScheme().equalsIgnoreCase("file")) {
-					if (MediaStreamingFileDataSource.isAudioFileExt(Utils.getFileExtension(url))) {
-						beginLocalAudioUsageTracking(url, title);				
-					} else {
-						beginLocalVideoUsageTracking(url, title);
-					}
-				} else {
-					beginRemoteMediaUsageTracking(url, userAgentString, title);
-				}
+		Uri mediaUri = null;
+		try {
+			mediaUri = Uri.parse(url);
+			if (mediaUri.getScheme() == null) {
+				mediaUri = mediaUri.buildUpon().scheme("file").build();
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			mediaUri = Uri.fromFile(new File(url));
+		}
+		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT)) {
+			String mimeType = context.getContentResolver().getType(mediaUri);
+			if (mimeType != null && mimeType.startsWith("audio")) {
+				beginLocalAudioUsageTracking(url, title);
+			} else {
+				beginLocalVideoUsageTracking(url, title);
+			}
+		} else if (mediaUri.getScheme().equalsIgnoreCase("file")) {
+			if (MediaStreamingFileDataSource.isAudioFileExt(Utils.getFileExtension(url))) {
+				beginLocalAudioUsageTracking(url, title);				
+			} else {
+				beginLocalVideoUsageTracking(url, title);
+			}
+		} else {
+			beginRemoteMediaUsageTracking(url, userAgentString, title);
+		}
+	}
 	
 }
