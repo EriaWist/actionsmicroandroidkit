@@ -151,4 +151,7 @@ class UpnpService {
 	public void execute(SubscriptionCallback action) {
 		upnpService.getControlPoint().execute(action);
 	}
+	public void removeAllRemoteDevices() {
+		upnpService.getControlPoint().getRegistry().removeAllRemoteDevices();
+	}
 }
