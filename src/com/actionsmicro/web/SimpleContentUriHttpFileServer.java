@@ -138,7 +138,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
                     
                     
                     res = createResponse(Response.Status.PARTIAL_CONTENT, mime, in);
-                    res.addHeader("Content-Length", "" + dataLen);
+                    res.addHeader("Content-Length", "" + getContentLengthForByteRangeResponse(fileLen, dataLen));
                     res.addHeader("Content-Range", "bytes " + startFrom + "-" + endAt + "/" + fileLen);
 //                    res.addHeader("ETag", etag);
                 }
@@ -158,6 +158,10 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
         return res;
     }
+
+	protected long getContentLengthForByteRangeResponse(final long fileLen, final long dataLen) {
+		return dataLen;
+	}
 	private InputStream getInputStream(long startFrom, final long dataLen) throws IOException {
 		InputStream in = null;
 		if (contentUri.getScheme().equals(ContentResolver.SCHEME_CONTENT)) {

@@ -35,6 +35,7 @@ import com.actionsmicro.analytics.tracker.HashUtils;
 import com.actionsmicro.analytics.tracker.LogTracker;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
+import com.actionsmicro.androidkit.ezcast.imp.dlna.DlnaDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder.ProjectorInfoFilter;
 import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastFinder;
@@ -183,10 +184,7 @@ public class EzCastSdk {
 			try {
 				initTask.get();
 				synchronized (deviceFinder) {
-					try {
-						deviceFinder.wait(1000);
-					} catch (InterruptedException e1) {
-					}
+					deviceFinder.wait(1000);
 				}
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -455,6 +453,9 @@ public class EzCastSdk {
 		}
 		if (supportList.contains("ezscreen")) {
 			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
+		}
+		if (supportList.contains("dlna")) {
+			deviceFinder.addDeviceFinderImp(new DlnaDeviceFinder(deviceFinder));
 		}
 		setupFinderForEzCastAndPro(supportList, deviceFinder);
 	}

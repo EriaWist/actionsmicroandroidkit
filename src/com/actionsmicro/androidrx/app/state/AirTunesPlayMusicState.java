@@ -111,4 +111,10 @@ public class AirTunesPlayMusicState implements State {
 		stateContext.loadEzScreenVideo(url, callback);
 		return new EzScreenConnectedState();
 	}
+
+	@Override
+	public State onAirPlayStart(StateContext stateContext) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

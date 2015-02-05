@@ -70,8 +70,9 @@ public class AirPlayPlayVideoWhenMirrorState implements State {
 
 	@Override
 	public State onAirPlayStop(StateContext stateContext) {
-		// TODO Auto-generated method stub
-		return null;
+		stateContext.stopVideo();
+		stateContext.showMirrorView();
+		return new AirPlayMirrorState();
 	}
 
 	@Override
@@ -108,5 +109,11 @@ public class AirPlayPlayVideoWhenMirrorState implements State {
 		stateContext.stopVideo();
 		stateContext.loadEzScreenVideo(url, callback);
 		return new EzScreenConnectedState();
+	}
+
+	@Override
+	public State onAirPlayStart(StateContext stateContext) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

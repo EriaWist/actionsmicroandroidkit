@@ -143,7 +143,7 @@ public class SimpleMotionJpegHttpServer {
 				cleanUpConnection();
 			}
 		} else {
-			Log.d(TAG, "No connection or clone is empty. close size:"+clone.size());
+			Log.d(TAG, "No connection or clone is empty. clone size:"+clone.size());
 		}
 	}
 	public synchronized boolean isConnected() {
