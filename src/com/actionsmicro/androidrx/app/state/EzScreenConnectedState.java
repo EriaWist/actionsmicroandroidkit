@@ -100,4 +100,10 @@ public class EzScreenConnectedState implements State {
 		stateContext.loadEzScreenVideo(url, callback);
 		return null;
 	}
+
+	@Override
+	public State onAirPlayStart(StateContext stateContext) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

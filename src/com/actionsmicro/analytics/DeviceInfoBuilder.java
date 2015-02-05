@@ -7,12 +7,14 @@ import java.util.Map;
 import android.content.Context;
 
 import com.actionsmicro.analytics.device.AirPlayDeviceInfoBuilder;
+import com.actionsmicro.analytics.device.DlnaDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastScreenDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.GoogleCastDeviceInfoBuilder;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxInfo;
+import com.actionsmicro.androidkit.ezcast.imp.dlna.DlnaDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastDeviceInfo;
 
@@ -33,6 +35,8 @@ public abstract class DeviceInfoBuilder<T extends DeviceInfo> {
 			return new EZCastScreenDeviceInfoBuilder(context, (AndroidRxInfo) device, appId);			
 		} else if (device instanceof GoogleCastDeviceInfo) {
 			return new GoogleCastDeviceInfoBuilder(context, (GoogleCastDeviceInfo) device, appId);			
+		} else if (device instanceof DlnaDeviceInfo) {
+			return new DlnaDeviceInfoBuilder(context, (DlnaDeviceInfo) device, appId);			
 		}
 		
 		return null;

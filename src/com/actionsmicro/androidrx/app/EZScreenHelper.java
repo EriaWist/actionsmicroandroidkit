@@ -4,13 +4,21 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.SocketException;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.jcodec.codecs.h264.H264Utils;
+import org.jcodec.codecs.h264.io.model.SeqParameterSet;
+import org.jcodec.common.model.Size;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -51,8 +59,10 @@ import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.airplay.clock.SimplePlaybackClock;
 import com.actionsmicro.airplay.mirror.MirrorClock;
 import com.actionsmicro.androidrx.EzScreenServer;
+import com.actionsmicro.androidrx.app.MediaPlayerHelper.PlayerListener;
 import com.actionsmicro.androidrx.app.state.IdleState;
 import com.actionsmicro.androidrx.app.state.StateContext;
+import com.actionsmicro.ezcom.jsonrpc.JSONRPC2Session;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
@@ -60,9 +70,11 @@ import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.JpegCallback;
 import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.analytics.Tracker;
+import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
+import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 import com.yutel.silver.vo.AirplayState;
 
-public class EZScreenHelper {
+public class EZScreenHelper implements PlayerListener {
 	public interface ConnectionListener {
 		public void onConnected();
 		public void onDisconnected();
@@ -156,6 +168,21 @@ public class EZScreenHelper {
 //		} catch (IOException e) {
 //			e.printStackTrace();
 //		}
+		
+	}
+	private void createNetworkThread() {
+		if (networkThread == null) {
+			networkThread = new LooperThread();
+			networkThread.start();
+		}
+		try {
+			synchronized(networkThread) {
+				networkThread.wait();
+			}
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	private void hidePhotoView() {
 		setViewVisibility(photoView, View.INVISIBLE);
@@ -263,22 +290,35 @@ public class EZScreenHelper {
 		trackScreenHit("home");
 	}
 	private void stopVideo() {
-		invokeJavascript("javascript:stopVideo();");
+		stopMediaPlayer();
+		this.setState(AirplayState.STOPPED);		
+		sendCallbackNotification("ezcastplayer.onended", null);
+		resetPlaybackStates();
+		if (this.getAirplayService() != null) {
+			this.getAirplayService().sendEvent();
+		}	
 	}
 	private void pauseVideo() {
-		invokeJavascript("javascript:pauseVideo();");
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.pause();
+		}
 	}
 	private void resumeVideo() {
-		invokeJavascript("javascript:resumeVideo();");
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.resume();
+		}
 	}
 	private void setVolume(float volume) {
-		invokeJavascript("javascript:setVolume("+volume+");");
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.setVolume(volume);
+		}
 	}
 	private void seek(long time) {
-		invokeJavascript("javascript:seek("+time+");");
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.seek((int)time*1000);
+		}
 	}
-	
-	
+
 	private void invokeJavascript(final String javascript) {
 		if (webView != null) {
 			webView.post(new Runnable() {
@@ -291,7 +331,7 @@ public class EZScreenHelper {
 		}
 	}
 
-	private void resetStates() {
+	private void resetPlaybackStates() {
 		this.setState(AirplayState.STOPPED);
 		this.setDuration(0);
 		this.setCurrentTime(0);
@@ -302,6 +342,9 @@ public class EZScreenHelper {
 	@JavascriptInterface
 	public void onDurationChange(int seconds) {
 		Log.d(TAG, "onDurationChange:"+seconds);
+		Map<String, Object> namedParams = new HashMap<String, Object>();
+		namedParams.put("duration", Float.valueOf(seconds));
+		sendCallbackNotification("ezcastplayer.ondurationchange", namedParams);
 		if (this.isMetadataLoaded()) {
 			if (getAirplayService() != null) {
 				this.getAirplayService().sendEvent();
@@ -314,25 +357,60 @@ public class EZScreenHelper {
 			}
 		}
 	}
+	private void sendCallbackNotification(final String notificationName,
+			final Map<String, Object> namedParams) {
+		
+		Runnable runnable = new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					if (mediaCallbackRpc != null) {
+						JSONRPC2Notification notification = new JSONRPC2Notification(notificationName);
+						if (namedParams != null) {
+							notification.setNamedParams(namedParams);
+						}
+						mediaCallbackRpc.send(notification);
+					}
+				} catch (JSONRPC2SessionException e) {
+					e.printStackTrace();
+				} finally {
+
+				}
+			}
+		};
+			
+		performOnNetworkThread(runnable);		
+		
+	}
 	@JavascriptInterface
 	public void onLoadStart() {
 		Log.d(TAG, "onLoadStart:");
+		sendCallbackNotification("ezcastplayer.onloadstart", null);
+		
 //		state = AirplayState.CACHING;
 //		airplayService.sendEvent();
 	}
 	@JavascriptInterface
 	public void onPlay() {
 		Log.d(TAG, "onPlay:");
-		
+		sendCallbackNotification("ezcastplayer.onplay", null);
+		this.setState(AirplayState.PLAYING);		
 	}
 	@JavascriptInterface
 	public void onTimeUpdate(int currentTime) {
 		Log.d(TAG, "onTimeUpdate:"+currentTime);
+		Map<String, Object> namedParams = new HashMap<String, Object>();
+		namedParams.put("time", Float.valueOf(currentTime));
+		sendCallbackNotification("ezcastplayer.ontimeupdate", namedParams);
 		this.setCurrentTime(currentTime);
 	}
 	@JavascriptInterface
 	public void onError(int error) {
 		Log.d(TAG, "onError:"+error);
+		Map<String, Object> namedParams = new HashMap<String, Object>();
+		namedParams.put("error", Float.valueOf(error));
+		sendCallbackNotification("ezcastplayer.onerror", namedParams);
 		this.setState(AirplayState.ERROR);
 		if (getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
@@ -344,7 +422,10 @@ public class EZScreenHelper {
 	@JavascriptInterface
 	public void onEnded() {
 		Log.d(TAG, "onEnded:");
-		resetStates();
+		stopMediaPlayer();
+		this.setState(AirplayState.STOPPED);		
+		sendCallbackNotification("ezcastplayer.onended", null);
+		resetPlaybackStates();
 		if (this.getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
 		}
@@ -353,6 +434,7 @@ public class EZScreenHelper {
 	@JavascriptInterface
 	public void onPaused() {
 		Log.d(TAG, "onPaused:");
+		sendCallbackNotification("ezcastplayer.onpause", null);
 		this.setState(AirplayState.PAUSING);
 		if (getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
@@ -369,6 +451,7 @@ public class EZScreenHelper {
 	@JavascriptInterface
 	public void onWaiting() {
 		Log.d(TAG, "onWaiting:");
+		sendCallbackNotification("ezcastplayer.onwaiting", null);
 		this.setState(AirplayState.CACHING);
 		if (getAirplayService() != null) {
 			this.getAirplayService().sendEvent();
@@ -377,6 +460,7 @@ public class EZScreenHelper {
 	@JavascriptInterface
 	public void onSeeked() {
 		Log.d(TAG, "onSeeked:");
+		sendCallbackNotification("ezcastplayer.onseeked", null);
 		this.setPendingStartingPosition(-1);
 //		resumeVideo();
 //		state = AirplayState.PLAYING;
@@ -388,6 +472,8 @@ public class EZScreenHelper {
 	@JavascriptInterface
 	public void onPlaying() {
 		Log.d(TAG, "onPlaying:");
+		sendCallbackNotification("ezcastplayer.onplaying", null);
+
 //		if (pendingStartingPosition == -1 || pendingStartingPosition == 0) {
 //			state = AirplayState.PLAYING;
 //			airplayService.sendEvent();
@@ -400,6 +486,7 @@ public class EZScreenHelper {
 	@JavascriptInterface
 	public void onLoadedMetadata() {
 		Log.d(TAG, "onLoadedMetadata:");
+		sendCallbackNotification("ezcastplayer.onloadedmetadata", null);
 		this.setState(AirplayState.CACHING);
 		this.setMetadataLoaded(true);		
 	}
@@ -477,6 +564,12 @@ public class EZScreenHelper {
 		}
 	}
 
+	private void stopMediaPlayer() {
+		if (mediaPlayerHelper != null) {
+			mediaPlayerHelper.stop();
+			mediaPlayerHelper = null;
+		}
+	}
 	private void displayMotionJpeg(final String url) {
 		stopMJpegClient();
 		showMjpegView();
@@ -486,32 +579,39 @@ public class EZScreenHelper {
 				@Override
 				public void onJpegAvaiable(byte[] jpegData, int size) {
 					if (EZScreenHelper.this.getMjpegView() != null && jpegData != null) {
+						Bitmap bitmap = null;
 						try {
-							Bitmap bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size);
-							if (bitmap != null) {
-								//									drawOnSurface(bitmap);
-								Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
-								if (canvas != null) {
-									final int savedState = canvas.save();
-									try {
-										Log.d(TAG, "canvas width:"+canvas.getWidth()+", height:"+canvas.getHeight()+ "; bitmap width:"+bitmap.getWidth()+", height:"+bitmap.getHeight());
-										final float scaleFactor = Math.min( (float)canvas.getWidth() / (float)bitmap.getWidth(), (float)canvas.getHeight() / (float)bitmap.getHeight() );
-										final float finalWidth = (float)bitmap.getWidth() * scaleFactor;
-										final float finalHeight = (float)bitmap.getHeight() * scaleFactor;
-										final float leftPadding = ((float)canvas.getWidth() - finalWidth)/2;
-										final float topPadding =  ((float)canvas.getHeight() - finalHeight)/2;
-										canvas.drawColor(Color.BLACK);
-										canvas.translate(leftPadding, topPadding);
-										canvas.scale(scaleFactor, scaleFactor);
-										canvas.drawBitmap(bitmap, 0, 0, null);
-									} finally {
-										canvas.restoreToCount(savedState);
-										EZScreenHelper.this.getMjpegView().unlockCanvasAndPost(canvas);
-									}
+							bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size);							
+						} catch (OutOfMemoryError oom) {
+							try {
+								Log.e(TAG, "OOM: jpeg size:"+size);
+								BitmapFactory.Options options = new BitmapFactory.Options(); 
+								options.inSampleSize = 2; 
+								bitmap = BitmapFactory.decodeByteArray(jpegData, 0, size, options);
+							} catch (Throwable t) {
+								t.printStackTrace();
+							}
+						}
+						if (bitmap != null) {
+							Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
+							if (canvas != null) {
+								final int savedState = canvas.save();
+								try {
+									Log.d(TAG, "canvas width:"+canvas.getWidth()+", height:"+canvas.getHeight()+ "; bitmap width:"+bitmap.getWidth()+", height:"+bitmap.getHeight());
+									final float scaleFactor = Math.min( (float)canvas.getWidth() / (float)bitmap.getWidth(), (float)canvas.getHeight() / (float)bitmap.getHeight() );
+									final float finalWidth = (float)bitmap.getWidth() * scaleFactor;
+									final float finalHeight = (float)bitmap.getHeight() * scaleFactor;
+									final float leftPadding = ((float)canvas.getWidth() - finalWidth)/2;
+									final float topPadding =  ((float)canvas.getHeight() - finalHeight)/2;
+									canvas.drawColor(Color.BLACK);
+									canvas.translate(leftPadding, topPadding);
+									canvas.scale(scaleFactor, scaleFactor);
+									canvas.drawBitmap(bitmap, 0, 0, null);
+								} finally {
+									canvas.restoreToCount(savedState);
+									EZScreenHelper.this.getMjpegView().unlockCanvasAndPost(canvas);
 								}
 							}
-						} catch (OutOfMemoryError oom) {
-							Log.e(TAG, "OOM: jpeg size:"+size);
 						}
 					}
 				}
@@ -553,12 +653,7 @@ public class EZScreenHelper {
 		return Formatter.formatIpAddress(wim.getConnectionInfo().getIpAddress());
 	}
 	private void playVideo(final String url, String callback) {
-		if (callback != null) {
-			invokeJavascript("javascript:playVideo(\""+url+"\",'"+callback+"');");
-		} else {
-			invokeJavascript("javascript:playVideo(\""+url+"\", null);");			
-		}
-		showWebView();
+		playVideo(url, callback, true, 0);
 	}
 	private void initEzAndroidRx() {
 		try {
@@ -661,6 +756,8 @@ public class EZScreenHelper {
 	private boolean ezScreenInitialized;
 	protected boolean alreadyFailed;
 	private StateContext stateContext;
+	private MediaPlayerHelper mediaPlayerHelper;
+	private JSONRPC2Session mediaCallbackRpc;
 	
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void initAirplay() {
@@ -745,6 +842,10 @@ public class EZScreenHelper {
 
 						@Override
 						public void run() {
+							synchronized(renderThread) {
+								renderThread.notify();
+							}
+							Log.v(TAG, "renderThread.run");
 							try {
 								MediaCodec.BufferInfo bufferInfo= new MediaCodec.BufferInfo();
 								while (!stopRenderer) {
@@ -766,12 +867,13 @@ public class EZScreenHelper {
 				
 
 				@Override
-				public void onSpsAvailable(byte[] sps) {
-					decodeBytesWithPrefix(nalHeader, sps, 0, sps.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG, -1);
+				public void onSpsAvailable(byte[] spsData) {
+					updateTransformAccodingToSps(spsData);
+					decodeBytesWithPrefix(nalHeader, spsData, 0, spsData.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG, -1);
 					if (testFile != null) {
 						try {
 							testFile.write(nalHeader);
-							testFile.write(sps);
+							testFile.write(spsData);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -779,6 +881,21 @@ public class EZScreenHelper {
 
 						}
 					}					
+				}
+
+				private void updateTransformAccodingToSps(byte[] spsData) {
+					SeqParameterSet sps = SeqParameterSet.read(ByteBuffer.wrap(spsData, 1, spsData.length - 1));
+					int codedWidth = (sps.pic_width_in_mbs_minus1 + 1) << 4;
+			        int codedHeight = H264Utils.getPicHeightInMbs(sps) << 4;
+
+			        final int width = sps.frame_cropping_flag ? codedWidth
+			                - ((sps.frame_crop_right_offset + sps.frame_crop_left_offset) << sps.chroma_format_idc.compWidth[1])
+			                : codedWidth;
+			        final int height = sps.frame_cropping_flag ? codedHeight
+			                - ((sps.frame_crop_bottom_offset + sps.frame_crop_top_offset) << sps.chroma_format_idc.compHeight[1])
+			                : codedHeight;
+					Log.v(TAG, "seqParameterSet width:"+width+", height:"+height);
+					updateTransform(width, height);
 				}
 
 				private void decodeBytesWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags, long timeoutUs) {
@@ -845,6 +962,7 @@ public class EZScreenHelper {
 					int outputBufferIndex = -1;
 					try {
 						outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 500000);
+						Log.v(TAG, "dequeueOutputBuffer:"+outputBufferIndex);						
 					} catch(Exception e) {
 						Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
 						stopRenderer = true;
@@ -860,19 +978,26 @@ public class EZScreenHelper {
 						MediaFormat outputFormat = decoder.getOutputFormat();
 						int width = outputFormat.getInteger(MediaFormat.KEY_WIDTH);
 						int height = outputFormat.getInteger(MediaFormat.KEY_HEIGHT);
-						Log.d(TAG, "outputFormat width:"+width+", height:"+height);
-						final Matrix transform = new Matrix();
-						transform.setRectToRect(new RectF(0, 0, width, height), new RectF(0, 0, surfaceWidth, surfaceHeight) , Matrix.ScaleToFit.CENTER);
-						transform.preScale((float)width/(float)surfaceWidth, (float)height/(float)surfaceHeight);
-						mainHandler.post(new Runnable() {
-
-							@Override
-							public void run() {
-								mirrorView.setTransform(transform);											
-							}
-
-						});
+						Log.d(TAG, "outputFormat width:"+width+", height:"+height+"; surfaceWidth:"+surfaceWidth+", surfaceHeight:"+surfaceHeight);
+						// we can't trust this on AMLogic's implementation 
+//						updateTransform(width, height); 
 					}
+				}
+
+				private void updateTransform(int width, int height) {
+					final Matrix transform = new Matrix();
+					transform.setRectToRect(new RectF(0, 0, width, height), new RectF(0, 0, surfaceWidth, surfaceHeight) , Matrix.ScaleToFit.CENTER);
+					transform.preScale((float)width/(float)surfaceWidth, (float)height/(float)surfaceHeight);						
+					mainHandler.post(new Runnable() {
+
+						@Override
+						public void run() {
+							Log.v(TAG, "mirror view width:"+mirrorView.getWidth()+", height:"+mirrorView.getHeight());								
+							Log.v(TAG, "surfaceWidth:"+surfaceWidth+", surfaceHeight:"+surfaceHeight);								
+							mirrorView.setTransform(transform);											
+						}
+
+					});
 				}
 
 				@Override
@@ -919,9 +1044,8 @@ public class EZScreenHelper {
 
 				@Override
 				public void onAirPlayStart() {
-					// TODO Auto-generated method stub
 					Log.d(TAG, "onAirPlayStart");
-					
+					stateContext.onAirPlayStart();
 				}
 
 				@Override
@@ -1024,12 +1148,25 @@ public class EZScreenHelper {
 	}
 
 	private void playVideo(String url, String callback, boolean autoplay, int startpos) {
-		if (callback != null) {
-			invokeJavascript("javascript:playVideoImp(\""+url+"\",'"+callback+"'"+ (autoplay?"true, ":"false, ")+ startpos+");");
-		} else {
-			invokeJavascript("javascript:playVideoImp(\""+url+"\", null, "+ (autoplay?"true, ":"false, ")+ startpos+");");			
+		closeMediaCallbackRpcSessionIfNeeded();
+		createMediaCallbackRpcSession(callback);
+		stopMediaPlayer();
+		mediaPlayerHelper = new MediaPlayerHelper(context, container, this);
+		mediaPlayerHelper.load(url);
+		if (autoplay) {
+			mediaPlayerHelper.play(startpos);
 		}
-		showWebView();
+	}
+	private void createMediaCallbackRpcSession(String callback) {
+		if (callback != null) {
+			try {
+				mediaCallbackRpc = new JSONRPC2Session(new URL(callback));
+				
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 	@SuppressLint({ "NewApi", "SetJavaScriptEnabled" })
 	private void initWebView() {
@@ -1095,6 +1232,7 @@ public class EZScreenHelper {
 		});
 	}
 	private void hideAllViewsExcept(View exception) {
+		stopMediaPlayer();
 		for (View view : allViews) {
 			if (view != exception) {
 				setViewVisibility(view, View.INVISIBLE);
@@ -1260,7 +1398,16 @@ public class EZScreenHelper {
 
 						@Override
 						public void run() {
-							photoView.setImageURI(Uri.fromFile(cacheFile));						
+							Uri cacheFileUri = Uri.fromFile(cacheFile);
+							try {
+								photoView.setImageURI(cacheFileUri);
+							} catch (OutOfMemoryError oom) {
+								try {
+									photoView.setImageBitmap(readBitmapInHalfSize(cacheFileUri, context));
+								} catch (Throwable t) {
+									t.printStackTrace();
+								}
+							}
 						}
 
 					});
@@ -1289,8 +1436,13 @@ public class EZScreenHelper {
 				} catch (Exception e) {
 					trackScreenHit("ezcastrx.media");						
 				}
-
+				EZScreenHelper.this.hideAllViewsExcept(null);
 				EZScreenHelper.this.playVideo(url, callback);				
+			}
+
+			@Override
+			protected void hideMirrorView() {
+				EZScreenHelper.this.hideMirrorView();				
 			}
 		};
 		android.net.wifi.WifiManager wifi =
@@ -1312,6 +1464,27 @@ public class EZScreenHelper {
 
 			}).start();
 		}
+		createNetworkThread();
+	}
+	private static Bitmap readBitmapInHalfSize(Uri imageFile, Context context) { 
+		Bitmap bitmap = null; 
+		InputStream stream = null;
+        try {
+            stream = context.getContentResolver().openInputStream(imageFile);
+            BitmapFactory.Options options = new BitmapFactory.Options(); 
+    		options.inSampleSize = 2; 
+			bitmap = BitmapFactory.decodeStream(stream, null, options);					
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to open content: " + imageFile, e);
+        } finally {
+            if (stream != null) {
+                try {
+                    stream.close();
+                } catch (IOException e) {
+                }
+            }
+        }
+		return bitmap; 
 	}
 	public void stop() {
 		stopMirrorDecoding();
@@ -1326,6 +1499,27 @@ public class EZScreenHelper {
 		ezScreenInitialized = false;
 		airplayInitialized = false;
 		cleanUpAirPlayCache();
+		
+		stopNetworkThread();
+		closeMediaCallbackRpcSessionIfNeeded();
+		releasePlaybackClock();
+	}
+	private void stopNetworkThread() {
+		if (networkThread != null) {
+			networkThread.stopLooper();
+			try {
+				networkThread.join(3000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			networkThread = null;
+		}
+	}
+	private void closeMediaCallbackRpcSessionIfNeeded() {
+		if (mediaCallbackRpc != null) {
+			mediaCallbackRpc.close();
+			mediaCallbackRpc = null;
+		}
 	}
 
 	private void cleanUpAirPlayCache() {
@@ -1341,7 +1535,6 @@ public class EZScreenHelper {
 	public void setDisplayImageInterface(DisplayImageInterface displayImageI) {
 		this.displayImageInterface = displayImageI;
 	}
-	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void stopMirrorDecoding() {
 		if (renderThread != null) {
 			stopRenderer = true;
@@ -1354,14 +1547,21 @@ public class EZScreenHelper {
 			}
 			renderThread = null;
 		}
+		releaseDecoder();
+		releaseMirrorSurface();
+	}
+	private void releaseMirrorSurface() {
+		if (mirrorSurface != null) {
+			mirrorSurface.release();
+			mirrorSurface = null;
+		}
+	}
+	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+	private void releaseDecoder() {
 		if (decoder != null) {
 			decoder.stop();
 			decoder.release();
 			decoder = null;
-		}
-		if (mirrorSurface != null) {
-			mirrorSurface.release();
-			mirrorSurface = null;
 		}
 	}
 
@@ -1402,26 +1602,66 @@ public class EZScreenHelper {
 	}
 
 	private void loadAirPlayVideo(String url, float rate, float position) {
-		resetStates();
+		resetPlaybackStates();
 		EZScreenHelper.this.setPendingStartingPosition(position);
 		playVideo(url, null, true/*rate!=0*/, 0);
 	}
 
+	@SuppressLint("NewApi")
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void doAirPlayMirror(InetAddress remoteAddress) {
 		showMirrorView();
 		stopMirrorDecoding();
-		if (playbackClock != null) {
-			playbackClock.release();
-			playbackClock = null;
-		}
-		try {
-			playbackClock = new MirrorClock(remoteAddress, 7010, 100, 25);
-		} catch (SocketException e1) {
-			e1.printStackTrace();
-		}
+		createMirrorClock(remoteAddress);
+		releaseDecoder();
+		releaseMirrorSurface();
+		createMirrorSurface();
+		createDecoder();
 		
-		decoder = MediaCodec.createDecoderByType(MIME_VIDEO_AVC);
+		closeTestFile();
+		if (DUMP_H264) {
+			try {
+				testFile = new FileOutputStream("/sdcard/test"+".h264");
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	@SuppressLint("NewApi")
+	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+	private void createDecoder() {
+		Size resolutions[] = {new Size(1280, 720), new Size(720, 576), new Size(640, 480), new Size(320, 240)};
+		Throwable lastCatched = null;
+		for (Size res:resolutions) {
+			try {
+				decoder = MediaCodec.createDecoderByType(MIME_VIDEO_AVC);
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) { //OMX.MS.AVC.Decoder
+					Log.v(TAG, MIME_VIDEO_AVC+" decoder named:"+decoder.getName());
+//					if (decoder.getName().equalsIgnoreCase("OMX.amlogic.avc.decoder.awesome")) {
+//						res = new Size(1280, 720);
+//					}
+				}
+
+				Log.v(TAG, "createVideoFormat width:"+res.getWidth()+", height:"+res.getHeight());
+				decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, res.getWidth(), res.getHeight()), mirrorSurface, null, 0);
+				decoder.start();
+				inputBuffers = decoder.getInputBuffers();
+				break;
+			} catch (Throwable t) {
+				Log.e(TAG, "create decoder failed", t);
+				lastCatched = t;
+				if (decoder != null) {
+					try {decoder.release();} catch (Throwable t2) {Log.e(TAG, "release decoder failed", t2);}
+					decoder = null;
+				}
+			}
+		}
+		if (decoder == null) {
+			throw new IllegalStateException("create decoder failed", lastCatched);
+		}
+	}
+	private void createMirrorSurface() {
 		if (mirrorSurface == null) {
 			while (mirrorSurfaceTexture == null) {
 				try {
@@ -1432,18 +1672,16 @@ public class EZScreenHelper {
 			}
 			mirrorSurface = new Surface(mirrorSurfaceTexture);
 		}
-		decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, 1920, 1080), mirrorSurface, null, 0);
-		decoder.start();
-		inputBuffers = decoder.getInputBuffers();
-		
-		closeTestFile();
-		if (DUMP_H264) {
-			try {
-				testFile = new FileOutputStream("/sdcard/test"+".h264");
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+	}
+	private void createMirrorClock(InetAddress remoteAddress) {
+		if (playbackClock != null) {
+			playbackClock.release();
+			playbackClock = null;
+		}
+		try {
+			playbackClock = new MirrorClock(remoteAddress, 7010, 100, 25);
+		} catch (SocketException e1) {
+			e1.printStackTrace();
 		}
 	}
 	private FileOutputStream testFile;
@@ -1471,6 +1709,9 @@ public class EZScreenHelper {
 		inputBuffers = null; 
 		closeTestFile();
 		hideMirrorView();
+		releasePlaybackClock();
+	}
+	private void releasePlaybackClock() {
 		if (playbackClock != null) {
 			playbackClock.release();
 			playbackClock = null;
@@ -1509,5 +1750,40 @@ public class EZScreenHelper {
 			airPlayCacheDir.mkdirs();
 		}
 		return airPlayCacheDir;
+	}
+	private void performOnNetworkThread(Runnable runnable) {
+		Handler handler = getNetworkHandler();
+		if (handler != null) {
+			handler.post(runnable);			
+		}
+	}
+	private LooperThread networkThread;
+	protected Handler getNetworkHandler() {
+		if (networkThread != null) {
+			return networkThread.getHandler();
+		}
+		return null;
+	}
+	private class LooperThread extends Thread {
+		private Looper myLooper;
+		private Handler handler;
+		protected Handler getHandler() {
+			return handler;
+		}
+		@Override
+		public void run() {
+			Looper.prepare();
+			myLooper = Looper.myLooper();
+			handler = new Handler();
+			synchronized(this) {
+				this.notifyAll();
+			}
+			Looper.loop();
+		}
+		public void stopLooper() {
+			if (myLooper != null) {
+				myLooper.quit();
+			}
+		}
 	}
 }

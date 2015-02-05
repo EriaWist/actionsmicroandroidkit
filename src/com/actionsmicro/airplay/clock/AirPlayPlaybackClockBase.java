@@ -49,7 +49,7 @@ public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
 							break;
 						}
 						Log.e(TAG+"."+debugPrefix, "presentationTime:"+presentationTime+" is way too early for "+wait+"ms. let's skip, now is "+now());
-						return false;
+						return true;
 					}
 					debugLogW("presentationTime:"+presentationTime+" is too early for "+wait+"ms. let's wait");
 					Thread.sleep(wait);

@@ -8,6 +8,7 @@ import javax.jmdns.ServiceInfo;
 import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
+import org.fourthline.cling.model.meta.Device;
 import org.jmock.Mockery;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -17,6 +18,7 @@ import android.util.Log;
 
 import com.actionsmicro.analytics.DeviceInfoBuilder;
 import com.actionsmicro.analytics.device.AirPlayDeviceInfoBuilder;
+import com.actionsmicro.analytics.device.DlnaDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastDeviceInfoBuilder;
 import com.actionsmicro.analytics.device.EZCastFamilyDeviceTypeBuilder;
 import com.actionsmicro.analytics.device.EZCastScreenDeviceInfoBuilder;
@@ -24,6 +26,7 @@ import com.actionsmicro.analytics.device.GoogleCastDeviceInfoBuilder;
 import com.actionsmicro.analytics.unittest.mock.MockServiceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxInfo;
+import com.actionsmicro.androidkit.ezcast.imp.dlna.DlnaDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastDeviceInfo;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
@@ -317,5 +320,55 @@ public class DeviceInfoBuilderTest extends TestCase {
 						
 		};
 		assertEquals("ezcastpro", EZCastFamilyDeviceTypeBuilder.getType(deviceInfo));
+	}
+	public void testDlnaDeviceInfo() {
+		final String mockSrcvers = "20140515";
+		final String mockManufactureer = "Microsoft Corporation";
+		final String mockModel = "Xbox One";
+
+		final DlnaDeviceInfo deviceInfo = new DlnaDeviceInfo((Device) null) {
+			@Override
+			public String getParameter(String key) {
+				if (key.equalsIgnoreCase("deviceid")) {
+					return mockDeviceId;
+				}
+				if (key.equalsIgnoreCase("srcvers")) {
+					return mockSrcvers;
+				}
+				return null;
+			}
+			@Override
+			public String getManufacturer() {
+				return mockManufactureer;
+			}
+
+			@Override
+			public String getModel() {				
+				return mockModel;		
+			}
+		};
+		
+		DeviceInfoBuilder<?> builder = DeviceInfoBuilder.getBuilderForDevice(mockAndroidContext, deviceInfo, mockAppId);
+		assertTrue(builder instanceof DlnaDeviceInfoBuilder);
+		JSONObject jsonObject = null;
+		try {
+			jsonObject = new JSONObject(gson.toJson(builder.buildDeviceInfo()));
+			assertEquals("dlna", jsonObject.get("type"));			
+			assertEquals("2014-12-31", jsonObject.get("schema_version"));			
+			assertEquals(mockAppId, jsonObject.get("app_id"));			
+			assertEquals(mockPackageName, jsonObject.get("package_id"));			
+			assertEquals("dlna", jsonObject.get("device_type"));			
+			assertEquals(mockDeviceId, jsonObject.get("device_id"));			
+			assertTrue(jsonObject.has("timestamp"));
+			assertEquals(mockManufactureer, jsonObject.get("manufacturer"));			
+			assertEquals(mockSrcvers, jsonObject.get("device_version"));
+			assertEquals(mockModel, jsonObject.get("model"));			
+		} catch (AssertionFailedError t) {
+			Log.d(TAG, jsonObject.toString());
+			throw t;
+		} catch (Throwable t) {
+			t.printStackTrace();
+			fail(t.getMessage());
+		}
 	}
 }
