@@ -21,6 +21,7 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -576,16 +577,15 @@ public class JSONRPC2Session {
 				HttpResponse rawResponse = httpClient.execute(postRequest);
 
 				// Check response content type
-				String contentType = rawResponse.getFirstHeader("content-type").getValue();
-
-				if (! options.isAllowedResponseContentType(contentType)) {
-
+				Header contentTypeHeader = rawResponse.getFirstHeader("content-type");
+				
+				if (contentTypeHeader == null || ! options.isAllowedResponseContentType(contentTypeHeader.getValue())) {
 					String msg = null;
 
-					if (contentType == null)
+					if (contentTypeHeader == null || contentTypeHeader.getValue() == null)
 						msg = "Missing Content-Type header in the HTTP response";
 					else
-						msg = "Unexpected \"" + contentType + "\" content type of the HTTP response";
+						msg = "Unexpected \"" + contentTypeHeader.getValue() + "\" content type of the HTTP response";
 
 					throw new JSONRPC2SessionException(msg, JSONRPC2SessionException.UNEXPECTED_CONTENT_TYPE);
 				}
