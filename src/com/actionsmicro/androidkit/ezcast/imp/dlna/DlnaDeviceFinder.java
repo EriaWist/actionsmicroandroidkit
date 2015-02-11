@@ -42,7 +42,6 @@ public class DlnaDeviceFinder extends DeviceFinderBase {
 	@Override
 	public synchronized void stop() {
 		UpnpService.getUpnpService().removeListener(listener);
-		UpnpService.getUpnpService().removeAllRemoteDevices();
 	}
 
 	protected boolean isCompatibleDevice(RemoteDevice device) {
