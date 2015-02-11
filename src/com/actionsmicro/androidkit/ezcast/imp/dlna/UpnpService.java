@@ -2,9 +2,12 @@ package com.actionsmicro.androidkit.ezcast.imp.dlna;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.fourthline.cling.UpnpServiceImpl;
 import org.fourthline.cling.android.AndroidUpnpServiceConfiguration;
+import org.fourthline.cling.android.FixedAndroidLogHandler;
 import org.fourthline.cling.controlpoint.ActionCallback;
 import org.fourthline.cling.controlpoint.SubscriptionCallback;
 import org.fourthline.cling.model.message.header.UDADeviceTypeHeader;
@@ -16,14 +19,25 @@ import org.fourthline.cling.model.types.UDN;
 import org.fourthline.cling.registry.Registry;
 import org.fourthline.cling.registry.RegistryListener;
 
+import com.actionsmicro.BuildConfig;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.utils.Log;
 
 class UpnpService {
 	private static final String DEVICE_TYPE_MEDIA_RENDERER = "MediaRenderer";
 	private static final String TAG = "UpnpService";
-	
+	static {
+		org.seamless.util.logging.LoggingUtil.resetRootHandler(new FixedAndroidLogHandler());
+		Logger.getLogger("org.fourthline.cling").setLevel(Level.FINEST);		
+	}
 	public Device getDeviceById(String uid) {
+		if (BuildConfig.DEBUG) {
+			Log.d(TAG, "===== Current devices");
+			for (Device device : upnpService.getControlPoint().getRegistry().getDevices()) {
+				Log.d(TAG, "device udn:"+device.getIdentity().getUdn().getIdentifierString());
+			}
+			Log.d(TAG, "===== Current devices end");
+		}
 		return upnpService.getControlPoint().getRegistry().getDevice(new UDN(uid), false); 
 	}
 	private List<DlnaDeviceListener> listeners = new ArrayList<DlnaDeviceListener>();
