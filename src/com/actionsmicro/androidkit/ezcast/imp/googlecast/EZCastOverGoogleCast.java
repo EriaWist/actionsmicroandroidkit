@@ -514,7 +514,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 									
 								}
 								playerState = State.STOPPED;
-								handleMediaPlayerStop();
+								handleMediaPlayerStop(Cause.USER);
 								if (trackableApi != null) {
 									trackableApi.commitMediaUsageTracking();
 								}						
@@ -692,7 +692,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 							case MediaStatus.PLAYER_STATE_IDLE:
 								playerState = State.STOPPED;
 								if (mRemoteMediaPlayer.getStreamDuration() != 0) {
-									handleMediaPlayerStop();
+									handleMediaPlayerStop(Cause.REMOTE);
 								}
 								break;
 							}
@@ -811,11 +811,11 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 		return castAppId;
 	}
-	private void handleMediaPlayerStop() {
+	private void handleMediaPlayerStop(Cause cause) {
 		stopHttpFileServer();		
 //		launcheEZCastApp(isDisplaying);
 		if (mediaPlayerStateListener != null) {
-			mediaPlayerStateListener.mediaPlayerDidStop(EZCastOverGoogleCast.this);
+			mediaPlayerStateListener.mediaPlayerDidStop(EZCastOverGoogleCast.this, cause);
 		}
 		if (trackableApi != null) {
 			trackableApi.commitMediaUsageTracking();

@@ -73,11 +73,11 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 		getAirPlayClient().playVideo(url, new AirPlayClient.VideoStateListener() {
 			
 			@Override
-			public void onVideoStopped() {
+			public void onVideoStopped(Cause cause) {
 				commitMediaUsageTracking();
 				state = State.STOPPED;
 				if (mediaPlayerStateListener != null) {
-					mediaPlayerStateListener.mediaPlayerDidStop(AirPlayMediaPlayerApi.this);
+					mediaPlayerStateListener.mediaPlayerDidStop(AirPlayMediaPlayerApi.this, cause);
 				}
 			}
 			

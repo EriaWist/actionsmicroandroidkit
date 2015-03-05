@@ -1,11 +1,12 @@
 package com.actionsmicro.pigeon;
 
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.State;
 
 public interface MediaStreaming {
 	public interface DataSource {
 		public void mediaStreamingDidFail(int resultCode);
-		public void stopStreamingContents();
+		public void stopStreamingContents(Cause causes);
 		public void playerTimeDidChange(int time);
 		public void playerTimeDurationReady(int duration);
 		public void setMediaStreamingStateListener(MediaStreamingStateListener mediaStreamingStateListener);

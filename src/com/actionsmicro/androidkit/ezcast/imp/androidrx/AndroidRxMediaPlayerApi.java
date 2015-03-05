@@ -27,8 +27,8 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 				}
 
 				@Override
-				public void mediaPlayerDidStop(MediaPlayerApi api) {
-					mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxMediaPlayerApi.this);
+				public void mediaPlayerDidStop(MediaPlayerApi api, Cause cause) {
+					mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxMediaPlayerApi.this, cause);
 				}
 
 				@Override

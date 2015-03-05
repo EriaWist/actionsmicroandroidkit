@@ -2,6 +2,7 @@ package com.actionsmicro.pigeon;
 
 import java.io.IOException;
 
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
 import com.actionsmicro.pigeon.MediaStreaming.FileDataSource;
 import com.actionsmicro.utils.Log;
 
@@ -95,10 +96,10 @@ public abstract class MediaStreamingFileBaseDataSource implements FileDataSource
 	}
 
 	@Override
-	public void stopStreamingContents() {
+	public void stopStreamingContents(Cause cause) {
 		stopWorkerThread();
 		if (mediaStreamingStateListener != null) {
-			mediaStreamingStateListener.mediaStreamingDidStop(this);
+			mediaStreamingStateListener.mediaStreamingDidStop(this, cause);
 		}
 	}
 

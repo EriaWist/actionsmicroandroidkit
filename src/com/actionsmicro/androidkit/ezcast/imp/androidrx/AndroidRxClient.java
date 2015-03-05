@@ -344,8 +344,10 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 				} else if (EZCASTPLAYER_ONENDED.equals(notification.getMethod())) {
 					Log.d(TAG, EZCASTPLAYER_ONENDED+":");
 					commitMediaUsageTracking();
-					if (mediaPlayerStateListener != null) {
-						mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxClient.this);
+					if (currentState != State.STOPPED) {
+						if (mediaPlayerStateListener != null) {
+							mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxClient.this, Cause.REMOTE);
+						}
 					}
 					currentState = State.STOPPED;
 				}
@@ -490,6 +492,9 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		}
 		invokeRpcMethod("stop");
 		currentState = State.STOPPED;
+		if (mediaPlayerStateListener != null) {
+			mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxClient.this, Cause.USER);
+		}
 		stopHttpFileServer();		
 		commitMediaUsageTracking();
 		return true;

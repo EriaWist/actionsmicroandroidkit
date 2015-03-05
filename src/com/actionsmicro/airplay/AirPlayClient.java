@@ -33,6 +33,7 @@ import android.os.HandlerThread;
 
 import com.actionsmicro.airplay.http.PlistBody;
 import com.actionsmicro.airplay.mirror.TsStreamer;
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
@@ -69,7 +70,7 @@ public class AirPlayClient {
 
 		void onVideoPaused();
 
-		void onVideoStopped();
+		void onVideoStopped(Cause cause);
 
 		void onVideoPlayed();
 
@@ -247,7 +248,7 @@ public class AirPlayClient {
 										currentSessionId = -1;
 										isPlayingVideo = false;
 										if (videoStateListener != null) {
-											videoStateListener.onVideoStopped();
+											videoStateListener.onVideoStopped(Cause.REMOTE);
 										}
 									}
 								} else if (state.equals("loading")) {
@@ -594,7 +595,7 @@ public class AirPlayClient {
 									detachedFileServer.stop();			        	
 								}
 								if (videoStateListener != null) {
-									videoStateListener.onVideoStopped();
+									videoStateListener.onVideoStopped(Cause.USER);
 								}
 								finishPendingTask(self);
 								synchronized (stop) {
