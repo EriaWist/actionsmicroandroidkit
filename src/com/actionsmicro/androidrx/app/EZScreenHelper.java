@@ -655,12 +655,12 @@ public class EZScreenHelper implements PlayerListener {
 	private void playVideo(final String url, String callback) {
 		playVideo(url, callback, true, 0);
 	}
-	private void initEzAndroidRx() {
+	private void initEzAndroidRx(boolean mmr, boolean wmr) {
 		try {
 			String deviceID;
 			deviceID = AndroidRxSchemaServer.getUUID(context);
 			
-			this.setEzScreenServer(new EzScreenServer(context, InetAddress.getByName(getIpAddress()), getServiceName(), deviceID, new EzScreenServer.EzScreenServerDelegate() {
+			this.setEzScreenServer(new EzScreenServer(context, InetAddress.getByName(getIpAddress()), getServiceName(), deviceID, mmr, wmr, new EzScreenServer.EzScreenServerDelegate() {
 
 				@Override
 				public void stopVideo() {
@@ -1285,9 +1285,9 @@ public class EZScreenHelper implements PlayerListener {
 			
 		});
 	}
-	public void start(int servers) {
+	public void start(int servers, boolean mmr, boolean wmr) {
 		updateServerBits(servers);
-		start();
+		start(mmr,wmr);
 	}
 	private void updateServerBits(int servers) {
 		this.servers = servers;
@@ -1295,7 +1295,7 @@ public class EZScreenHelper implements PlayerListener {
 			this.servers &= ~SERVER_AIRPLAY;
 		}
 	}
-	public void start() {
+	public void start(boolean mmr, boolean wmr) {
 		stateContext = new StateContext(new IdleState()) {
 			@Override
 			protected void showConnectedIndicator() {
@@ -1452,7 +1452,7 @@ public class EZScreenHelper implements PlayerListener {
 		getLock().setReferenceCounted(true);
 		getLock().acquire();
 		if ((servers & SERVER_EZSCREEN) != 0) {
-			initEzAndroidRx();
+			initEzAndroidRx(mmr, wmr);
 		}
 		if (((servers & SERVER_AIRPLAY) != 0) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
 			new Thread(new Runnable() {
