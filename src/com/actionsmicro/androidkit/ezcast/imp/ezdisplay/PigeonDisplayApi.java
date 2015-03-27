@@ -1,5 +1,6 @@
 package com.actionsmicro.androidkit.ezcast.imp.ezdisplay;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import android.graphics.YuvImage;
@@ -78,6 +79,14 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 	public void sendJpegEncodedScreenData(InputStream inputStream, long length) throws Exception { // TODO deal with parameter length
 		if (pigeonClient != null) {
 			pigeonClient.sendJpegStreamToServer(inputStream);
+		}
+	}
+	
+	@Override
+	public void sendAudioEncodedData(InputStream inputStream)
+			throws IllegalArgumentException, IOException {
+		if (pigeonClient != null) {
+			pigeonClient.sendAudioStreamToServer(inputStream);
 		}
 	}
 

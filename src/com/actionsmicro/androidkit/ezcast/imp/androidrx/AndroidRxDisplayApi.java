@@ -1,5 +1,6 @@
 package com.actionsmicro.androidkit.ezcast.imp.androidrx;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import android.graphics.YuvImage;
@@ -58,5 +59,9 @@ public class AndroidRxDisplayApi extends AndroidRxApi implements DisplayApi {
 		}
 		getAndroidRxClient().sendYuvScreenData(yuvImage, quailty);
 		
+	}
+
+	public void sendAudioEncodedData(InputStream inputStream)
+			throws IllegalArgumentException, IOException {
 	}
 }

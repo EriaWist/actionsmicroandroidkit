@@ -1,5 +1,6 @@
 package com.actionsmicro.androidkit.ezcast.imp.dlna;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -285,4 +286,7 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 
 		return ipString;
     }
+	public void sendAudioEncodedData(InputStream inputStream)
+			throws IllegalArgumentException, IOException {
+	}
 }

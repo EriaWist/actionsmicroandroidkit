@@ -1,5 +1,6 @@
 package com.actionsmicro.androidkit.ezcast.imp.airplay;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import android.graphics.YuvImage;
@@ -46,5 +47,9 @@ public class AirPlayDisplayApi extends AirPlayApi implements DisplayApi {
 			InputStream inputStream = helper.compressYuvImageToJpegStream(yuvImage, quailty);
 			sendJpegEncodedScreenData(inputStream, inputStream.available());
 		}
+	}
+
+	public void sendAudioEncodedData(InputStream inputStream)
+			throws IllegalArgumentException, IOException {
 	}
 }
