@@ -45,7 +45,4 @@ public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 			sendJpegEncodedScreenData(inputStream, inputStream.available());
 		}
 	}
-	public void sendAudioEncodedData(InputStream inputStream)
-			throws IllegalArgumentException, IOException {
-	}
 }

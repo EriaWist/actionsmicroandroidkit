@@ -5,6 +5,8 @@ import java.net.InetAddress;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.actionsmicro.androidkit.ezcast.AudioApi;
+import com.actionsmicro.androidkit.ezcast.AudioApiBuilder;
 import com.actionsmicro.androidkit.ezcast.AuthorizationApi;
 import com.actionsmicro.androidkit.ezcast.AuthorizationApiBuilder;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
@@ -105,4 +107,9 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	public boolean supportMediaFileExtension(String fileExtension) {
 		return true;
 	}
+    @Override
+    protected AudioApi createAudioApi(AudioApiBuilder audioApiBuilder) {
+        String type = getProjectorInfo().getParameter("type");
+        return new PigeonAudioApi(audioApiBuilder);
+    }
 }

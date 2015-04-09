@@ -9,6 +9,8 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v7.media.MediaRouter.RouteInfo;
 
+import com.actionsmicro.androidkit.ezcast.AudioApi;
+import com.actionsmicro.androidkit.ezcast.AudioApiBuilder;
 import com.actionsmicro.androidkit.ezcast.AuthorizationApi;
 import com.actionsmicro.androidkit.ezcast.AuthorizationApiBuilder;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
@@ -146,5 +148,10 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	public boolean supportMediaFileExtension(String fileExtension) {
 		return supportedFileExtension.contains(fileExtension.toLowerCase(Locale.US));
 	}
+    @Override
+    protected AudioApi createAudioApi(AudioApiBuilder displayApiBuilder) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
 }

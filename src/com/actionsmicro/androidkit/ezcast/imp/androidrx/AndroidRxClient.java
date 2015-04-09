@@ -602,8 +602,4 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	public void setTracker(TrackableApi trackableApi) {
 		this.tracker = trackableApi;
 	}
-	public void sendAudioEncodedData(InputStream inputStream)
-			throws IllegalArgumentException, IOException {
-	}
-
 }

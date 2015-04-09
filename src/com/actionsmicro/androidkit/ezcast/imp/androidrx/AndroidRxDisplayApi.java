@@ -60,8 +60,4 @@ public class AndroidRxDisplayApi extends AndroidRxApi implements DisplayApi {
 		getAndroidRxClient().sendYuvScreenData(yuvImage, quailty);
 		
 	}
-
-	public void sendAudioEncodedData(InputStream inputStream)
-			throws IllegalArgumentException, IOException {
-	}
 }

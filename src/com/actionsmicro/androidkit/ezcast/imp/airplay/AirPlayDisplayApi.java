@@ -48,8 +48,4 @@ public class AirPlayDisplayApi extends AirPlayApi implements DisplayApi {
 			sendJpegEncodedScreenData(inputStream, inputStream.available());
 		}
 	}
-
-	public void sendAudioEncodedData(InputStream inputStream)
-			throws IllegalArgumentException, IOException {
-	}
 }

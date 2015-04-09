@@ -286,7 +286,4 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 
 		return ipString;
     }
-	public void sendAudioEncodedData(InputStream inputStream)
-			throws IllegalArgumentException, IOException {
-	}
 }

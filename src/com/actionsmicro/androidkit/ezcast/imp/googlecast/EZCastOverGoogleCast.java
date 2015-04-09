@@ -830,9 +830,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			}
 		}
 	}
-	public void sendAudioEncodedData(InputStream inputStream)
-			throws IllegalArgumentException, IOException {
-	}
 	private class UpdateStreamPositionTask extends TimerTask {
 
         @Override

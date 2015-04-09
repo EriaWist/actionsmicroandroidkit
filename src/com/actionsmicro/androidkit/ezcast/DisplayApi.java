@@ -1,6 +1,5 @@
 package com.actionsmicro.androidkit.ezcast;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 import android.graphics.YuvImage;
@@ -115,13 +114,4 @@ public interface DisplayApi extends Api {
 	 * @since 2.0
 	 */
 	public void sendYuvScreenData(YuvImage yuvImage, int quailty) throws Exception;
-	
-	/**
-	 * Play PCM data on the device.
-	 * @param input InputStream which wraps the PCM data.
-	 * @throws Exception
-	 * @since 2.0
-	 */
-	public void sendAudioEncodedData(InputStream inputStream)
-			throws IllegalArgumentException, IOException;
 }
