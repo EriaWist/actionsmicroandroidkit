@@ -193,11 +193,13 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
 	private Response createResponse(Response.Status status, String mimeType, String message) {
         Response res = new Response(status, mimeType, message);
+        res.setChunkedTransfer(true);
         res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
 	private Response createResponse(Response.Status status, String mimeType, InputStream message) {
         Response res = new Response(status, mimeType, message);
+        res.setChunkedTransfer(true);
         res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
