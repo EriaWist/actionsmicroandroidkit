@@ -204,6 +204,13 @@ public class SimpleMotionJpegHttpServer {
 		}
 		return null;
 	}
+	
+	//TODO:modified by eric
+	public int getListeningPort() {
+		return server.getLocalPort();
+	}
+	//end
+	
 	public OnConnectionListener getOnConnectionListener() {
 		return onConnectionListener;
 	}

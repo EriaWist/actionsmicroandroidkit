@@ -11,10 +11,14 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.actionsmicro.androidkit.ezcast.EzCastSdk;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
+import com.actionsmicro.p2p.P2PHelper;
+import com.actionsmicro.p2p.P2PWebApi;
+import com.actionsmicro.p2p.HostDevice;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
@@ -65,6 +69,20 @@ public class EzScreenServer {
 	private boolean mmr;
 	private boolean wmr;
 	
+	private P2PHelper p2phelper= null;
+	private P2PWebApi p2pwebapi=null;
+	
+	private int nTcpListenedPortDisplay;
+	private String hostuuidDisplay;
+	private int hostportDisplay;
+	
+	private int nTcpListenedPortcb;
+	private String hostuuidcb;
+	private int hostportcb;
+	private int nTcpListenedPortVideo;
+	private String hostuuidVideo;
+	private int hostportVideo;
+	
 	public EzScreenServer(Context context, InetAddress inetAddress, String name, String deviceID, boolean mmr, boolean wmr, EzScreenServerDelegate delegate) {
 		this.name = name;
 		this.context = context;
@@ -73,6 +91,8 @@ public class EzScreenServer {
 		this.deviceID = deviceID;
 		this.mmr=mmr;
 		this.wmr=wmr;
+		p2phelper=new P2PHelper(context);
+		p2pwebapi=new P2PWebApi();
 	}
 	public String getName() {
 		return name;
@@ -125,6 +145,13 @@ public class EzScreenServer {
 		if (jsonRpcOverHttpServer != null) {
 			jsonRpcOverHttpServer.stop();
 			jsonRpcOverHttpServer = null;
+			
+			//TODO: modified by eric
+			String strHostUUID=P2PWebApi.getEzScreenHostuuidFromSharePreferences(context);//EzScreenServer.this.name;
+			String account=EzCastSdk.getp2pwebapi().getEzcastAccountFromSharePreferences();
+			EzCastSdk.getp2pwebapi().DeleteAccountDevice(account, strHostUUID);
+			EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
+			//end
 		}
 	}	
 	private synchronized void initEzAndroidRx() {
@@ -168,16 +195,70 @@ public class EzScreenServer {
 					if ("display".equals(request.getMethod())) {
 						String url = (String) namedParams.get("url");
 						if (url != null) {
+							
+							//TODO:modified by eric
+							
+							if (url.contains("?hostuuid="))
+							{
+								//start conn client
+								//parse url(hostuuid:hostport)
+								com.actionsmicro.p2p.HostDevice hostdevice=EzCastSdk.getp2pwebapi().parseP2PURI(url);
+								String hostuuidDisplay= hostdevice.hostuuid;
+								int hostportDisplay =  hostdevice.hostport;
+								int nTcpListenedPortDisplay = 10007;
+								int nTimeoutMS=10000;
+								nTcpListenedPortDisplay=EzCastSdk.getp2phelper().startConnClient(nTcpListenedPortDisplay,hostuuidDisplay,hostportDisplay,
+										P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
+								//redirect to local url 
+								url="http://127.0.0.1:"+String.valueOf(nTcpListenedPortDisplay)+"/";
+																
+							}
 							ezScreenServerDelegate.displayUrl(url);
 							return new JSONRPC2Response(Long.valueOf(0), request.getID());
 						}
 						return new JSONRPC2Response(JSONRPC2Error.INVALID_PARAMS, request.getID());
 					} else if ("stop_display".equals(request.getMethod())) {
 						ezScreenServerDelegate.stopDisplay();
+						EzCastSdk.getp2phelper().stopConnClient(nTcpListenedPortDisplay,hostuuidDisplay,hostportDisplay);
 						return new JSONRPC2Response(Long.valueOf(0), request.getID());
 					} else if ("play".equals(request.getMethod())) {
 						if (namedParams.containsKey("url")) {
-							ezScreenServerDelegate.playVideo((String)namedParams.get("url"), (String)namedParams.get("callback"));
+							//ezScreenServerDelegate.playVideo(
+							String url=(String)namedParams.get("url");
+							String callback=(String)namedParams.get("callback");
+							
+							//TODO:modified by eric
+							if (url.contains("?hostuuid="))
+							{
+								//start conn client
+								//parse url(hostuuid:hostport)
+								com.actionsmicro.p2p.HostDevice hostdevice1=P2PWebApi.parseP2PURI(url);
+								int nTcpListenedPortVideo = 10005;
+								String hostuuidVideo= hostdevice1.hostuuid;
+								int hostportVideo =  hostdevice1.hostport;
+								int nTimeoutMS=10000;
+								nTcpListenedPortVideo=EzCastSdk.getp2phelper().startConnClient(nTcpListenedPortVideo, hostuuidVideo, hostportVideo,
+										P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
+								//redirect to local url 
+								url="http://127.0.0.1:"+String.valueOf(nTcpListenedPortVideo);
+							}
+							if (callback.contains("?hostuuid="))
+							{
+								//start conn client
+								//parse url(hostuuid:hostport)
+								HostDevice hostdevicecb=P2PWebApi.parseP2PURI(callback);
+								int nTcpListenedPortcb = 10006;
+								String hostuuidcb= hostdevicecb.hostuuid;
+								int hostportcb =  hostdevicecb.hostport;
+								int nTimeoutMS=10000;
+								nTcpListenedPortcb=EzCastSdk.getp2phelper().startConnClient(nTcpListenedPortcb, hostuuidcb, hostportcb,
+										P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
+								//redirect to local callback 
+								callback="http://127.0.0.1:"+String.valueOf(nTcpListenedPortcb);
+								
+							}
+							//end
+							ezScreenServerDelegate.playVideo(url, callback);
 							return new JSONRPC2Response(Long.valueOf(0), request.getID());					
 						}
 						return new JSONRPC2Response(JSONRPC2Error.INVALID_PARAMS, request.getID());
@@ -195,6 +276,8 @@ public class EzScreenServer {
 						return new JSONRPC2Response(Long.valueOf(0), request.getID());
 					} else if ("stop".equals(request.getMethod())) {
 						ezScreenServerDelegate.stopVideo();
+						EzCastSdk.getp2phelper().stopConnClient(nTcpListenedPortcb, hostuuidcb, hostportcb);
+						EzCastSdk.getp2phelper().stopConnClient(nTcpListenedPortVideo, hostuuidVideo, hostportVideo);
 						return new JSONRPC2Response(Long.valueOf(0), request.getID());
 					} else if ("seek".equals(request.getMethod())) {
 						if (namedParams.containsKey("time")) {
@@ -215,6 +298,19 @@ public class EzScreenServer {
 			//2015-03-13 erichwang for mac-mirror and windows-mirror
 			txtRecord.put("mmr", String.valueOf(mmr));
 			txtRecord.put("wmr", String.valueOf(wmr));
+			
+			//TODO: modified by eric
+			String strHostUUID=P2PWebApi.getEzScreenHostuuidFromSharePreferences(context);//EzScreenServer.this.name;
+			int nTimeoutMS=5000;
+			EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
+			int port = jsonRpcOverHttpServer.getListeningPort();
+			String type = "jsonrpc";
+			EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
+			String account=EzCastSdk.getp2pwebapi().getEzcastAccountFromSharePreferences();
+			Log.d(TAG, "InsertAccountDeviceURL account="+account+" deviceuuid="+strHostUUID);
+			EzCastSdk.getp2pwebapi().InsertAccountDeviceURL(account,strHostUUID);
+			//end
+			
 			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord));
 			bonjourServiceAdvertiser.register();
 			if (ezScreenServerDelegate != null) {
