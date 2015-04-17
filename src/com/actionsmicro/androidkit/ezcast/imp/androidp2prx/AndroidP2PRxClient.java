@@ -56,10 +56,10 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 		nTcpListenedPort = 10008;
 		nHostPort = port;
 		ezScreenDeviceUUID=ezScreenUUID;
-		int nTimeoutMSCnt=10000;
-		nTcpListenedPort=EzCastSdk.getp2phelper().startConnClient(
-				nTcpListenedPort, ezScreenDeviceUUID, nHostPort, 
-				P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMSCnt);
+		//int nTimeoutMSCnt=10000;
+		//nTcpListenedPort=EzCastSdk.getp2phelper().startConnClient(
+		//		nTcpListenedPort, ezScreenDeviceUUID, nHostPort, 
+		//		P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMSCnt);
 		this.port = nTcpListenedPort;
 		this.context = context;
 		//this.ipAddress = ipAddress;
@@ -324,6 +324,12 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 	}
 	@Override
 	public void connect() {
+		
+		int nTimeoutMSCnt=10000;
+		nTcpListenedPort=EzCastSdk.getp2phelper().startConnClient(
+				nTcpListenedPort, ezScreenDeviceUUID, nHostPort, 
+				P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMSCnt);
+		this.port = nTcpListenedPort;
 		
 		jsonRpcOverHttpServer = new JsonRpcOverHttpServer(context, 0, ".*");
 		jsonRpcOverHttpServer.registerRpcNotificationHandler(new NotificationHandler() {
@@ -610,7 +616,10 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 	@Override
 	public void startDisplaying() {
 		final HashMap<String, Object> params = new HashMap<String, Object>();
-		params.put("url", getMjpegServer().getServerUrl());
+		String strHostUUID=P2PWebApi.getEzScreenCiientMjpguuidFromSharePreferences(context);
+		String url=getMjpegServer().getServerUrl();
+		url=url+"?hostuuid="+strHostUUID;
+		params.put("url", url);
 		invokeRpcMethod("display", params);
 	}
 

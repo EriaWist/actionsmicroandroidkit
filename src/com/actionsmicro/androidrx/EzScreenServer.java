@@ -197,7 +197,6 @@ public class EzScreenServer {
 						if (url != null) {
 							
 							//TODO:modified by eric
-							
 							if (url.contains("?hostuuid="))
 							{
 								//start conn client
