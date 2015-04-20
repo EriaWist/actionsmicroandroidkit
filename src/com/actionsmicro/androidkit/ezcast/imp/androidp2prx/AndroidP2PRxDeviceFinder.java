@@ -19,11 +19,17 @@ public class AndroidP2PRxDeviceFinder extends DeviceFinderBase {
 
 		@Override
 		public void onDeviceAdded(String deviceuuid) {
+			String localdeviceuuid=P2PWebApi.getEzScreenHostuuidFromSharePreferences(null);
+			if (deviceuuid.compareTo(localdeviceuuid)==0)
+				return;
 			getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new AndroidP2PRxInfo(deviceuuid));
 		}
 
 		@Override
 		public void onDeviceRemoved(String deviceuuid) {
+			String localdeviceuuid=P2PWebApi.getEzScreenHostuuidFromSharePreferences(null);
+			if (deviceuuid.compareTo(localdeviceuuid)==0)
+				return;
 			getDeviceFinderProxy().notifyListeneroOnDeviceRemoved(new AndroidP2PRxInfo(deviceuuid));
 						
 		}
@@ -37,7 +43,9 @@ public class AndroidP2PRxDeviceFinder extends DeviceFinderBase {
 		for (int i=0;i<deviceuuids.size(); i++)
 		{
 			String uuid=(String) deviceuuids.get(i);
-			devices.add(new AndroidP2PRxInfo(uuid));
+			String localdeviceuuid=P2PWebApi.getEzScreenHostuuidFromSharePreferences(null);
+			if (uuid.compareTo(localdeviceuuid)!=0)
+				devices.add(new AndroidP2PRxInfo(uuid));
 		}
 		return devices;
 	}
