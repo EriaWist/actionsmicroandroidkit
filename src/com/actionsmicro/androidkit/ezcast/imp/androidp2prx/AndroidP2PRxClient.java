@@ -289,9 +289,9 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 				String strHostUUID=P2PWebApi.getEzScreenCiientMjpguuidFromSharePreferences(context);
 				int nTimeoutMS=5000;
 				EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
-				int port = simpleMotionJpegHttpServer.getListeningPort();
-				String type = "mjpg";
-				EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
+				//int port = simpleMotionJpegHttpServer.getListeningPort();
+				//String type = "mjpg";
+				//EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
 				//end
 			
 			}
@@ -329,7 +329,8 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 		nTcpListenedPort=EzCastSdk.getp2phelper().startConnClient(
 				nTcpListenedPort, ezScreenDeviceUUID, nHostPort, 
 				P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMSCnt);
-		this.port = nTcpListenedPort;
+		if (nTcpListenedPort > 0)
+			this.port = nTcpListenedPort;
 		
 		jsonRpcOverHttpServer = new JsonRpcOverHttpServer(context, 0, ".*");
 		jsonRpcOverHttpServer.registerRpcNotificationHandler(new NotificationHandler() {
@@ -429,9 +430,9 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 		String strHostUUID=P2PWebApi.getEzScreenCiientJsonrpcCallbackuuidFromSharePreferences(context);//EzScreenServer.this.name;
 		int nTimeoutMS=5000;
 		EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
-		int port = jsonRpcOverHttpServer.getListeningPort();
-		String type = "jsonrpc";
-		EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
+		//int port = jsonRpcOverHttpServer.getListeningPort();
+		//String type = "jsonrpc";
+		//EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
 			
 		if (networkThread == null) {
 			networkThread = new LooperThread();
@@ -580,9 +581,9 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 			String strHostUUID=P2PWebApi.getEzScreenCiientContentuuidFromSharePreferences(context);
 			int nTimeoutMS=5000;
 			EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
-			int port = simpleHttpFileServer.getListeningPort();
-			String type = "content";
-			EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
+			//int port = simpleHttpFileServer.getListeningPort();
+			//String type = "content";
+			//EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
 			mediaUriString = url+"?hostuuid="+strHostUUID;
 			android.util.Log.d(TAG, "eric p2p mediaUriString after modified= "+mediaUriString);
 			//end
