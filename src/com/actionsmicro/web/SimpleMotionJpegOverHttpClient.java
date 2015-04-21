@@ -51,19 +51,19 @@ public class SimpleMotionJpegOverHttpClient {
 					int contentLength = 0;
 					do {
 						String meta = readLine(in);
-						Log.d(TAG, "meta:"+meta);
+						//Log.d(TAG, "meta:"+meta);
 						if ((meta == null || meta.length() == 0) && contentLength > 0) {
-							Log.d(TAG, "jpeg size:"+contentLength);
+							//Log.d(TAG, "jpeg size:"+contentLength);
 							readJpegData(buffer, in, contentLength);
 							String boundary = readLine(in);
-							Log.d(TAG, "boundary:"+boundary);
+							//Log.d(TAG, "boundary:"+boundary);
 							contentLength = 0;
 						} else {
 							if (meta.toLowerCase(Locale.getDefault()).startsWith("content-length")) {
 								Matcher matcher = numberHeaderPattern.matcher(meta);
 								if (matcher.find()) {
 									contentLength = Integer.valueOf(matcher.group(1));
-									Log.d(TAG, "content-length:"+contentLength);										
+									//Log.d(TAG, "content-length:"+contentLength);										
 								}
 							}
 						}
@@ -102,7 +102,7 @@ public class SimpleMotionJpegOverHttpClient {
 
 			private String readLine(InputStream in)
 					throws IOException {
-				Log.d(TAG, "readLine begin");
+				//Log.d(TAG, "readLine begin");
 				String meta;
 				StringBuilder sb = new StringBuilder();
 				do {
@@ -119,7 +119,7 @@ public class SimpleMotionJpegOverHttpClient {
 					}
 				} while (!stopped);
 				meta = sb.toString();
-				Log.d(TAG, "readLine end");
+				//Log.d(TAG, "readLine end");
 				return meta;
 			}
 			

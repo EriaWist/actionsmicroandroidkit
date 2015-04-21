@@ -544,17 +544,17 @@ public class EZScreenHelper implements PlayerListener {
 		}
 	}
 	private void displayUrl(final String url) {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			invokeJavascript("javascript:updateDisplay(\""+url+"\");");
-			showWebView();
-		} else {
+		//if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+		//	invokeJavascript("javascript:updateDisplay(\""+url+"\");");
+		//	showWebView();
+		//} else {
 			if (url.startsWith("http")) {
 				displayMotionJpeg(url);
 			} else {
 				invokeJavascript("javascript:updateDisplay(\""+url+"\");");
 				showWebView();
 			}
-		}
+		//}
 	}
 
 	private void showWebView() {
