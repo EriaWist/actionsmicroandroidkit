@@ -71,14 +71,14 @@ public class SimpleMotionJpegHttpServer {
 							Log.d(TAG, "New connection to :" + socket.getInetAddress());
 							outputStream = new DataOutputStream(socket.getOutputStream());
 							outputStream.write(("HTTP/1.0 200 OK\r\n" +
-									"Server: EZCastStreamer\r\n" +
-									"Connection: close\r\n" +
-									"Max-Age: 0\r\n" +
-									"Expires: 0\r\n" +
-									"Cache-Control: no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0\r\n" +
-									"Pragma: no-cache\r\n" + 
+//									"Server: EZCastStreamer\r\n" +
+//									"Connection: close\r\n" +
+//									"Max-Age: 0\r\n" +
+//									"Expires: 0\r\n" +
+//									"Cache-Control: no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0\r\n" +
+//									"Pragma: no-cache\r\n" + 
 									"Content-Type: multipart/x-mixed-replace; " +
-									"boundary=" + boundary + "\r\n" +
+									"boundary=--" + boundary + "\r\n" +
 									"\r\n" +
 									//						"--" + boundary + "\r\n" +
 									"").getBytes());
@@ -116,20 +116,20 @@ public class SimpleMotionJpegHttpServer {
 		if (isConnected() && clone.size() > 0) {
 			Log.d(TAG, "sendJpegStream to :" + socket.getInetAddress());			
 			try {
-				for (int i =0; i< 1; i++) {
-					outputStream.write(("Content-type: image/jpeg\r\n" +
+				for (int i =0; i< 2; i++) {
+					outputStream.write(("--"+boundary+"\r\n"+"Content-type: image/jpeg\r\n" +
 							"Content-Length: " + clone.size() + "\r\n" +
 //							"X-Timestamp:" + new Date().getTime() + "\r\n" +
 							"\r\n" +
 							"").getBytes());
 					Utils.dump(new ByteArrayInputStream(clone.toByteArray()), outputStream);
-					outputStream.write(("--" + boundary + "\r\n").getBytes());
+					outputStream.write(("\r\n").getBytes());
 					
-					outputStream.write(("Content-type: image/jpeg\r\n" +
-							"Content-Length: " + 0 + "\r\n" +
-							"\r\n" +
-							"").getBytes());
-					outputStream.write(("--" + boundary + "\r\n").getBytes());
+//					outputStream.write(("Content-type: image/jpeg\r\n" +
+//							"Content-Length: " + 0 + "\r\n" +
+//							"\r\n" +
+//							"").getBytes());
+//					outputStream.write(("--" + boundary + "\r\n").getBytes());
 					
 //					outputStream.write(("\r\n\r\n").getBytes());
 				}
