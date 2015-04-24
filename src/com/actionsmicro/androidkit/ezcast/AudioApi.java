@@ -9,7 +9,7 @@ public interface AudioApi extends Api {
      * Play PCM data on the device.
      * @param input InputStream which wraps the PCM data.
      * @throws Exception
-     * @since 2.x
+     * @since 2.3
      */
     public void sendAudioEncodedData(InputStream inputStream)
     		throws IllegalArgumentException, IOException;
