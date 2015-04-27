@@ -10,6 +10,8 @@ import org.fourthline.cling.model.meta.RemoteDeviceIdentity;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.actionsmicro.androidkit.ezcast.AudioApi;
+import com.actionsmicro.androidkit.ezcast.AudioApiBuilder;
 import com.actionsmicro.androidkit.ezcast.AuthorizationApi;
 import com.actionsmicro.androidkit.ezcast.AuthorizationApiBuilder;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
@@ -186,5 +188,11 @@ public class DlnaDeviceInfo extends DeviceInfo {
 		}
 		return null;		
 	}
+
+    @Override
+    protected AudioApi createAudioApi(AudioApiBuilder displayApiBuilder) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
 }

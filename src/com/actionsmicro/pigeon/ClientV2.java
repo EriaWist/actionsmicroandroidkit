@@ -15,6 +15,7 @@ import java.nio.ByteOrder;
 import android.os.Handler;
 
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
 import com.actionsmicro.utils.Log;
 
 public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStreaming {
@@ -672,7 +673,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			currentDataSource.mediaStreamingDidFail(avRequestResult);
 		}
 		if (currentDataSource != null) {
-			currentDataSource.stopStreamingContents();
+			currentDataSource.stopStreamingContents(Cause.REMOTE);
 		}
 		sendDataToRemote(createHttpStopPacket().array());
 	}
@@ -751,7 +752,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 			currentDataSource.mediaStreamingDidFail(request_result);
 		}
 		if (currentDataSource != null) {
-			currentDataSource.stopStreamingContents();
+			currentDataSource.stopStreamingContents(Cause.REMOTE);
 		}
 		sendDataToRemote(createFileStopPacket().array());
 	}
@@ -854,7 +855,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	@Override
 	public void stopMediaStreaming() {
 		if (currentDataSource != null) {
-			currentDataSource.stopStreamingContents();
+			currentDataSource.stopStreamingContents(Cause.USER);
 		}
 		if (currentDataSource instanceof FileDataSource) {
 			sendDataToRemote(createFileStopPacket().array());

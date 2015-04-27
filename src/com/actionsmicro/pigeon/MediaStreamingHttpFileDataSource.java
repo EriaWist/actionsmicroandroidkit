@@ -15,6 +15,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
 import org.apache.http.impl.client.DefaultHttpClient;
 
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
 import com.actionsmicro.pigeon.MediaStreaming.*;
 import com.actionsmicro.utils.Log;
 
@@ -116,11 +117,11 @@ public class MediaStreamingHttpFileDataSource implements FileDataSource {
 		}
 	}
 	@Override
-	public void stopStreamingContents() {
+	public void stopStreamingContents(Cause cause) {
 		stopDownloadThread();
 		stopUploadThread();
 		if (mediaStreamingStateListener != null) {
-			mediaStreamingStateListener.mediaStreamingDidStop(this);
+			mediaStreamingStateListener.mediaStreamingDidStop(this, cause);
 		}
 	}
 

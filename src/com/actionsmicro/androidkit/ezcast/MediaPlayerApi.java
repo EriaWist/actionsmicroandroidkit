@@ -87,6 +87,29 @@ public interface MediaPlayerApi extends Api {
 		PAUSED
 	};
 	/**
+	 * Cause of mediaPlayerDidStop().
+	 * @author Laicc
+	 *
+	 * @since 2.2
+	 */
+	public enum Cause {
+		/**
+		 * Unknown cause.
+		 * @since 2.2
+		 */
+		UNKNOWN,
+		/**
+		 * Caused by user stop.
+		 * @since 2.2
+		 */
+		USER,
+		/**
+		 * Caused by Remote. ex: media ended.
+		 * @since 2.2
+		 */
+		REMOTE
+	}
+	/**
 	 * Return current state of remote device.
 	 * @return State
 	 * @since 2.1
@@ -162,8 +185,9 @@ public interface MediaPlayerApi extends Api {
 		/**
 		 * Called when media playback has been stopped. 
 		 * @param api The media player API object.
+		 * @param cause Cause that stop media player. Added since 2.2
 		 */
-		public abstract void mediaPlayerDidStop(MediaPlayerApi api);
+		public abstract void mediaPlayerDidStop(MediaPlayerApi api, Cause cause);
 		/**
 		 * Called when media is failed to be played.
 		 * @param api The media player API object.

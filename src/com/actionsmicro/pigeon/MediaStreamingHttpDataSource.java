@@ -5,6 +5,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 
 import com.actionsmicro.utils.Log;
 
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
 import com.actionsmicro.pigeon.MediaStreaming.HttpDataSource;
 
 public class MediaStreamingHttpDataSource implements HttpDataSource {
@@ -33,9 +34,9 @@ public class MediaStreamingHttpDataSource implements HttpDataSource {
 	}
 
 	@Override
-	public void stopStreamingContents() {		
+	public void stopStreamingContents(Cause cause) {		
 		if (mediaStreamingStateListener != null) {
-			mediaStreamingStateListener.mediaStreamingDidStop(this);
+			mediaStreamingStateListener.mediaStreamingDidStop(this, cause);
 		}
 	}
 

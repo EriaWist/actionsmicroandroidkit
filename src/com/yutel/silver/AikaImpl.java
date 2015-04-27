@@ -163,7 +163,10 @@ public class AikaImpl extends Aika {
 			String event = HttpProtocol.getEvent(eventId);
 			logger.log(Level.INFO, "sendEvent:"+event+"(videoStatus:"+videoStatus+")");
 			String reverse = AirplayUtil.getEventInfo(event);
-			as.sendReverseResponse(reverse);
+			
+            if (null != as) {
+                as.sendReverseResponse(reverse);
+            }
 		} catch (AirplayException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

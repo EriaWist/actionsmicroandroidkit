@@ -62,13 +62,17 @@ public class EzScreenServer {
 	private JsonRpcOverHttpServer jsonRpcOverHttpServer;
 	private InetAddress inetAddress;
 	private String deviceID;
+	private boolean mmr;
+	private boolean wmr;
 	
-	public EzScreenServer(Context context, InetAddress inetAddress, String name, String deviceID, EzScreenServerDelegate delegate) {
+	public EzScreenServer(Context context, InetAddress inetAddress, String name, String deviceID, boolean mmr, boolean wmr, EzScreenServerDelegate delegate) {
 		this.name = name;
 		this.context = context;
 		this.inetAddress = inetAddress;
 		this.ezScreenServerDelegate = delegate;
 		this.deviceID = deviceID;
+		this.mmr=mmr;
+		this.wmr=wmr;
 	}
 	public String getName() {
 		return name;
@@ -208,11 +212,15 @@ public class EzScreenServer {
 			txtRecord.put("txtvers", "20140515");
 			txtRecord.put("srcvers", "20140515");
 			txtRecord.put("deviceid", deviceID);
+			//2015-03-13 erichwang for mac-mirror and windows-mirror
+			txtRecord.put("mmr", String.valueOf(mmr));
+			txtRecord.put("wmr", String.valueOf(wmr));
 			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord));
 			bonjourServiceAdvertiser.register();
 			if (ezScreenServerDelegate != null) {
 				ezScreenServerDelegate.onInitializationFinished();
 			}
+			
 		} catch (IOException e) {
 			Log.e(TAG, "initialize android rx failed", e);
 			if (ezScreenServerDelegate != null) {

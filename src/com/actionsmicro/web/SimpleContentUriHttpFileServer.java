@@ -36,7 +36,8 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 		this.contentUri = contentUri;
 	}
 
-	public void stop() {
+	@Override
+    public void stop() {
 		super.stop();
 	}
 	public String getIPAddress(boolean useIPv4) { //TODO  DRY
@@ -62,7 +63,8 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 		}
 		return null;
 	}
-	public Response serve(IHTTPSession session) {
+	@Override
+    public Response serve(IHTTPSession session) {
 		Map<String, String> header = session.getHeaders();
 		Log.d(TAG, "serve: "+session.getMethod()+" range:"+header.get("range"));
         return serveFile(Collections.unmodifiableMap(header));
@@ -75,7 +77,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 				if (cursor != null && cursor.moveToFirst()) {
 					int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
 					if (!cursor.isNull(sizeIndex)) {
-						contentLength = Long.valueOf(cursor.getString(sizeIndex));
+					    contentLength = Double.valueOf(cursor.getString(sizeIndex)).longValue();
 					} else {
 						contentLength = cursor.getLong(sizeIndex);
 					}
@@ -191,11 +193,13 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
 	private Response createResponse(Response.Status status, String mimeType, String message) {
         Response res = new Response(status, mimeType, message);
+        res.setChunkedTransfer(true);
         res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
 	private Response createResponse(Response.Status status, String mimeType, InputStream message) {
         Response res = new Response(status, mimeType, message);
+        res.setChunkedTransfer(true);
         res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
