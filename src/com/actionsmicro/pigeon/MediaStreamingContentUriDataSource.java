@@ -29,7 +29,7 @@ public class MediaStreamingContentUriDataSource extends
 			if (cursor != null && cursor.moveToFirst()) {
 				int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
 				if (!cursor.isNull(sizeIndex)) {
-					contentLength = Long.valueOf(cursor.getString(sizeIndex));
+					contentLength = Double.valueOf(cursor.getString(sizeIndex)).longValue();
 				} else {
 					contentLength = cursor.getInt(sizeIndex);
 				}

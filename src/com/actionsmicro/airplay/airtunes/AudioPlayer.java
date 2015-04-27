@@ -164,7 +164,11 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 						}
 					} while (!decoderThreadShouldStop);
 				} catch (IllegalStateException e) {
-					
+					android.util.Log.e(TAG, Thread.currentThread().getName() + android.util.Log.getStackTraceString(e));
+				} catch (Exception e) {
+					android.util.Log.e(TAG, Thread.currentThread().getName() + android.util.Log.getStackTraceString(e));
+				} catch (Error e) {
+					android.util.Log.e(TAG, Thread.currentThread().getName() + android.util.Log.getStackTraceString(e));
 				}
 				Log.d(TAG, Thread.currentThread().getName() + " ends");
 			}
@@ -198,8 +202,10 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 						try {
 							outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 500000);
 						} catch(Exception e) {
-							Log.e(TAG, "dequeueOutputBuffer:"+e.getClass());
+							Log.e(TAG, "dequeueOutputBuffer:"+e.getClass() + android.util.Log.getStackTraceString(e));
 							break;
+						} catch(Error e) {	
+							android.util.Log.e(TAG, Thread.currentThread().getName() + android.util.Log.getStackTraceString(e));
 						} finally {
 
 						}
@@ -230,8 +236,12 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 						}
 					}
 				} catch (IllegalStateException e) {
-					
-				}
+					android.util.Log.e(TAG, Thread.currentThread().getName() + android.util.Log.getStackTraceString(e));
+				} catch(Exception e) {
+					android.util.Log.e(TAG, Thread.currentThread().getName() + android.util.Log.getStackTraceString(e));
+				} catch(Error e) {	
+					android.util.Log.e(TAG, Thread.currentThread().getName() + android.util.Log.getStackTraceString(e));
+				}	
 				track.stop();
 				track.release();
 				Log.d(TAG, Thread.currentThread().getName() + " ends");

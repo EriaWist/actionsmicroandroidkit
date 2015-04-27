@@ -1,5 +1,6 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import android.graphics.YuvImage;

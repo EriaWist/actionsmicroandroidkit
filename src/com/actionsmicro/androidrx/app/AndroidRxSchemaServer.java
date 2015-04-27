@@ -107,6 +107,11 @@ public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 				useTimeJSONObject.put("ezair_mirror", getFunctionUsedTime(RxFunction.EZAIR_MIRROR));
 			jsonObject.put("use_time", useTimeJSONObject);
 			
+			jsonObject.put("android_build_board", android.os.Build.BOARD);
+			jsonObject.put("android_build_brand", android.os.Build.BRAND);
+			jsonObject.put("android_build_device", android.os.Build.DEVICE);
+			jsonObject.put("android_build_hardware", android.os.Build.HARDWARE);
+			jsonObject.put("android_build_product", android.os.Build.PRODUCT);
 			
 		} catch (JSONException e) {
 			e.printStackTrace();
@@ -119,7 +124,7 @@ public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
-		sendAndroidRxInfo();
+//		sendAndroidRxInfo();
 		
 	}
 
