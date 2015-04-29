@@ -50,10 +50,11 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 	private int nTcpListenedPort;
 	private String ezScreenDeviceUUID;
 	private int nHostPort;
+	private static final int JSONRPC_CLIENT_LISTENED_PORT=10008;
 	public AndroidP2PRxClient(Context context, String ezScreenUUID, int port) {
 		//TODO:modified by eric 
 		//start connclient(hostuuid, hostport, client_listened_port)
-		nTcpListenedPort = 10008;
+		nTcpListenedPort = JSONRPC_CLIENT_LISTENED_PORT;
 		nHostPort = port;
 		ezScreenDeviceUUID=ezScreenUUID;
 		//int nTimeoutMSCnt=10000;
@@ -485,7 +486,7 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 			jsonRpcSession = null;
 		}
 		
-		EzCastSdk.getp2phelper().stopConnClient(nTcpListenedPort, ezScreenDeviceUUID, nHostPort);
+		EzCastSdk.getp2phelper().stopConnClient(JSONRPC_CLIENT_LISTENED_PORT, ezScreenDeviceUUID, nHostPort);
 		
 	}
 

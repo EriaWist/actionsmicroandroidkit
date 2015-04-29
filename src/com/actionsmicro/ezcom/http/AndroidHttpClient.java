@@ -80,7 +80,7 @@ public final class AndroidHttpClient implements HttpClient {
     public static long DEFAULT_SYNC_MIN_GZIP_BYTES = 256;
 
     // Default connection and socket timeout of 60 seconds.  Tweak to taste.
-    private static final int SOCKET_OPERATION_TIMEOUT = 10 * 1000;
+    private static final int SOCKET_OPERATION_TIMEOUT = 30 * 1000; // modified by eric for p2p 10 * 1000;
 
     private static final String TAG = "AndroidHttpClient";
 
