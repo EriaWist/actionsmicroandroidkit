@@ -34,6 +34,7 @@ import com.actionsmicro.utils.Log;
  */
 public class Client {
 	protected static final int STREAM_FORMAT_JEPG = 1;
+	protected static final int STREAM_FORMAT_PCM = 5;
 	protected static final int EZ_DISPLAY_HEADER_SIZE = 32;
 	protected static final int PICO_PIC_FORMAT_CMD = 2;
 	private static final int PICO_HEARTBEAT = 4;
@@ -176,14 +177,14 @@ public class Client {
 		notificationListeners = null;
 	}
 	private void cleanUp(boolean stop) {
-		if (compressionBuffer != null) {
+		if (imgCompressionBuffer != null) {
 			try {
-				compressionBuffer.close();
+				imgCompressionBuffer.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			} finally {
-				compressionBuffer = null;
-				compressedBufferWidth = compressedBufferHeight = 0;
+				imgCompressionBuffer = null;
+				imgCompressedBufferWidth = imgCompressedBufferHeight = 0;
 			}
 		}
 		final ArrayList<Job> expiredJobs = new ArrayList<Job>();
@@ -200,16 +201,26 @@ public class Client {
 			pendingJobs.add(Job.nullJob);			
 		}
 	}
-	private ByteArrayOutputStream compressionBuffer;
-	private int compressedBufferWidth;
-	private int compressedBufferHeight;
-	private ByteArrayOutputStream getCompressionBuffer() {
+	private ByteArrayOutputStream imgCompressionBuffer;
+	private int imgCompressedBufferWidth;
+	private int imgCompressedBufferHeight;
+	private ByteArrayOutputStream getImageCompressionBuffer() {
 		// for performance reason we keep it as member
-		if (compressionBuffer == null) {
-			compressionBuffer = new ByteArrayOutputStream(1024*1024);
+		if (imgCompressionBuffer == null) {
+			imgCompressionBuffer = new ByteArrayOutputStream(1024*1024);
 		}
-		return compressionBuffer;
+		return imgCompressionBuffer;
 	}
+	
+	private ByteArrayOutputStream audioCompressionBuffer;
+    private ByteArrayOutputStream getAudioCompressionBuffer() {
+        // for performance reason we keep it as member
+        if (audioCompressionBuffer == null) {
+            audioCompressionBuffer = new ByteArrayOutputStream(1024*1024);
+        }
+        return audioCompressionBuffer;
+    }
+	
 	protected static final int SOCKET_OUTPUT_STREAM_BUFFER_SIZE = 8192;
 	/**
 	 * Send image to server by using specified format and quality synchronously.
@@ -228,11 +239,11 @@ public class Client {
 					final int width = bitmap.getWidth();
 					final int height = bitmap.getHeight();
 					Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
-					getCompressionBuffer().reset();
-					compressedBufferWidth = compressedBufferHeight = 0;
+					getImageCompressionBuffer().reset();
+					imgCompressedBufferWidth = imgCompressedBufferHeight = 0;
 					Log.d(TAG, "Start compress");
-					bitmap.compress(format, quailty, getCompressionBuffer());
-					Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
+					bitmap.compress(format, quailty, getImageCompressionBuffer());
+					Log.d(TAG, "Done compress. Size:" + getImageCompressionBuffer().size());
 					sendCompressedBufferToServer(width, height);
 				}
 			}
@@ -266,12 +277,12 @@ public class Client {
 				final int width = yuvImage.getWidth();
 				final int height = yuvImage.getHeight();
 				Log.i(TAG, "sentImageToServer width=" + width+",height=" + height);
-				getCompressionBuffer().reset();
-				compressedBufferWidth = compressedBufferHeight = 0;
+				getImageCompressionBuffer().reset();
+				imgCompressedBufferWidth = imgCompressedBufferHeight = 0;
 				Log.d(TAG, "Start compress");
 				android.graphics.Rect rect = new android.graphics.Rect(0, 0, width, height); 
-				yuvImage.compressToJpeg(rect, quailty, getCompressionBuffer());
-				Log.d(TAG, "Done compress. Size:" + getCompressionBuffer().size());
+				yuvImage.compressToJpeg(rect, quailty, getImageCompressionBuffer());
+				Log.d(TAG, "Done compress. Size:" + getImageCompressionBuffer().size());
 				sendCompressedBufferToServer(width, height);	
 			}
 		}
@@ -289,9 +300,9 @@ public class Client {
 	private void sendCompressedBufferToServer(final int width, final int height)
 			throws IOException, IllegalArgumentException {
 		synchronized (this) {
-			compressedBufferWidth = width;
-			compressedBufferHeight = height;
-			final byte[] compressedBuffer = getCompressionBuffer().toByteArray();
+			imgCompressedBufferWidth = width;
+			imgCompressedBufferHeight = height;
+			final byte[] compressedBuffer = getImageCompressionBuffer().toByteArray();
 			sendJpegImageBytesToServer(compressedBuffer, width, height);
 		}
 	}
@@ -309,6 +320,21 @@ public class Client {
 			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
 		}
 	}
+	
+	private void sendAudioBytesToServer(final byte[] audioData) throws IOException {
+		synchronized (this) {
+			Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
+			Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+			BufferedOutputStream socketStream = null;
+			Log.d(TAG, "try to sentAudioToServer("+serverAddress+":"+portNumber+")");	
+			socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
+			socketStream.write(createPacketHeaderForSendingAudio(audioData.length).array());
+			socketStream.write(audioData);
+			socketStream.flush();
+			Log.d(TAG, "sentAudioToServer("+serverAddress+":"+portNumber+") done.");
+		}
+	}
+	
 	/**
 	 * Send image to server by using specified format and quality asynchronously. You can use {@link OnExceptionListener} and {@link BitmapManager} to handle exception and manage buffer life-cycles respectively.
 	 * @param bitmap The bitmap to be sent to the server/device.
@@ -370,7 +396,7 @@ public class Client {
 	public void sendJpegStreamToServer(InputStream inputStream) throws IOException, IllegalArgumentException {
 		if (canSendStream()) {
 			synchronized (this) {
-				final ByteArrayOutputStream compressionBuffer = getCompressionBuffer();
+				final ByteArrayOutputStream compressionBuffer = getImageCompressionBuffer();
 				compressionBuffer.reset();
 				final byte buffer[] = new byte[1024];
 				int sizeRead = 0;
@@ -385,6 +411,22 @@ public class Client {
 				if (decodeOptions.outMimeType.equals("image/jpeg")) {
 					sendCompressedBufferToServer(decodeOptions.outWidth, decodeOptions.outHeight);
 				}
+			}
+		}
+	}
+	
+	public void sendAudioStreamToServer(InputStream inputStream) throws IOException, IllegalArgumentException {
+		if (canSendStream()) {
+			synchronized (this) {
+				final ByteArrayOutputStream compressionBuffer = getAudioCompressionBuffer();
+				compressionBuffer.reset();
+				final byte buffer[] = new byte[1024];
+				int sizeRead = 0;
+				while ((sizeRead = inputStream.read(buffer)) != -1) {
+					compressionBuffer.write(buffer, 0, sizeRead);
+				}
+				final byte audioBytes[] = compressionBuffer.toByteArray();
+				sendAudioBytesToServer(audioBytes);
 			}
 		}
 	}
@@ -446,6 +488,25 @@ public class Client {
 		header.putInt(STREAM_FORMAT_JEPG); //jpeg == 1;
 		header.putInt(width);
 		header.putInt(height);
+		header.putInt(size);
+		return header;
+	}
+	private ByteBuffer createPacketHeaderForSendingAudio(int size) {
+		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+		header.order(ByteOrder.LITTLE_ENDIAN);	
+		// Sequence
+		header.putInt(getCommandSequenceNumber());
+		// TCP packet size = 24 + compressed image size
+		header.putInt(24+size);
+		// send image command
+		header.putInt(PICO_PIC_FORMAT_CMD); //tag == 2;
+		header.put((byte) 0); // flag = 0
+		header.put((byte) 16);
+		header.put((byte) 0); // reserve0
+		header.put((byte) 0); // reserve1
+		header.putInt(STREAM_FORMAT_PCM); //jpeg == 1;
+		header.putInt(0);
+		header.putInt(0);
 		header.putInt(size);
 		return header;
 	}
@@ -517,8 +578,8 @@ public class Client {
 		return "1";
 	}
 	public void resendLastImage() throws IOException, IllegalArgumentException {
-		if (compressionBuffer != null && compressedBufferWidth != 0 && compressedBufferHeight != 0) {
-			sendCompressedBufferToServer(compressedBufferWidth, compressedBufferHeight);
+		if (imgCompressionBuffer != null && imgCompressedBufferWidth != 0 && imgCompressedBufferHeight != 0) {
+			sendCompressedBufferToServer(imgCompressedBufferWidth, imgCompressedBufferHeight);
 		}
 	}
 	public enum RequestResult {

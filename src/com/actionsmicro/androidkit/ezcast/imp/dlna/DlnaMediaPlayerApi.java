@@ -150,7 +150,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 							}
 						}
 						if (mediaPlayerStateListener != null) {
-							mediaPlayerStateListener.mediaPlayerDidStop(DlnaMediaPlayerApi.this);
+							mediaPlayerStateListener.mediaPlayerDidStop(DlnaMediaPlayerApi.this, Cause.REMOTE);
 						}
 						commitMediaUsageTracking();
 					}
@@ -289,7 +289,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
         		detachedFileServer.stop();
         		stopPeriodicalPoller();
 				if (mediaPlayerStateListener != null) {
-					mediaPlayerStateListener.mediaPlayerDidStop(DlnaMediaPlayerApi.this);
+					mediaPlayerStateListener.mediaPlayerDidStop(DlnaMediaPlayerApi.this, Cause.USER);
 				}
 			}
             @Override

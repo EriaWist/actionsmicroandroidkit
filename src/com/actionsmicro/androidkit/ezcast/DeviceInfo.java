@@ -43,6 +43,7 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	protected abstract MessageApi createMessageApi(MessageApiBuilder messageApiBuilder);
 	protected abstract AuthorizationApi createAuthorizationApi(AuthorizationApiBuilder authorizationApiBuilder);
 	protected abstract DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder);
+	protected abstract AudioApi createAudioApi(AudioApiBuilder audioApiBuilder);
 	protected abstract MediaPlayerApi createMediaPlayerApi(MediaPlayerApiBuilder mediaPlayerApiBuilder);
 	@Override
 	public int compareTo(DeviceInfo another) {

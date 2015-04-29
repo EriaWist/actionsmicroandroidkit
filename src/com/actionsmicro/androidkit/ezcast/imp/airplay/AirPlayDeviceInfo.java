@@ -5,6 +5,8 @@ import javax.jmdns.ServiceInfo;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.actionsmicro.androidkit.ezcast.AudioApi;
+import com.actionsmicro.androidkit.ezcast.AudioApiBuilder;
 import com.actionsmicro.androidkit.ezcast.AuthorizationApi;
 import com.actionsmicro.androidkit.ezcast.AuthorizationApiBuilder;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
@@ -109,4 +111,10 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 		}
 		return getPropertyString(key);
 	}
+
+    @Override
+    protected AudioApi createAudioApi(AudioApiBuilder displayApiBuilder) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

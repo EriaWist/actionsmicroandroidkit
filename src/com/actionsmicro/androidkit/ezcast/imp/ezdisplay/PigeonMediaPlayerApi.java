@@ -134,10 +134,10 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				}
 
 				@Override
-				public void mediaStreamingDidStop(DataSource dataSource) {
+				public void mediaStreamingDidStop(DataSource dataSource, Cause cause) {
 					commitMediaUsageTracking();
 					if (mediaPlayerStateListener != null) {
-						mediaPlayerStateListener.mediaPlayerDidStop(PigeonMediaPlayerApi.this);
+						mediaPlayerStateListener.mediaPlayerDidStop(PigeonMediaPlayerApi.this, cause);
 					}
 				}
 

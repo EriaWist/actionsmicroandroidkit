@@ -1,5 +1,6 @@
 package com.actionsmicro.pigeon;
 
+import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
 
 
@@ -9,7 +10,7 @@ public interface MediaStreamingStateListener {
 			DataSource dataSource);
 
 	public abstract void mediaStreamingDidStop(
-			DataSource dataSource);
+			DataSource dataSource, Cause cause);
 
 	public abstract void medisStreamingFail(
 			DataSource dataSource, int resultCode);
