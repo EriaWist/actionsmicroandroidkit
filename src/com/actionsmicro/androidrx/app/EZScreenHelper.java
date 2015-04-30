@@ -28,6 +28,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
@@ -606,7 +607,15 @@ public class EZScreenHelper implements PlayerListener {
 									canvas.drawColor(Color.BLACK);
 									canvas.translate(leftPadding, topPadding);
 									canvas.scale(scaleFactor, scaleFactor);
-									canvas.drawBitmap(bitmap, 0, 0, null);
+									
+									//canvas.drawBitmap(bitmap, 0, 0, null);
+									//change to set antialias
+									Paint paint = new Paint();
+									paint.setAntiAlias(true);
+									paint.setFilterBitmap(true);
+									paint.setDither(true);
+									canvas.drawBitmap(bitmap, 0, 0, paint);
+									
 								} finally {
 									canvas.restoreToCount(savedState);
 									EZScreenHelper.this.getMjpegView().unlockCanvasAndPost(canvas);
