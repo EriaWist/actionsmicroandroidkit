@@ -3,6 +3,7 @@ package com.actionsmicro.androidkit.ezcast;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import android.content.Context;
 import android.os.Handler;
@@ -118,7 +119,7 @@ public class DeviceFinder {
 			}			
 		});			
 	}
-	private ArrayList<DeviceFinderBase> imps = new ArrayList<DeviceFinderBase>();
+	private CopyOnWriteArrayList<DeviceFinderBase> imps = new CopyOnWriteArrayList<DeviceFinderBase>();
 	private boolean searching;
 	/**
 	 * Get those devices which have neen discovered by the device finder.
@@ -161,7 +162,7 @@ public class DeviceFinder {
 		return context;
 	}
 	
-	protected ArrayList<DeviceFinderBase> getImps() {
+	protected CopyOnWriteArrayList<DeviceFinderBase> getImps() {
 		return imps;
 	}
 }
