@@ -152,7 +152,7 @@ public class EzScreenServer {
 			String strHostUUID=P2PWebApi.getEzScreenHostuuidFromSharePreferences(context);//EzScreenServer.this.name;
 			String account=EzCastSdk.getp2pwebapi().getEzcastAccountFromSharePreferences();
 			EzCastSdk.getp2pwebapi().DeleteAccountDevice(account, strHostUUID);
-			EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
+			//EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
 			//end
 		}
 	}	

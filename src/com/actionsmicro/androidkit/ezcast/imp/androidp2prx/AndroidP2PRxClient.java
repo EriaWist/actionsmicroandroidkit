@@ -287,9 +287,9 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 				});
 				
 				//TODO: modified by eric 
-				String strHostUUID=P2PWebApi.getEzScreenCiientMjpguuidFromSharePreferences(context);
-				int nTimeoutMS=5000;
-				EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
+				//String strHostUUID=P2PWebApi.getEzScreenCiientMjpguuidFromSharePreferences(context);
+				//int nTimeoutMS=5000;
+				//EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
 				//int port = simpleMotionJpegHttpServer.getListeningPort();
 				//String type = "mjpg";
 				//EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
@@ -428,9 +428,9 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 		}
 		
 		//TODO: modified by eric
-		String strHostUUID=P2PWebApi.getEzScreenCiientJsonrpcCallbackuuidFromSharePreferences(context);//EzScreenServer.this.name;
-		int nTimeoutMS=5000;
-		EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
+		//String strHostUUID=P2PWebApi.getEzScreenCiientJsonrpcCallbackuuidFromSharePreferences(context);//EzScreenServer.this.name;
+		//int nTimeoutMS=5000;
+		//EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
 		//int port = jsonRpcOverHttpServer.getListeningPort();
 		//String type = "jsonrpc";
 		//EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
@@ -468,8 +468,8 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 		if (jsonRpcOverHttpServer != null) {
 			jsonRpcOverHttpServer.stop();
 			jsonRpcOverHttpServer = null;
-			String strHostUUID=P2PWebApi.getEzScreenCiientJsonrpcCallbackuuidFromSharePreferences(context);//EzScreenServer.this.name;
-			EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
+			//String strHostUUID=P2PWebApi.getEzScreenCiientJsonrpcCallbackuuidFromSharePreferences(context);//EzScreenServer.this.name;
+			//EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
 		}
 		
 		if (networkThread != null) {
@@ -568,6 +568,7 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 		}
 		android.util.Log.d(TAG, "eric p2p mediaUriString before modified= "+url);
 		String mediaUriString = url;
+		String strHostUUID=P2PWebApi.getEzScreenHostuuidFromSharePreferences(context);
 		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
 				mediaUri.getScheme().equalsIgnoreCase("file")) {
 			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
@@ -579,9 +580,9 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 			
 			//mediaUriString = simpleHttpFileServer.getServerUrl();
 			//TODO: modified by eric
-			String strHostUUID=P2PWebApi.getEzScreenCiientContentuuidFromSharePreferences(context);
-			int nTimeoutMS=5000;
-			EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
+			//String strHostUUID=P2PWebApi.getEzScreenCiientContentuuidFromSharePreferences(context);
+			//int nTimeoutMS=5000;
+			//EzCastSdk.getp2phelper().starConntHost(strHostUUID, P2PWebApi.mCONN_SERVICE_DOMAIN, P2PWebApi.mSERVICE_PORT, nTimeoutMS);
 			//int port = simpleHttpFileServer.getListeningPort();
 			//String type = "content";
 			//EzCastSdk.getp2pwebapi().UpdateHostUUIDPort(strHostUUID,String.valueOf(port), type);
@@ -594,8 +595,8 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 		params.put("url", mediaUriString);
 		//params.put("callback", jsonRpcOverHttpServer.getServerUrl());
 		//TODO: modified by eric
-		String strCallbackHostUUID=P2PWebApi.getEzScreenCiientJsonrpcCallbackuuidFromSharePreferences(context);
-		String callbackUri= jsonRpcOverHttpServer.getServerUrl()+"?hostuuid="+strCallbackHostUUID;
+		//String strCallbackHostUUID=P2PWebApi.getEzScreenCiientJsonrpcCallbackuuidFromSharePreferences(context);
+		String callbackUri= jsonRpcOverHttpServer.getServerUrl()+"?hostuuid="+strHostUUID;
 		android.util.Log.d(TAG, "eric p2p callbackUri before modified= "+jsonRpcOverHttpServer.getServerUrl());
 		android.util.Log.d(TAG, "eric p2p callbackUri after modified= "+callbackUri);
 		params.put("callback", callbackUri);
@@ -618,7 +619,8 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 	@Override
 	public void startDisplaying() {
 		final HashMap<String, Object> params = new HashMap<String, Object>();
-		String strHostUUID=P2PWebApi.getEzScreenCiientMjpguuidFromSharePreferences(context);
+		//String strHostUUID=P2PWebApi.getEzScreenCiientMjpguuidFromSharePreferences(context);
+		String strHostUUID=P2PWebApi.getEzScreenHostuuidFromSharePreferences(context);
 		String url=getMjpegServer().getServerUrl();
 		url=url+"?hostuuid="+strHostUUID;
 		params.put("url", url);
@@ -638,8 +640,8 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 			simpleMotionJpegHttpServer = null;
 			
 			//TODO: modified by eric 
-			String strHostUUID=P2PWebApi.getEzScreenCiientMjpguuidFromSharePreferences(context);
-			EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
+			//String strHostUUID=P2PWebApi.getEzScreenCiientMjpguuidFromSharePreferences(context);
+			//EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
 			//end
 		}
 	}
@@ -677,8 +679,8 @@ public class AndroidP2PRxClient implements DisplayApi, MediaPlayerApi {
 			simpleHttpFileServer = null;
 			
 			//TODO: modified by eric
-			String strHostUUID=P2PWebApi.getEzScreenCiientContentuuidFromSharePreferences(context);
-			EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
+			//String strHostUUID=P2PWebApi.getEzScreenCiientContentuuidFromSharePreferences(context);
+			//EzCastSdk.getp2phelper().stopConntHost(strHostUUID);
 			//end
 		}
 	}
