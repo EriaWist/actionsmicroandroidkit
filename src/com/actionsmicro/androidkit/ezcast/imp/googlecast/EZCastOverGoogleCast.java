@@ -673,28 +673,30 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 						@Override
 						public void onStatusUpdated() {
 							MediaStatus mediaStatus = mRemoteMediaPlayer.getMediaStatus();
-							Log.d(TAG,  ": onStatusUpdated:" + mediaStatus.getPlayerState() +
-									" duration:" + mRemoteMediaPlayer.getStreamDuration() + 
-									" position:"+ mRemoteMediaPlayer.getApproximateStreamPosition());
-							switch (mediaStatus.getPlayerState()) {
-							case MediaStatus.PLAYER_STATE_PLAYING:
-								playerState = State.PLAYING;
-								startStreamPositionTimer();
-								break;
-							case MediaStatus.PLAYER_STATE_PAUSED:
-								playerState = State.PAUSED;
-								stopStreamPositionTimer();
-								break;								
-							case MediaStatus.PLAYER_STATE_BUFFERING:
-								break;
-							case MediaStatus.PLAYER_STATE_UNKNOWN:
-								break;
-							case MediaStatus.PLAYER_STATE_IDLE:
-								playerState = State.STOPPED;
-								if (mRemoteMediaPlayer.getStreamDuration() != 0) {
-									handleMediaPlayerStop(Cause.REMOTE);
+							if (mediaStatus != null) {
+								Log.d(TAG,  ": onStatusUpdated:" + mediaStatus.getPlayerState() +
+										" duration:" + mRemoteMediaPlayer.getStreamDuration() + 
+										" position:"+ mRemoteMediaPlayer.getApproximateStreamPosition());
+								switch (mediaStatus.getPlayerState()) {
+								case MediaStatus.PLAYER_STATE_PLAYING:
+									playerState = State.PLAYING;
+									startStreamPositionTimer();
+									break;
+								case MediaStatus.PLAYER_STATE_PAUSED:
+									playerState = State.PAUSED;
+									stopStreamPositionTimer();
+									break;								
+								case MediaStatus.PLAYER_STATE_BUFFERING:
+									break;
+								case MediaStatus.PLAYER_STATE_UNKNOWN:
+									break;
+								case MediaStatus.PLAYER_STATE_IDLE:
+									playerState = State.STOPPED;
+									if (mRemoteMediaPlayer.getStreamDuration() != 0) {
+										handleMediaPlayerStop(Cause.REMOTE);
+									}
+									break;
 								}
-								break;
 							}
 						}
 					});
