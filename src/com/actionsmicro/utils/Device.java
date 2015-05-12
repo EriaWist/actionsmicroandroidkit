@@ -13,6 +13,8 @@ import android.util.DisplayMetrics;
 import android.view.Surface;
 import android.view.WindowManager;
 
+import com.actionsmicro.p2p.P2PWebApi;
+
 public class Device {
 
 	public static final String DEVICE_TYPE_PHONE = "phone";
@@ -109,7 +111,10 @@ public class Device {
 //		Integer hex = Integer.parseInt(mac3End, 16 );
 //		return "EZCastScreen" + hex;
 		String uuid = getUUID(context, preferenceKey);
-		return "EZCastScreen-" + uuid.substring(uuid.length()-3);
+		//TODO:modified by eric
+		String deviceuuid= "EZCastScreen-" + uuid.substring(uuid.length()-3);
+		P2PWebApi.saveEzScreenHostuuidToSharePreferences(deviceuuid, context);
+		return deviceuuid;
 	}
 	public static String getUUID(Context context, String preferenceKey) {
 		String uuidString = PreferenceManager.getDefaultSharedPreferences(context).getString(preferenceKey, ""); 

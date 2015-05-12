@@ -34,12 +34,15 @@ import com.actionsmicro.analytics.tracker.CompoundTracker;
 import com.actionsmicro.analytics.tracker.HashUtils;
 import com.actionsmicro.analytics.tracker.LogTracker;
 import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceFinder;
+import com.actionsmicro.androidkit.ezcast.imp.androidp2prx.AndroidP2PRxDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.androidkit.ezcast.imp.dlna.DlnaDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder.ProjectorInfoFilter;
 import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastFinder;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
+import com.actionsmicro.p2p.P2PHelper;
+import com.actionsmicro.p2p.P2PWebApi;
 import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.future.Future;
@@ -71,6 +74,9 @@ public class EzCastSdk {
 	private Future<JSONObject> initTask;
 	private boolean initializing;
 	private String packageId;
+	
+	public static P2PWebApi p2pwebapi= null;
+	public static P2PHelper p2phelper= null;
 	public interface InitializationListener {
 		/**
 		 * Called when initialization is successful.
@@ -117,9 +123,23 @@ public class EzCastSdk {
 		}
 		compoundTracker.add(new ActionsTracker(context, appKey, appSecret));
 		tracker = compoundTracker;
+		
+		p2pwebapi= new P2PWebApi();
+		p2phelper= new P2PHelper(context); 
+		
 		if (sharedEzCastSdk == null) {
 			sharedEzCastSdk = this;
 		}
+	}
+	
+	public static P2PWebApi getp2pwebapi()
+	{
+		return p2pwebapi;
+	}
+	
+	public static P2PHelper getp2phelper()
+	{
+		return p2phelper;
 	}
 	/**
 	 * Get shared instance of EzCastSdk. Return null if none exists.
@@ -448,6 +468,7 @@ public class EzCastSdk {
 				});
 			}
 		}
+		deviceFinder.addDeviceFinderImp(new AndroidP2PRxDeviceFinder(deviceFinder));
 		if (supportList.contains("airplay")) {
 			deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
 		}
