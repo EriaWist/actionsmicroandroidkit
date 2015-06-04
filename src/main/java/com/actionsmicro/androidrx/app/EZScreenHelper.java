@@ -155,14 +155,7 @@ public class EZScreenHelper implements PlayerListener {
 			initMjpegView();
 			addView(mjpegView);
 		}
-		if (needToLoadAirPlay()) {
-			initMirrorView();
-			addView(mirrorView);
-			photoView = new ImageView(context);
-			container.addView(photoView);
-			hidePhotoView();
-			addView(photoView);
-		}
+
 		androidRxSchemaServer = new AndroidRxSchemaServer(context);
 //		try {
 //			androidRxSchemaServer.start();
@@ -1089,7 +1082,17 @@ public class EZScreenHelper implements PlayerListener {
 				}
 				
 			}));
+
+            if (needToLoadAirPlay()) {
+                initMirrorView();
+                addView(mirrorView);
+                photoView = new ImageView(context);
+                container.addView(photoView);
+                hidePhotoView();
+                addView(photoView);
+            }
 			alreadyFailed = false;
+
 			this.getAirplayService().start();
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
