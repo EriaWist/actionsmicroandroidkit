@@ -92,6 +92,12 @@ public class AirplayServer extends Thread {
 		}
 	}
 	public void sendReverseResponse(String body) {
+
+        if (null == reverseResponse) {
+            logger.log(Level.INFO, "reverseResponse is null!!");
+            return;
+        }
+
 		for (String session : reverseResponse.keySet()) {
 			sendReverseResponse(session, body);
 		}
