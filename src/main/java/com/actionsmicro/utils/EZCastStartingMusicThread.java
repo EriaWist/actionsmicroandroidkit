@@ -17,8 +17,16 @@ public class EZCastStartingMusicThread {
 			@Override
 			public void run() {
 				final MediaPlayer mediaPlayer = MediaPlayer.create(context, rawID);
-				mediaPlayer.start();
-			}
+                if(null != mediaPlayer) {
+                    mediaPlayer.start();
+                }
+                mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                    @Override
+                    public void onCompletion(MediaPlayer mediaPlayer) {
+                        mediaPlayer.release();
+                    }
+                });
+            }
 
 		});
 	}
