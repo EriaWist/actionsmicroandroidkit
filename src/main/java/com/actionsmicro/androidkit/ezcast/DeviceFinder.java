@@ -55,7 +55,7 @@ public class DeviceFinder {
 		public void onDeviceAdded(DeviceFinder deviceFinder, DeviceInfo device);
 		public void onDeviceRemoved(DeviceFinder deviceFinder, DeviceInfo device);		
 	}
-	private ArrayList<Listener> listeners = new ArrayList<Listener>();
+	private CopyOnWriteArrayList<Listener> listeners = new CopyOnWriteArrayList<Listener>();
 	/**
 	 * Add listener to the device finder.
 	 * @param listener {@link Listener}
