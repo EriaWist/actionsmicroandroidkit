@@ -528,7 +528,7 @@ public class EZScreenHelper implements PlayerListener {
 		showWebView();
 		displayUrl(stopImage);
 	}
-	private void cleanUpServers() {
+	private synchronized void cleanUpServers() {
 		if (this.getEzScreenServer() != null) {
 			this.getEzScreenServer().stop();
 		}
@@ -1083,14 +1083,6 @@ public class EZScreenHelper implements PlayerListener {
 				
 			}));
 
-            if (needToLoadAirPlay()) {
-                initMirrorView();
-                addView(mirrorView);
-                photoView = new ImageView(context);
-                container.addView(photoView);
-                hidePhotoView();
-                addView(photoView);
-            }
 			alreadyFailed = false;
 
 			this.getAirplayService().start();
@@ -1467,6 +1459,14 @@ public class EZScreenHelper implements PlayerListener {
 			initEzAndroidRx(mmr, wmr);
 		}
 		if (((servers & SERVER_AIRPLAY) != 0) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+
+            initMirrorView();
+            addView(mirrorView);
+            photoView = new ImageView(context);
+            container.addView(photoView);
+            hidePhotoView();
+            addView(photoView);
+
 			new Thread(new Runnable() {
 
 				@Override

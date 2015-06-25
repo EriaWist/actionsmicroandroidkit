@@ -2,6 +2,7 @@ package com.actionsmicro.androidkit.ezcast.imp.dlna;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,7 +41,7 @@ class UpnpService {
 		}
 		return upnpService.getControlPoint().getRegistry().getDevice(new UDN(uid), false); 
 	}
-	private List<DlnaDeviceListener> listeners = new ArrayList<DlnaDeviceListener>();
+	private List<DlnaDeviceListener> listeners = new CopyOnWriteArrayList<DlnaDeviceListener>();
 	
 	private UpnpService() {
 		upnpService = new UpnpServiceImpl(new AndroidUpnpServiceConfiguration(), new RegistryListener() {
