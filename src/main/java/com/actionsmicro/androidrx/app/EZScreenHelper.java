@@ -528,7 +528,7 @@ public class EZScreenHelper implements PlayerListener {
 		showWebView();
 		displayUrl(stopImage);
 	}
-	private void cleanUpServers() {
+	private synchronized void cleanUpServers() {
 		if (this.getEzScreenServer() != null) {
 			this.getEzScreenServer().stop();
 		}
