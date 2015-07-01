@@ -590,6 +590,12 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			sendJpegEncodedScreenData(inputStream, inputStream.available());
 		}
 	}
+
+	@Override
+	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+
+	}
+
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 	private State currentState = State.STOPPED;
 	private TrackableApi tracker;

@@ -114,4 +114,14 @@ public interface DisplayApi extends Api {
 	 * @since 2.0
 	 */
 	public void sendYuvScreenData(YuvImage yuvImage, int quailty) throws Exception;
+
+	/**
+	 * Display H264 data on the device.
+	 * @param contents H264 raw data.
+	 * @param width  Width of the H264 data
+	 * @param height Height of the H264 data.
+	 * @throws Exception
+	 * @since 2.4
+	 */
+	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception;
 }

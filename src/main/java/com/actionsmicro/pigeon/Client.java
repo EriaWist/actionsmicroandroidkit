@@ -35,6 +35,7 @@ import com.actionsmicro.utils.Log;
 public class Client {
 	protected static final int STREAM_FORMAT_JEPG = 1;
 	protected static final int STREAM_FORMAT_PCM = 5;
+    protected static final int STREAM_FORMAT_PIC_H264 = 7;
 	protected static final int EZ_DISPLAY_HEADER_SIZE = 32;
 	protected static final int PICO_PIC_FORMAT_CMD = 2;
 	private static final int PICO_HEARTBEAT = 4;
@@ -320,6 +321,21 @@ public class Client {
 			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
 		}
 	}
+
+    public void sendH264ImageBytesToServer(final byte[] h264Data,
+                                            final int width, final int height) throws IOException {
+        synchronized (this) {
+            Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
+            Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+            BufferedOutputStream socketStream = null;
+            Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");
+            socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
+            socketStream.write(createPacketHeaderForSendingH264Image(width, height, h264Data.length).array());
+            socketStream.write(h264Data);
+            socketStream.flush();
+            Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
+        }
+    }
 	
 	private void sendAudioBytesToServer(final byte[] audioData) throws IOException {
 		synchronized (this) {
@@ -473,24 +489,45 @@ public class Client {
 		return commandSequenceNumber++;
 	}
 	private ByteBuffer createPacketHeaderForSendingImage(int width, int height, int size) {
-		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
-		header.order(ByteOrder.LITTLE_ENDIAN);	
-		// Sequence
-		header.putInt(getCommandSequenceNumber());
-		// TCP packet size = 24 + compressed image size
-		header.putInt(24+size);
-		// send image command
-		header.putInt(PICO_PIC_FORMAT_CMD); //tag == 2;
-		header.put((byte) 0); // flag = 0
-		header.put((byte) 16);
-		header.put((byte) 0); // reserve0
-		header.put((byte) 0); // reserve1
-		header.putInt(STREAM_FORMAT_JEPG); //jpeg == 1;
-		header.putInt(width);
-		header.putInt(height);
-		header.putInt(size);
-		return header;
-	}
+        ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+        header.order(ByteOrder.LITTLE_ENDIAN);
+        // Sequence
+        header.putInt(getCommandSequenceNumber());
+        // TCP packet size = 24 + compressed image size
+        header.putInt(24+size);
+        // send image command
+        header.putInt(PICO_PIC_FORMAT_CMD); //tag == 2;
+        header.put((byte) 0); // flag = 0
+        header.put((byte) 16);
+        header.put((byte) 0); // reserve0
+        header.put((byte) 0); // reserve1
+        header.putInt(STREAM_FORMAT_JEPG); //jpeg == 1;
+        header.putInt(width);
+        header.putInt(height);
+        header.putInt(size);
+        return header;
+    }
+
+    private ByteBuffer createPacketHeaderForSendingH264Image(int width, int height, int size) {
+        ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+        header.order(ByteOrder.LITTLE_ENDIAN);
+        // Sequence
+        header.putInt(getCommandSequenceNumber());
+        // TCP packet size = 24 + compressed image size
+        header.putInt(24+size);
+        // send image command
+        header.putInt(PICO_PIC_FORMAT_CMD); //tag == 2;
+        header.put((byte) 0); // flag = 0
+        header.put((byte) 16);
+        header.put((byte) 0); // reserve0
+        header.put((byte) 0); // reserve1
+        header.putInt(STREAM_FORMAT_PIC_H264); //jpeg == 1;
+        header.putInt(width);
+        header.putInt(height);
+        header.putInt(size);
+        return header;
+    }
+
 	private ByteBuffer createPacketHeaderForSendingAudio(int size) {
 		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		header.order(ByteOrder.LITTLE_ENDIAN);	
