@@ -16,7 +16,7 @@ public class PigeonAudioApi extends PigeonApi implements AudioApi {
      * Send audio data to the device.
      * @param inputStream InputStream which wraps the PCM Audio data.
      * @throws Exception
-     * @since 2.0
+     * @since 2.3
      */
     @Override
     public void sendAudioEncodedData(InputStream inputStream) throws IllegalArgumentException, IOException {
