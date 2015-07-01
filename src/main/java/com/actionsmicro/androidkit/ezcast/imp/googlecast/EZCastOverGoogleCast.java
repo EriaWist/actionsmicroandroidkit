@@ -246,6 +246,12 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			}
 		}
 	}
+
+	@Override
+	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+
+	}
+
 	private ByteArrayOutputStream getCompressionBuffer() {
 		// for performance reason we keep it as member
 		if (compressionBuffer == null) {

@@ -1,6 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.dlna;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -178,6 +177,12 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 		requestRemoteToPlayTsStreamer();
 		displayYuvImageViaTsStreamer(yuvImage);
 	}
+
+	@Override
+	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+
+	}
+
 	private void displayYuvImageViaTsStreamer(YuvImage yuvImage) {
 		if (mp4Streamer != null) {
 			mp4Streamer.displayYuvImage(yuvImage);
