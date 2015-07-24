@@ -144,7 +144,7 @@ public class AikaImpl extends Aika {
 	public void sendEvent() {
 		try {
 			int eventId = AirplayState.EVENT_STOPPED;
-			int videoStatus = mProxy.getControlListener().videoStatus();
+			int videoStatus = mProxy.videoStatus();
 			switch (videoStatus) {
 			case AirplayState.STOPPED:
 				eventId = AirplayState.EVENT_STOPPED;
