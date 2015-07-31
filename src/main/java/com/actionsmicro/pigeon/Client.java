@@ -1,5 +1,12 @@
 package com.actionsmicro.pigeon;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.YuvImage;
+
+import com.actionsmicro.androidkit.ezcast.helper.ImageSender.BitmapManager;
+import com.actionsmicro.utils.Log;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -8,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -19,13 +27,6 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.YuvImage;
-
-import com.actionsmicro.androidkit.ezcast.helper.ImageSender.BitmapManager;
-import com.actionsmicro.utils.Log;
 
 /**
  * Client is a gateway for client to send image data to EZ Wifi server.
@@ -48,17 +49,17 @@ public class Client {
 	 * @see Client#getOnExceptionListener
 	 */
 	public interface OnExceptionListener {
-		public void onException(Client client, Exception e);
+		void onException(Client client, Exception e);
 	}
 	protected OnExceptionListener onExceptionListener;
 	
 	private BitmapManager bitmapManager;
 	
 	public interface OnNotificationListener {
-		public void onRemoteRequestToStart(final Client client, final int numberOfWindows, final int position);
-		public void onRemoteRequestToStop(final Client client);
-		public void onRemoteRequestToChangePostion(final Client client, final int numberOfWindows, final int position);
-		public void onRemoteRequestToDisconnect(final Client client);		
+		void onRemoteRequestToStart(final Client client, final int numberOfWindows, final int position);
+		void onRemoteRequestToStop(final Client client);
+		void onRemoteRequestToChangePostion(final Client client, final int numberOfWindows, final int position);
+		void onRemoteRequestToDisconnect(final Client client);
 	}
 	private OnNotificationListener onNotificationListener;
 	
@@ -156,8 +157,15 @@ public class Client {
 	}
 	
 	private void sendHeartbeat() throws IllegalArgumentException, IOException {
-		Log.d(TAG, "try to sendHeartbeat("+serverAddress+":"+portNumber+")");	
-		sendDataToRemote(createPacketHeaderForSendingHeartbeat().array());	
+		Log.d(TAG, "try to sendHeartbeat(" + serverAddress + ":" + portNumber + ")");
+		if (InetAddress.getByName(serverAddress).isReachable(1000)) {
+			Log.d(TAG, "reacheable");
+			sendDataToRemote(createPacketHeaderForSendingHeartbeat().array());
+		} else {
+			Log.d(TAG, "can't reacheable");
+			handleException(new Exception("Server UNREACHABLE"));
+			shouldStop = true;
+		}
 	}
 	/**
 	 * Stop and clean up this Client. You should not call any method of Client after {@link #stop()} is called.
@@ -646,7 +654,12 @@ public class Client {
 			}
 		}
 	}
-	private Observable onExceptionObservable = new Observable();
+	private Observable onExceptionObservable = new Observable(){
+		@Override
+		public boolean hasChanged() {
+			return true;
+		}
+	};
 	private class OnExceptionObserver implements Observer {
 		private OnExceptionListener listener;
 		public OnExceptionObserver(OnExceptionListener listener) {
