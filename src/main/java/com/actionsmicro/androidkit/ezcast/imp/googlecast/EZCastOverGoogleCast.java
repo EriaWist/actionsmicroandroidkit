@@ -497,10 +497,12 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 		return false;
 	}
+	private boolean byUser = false;
 	@Override
 	public boolean stop() {
 		if (mRemoteMediaPlayer != null &&
 				playerState != State.STOPPED) {
+			byUser = true;
 			Runnable stopPlaying = new Runnable() {
 
 				@Override
@@ -555,9 +557,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 			@Override
 			public void onResult(Status result) {
-				launchMediaPlayer(context, url, userAgentString, title);				
+				launchMediaPlayer(context, url, userAgentString, title);
 			}
-			
+
 		});
 		return true;
 	}
@@ -823,7 +825,11 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		stopHttpFileServer();		
 //		launcheEZCastApp(isDisplaying);
 		if (mediaPlayerStateListener != null) {
-			mediaPlayerStateListener.mediaPlayerDidStop(EZCastOverGoogleCast.this, cause);
+			if (!byUser)
+				mediaPlayerStateListener.mediaPlayerDidStop(EZCastOverGoogleCast.this, cause);
+			else
+				mediaPlayerStateListener.mediaPlayerDidStop(EZCastOverGoogleCast.this, Cause.UNKNOWN);
+			byUser = false;
 		}
 		if (trackableApi != null) {
 			trackableApi.commitMediaUsageTracking();
