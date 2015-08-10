@@ -192,7 +192,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		Log.d(TAG,   ": startDisplayingImp");
 		if (simpleMotionJpegHttpServer == null || ezcastChannel == null) {
 			connectEzCastChannel();
-			createMjpegServer();	
+			createMjpegServer();
+			if (getState() == State.PLAYING) {
+				return;
+			}
 			// { "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}
 			sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}", resultCallback);			
 		}
@@ -530,6 +533,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 							}
 							
 						});
+					} else {
+						playerState = State.STOPPED;
+						finishPendingTask(runnable);
 					}
 				}
 
