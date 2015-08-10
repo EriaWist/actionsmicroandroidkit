@@ -1,18 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -45,6 +32,19 @@ import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private static final double VOLUME_INCREMENT = 0.1;
@@ -166,7 +166,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		return false;
 	}
 	public synchronized void sendJpegEncodedScreenData(InputStream input, long length) {
-//		Log.d(TAG,   ": try to sendJpegEncodedScreenData");		
+//		Log.d(TAG,   ": try to sendJpegEncodedScreenData");
+		if (getState() == State.PLAYING) {
+			return;
+		}
 		if (simpleMotionJpegHttpServer != null) {
 //			Log.d(TAG,   ": sendJpegEncodedScreenData");
 			simpleMotionJpegHttpServer.sendJpegStream(input, length);
@@ -180,6 +183,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 	@Override
 	public void startDisplaying() {
+		if (getState() == State.PLAYING) {
+			return;
+		}
 		if (!isDisplaying) {
 			if (trackableApi != null) {
 				trackableApi.startTrackingWifiDisplay();
@@ -193,9 +199,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		if (simpleMotionJpegHttpServer == null || ezcastChannel == null) {
 			connectEzCastChannel();
 			createMjpegServer();
-			if (getState() == State.PLAYING) {
-				return;
-			}
 			// { "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}
 			sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}", resultCallback);			
 		}
@@ -519,7 +522,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 							public void onResult(MediaChannelResult result) {
 								
 								if (result.getStatus().isSuccess()) {
-									Log.d(TAG, "mRemoteMediaPlayer.stop success!");									
+									Log.d(TAG, "mRemoteMediaPlayer.stop success!");
 								} else {
 									Log.d(TAG, "mRemoteMediaPlayer.stop failed: code:"+result.getStatus().getStatusCode() + ";" + result.getStatus().getStatus());									
 									
@@ -628,7 +631,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 									if (mediaPlayerStateListener != null) {
 										mediaPlayerStateListener.mediaPlayerDidStart(EZCastOverGoogleCast.this);
 									}
-									long duration = mRemoteMediaPlayer.getStreamDuration()/1000;
+									long duration = mRemoteMediaPlayer.getStreamDuration() / 1000;
 									if (mediaPlayerStateListener != null) {
 										mediaPlayerStateListener.mediaPlayerDurationIsReady(EZCastOverGoogleCast.this, duration);
 									}
@@ -636,10 +639,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 										trackableApi.setMediaUsageDuration((int) duration);
 									}
 								} else {
-									Log.e(TAG, "Media loaded media failed: code:"+status.getStatusCode() + ";" + status.getStatus());
+									Log.e(TAG, "Media loaded media failed: code:" + status.getStatusCode() + ";" + status.getStatus());
 									PendingIntent resolution = status.getResolution();
 									if (resolution != null) {
-										Log.d(TAG, "pending resolution:"+resolution);
+										Log.d(TAG, "pending resolution:" + resolution);
 									}
 									if (mediaPlayerStateListener != null) {
 										mediaPlayerStateListener.mediaPlayerDidFailed(EZCastOverGoogleCast.this, AV_RESULT_ERROR_GENERIC); //TODO do code conversion 
