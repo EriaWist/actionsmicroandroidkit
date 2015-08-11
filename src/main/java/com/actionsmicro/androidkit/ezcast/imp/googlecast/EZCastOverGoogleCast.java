@@ -167,7 +167,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	public synchronized void sendJpegEncodedScreenData(InputStream input, long length) {
 //		Log.d(TAG,   ": try to sendJpegEncodedScreenData");
-		if (getState() == State.PLAYING) {
+		if (getState() == State.PLAYING && mIsStopping == false) {
 			return;
 		}
 		if (simpleMotionJpegHttpServer != null) {
@@ -183,16 +183,17 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 	@Override
 	public void startDisplaying() {
-		if (getState() == State.PLAYING) {
+		if (getState() == State.PLAYING && mIsStopping == false) {
 			return;
 		}
+
 		if (!isDisplaying) {
 			if (trackableApi != null) {
 				trackableApi.startTrackingWifiDisplay();
 			}
 		}
 		isDisplaying = true;
-		launcheEZCastApp(true);			
+		launcheEZCastApp(true);
 	}
 	private void startDisplayingImp(ResultCallback<Status> resultCallback) {
 		Log.d(TAG,   ": startDisplayingImp");
@@ -504,11 +505,13 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		return false;
 	}
 	private boolean byUser = false;
+	private boolean mIsStopping = false;
 	@Override
 	public boolean stop() {
 		if (mRemoteMediaPlayer != null &&
 				playerState != State.STOPPED) {
 			byUser = true;
+			mIsStopping =true;
 			Runnable stopPlaying = new Runnable() {
 
 				@Override
@@ -527,6 +530,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 									Log.d(TAG, "mRemoteMediaPlayer.stop failed: code:"+result.getStatus().getStatusCode() + ";" + result.getStatus().getStatus());									
 									
 								}
+								mIsStopping = false;
 								playerState = State.STOPPED;
 								handleMediaPlayerStop(Cause.USER);
 								if (trackableApi != null) {
@@ -537,6 +541,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 							
 						});
 					} else {
+						mIsStopping = false;
 						playerState = State.STOPPED;
 						finishPendingTask(runnable);
 					}
@@ -574,7 +579,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	private void launchMediaPlayer(final Context context, final String url, final String userAgentString,
 			final String title) {
-		launcheApplication("D3D8AEDC", new ResultCallback<Cast.ApplicationConnectionResult>() {
+		launcheApplication(getEzCastMediaPlayerId(), new ResultCallback<Cast.ApplicationConnectionResult>() {
 
 			@Override
 			public void onResult(Cast.ApplicationConnectionResult result) {
@@ -828,6 +833,11 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		if (BuildConfig.DEBUG) {
 			castAppId = GoogleCastFinder.CAST_DEV_APP_ID;
 		}
+		return castAppId;
+	}
+
+	private String getEzCastMediaPlayerId() {
+		String castAppId = GoogleCastFinder.CAST_MEDIA_PLAYER_ID;
 		return castAppId;
 	}
 	private void handleMediaPlayerStop(Cause cause) {
