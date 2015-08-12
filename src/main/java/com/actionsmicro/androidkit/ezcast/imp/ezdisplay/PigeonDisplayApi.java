@@ -1,13 +1,13 @@
 package com.actionsmicro.androidkit.ezcast.imp.ezdisplay;
 
-import java.io.InputStream;
-
 import android.graphics.YuvImage;
 
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.DisplayApiBuilder;
 import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.Client.OnNotificationListener;
+
+import java.io.InputStream;
 
 public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 
@@ -33,7 +33,7 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 
 			@Override
 			public void onRemoteRequestToStart(Client client,
-					int numberOfWindows, int position) {
+											   int numberOfWindows, int position) {
 				if (displayListener != null) {
 					displayListener.remoteRequestToStartDisplaying(PigeonDisplayApi.this, numberOfWindows, position);
 				}
@@ -48,7 +48,7 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 
 			@Override
 			public void onRemoteRequestToChangePostion(Client client,
-					int numberOfWindows, int position) {
+													   int numberOfWindows, int position) {
 				if (displayListener != null) {
 					displayListener.positionDidChange(PigeonDisplayApi.this, numberOfWindows, position);
 				}
@@ -60,7 +60,7 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 					displayListener.remoteRequestToDisconnect(PigeonDisplayApi.this);
 				}
 			}
-			
+
 		});
 	}
 	@Override
@@ -86,6 +86,13 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 			throws Exception {
 		if (pigeonClient != null) {
 			pigeonClient.sendImageToServer(yuvImage, quailty);
+		}
+	}
+
+	@Override
+	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+		if (pigeonClient != null) {
+			pigeonClient.sendH264ImageBytesToServer(contents, width, height);
 		}
 	}
 }

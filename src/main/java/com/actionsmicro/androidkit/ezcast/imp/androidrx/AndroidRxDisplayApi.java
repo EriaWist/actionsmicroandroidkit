@@ -1,6 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.androidrx;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 import android.graphics.YuvImage;
@@ -59,5 +58,10 @@ public class AndroidRxDisplayApi extends AndroidRxApi implements DisplayApi {
 		}
 		getAndroidRxClient().sendYuvScreenData(yuvImage, quailty);
 		
+	}
+
+	@Override
+	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+
 	}
 }

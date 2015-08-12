@@ -1,6 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 import android.graphics.YuvImage;
@@ -44,5 +43,10 @@ public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 			InputStream inputStream = helper.compressYuvImageToJpegStream(yuvImage, quailty);
 			sendJpegEncodedScreenData(inputStream, inputStream.available());
 		}
+	}
+
+	@Override
+	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+
 	}
 }

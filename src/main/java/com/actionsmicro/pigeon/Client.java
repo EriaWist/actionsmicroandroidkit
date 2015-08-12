@@ -1,5 +1,12 @@
 package com.actionsmicro.pigeon;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.YuvImage;
+
+import com.actionsmicro.androidkit.ezcast.helper.ImageSender.BitmapManager;
+import com.actionsmicro.utils.Log;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -8,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -20,13 +28,6 @@ import java.util.Observer;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.YuvImage;
-
-import com.actionsmicro.androidkit.ezcast.helper.ImageSender.BitmapManager;
-import com.actionsmicro.utils.Log;
-
 /**
  * Client is a gateway for client to send image data to EZ Wifi server.
  * @author James Chen
@@ -35,6 +36,7 @@ import com.actionsmicro.utils.Log;
 public class Client {
 	protected static final int STREAM_FORMAT_JEPG = 1;
 	protected static final int STREAM_FORMAT_PCM = 5;
+    protected static final int STREAM_FORMAT_PIC_H264 = 7;
 	protected static final int EZ_DISPLAY_HEADER_SIZE = 32;
 	protected static final int PICO_PIC_FORMAT_CMD = 2;
 	private static final int PICO_HEARTBEAT = 4;
@@ -47,17 +49,17 @@ public class Client {
 	 * @see Client#getOnExceptionListener
 	 */
 	public interface OnExceptionListener {
-		public void onException(Client client, Exception e);
+		void onException(Client client, Exception e);
 	}
 	protected OnExceptionListener onExceptionListener;
 	
 	private BitmapManager bitmapManager;
 	
 	public interface OnNotificationListener {
-		public void onRemoteRequestToStart(final Client client, final int numberOfWindows, final int position);
-		public void onRemoteRequestToStop(final Client client);
-		public void onRemoteRequestToChangePostion(final Client client, final int numberOfWindows, final int position);
-		public void onRemoteRequestToDisconnect(final Client client);		
+		void onRemoteRequestToStart(final Client client, final int numberOfWindows, final int position);
+		void onRemoteRequestToStop(final Client client);
+		void onRemoteRequestToChangePostion(final Client client, final int numberOfWindows, final int position);
+		void onRemoteRequestToDisconnect(final Client client);
 	}
 	private OnNotificationListener onNotificationListener;
 	
@@ -153,10 +155,17 @@ public class Client {
 	protected boolean shouldSendHeartbeat() {
 		return true;
 	}
-	
+
 	private void sendHeartbeat() throws IllegalArgumentException, IOException {
-		Log.d(TAG, "try to sendHeartbeat("+serverAddress+":"+portNumber+")");	
-		sendDataToRemote(createPacketHeaderForSendingHeartbeat().array());	
+		Log.d(TAG, "try to sendHeartbeat(" + serverAddress + ":" + portNumber + ")");
+		if (InetAddress.getByName(serverAddress).isReachable(8000)) {
+			Log.d(TAG, "reacheable");
+			sendDataToRemote(createPacketHeaderForSendingHeartbeat().array());
+		} else {
+			Log.d(TAG, "can't reacheable");
+			handleException(new Exception("Server UNREACHABLE"));
+			shouldStop = true;
+		}
 	}
 	/**
 	 * Stop and clean up this Client. You should not call any method of Client after {@link #stop()} is called.
@@ -320,6 +329,21 @@ public class Client {
 			Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
 		}
 	}
+
+    public void sendH264ImageBytesToServer(final byte[] h264Data,
+                                            final int width, final int height) throws IOException {
+        synchronized (this) {
+            Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
+            Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+            BufferedOutputStream socketStream = null;
+            Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");
+            socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
+            socketStream.write(createPacketHeaderForSendingH264Image(width, height, h264Data.length).array());
+            socketStream.write(h264Data);
+            socketStream.flush();
+            Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
+        }
+    }
 	
 	private void sendAudioBytesToServer(final byte[] audioData) throws IOException {
 		synchronized (this) {
@@ -473,24 +497,45 @@ public class Client {
 		return commandSequenceNumber++;
 	}
 	private ByteBuffer createPacketHeaderForSendingImage(int width, int height, int size) {
-		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
-		header.order(ByteOrder.LITTLE_ENDIAN);	
-		// Sequence
-		header.putInt(getCommandSequenceNumber());
-		// TCP packet size = 24 + compressed image size
-		header.putInt(24+size);
-		// send image command
-		header.putInt(PICO_PIC_FORMAT_CMD); //tag == 2;
-		header.put((byte) 0); // flag = 0
-		header.put((byte) 16);
-		header.put((byte) 0); // reserve0
-		header.put((byte) 0); // reserve1
-		header.putInt(STREAM_FORMAT_JEPG); //jpeg == 1;
-		header.putInt(width);
-		header.putInt(height);
-		header.putInt(size);
-		return header;
-	}
+        ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+        header.order(ByteOrder.LITTLE_ENDIAN);
+        // Sequence
+        header.putInt(getCommandSequenceNumber());
+        // TCP packet size = 24 + compressed image size
+        header.putInt(24+size);
+        // send image command
+        header.putInt(PICO_PIC_FORMAT_CMD); //tag == 2;
+        header.put((byte) 0); // flag = 0
+        header.put((byte) 16);
+        header.put((byte) 0); // reserve0
+        header.put((byte) 0); // reserve1
+        header.putInt(STREAM_FORMAT_JEPG); //jpeg == 1;
+        header.putInt(width);
+        header.putInt(height);
+        header.putInt(size);
+        return header;
+    }
+
+    private ByteBuffer createPacketHeaderForSendingH264Image(int width, int height, int size) {
+        ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
+        header.order(ByteOrder.LITTLE_ENDIAN);
+        // Sequence
+        header.putInt(getCommandSequenceNumber());
+        // TCP packet size = 24 + compressed image size
+        header.putInt(24+size);
+        // send image command
+        header.putInt(PICO_PIC_FORMAT_CMD); //tag == 2;
+        header.put((byte) 0); // flag = 0
+        header.put((byte) 16);
+        header.put((byte) 0); // reserve0
+        header.put((byte) 0); // reserve1
+        header.putInt(STREAM_FORMAT_PIC_H264); //jpeg == 1;
+        header.putInt(width);
+        header.putInt(height);
+        header.putInt(size);
+        return header;
+    }
+
 	private ByteBuffer createPacketHeaderForSendingAudio(int size) {
 		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		header.order(ByteOrder.LITTLE_ENDIAN);	
@@ -609,7 +654,12 @@ public class Client {
 			}
 		}
 	}
-	private Observable onExceptionObservable = new Observable();
+	private Observable onExceptionObservable = new Observable(){
+		@Override
+		public boolean hasChanged() {
+			return true;
+		}
+	};
 	private class OnExceptionObserver implements Observer {
 		private OnExceptionListener listener;
 		public OnExceptionObserver(OnExceptionListener listener) {
