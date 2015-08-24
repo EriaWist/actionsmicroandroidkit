@@ -93,9 +93,9 @@ public class AirplayUtil {
 				HttpProtocol.CRLF);
 		res.append("   </dict> </array>").append(HttpProtocol.CRLF);
 
-		res.append("  <key>playbackBufferEmpty</key> <true/>").append(
+		res.append("  <key>playbackBufferEmpty</key> <false/>").append(
 				HttpProtocol.CRLF);
-		res.append("  <key>playbackBufferFull</key> <false/>").append(
+		res.append("  <key>playbackBufferFull</key> <true/>").append(
 				HttpProtocol.CRLF);
 		res.append("  <key>playbackLikelyToKeepUp</key> <true/>").append(
 				HttpProtocol.CRLF);
