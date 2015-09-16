@@ -74,4 +74,9 @@ public class PigeonMessageApi extends TrackableApi implements MessageApi {
 		projector.sendJSONRPC(command);
 	}
 
+	@Override
+	public void sendJSONRPC(int encryptType, String command) {
+		projector.sendJSONRPC(encryptType,command);
+	}
+
 }

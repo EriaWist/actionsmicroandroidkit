@@ -1,5 +1,15 @@
 package com.actionsmicro.falcon;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.os.Parcel;
+import android.os.Parcelable;
+
+import com.actionsmicro.falcon.Falcon.ProjectorInfo.MessageListener;
+import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Utils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,16 +35,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.os.Parcel;
-import android.os.Parcelable;
-
-import com.actionsmicro.falcon.Falcon.ProjectorInfo.MessageListener;
-import com.actionsmicro.utils.Log;
-import com.actionsmicro.utils.Utils;
 
 /**
  * This class is in charge of device discovery.
@@ -79,7 +79,19 @@ public class Falcon {
 		private static final int SERVICE_APP_QUALITY_MODE 	= 0x01 << 8;
 		private static final int SERVICE_APP_HTTP_STREAMING = 0x01 << 9;
 		private static final int SERVICE_APP_REMOTE_CONTROL = 0x01 << 10;
-		private static final int SERVICE_MEDIA_STREAM_AUDIO = 0x01 << 11;	
+		private static final int SERVICE_MEDIA_STREAM_AUDIO = 0x01 << 11;
+
+		// REMOTE_CONTROL_COMMAND
+		private static final int COMMAND_CONNECT = 0;
+		private static final int COMMAND_KEY = 1;
+		private static final int COMMAND_KEYBOARD = 2;
+		private static final int COMMAND_KEYBOARD_NUMPAD = 3;
+		private static final int COMMAND_MOUSE = 4;
+		private static final int COMMAND_STRING = 5;
+		private static final int COMMAND_JSONRPC = 6;
+		private static final int COMMAND_JSONRPC_ENCRYPT = 7;
+		private static final int COMMAND_VENDOR = 10;
+		private static final int COMMAND_VENDOR_STRING = 11;
 
 		private String osVerion;
 		private String name;
@@ -289,31 +301,31 @@ public class Falcon {
 		 * @param keyCode The key code.
 		 */
 		public void sendKey(final int keyCode) {
-			sendKey(1, keyCode, false);
+			sendKey(COMMAND_KEY, keyCode, false);
 		}
 		public void sendKeyTcp(final int keyCode) {
-			sendKey(1, keyCode, false, true);
+			sendKey(COMMAND_KEY, keyCode, false, true);
 		}
 		public void sendKeyAndWait(final int keyCode) {
-			sendKey(1, keyCode, true);
+			sendKey(COMMAND_KEY, keyCode, true);
 		}
 		public void sendKeyTcpAndWait(final int keyCode) {
-			sendKey(1, keyCode, true, true);
+			sendKey(COMMAND_KEY, keyCode, true, true);
 		}
 		public void sendVendorKey(final int keyCode) {
-			sendKey(10, keyCode, false, true);
+			sendKey(COMMAND_VENDOR, keyCode, false, true);
 		}
 		public void sendJSONRPC(final String command){
-			sendJSONRPC(6,command);
+			sendJSONRPC(COMMAND_JSONRPC, command);
 		}
 		
-		private void sendJSONRPC(final int commandCode , final String command){
+		public void sendJSONRPC(final int commandCode , final String command){
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
 					try {
-						final byte[] data = (""+6+":"+command).getBytes(REMOTE_CONTROL_MESSGAE_CHARSET);
+						final byte[] data = (""+commandCode+":"+command).getBytes(REMOTE_CONTROL_MESSGAE_CHARSET);
 						Falcon.getInstance().sendTcpRemoteControlData(data, ipAddress, remoteControlPortNumber);
 					} catch (IOException e) {
 						Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
