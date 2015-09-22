@@ -1,12 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.dlna;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
-import org.fourthline.cling.model.meta.Device;
-import org.fourthline.cling.model.meta.DeviceIdentity;
-import org.fourthline.cling.model.meta.RemoteDeviceIdentity;
-
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -22,6 +15,13 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.androidkit.ezcast.MessageApi;
 import com.actionsmicro.androidkit.ezcast.MessageApiBuilder;
 import com.actionsmicro.utils.Log;
+
+import org.fourthline.cling.model.meta.Device;
+import org.fourthline.cling.model.meta.DeviceIdentity;
+import org.fourthline.cling.model.meta.RemoteDeviceIdentity;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class DlnaDeviceInfo extends DeviceInfo {
 
@@ -166,6 +166,11 @@ public class DlnaDeviceInfo extends DeviceInfo {
 
 	@Override
 	public boolean supportMediaFileExtension(String fileExtension) {
+		return true;
+	}
+
+	@Override
+	public boolean supportAd() {
 		return true;
 	}
 

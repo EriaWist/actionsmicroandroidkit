@@ -1,10 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
-import java.net.InetAddress;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v7.media.MediaRouter.RouteInfo;
@@ -21,6 +16,11 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.androidkit.ezcast.MessageApi;
 import com.actionsmicro.androidkit.ezcast.MessageApiBuilder;
 import com.google.android.gms.cast.CastDevice;
+
+import java.net.InetAddress;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
 public class GoogleCastDeviceInfo extends DeviceInfo {
 	private CastDevice castDevice;
@@ -148,7 +148,13 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	public boolean supportMediaFileExtension(String fileExtension) {
 		return supportedFileExtension.contains(fileExtension.toLowerCase(Locale.US));
 	}
-    @Override
+
+	@Override
+	public boolean supportAd() {
+		return true;
+	}
+
+	@Override
     protected AudioApi createAudioApi(AudioApiBuilder displayApiBuilder) {
         // TODO Auto-generated method stub
         return null;

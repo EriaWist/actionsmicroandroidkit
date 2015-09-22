@@ -1,7 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.androidrx;
 
-import javax.jmdns.ServiceInfo;
-
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -16,6 +14,8 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.androidkit.ezcast.MessageApi;
 import com.actionsmicro.androidkit.ezcast.MessageApiBuilder;
 import com.actionsmicro.androidkit.ezcast.imp.bonjour.BonjourDeviceInfo;
+
+import javax.jmdns.ServiceInfo;
 
 public class AndroidRxInfo extends BonjourDeviceInfo {
 	
@@ -93,8 +93,13 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 	public boolean supportMediaFileExtension(String fileExtension) {
 		// TODO Auto-generated method stub
 		return true;
-	}	
-	
+	}
+
+	@Override
+	public boolean supportAd() {
+		return true;
+	}
+
 	@Override
 	public String getParameter(String key) {
 		if (key.equalsIgnoreCase("ezcast.service.android")) {
