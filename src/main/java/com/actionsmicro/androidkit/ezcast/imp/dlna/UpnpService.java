@@ -28,8 +28,10 @@ class UpnpService {
 	private static final String DEVICE_TYPE_MEDIA_RENDERER = "MediaRenderer";
 	private static final String TAG = "UpnpService";
 	static {
-		org.seamless.util.logging.LoggingUtil.resetRootHandler(new FixedAndroidLogHandler());
-		Logger.getLogger("org.fourthline.cling").setLevel(Level.FINEST);		
+		if (BuildConfig.DEBUG) {
+			org.seamless.util.logging.LoggingUtil.resetRootHandler(new FixedAndroidLogHandler());
+			Logger.getLogger("org.fourthline.cling").setLevel(Level.FINEST);
+		}
 	}
 	public Device getDeviceById(String uid) {
 		if (BuildConfig.DEBUG) {
