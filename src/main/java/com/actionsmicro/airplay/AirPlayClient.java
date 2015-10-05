@@ -166,7 +166,7 @@ public class AirPlayClient {
 	
 	private void inqueryServerInfo() {
 		Headers headers = new Headers();
-		headers.add("Content-Lengthe", "0");
+		headers.add("Content-Length", "0");
 		headers.add("User-Agent", USER_AGENT_STRING);
 		headers.add("X-Apple-Session-ID", getSessionId());
 		try {
@@ -282,7 +282,7 @@ public class AirPlayClient {
 			headers.add("Upgrade", "PTTH/1.0");
 			headers.add("Connection", "Upgrade");
 			headers.add("X-Apple-Purpose", "event");
-			headers.add("Content-Lengthe", "0");
+			headers.add("Content-Length", "0");
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
 			AsyncHttpPost reverse = new AsyncHttpPost(getServerUri("/reverse"), headers);
@@ -348,7 +348,7 @@ public class AirPlayClient {
 			headers.add("Upgrade", "PTTH/1.0");
 			headers.add("Connection", "Upgrade");
 			headers.add("X-Apple-Purpose", "slideshow");
-			headers.add("Content-Lengthe", "0");
+			headers.add("Content-Length", "0");
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
 			AsyncHttpPost reverse = new AsyncHttpPost(getServerUri("/reverse"), headers);
@@ -524,7 +524,7 @@ public class AirPlayClient {
 	public void scrubVideo(float position) {
 		Headers headers = new Headers();
 		headers.add("User-Agent", USER_AGENT_STRING);
-		headers.add("Content-Lengthe", "0");
+		headers.add("Content-Length", "0");
 		try {
 			AsyncHttpPost scrub = new AsyncHttpPost(getServerUri("/scrub", 7000, "position="+position));
 			getHttpClient().executeString(scrub, new StringCallback() {
@@ -575,7 +575,7 @@ public class AirPlayClient {
 				final Runnable self = this;
 				Headers headers = new Headers();
 				headers.add("User-Agent", USER_AGENT_STRING);
-				headers.add("Content-Lengthe", "0");
+				headers.add("Content-Length", "0");
 				final SimpleContentUriHttpFileServer detachedFileServer = simpleHttpFileServer; // since it's asynchronous, we need to detach the file server first to prevent stop wrong file server.
 				simpleHttpFileServer = null;
 				try {
@@ -652,7 +652,7 @@ public class AirPlayClient {
 	private void setVideoRate(float rate, StringCallback callback) {
 		Headers headers = new Headers();
 		headers.add("User-Agent", USER_AGENT_STRING);
-		headers.add("Content-Lengthe", "0");
+		headers.add("Content-Length", "0");
 		try {
 			AsyncHttpPost scrub = new AsyncHttpPost(getServerUri("/rate", 7000, "value="+rate));
 			getHttpClient().executeString(scrub, callback);
@@ -713,7 +713,7 @@ public class AirPlayClient {
 	private void inqueryPlaybackInfo() {
 		try {
 			Headers headers = new Headers();
-			headers.add("Content-Lengthe", "0");
+			headers.add("Content-Length", "0");
 			headers.add("User-Agent", USER_AGENT_STRING);
 			headers.add("X-Apple-Session-ID", getSessionId());
 			AsyncHttpGet playbackInfo = new AsyncHttpGet(getServerUri("/playback-info"), headers);
