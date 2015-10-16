@@ -1085,7 +1085,7 @@ public class EZScreenHelper implements PlayerListener {
 
 			alreadyFailed = false;
 
-			this.getAirplayService().start();
+			getAirplayService().start();
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}

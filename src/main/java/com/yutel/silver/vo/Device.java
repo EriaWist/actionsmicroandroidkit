@@ -6,6 +6,7 @@ public class Device {
 	private String model;
 	private String protovers;
 	private String srcvers;
+	private String pk;
 
 	public String getDeviceid() {
 		return deviceid;
@@ -45,5 +46,13 @@ public class Device {
 
 	public void setSrcvers(String srcvers) {
 		this.srcvers = srcvers;
+	}
+
+	public String getPk() {
+		return pk;
+	}
+
+	public void setPk(String pk) {
+		this.pk = pk;
 	}
 }
