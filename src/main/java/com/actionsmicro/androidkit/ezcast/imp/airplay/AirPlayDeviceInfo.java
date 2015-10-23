@@ -1,7 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.airplay;
 
-import javax.jmdns.ServiceInfo;
-
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -16,6 +14,8 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.androidkit.ezcast.MessageApi;
 import com.actionsmicro.androidkit.ezcast.MessageApiBuilder;
 import com.actionsmicro.androidkit.ezcast.imp.bonjour.BonjourDeviceInfo;
+
+import javax.jmdns.ServiceInfo;
 
 public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 
@@ -97,6 +97,11 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 
 	@Override
 	public boolean supportMediaFileExtension(String fileExtension) {
+		return true;
+	}
+
+	@Override
+	public boolean supportAd() {
 		return true;
 	}
 

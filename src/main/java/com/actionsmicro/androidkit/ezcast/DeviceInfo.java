@@ -1,8 +1,8 @@
 package com.actionsmicro.androidkit.ezcast;
 
-import java.net.InetAddress;
-
 import android.os.Parcelable;
+
+import java.net.InetAddress;
 
 /**
  * This class wraps information of a device.
@@ -56,4 +56,10 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 		return result;
 	}	
 	public abstract boolean supportMediaFileExtension(String fileExtension);
+	/**
+	 * To determine whether the device supports ad.
+	 * @return Whether the device supports ad.
+	 * @since 2.5
+	 */
+	public abstract boolean supportAd();
 }
