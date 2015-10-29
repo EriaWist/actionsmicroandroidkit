@@ -158,7 +158,7 @@ public class Client {
 
 	private void sendHeartbeat() throws IllegalArgumentException, IOException {
 		Log.d(TAG, "try to sendHeartbeat(" + serverAddress + ":" + portNumber + ")");
-		if (InetAddress.getByName(serverAddress).isReachable(8000)) {
+		if (InetAddress.getByName(serverAddress).isReachable(15000)) {
 			Log.d(TAG, "reacheable");
 			sendDataToRemote(createPacketHeaderForSendingHeartbeat().array());
 		} else {

@@ -173,8 +173,19 @@ public class Utils {
     				
     			}
     		}
-    		activity.finish();    		
+    		activity.finish();
     	}
+    }
+
+    public static void popAllBackStack(Activity activity) {
+        if (activity != null) {
+            final FragmentManager fragmentManager = activity.getFragmentManager();
+            if (fragmentManager != null) {
+                while (fragmentManager.popBackStackImmediate()) {
+
+                }
+            }
+        }
     }
     public static void dump(InputStream is, OutputStream os) throws IOException {
 		byte buffer[] = new byte[4096];
