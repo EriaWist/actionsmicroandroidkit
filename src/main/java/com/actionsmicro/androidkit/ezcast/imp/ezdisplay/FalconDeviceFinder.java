@@ -9,12 +9,12 @@ import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.falcon.Falcon;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 import com.actionsmicro.falcon.Falcon.SearchReultListener;
+import com.actionsmicro.filter.AndFilter;
+import com.actionsmicro.filter.FilterInterface;
 
 public class FalconDeviceFinder extends DeviceFinderBase {
-	public interface ProjectorInfoFilter {
-		public boolean accept(ProjectorInfo projectInfo); 
-	}
-	public List<ProjectorInfoFilter> filters = new ArrayList<ProjectorInfoFilter>();
+
+	public List<FilterInterface> filters = new ArrayList<FilterInterface>();
 	public FalconDeviceFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy);
 		Falcon.getInstance().addSearchResultListener(new SearchReultListener() {
@@ -26,17 +26,19 @@ public class FalconDeviceFinder extends DeviceFinderBase {
 					getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new PigeonDeviceInfo(projectorInfo));
 					return;				
 				}
-				for (ProjectorInfoFilter filter : filters) {
-					if (filter.accept(projectorInfo)) {
-						getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new PigeonDeviceInfo(projectorInfo));
-						return;
-					}
+				AndFilter andFilter = new AndFilter();
+				for (FilterInterface filter : filters) {
+					andFilter.addFilter(filter);
+				}
+				if (andFilter.accept(projectorInfo)) {
+					getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new PigeonDeviceInfo(projectorInfo));
+					return;
 				}
 			}
 			
 		});
 	}
-	public void addFilter(ProjectorInfoFilter filter) {
+	public void addFilter(FilterInterface filter) {
 		filters.add(filter);
 	}
 	@Override
