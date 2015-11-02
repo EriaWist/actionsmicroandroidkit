@@ -1,20 +1,5 @@
 package com.actionsmicro.androidkit.ezcast;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.security.InvalidParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.ExecutionException;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.location.Location;
@@ -37,9 +22,9 @@ import com.actionsmicro.androidkit.ezcast.imp.airplay.AirPlayDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.androidkit.ezcast.imp.dlna.DlnaDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
-import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder.ProjectorInfoFilter;
 import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastFinder;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
+import com.actionsmicro.filter.FilterInterface;
 import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.future.Future;
@@ -47,6 +32,21 @@ import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
 import com.koushikdutta.async.http.AsyncHttpGet;
 import com.koushikdutta.async.http.AsyncHttpResponse;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.security.InvalidParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ExecutionException;
 /**
  * EZCast SDK object 
  * 
@@ -132,21 +132,24 @@ public class EzCastSdk {
 		return HashUtils.EzCastHash(appSecret, expire, "/cloud/sdk/api/support", packageId);
 	}
 	private static Handler mainThreadHandler = new Handler(Looper.getMainLooper());
-	private void doSetupDeviceFinder(final InitializationListener listener) {
-		setupDeviceFinder(getSupportListFromStore(), deviceFinder);
+	private void doSetupDeviceFinder(final InitializationListener listener, final FilterInterface filter) {
+		setupDeviceFinder(getSupportListFromStore(), deviceFinder, filter);
 		finishUpInitialization(listener);
 		synchronized (deviceFinder) {
 			deviceFinder.notifyAll();
 		}
 	}
-	private static void setupFinderForEzCastAndPro(final List<String> supportList, DeviceFinder deviceFinder) {
+	private static void setupFinderForEzCastAndPro(final List<String> supportList, DeviceFinder deviceFinder, FilterInterface filter) {
 		if (supportList.contains("ezcastpro") ||
 				supportList.contains("ezcast") ||
 				supportList.contains("ezcastlite") ||
 				supportList.contains("ezcastmusic") ||
 				supportList.contains("ezcastcar")) {
 			FalconDeviceFinder falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
-			falconDeviceFinder.addFilter(new ProjectorInfoFilter() {
+			if (filter != null) {
+				falconDeviceFinder.addFilter(filter);
+			}
+			falconDeviceFinder.addFilter(new FilterInterface<ProjectorInfo>() {
 
 				@Override
 				public boolean accept(ProjectorInfo projectInfo) {
@@ -167,7 +170,7 @@ public class EzCastSdk {
 	 * Throws IllegalStateException when EzCastSdk is initializing or has been initialized.
 	 * @param listener Callback to receive initialization result.
 	 */
-	public void init(final InitializationListener listener) {
+	public void init(final InitializationListener listener, FilterInterface filter) {
 		if (isInitialized()) {
 			throw new IllegalStateException("EzCastSdk was initialized!");
 		}
@@ -175,7 +178,7 @@ public class EzCastSdk {
 			throw new IllegalStateException("EzCastSdk is initializing!");
 		}
 		initializing = true;
-		fetchSupportListAndInit(listener);		
+		fetchSupportListAndInit(listener, filter);
 		fetchLocationAndLogAppInfo();
 		waitUntilInitTaskDone();
 	}
@@ -201,7 +204,7 @@ public class EzCastSdk {
 		}
 	}
 	private void fetchSupportListAndInit(
-			final InitializationListener listener) {
+			final InitializationListener listener, final FilterInterface filter) {
 		long expire = System.currentTimeMillis() * 1000 + 60 + 90;
 		try {
 			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.iezvu.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1&o=android&v="+URLEncoder.encode(SDK_VERSION_STRING, "utf-8"));
@@ -218,7 +221,7 @@ public class EzCastSdk {
 							try {
 								if (result.getBoolean("status")) {
 									saveSupportList(result.getJSONArray("support"));
-									doSetupDeviceFinder(listener);
+									doSetupDeviceFinder(listener, filter);
 								} else {
 									if (listener != null) {
 										listener.onInitializationFailed(new Exception("Please check app key/secret!"));
@@ -226,19 +229,19 @@ public class EzCastSdk {
 								}
 							} catch (JSONException e1) {
 								e1.printStackTrace();
-								doSetupDeviceFinder(listener);
+								doSetupDeviceFinder(listener, filter);
 							}
 						}
 					} else { //network error or json transformation error
 						Log.v(TAG, "init oncomplete timeout");
 						e.printStackTrace();
-						doSetupDeviceFinder(listener);
+						doSetupDeviceFinder(listener, filter);
 					}
 				}
 				
 			});
 		} catch (Throwable e) {
-			doSetupDeviceFinder(listener);
+			doSetupDeviceFinder(listener, filter);
 		}
 	}
 	private void saveSupportList(JSONArray jsonArray) {
@@ -433,7 +436,7 @@ public class EzCastSdk {
 	protected Tracker getTracker() {
 		return tracker;
 	}
-	protected static void setupDeviceFinder(List<String> supportList, final DeviceFinder deviceFinder) {
+	protected static void setupDeviceFinder(List<String> supportList, final DeviceFinder deviceFinder, final FilterInterface filter) {
 		if (supportList.contains("chromecast")) {
 			// GoogleCastFinder main thread only API
 			if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -457,6 +460,6 @@ public class EzCastSdk {
 		if (supportList.contains("dlna")) {
 			deviceFinder.addDeviceFinderImp(new DlnaDeviceFinder(deviceFinder));
 		}
-		setupFinderForEzCastAndPro(supportList, deviceFinder);
+		setupFinderForEzCastAndPro(supportList, deviceFinder, filter);
 	}
 }
