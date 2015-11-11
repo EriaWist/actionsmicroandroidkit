@@ -14,7 +14,10 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.androidkit.ezcast.MessageApi;
 import com.actionsmicro.androidkit.ezcast.MessageApiBuilder;
+import com.actionsmicro.falcon.Falcon;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
+import com.actionsmicro.pigeon.Client;
+import com.actionsmicro.pigeon.Pigeon;
 
 import java.net.InetAddress;
 
@@ -92,6 +95,9 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	}
 	@Override
 	protected DisplayApi createDisplayApi(DisplayApiBuilder displayApiBuilder) {
+		if (!isAuthorized()) {
+			return null;
+		}
 		String type = getProjectorInfo().getParameter("type");
 		if (type != null && type.equals("music")) {
 			return null;
@@ -101,6 +107,9 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	@Override
 	protected MediaPlayerApi createMediaPlayerApi(
 			MediaPlayerApiBuilder mediaPlayerApiBuilder) {
+		if (!isAuthorized()) {
+			return null;
+		}
 		return new PigeonMediaPlayerApi(mediaPlayerApiBuilder);
 	}
 	@Override
@@ -114,7 +123,14 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	}
 
 	@Override
-    protected AudioApi createAudioApi(AudioApiBuilder audioApiBuilder) {
-        return new PigeonAudioApi(audioApiBuilder);
-    }
+	protected AudioApi createAudioApi(AudioApiBuilder audioApiBuilder) {
+		return new PigeonAudioApi(audioApiBuilder);
+	}
+	private boolean isAuthorized() {
+		boolean isAuthorized;
+		Client tempClient = Pigeon.createPigeonClient(projectorInfo.getOsVerion(), projectorInfo.getAddress().getHostAddress(), Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER);
+		isAuthorized = tempClient.canSendStream();
+		Pigeon.releasePigeonClient(tempClient);
+		return isAuthorized;
+	}
 }
