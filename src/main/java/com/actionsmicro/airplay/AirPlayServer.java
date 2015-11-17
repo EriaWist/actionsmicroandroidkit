@@ -32,10 +32,8 @@ import com.yutel.silver.vo.Device;
 
 import org.apache.commons.net.ntp.TimeStamp;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -46,8 +44,6 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Locale;
@@ -619,30 +615,43 @@ public class AirPlayServer {
 		
 		airplayService = Aika.create(inetAddress, 0, name);
         Device dev = new Device();
-        // TODO change to ios9
-        boolean isIos9 = true;
-        if (isIos9) {
-            dev.setDeviceid(getMacAddress());
-//            dev.setFeatures("0x5A7FFFF7,0x1E");
-			dev.setFeatures("0x0A7FEFF7");
-            dev.setModel(AIRPLAY_MODEL);
-            dev.setProtovers("2.0");
-            dev.setSrcvers(AIRPLAYER_VERSION_STRING);
-			String pkString = "";
-			for (int i = 0; i < 32; i++) {
-				pkString += String.format("%02x", mEdPublicKey[i]);
-			}
-			Log.d(TAG, "pkString -------------------" + pkString);
-			dev.setPk(pkString);
-        } else {
-            dev.setDeviceid(getMacAddress());
-            dev.setFeatures("0x100029FF");
-            dev.setModel(AIRPLAY_MODEL);
-            dev.setProtovers("1.0");
-            dev.setSrcvers(AIRPLAYER_VERSION_STRING);
-        }
+		dev.setDeviceid(getMacAddress());
+//		dev.setFeatures("0x5A7FFFF7,0x1E");
+		dev.setFeatures("0x0A7FEFF7");
+		dev.setModel(AIRPLAY_MODEL);
+		dev.setProtovers("2.0");
+		dev.setSrcvers(AIRPLAYER_VERSION_STRING);
+		String pkString = "";
+		for (int i = 0; i < 32; i++) {
+			pkString += String.format("%02x", mEdPublicKey[i]);
+		}
+		dev.setPk(pkString);
 		airplayService.config(dev);
 		airplayService.setConnectListener(new Aika.AikaConnectListener() {
+
+			@Override
+			public byte[] pairSetup() {
+				return mEdPublicKey;
+			}
+
+			@Override
+			public byte[] pairVerify(byte[] requestBody) {
+
+				if (requestBody[0] == 1) {
+					int length = 32;
+					byte[] controllerPublicKey = new byte[length];
+					byte[] controllerSignature = new byte[length];
+					byte[] out = new byte[96];
+					for (int i = 0; i < length; i++) {
+						controllerPublicKey[i] = requestBody[i + 4];
+						controllerSignature[i] = requestBody[i + 4 + 32];
+					}
+
+					EzAes.pairVerify(mEdPublicKey, mEdSecretKey, controllerPublicKey, controllerSignature, out);
+					return out;
+				}
+				return new byte[0];
+			}
 
 			@Override
 			public void video(String url, String rate, String pos)

@@ -62,6 +62,17 @@ public class HttpAnaly {
 		}
 	}
 
+	public void sendResponse(String body,byte[] rawBody) {
+		try {
+			byte[] bodys = body.getBytes();
+			mOutputStream.write(bodys);
+			mOutputStream.write(rawBody);
+			mOutputStream.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	private void read2Mark(byte[] mark) {
 		try {
 			byte[] temp = new byte[1];

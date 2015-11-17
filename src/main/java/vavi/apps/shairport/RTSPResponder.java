@@ -1013,7 +1013,7 @@ public class RTSPResponder extends Thread{
 
 
 						} else if (dir.equals("/stream.xml")) {
-
+							Log.d(TAG, "GET stream..................");
 						}
 
 

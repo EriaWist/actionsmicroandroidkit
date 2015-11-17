@@ -18,9 +18,20 @@ public class HttpWrap {
 	private String bodys;
 	private int reverseEvent;
 
+	private byte[] rawBody;
+	public byte[] getRawBody() {
+		return rawBody;
+	}
+
+	public void setRawBody(byte[] rawBody) {
+		this.rawBody = rawBody;
+	}
+
 	public String buildResponse() {
 		int length = 0;
-		if (bodys != null) {
+		if(rawBody!=null){
+			length=rawBody.length;
+		}else if (bodys != null) {
 			length=bodys.length();
 		}
 		StringBuffer sb = new StringBuffer();
@@ -33,7 +44,7 @@ public class HttpWrap {
 		sb.append(HttpAnaly.CR).append(HttpAnaly.LF);
 		sb.append("Content-Length: ").append(length).append(HttpAnaly.CR);
 		sb.append(HttpAnaly.LF).append(HttpAnaly.CR).append(HttpAnaly.LF);
-		if (length > 0) {
+		if (rawBody == null && length > 0) {
 			sb.append(bodys);
 		}
 		return sb.toString();

@@ -1,24 +1,29 @@
 package com.yutel.silver.http;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.actionsmicro.utils.Log;
+import com.dd.plist.BinaryPropertyListParser;
 import com.dd.plist.NSDictionary;
+import com.dd.plist.NSString;
+import com.dd.plist.PropertyListFormatException;
 import com.dd.plist.PropertyListParser;
 import com.yutel.silver.exception.AirplayException;
 import com.yutel.silver.util.AirplayUtil;
 import com.yutel.silver.util.StringUtil;
 import com.yutel.silver.vo.AirplayState;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class DefaultHandler {
 	private static final String TAG = "HttpDefaultHandler";
 	protected AirplayServer server;
 	protected HttpWrap wrap;
+	private static boolean mIsServerInfoReady = false;
 
 	public DefaultHandler(AirplayServer server, HttpWrap wrap) {
 		this.server = server;
@@ -29,10 +34,16 @@ public class DefaultHandler {
 		try {
 			if ("/reverse".equals(wrap.getContext())) {
 				wrap.setResponseCode(101);
+				wrap.getResponseHeads().put("Upgrade", "PTTH/1.0");
+				wrap.getResponseHeads().put("Connection", "Upgrade");
+
 			} else if ("/server-info".equals(wrap.getContext())) {
 				wrap.setResponseCode(200);
 				wrap.getResponseHeads().put("Content-Type", "text/x-apple-plist+xml");
 				String res = AirplayUtil.getServerInfo(server.getDevice());
+				Log.d("dddd","/server-info");
+				Log.d("dddd","res = " + res);
+				mIsServerInfoReady = true;
 				wrap.setBodys(res);
 			} else if ("/rate".equals(wrap.getContext())) {
 				wrap.setResponseCode(200);
@@ -40,8 +51,10 @@ public class DefaultHandler {
 				if (rate != null) {
 					float ratef = StringUtil.toFloat(rate);
 					int ratei = (int) ratef;
-					if (ratei == 1) {
+					Log.d("dddd","/rate value = " + ratei);
+					if (ratei == 1 || mIsServerInfoReady) {
 						server.getProxy().videoResume();
+						mIsServerInfoReady = false;
 					} else {
 						server.getProxy().videoPause();
 					}					
@@ -93,7 +106,28 @@ public class DefaultHandler {
 					server.getProxy().setVolume((float)Float.valueOf(wrap.getRequestParameters().get("volume")));
 				}
 				wrap.setResponseCode(200);				
-			} else {
+			} else if ("/pair-setup".equals(wrap.getContext())) {
+				pairSetup();
+			}else if ("/pair-verify".equals(wrap.getContext())) {
+				pairVerify();
+			}else if ("/action".equals(wrap.getContext())) {
+				// TODO int Airplay_PostStopFn(EZ_SESSION_T *session, HTTP_PARSER_T *parser)
+				Log.d("dddd", "/action");
+				wrap.setResponseCode(200);
+				try {
+					NSDictionary pDict = (NSDictionary) BinaryPropertyListParser.parse(wrap.getRequestBody());
+					NSString type = (NSString) pDict.get("type");
+					if(type.toString().equals("playlistRemove"))
+					{
+
+					}
+
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (PropertyListFormatException e) {
+					e.printStackTrace();
+				}
+			}else {
 				Log.e(TAG, "unhanled request:"+wrap.getContext());
 				wrap.setReverse(false);
 				wrap.setResponseCode(404);
@@ -101,6 +135,30 @@ public class DefaultHandler {
 		} catch (AirplayException ae) {
 			ae.printStackTrace();
 		}
+	}
+
+	private void pairVerify() {
+		if (wrap.getRequestBody()[0] == 1) {
+			wrap.setResponseCode(200);
+			wrap.getResponseHeads().put(HttpProtocol.ContentType,
+					AirplayState.binaryStream);
+			byte[] rawBody = server.getProxy().pairVerify(wrap.getRequestBody());
+			wrap.setRawBody(rawBody);
+		} else {
+			wrap.setResponseCode(200);
+			wrap.getResponseHeads().put(HttpProtocol.ContentType,
+					AirplayState.binaryStream);
+		}
+
+
+	}
+
+	private void pairSetup() {
+		wrap.setResponseCode(200);
+		wrap.getResponseHeads().put(HttpProtocol.ContentType,
+				AirplayState.binaryStream);
+		byte[] rawBody = server.getProxy().pairSetup();
+		wrap.setRawBody(rawBody);
 	}
 
 	private void setProperty(Map<String, String> requestParameters) {
