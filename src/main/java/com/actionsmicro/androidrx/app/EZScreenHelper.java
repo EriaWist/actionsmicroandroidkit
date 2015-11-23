@@ -12,6 +12,8 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,7 @@ import org.jcodec.common.model.Size;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -76,6 +79,8 @@ import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 import com.yutel.silver.vo.AirplayState;
 
 public class EZScreenHelper implements PlayerListener {
+	private boolean isExpired;
+
 	public interface ConnectionListener {
 		public void onConnected();
 		public void onDisconnected();
@@ -91,7 +96,7 @@ public class EZScreenHelper implements PlayerListener {
 
 		void onInitializationFailed(int service, Exception e);
 
-		void onInitalizationFinished();
+		void onInitalizationFinished(int service);
 		
 	}
 	private static final String TAG = "EZScreenHelper";
@@ -187,7 +192,7 @@ public class EZScreenHelper implements PlayerListener {
 		}
 	}
 	private boolean needToLoadAirPlay() {
-		return (servers & SERVER_AIRPLAY) != 0;
+		return (servers & SERVER_AIRPLAY) != 0 && !isExpired;
 	}
 	private boolean needToLoadEzScreen() {
 		return (servers & SERVER_EZSCREEN) != 0;
@@ -1145,7 +1150,17 @@ public class EZScreenHelper implements PlayerListener {
 		if ((airplayInitialized || !needToLoadAirPlay()) && 
 				(ezScreenInitialized || !needToLoadEzScreen())) {
 			if (initializationListener != null) {
-				initializationListener.onInitalizationFinished();
+
+				int initService = 0;
+				if (airplayInitialized) {
+					initService += SERVER_AIRPLAY;
+				}
+
+				if (ezScreenInitialized) {
+					initService += SERVER_EZSCREEN;
+				}
+
+				initializationListener.onInitalizationFinished(initService);
 			}
 		}
 		
@@ -1467,14 +1482,25 @@ public class EZScreenHelper implements PlayerListener {
             hidePhotoView();
             addView(photoView);
 
-			new Thread(new Runnable() {
+			// TODO init airplay if not expire yet
+			Date expireDate = getAirPlayExpireDate();
+			Calendar c = Calendar.getInstance();
+			Date currentDate = c.getTime();
+			isExpired = currentDate.getTime() > expireDate.getTime();
+			if (!isExpired) {
+				Log.d(TAG, "Airplay not expire,init airplay");
+				new Thread(new Runnable() {
 
-				@Override
-				public void run() {
-					initAirplay();			
-				}
+					@Override
+					public void run() {
+						initAirplay();
+					}
 
-			}).start();
+				}).start();
+			} else {
+				Log.d(TAG, "Airplay auth date expired or not connected yet");
+			}
+
 		}
 		createNetworkThread();
 	}
@@ -1605,6 +1631,24 @@ public class EZScreenHelper implements PlayerListener {
 		if (connectionListener != null) {
 			connectionListener.onConnected();
 		}
+		Calendar c = Calendar.getInstance();
+		c.add(Calendar.DATE, 1);
+		Date expireDate = c.getTime();
+		saveAirplayExpiredDate(expireDate);
+
+		isExpired = false;
+		if((!airplayInitialized || !needToLoadAirPlay())) {
+			Log.d("dddd", "ezcast connected init airplay");
+			new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					initAirplay();
+				}
+
+			}).start();
+		}
+
 	}
 
 	private void informDelegateDisconnected() {
@@ -1797,5 +1841,20 @@ public class EZScreenHelper implements PlayerListener {
 				myLooper.quit();
 			}
 		}
+	}
+
+	private static final String PREF_KEY_AIRPLAY_EXPIREDATE = "airplay_expired_date";
+	private static final String PREF_NAME_EZCAST_SCREENHELPER = "ezcast_screen";
+
+	private void saveAirplayExpiredDate(Date date) {
+		SharedPreferences sdkSettings = context.getSharedPreferences(PREF_NAME_EZCAST_SCREENHELPER, Context.MODE_PRIVATE);
+		SharedPreferences.Editor editor = sdkSettings.edit();
+		editor.putLong(PREF_KEY_AIRPLAY_EXPIREDATE, date.getTime());
+		editor.commit();
+	}
+
+	private Date getAirPlayExpireDate() {
+		SharedPreferences sdkSettings = context.getSharedPreferences(PREF_NAME_EZCAST_SCREENHELPER, Context.MODE_PRIVATE);
+		return new Date(sdkSettings.getLong(PREF_KEY_AIRPLAY_EXPIREDATE, 0));
 	}
 }
