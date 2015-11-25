@@ -1,10 +1,7 @@
 package com.yutel.silver.http;
 
 import com.actionsmicro.utils.Log;
-import com.dd.plist.BinaryPropertyListParser;
 import com.dd.plist.NSDictionary;
-import com.dd.plist.NSString;
-import com.dd.plist.PropertyListFormatException;
 import com.dd.plist.PropertyListParser;
 import com.yutel.silver.exception.AirplayException;
 import com.yutel.silver.util.AirplayUtil;
@@ -13,7 +10,6 @@ import com.yutel.silver.vo.AirplayState;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -33,6 +29,10 @@ public class DefaultHandler {
 	public void process() {
 		try {
 			if ("/reverse".equals(wrap.getContext())) {
+				/*HTTP/1.1 101 Switching Protocols
+				Date: Thu, 23 Feb 2012 17:33:41 GMT
+				Upgrade: PTTH/1.0
+				Connection: Upgrade*/
 				wrap.setResponseCode(101);
 				wrap.getResponseHeads().put("Upgrade", "PTTH/1.0");
 				wrap.getResponseHeads().put("Connection", "Upgrade");
@@ -41,8 +41,6 @@ public class DefaultHandler {
 				wrap.setResponseCode(200);
 				wrap.getResponseHeads().put("Content-Type", "text/x-apple-plist+xml");
 				String res = AirplayUtil.getServerInfo(server.getDevice());
-				Log.d("dddd","/server-info");
-				Log.d("dddd","res = " + res);
 				mIsServerInfoReady = true;
 				wrap.setBodys(res);
 			} else if ("/rate".equals(wrap.getContext())) {
@@ -51,7 +49,6 @@ public class DefaultHandler {
 				if (rate != null) {
 					float ratef = StringUtil.toFloat(rate);
 					int ratei = (int) ratef;
-					Log.d("dddd","/rate value = " + ratei);
 					if (ratei == 1 || mIsServerInfoReady) {
 						server.getProxy().videoResume();
 						mIsServerInfoReady = false;
@@ -111,22 +108,8 @@ public class DefaultHandler {
 			}else if ("/pair-verify".equals(wrap.getContext())) {
 				pairVerify();
 			}else if ("/action".equals(wrap.getContext())) {
-				// TODO int Airplay_PostStopFn(EZ_SESSION_T *session, HTTP_PARSER_T *parser)
-				Log.d("dddd", "/action");
 				wrap.setResponseCode(200);
-				try {
-					NSDictionary pDict = (NSDictionary) BinaryPropertyListParser.parse(wrap.getRequestBody());
-					NSString type = (NSString) pDict.get("type");
-					if(type.toString().equals("playlistRemove"))
-					{
-
-					}
-
-				} catch (IOException e) {
-					e.printStackTrace();
-				} catch (PropertyListFormatException e) {
-					e.printStackTrace();
-				}
+				server.getProxy().videoStop();
 			}else {
 				Log.e(TAG, "unhanled request:"+wrap.getContext());
 				wrap.setReverse(false);
@@ -138,14 +121,13 @@ public class DefaultHandler {
 	}
 
 	private void pairVerify() {
+		wrap.setResponseCode(200);
 		if (wrap.getRequestBody()[0] == 1) {
-			wrap.setResponseCode(200);
 			wrap.getResponseHeads().put(HttpProtocol.ContentType,
 					AirplayState.binaryStream);
 			byte[] rawBody = server.getProxy().pairVerify(wrap.getRequestBody());
 			wrap.setRawBody(rawBody);
 		} else {
-			wrap.setResponseCode(200);
 			wrap.getResponseHeads().put(HttpProtocol.ContentType,
 					AirplayState.binaryStream);
 		}
@@ -179,6 +161,7 @@ public class DefaultHandler {
 				String rate = "0f";
 				String pos = "0f";
 				if (AirplayState.binPLIST.equals(conType)) {
+					Log.e("dddd","play body length = " +wrap.getRequestBody().length);
 					NSDictionary rootDict = (NSDictionary) PropertyListParser
 							.parse(wrap.getRequestBody());
 					if (rootDict.containsKey("Content-Location")) {

@@ -56,11 +56,39 @@ struct APP_AIRTUNES_S
 };
 
 
+typedef struct APP_AIRPLAY_S APP_AIRPLAY_T;
+struct APP_AIRPLAY_S
+{
+	struct {
+		uint8_t publicKey[ 32 ];
+		uint8_t secretKey[ 32 ];
+		uint8_t sharedKey[ 32 ];
+		uint8_t controllerPublicKey[ 32 ];
+		uint8_t controllerSignature[ 32 ];
+
+		uint8_t edSecret[ 32 ];
+		uint8_t edPubKey[ 32 ];
+
+		uint8_t enKey[ 4 ];
+//		void *enKey;
+	} pair_setup;
+
+};
+
 void* GetSession() {
 	static APP_AIRTUNES_T *app = NULL;
 	if (app == NULL) {
 		app = (APP_AIRTUNES_T *)malloc( sizeof(APP_AIRTUNES_T) );
 		memset(app, 0, sizeof(APP_AIRTUNES_T));
+	}
+	return app;
+}
+
+void* GetAirplaySession() {
+	static APP_AIRPLAY_T *app = NULL;
+	if (app == NULL) {
+		app = (APP_AIRPLAY_T *)malloc( sizeof(APP_AIRPLAY_T) );
+		memset(app, 0, sizeof(APP_AIRPLAY_T));
 	}
 	return app;
 }
@@ -128,10 +156,10 @@ JNIEXPORT void JNICALL
 
 
 	APP_AIRTUNES_T *app = (APP_AIRTUNES_T *)GetSession();
-
+	memset(secretKey, 0, sizeof(secretKey));
 	for (i = 0, n = sizeof(secretKey/*random_number*/); i < n; i++)
 	{
-		secretKey/*random_number*/[ i ] = rand();
+		LOGD("secretKey [%d] = %d",i,secretKey[i]);
 	}
 
 	memcpy(app->pair_setup.secretKey, secretKey/*random_number*/, 32);
@@ -219,6 +247,125 @@ JNIEXPORT void JNICALL
 
 }
 
+
+JNIEXPORT void JNICALL
+Java_com_actionsmicro_airplay_crypto_EzAes_airplayPairVerify(JNIEnv *env, jclass clazz,
+		jbyteArray edPubKey, jbyteArray edSecKey,
+		jbyteArray ctlPubKey, jbyteArray ctlSigature,
+		jbyteArray out) {
+	LOGD(">>>>>airplay  pairVerify");
+	int keyLen = 32, outLen = 96, i = 0, n = 0;
+	unsigned char edPubKeyPtr[keyLen];
+	unsigned char edSecKeyPtr[keyLen];
+	unsigned char ctlPubKeyPtr[keyLen];
+	unsigned char ctlSigaturePtr[keyLen];
+
+	(*env)->GetByteArrayRegion(env, edPubKey, 0, keyLen, edPubKeyPtr);
+	(*env)->GetByteArrayRegion(env, edSecKey, 0, keyLen, edSecKeyPtr);
+	(*env)->GetByteArrayRegion(env, ctlPubKey, 0, keyLen, ctlPubKeyPtr);
+	(*env)->GetByteArrayRegion(env, ctlSigature, 0, keyLen, ctlSigaturePtr);
+
+	const unsigned char curveBasePoint[] = { 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	unsigned char secretKey[ 32 ];
+	unsigned char temp1[ 64 ];
+	unsigned char temp2[ 64 ];
+	unsigned char temp3[ 64 ];
+	unsigned char temp4[ 64 ];
+	unsigned char temp5[ 64 ];
+	unsigned char output96[ 96 ];
+
+
+	APP_AIRPLAY_T *app = (APP_AIRPLAY_T *)GetAirplaySession();
+	memset(secretKey, 0, sizeof(secretKey));
+	for (i = 0, n = sizeof(secretKey/*random_number*/); i < n; i++)
+	{
+		LOGD("secretKey [%d] = %d",i,secretKey[i]);
+	}
+
+	memcpy(app->pair_setup.secretKey, secretKey/*random_number*/, 32);
+	memcpy(app->pair_setup.controllerPublicKey, ctlPubKeyPtr, 32);
+	memcpy(app->pair_setup.controllerSignature, ctlSigaturePtr, 32);
+
+	for(i=0;i<32;i++)
+	{
+		LOGD("edPubKeyPtr [%d] = %d",i,edPubKeyPtr[i]);
+	}
+	for(i=0;i<32;i++)
+	{
+		LOGD("edSecKeyPtr [%d] = %d",i,edSecKeyPtr[i]);
+	}
+	for(i=0;i<32;i++)
+	{
+	LOGD("ctlPubKeyPtr [%d] = %d",i,ctlPubKeyPtr[i]);
+	}
+	for(i=0;i<32;i++)
+	{
+	LOGD("ctlSigaturePtr [%d] = %d",i,ctlSigaturePtr[i]);
+	}
+
+	for(i=0;i<32;i++)
+	{
+	LOGD("app->pair_setup.controllerSignature [%d] = %d",i,app->pair_setup.controllerSignature[i]);
+	}
+
+	sub_00000000x6(app->pair_setup.publicKey, app->pair_setup.secretKey, curveBasePoint/*k*/);
+	sub_00000000x6(app->pair_setup.sharedKey, app->pair_setup.secretKey, app->pair_setup.controllerPublicKey);
+
+	LOGD("<<<<< sub_00000000x6");
+
+	memcpy(app->pair_setup.edSecret, edSecKeyPtr, 32);
+	memcpy(app->pair_setup.edPubKey, edPubKeyPtr, 32);
+
+	for(i=0;i<32;i++)
+	{
+	LOGD("publicKey [%d] = %d",i,app->pair_setup.publicKey[i]);
+	}
+	for(i=0;i<32;i++)
+	{
+	LOGD("sharedKey [%d] = %d",i,app->pair_setup.sharedKey[i]);
+	}
+
+	memset(temp1, 0, sizeof(temp1));
+	memset(temp2, 0, sizeof(temp2));
+	memset(temp3, 0, sizeof(temp3));
+	memset(temp4, 0, sizeof(temp4));
+	memset(temp5, 0, sizeof(temp5));
+
+	memcpy(temp1, app->pair_setup.publicKey, 32);
+	memcpy(temp1 + 32, app->pair_setup.controllerPublicKey, 32);
+	sub_00000000x8(temp2, temp1, 64, app->pair_setup.edPubKey, app->pair_setup.edSecret);
+	LOGD("<<<<< sub_00000000x8");
+	AES_PairVerify1(app->pair_setup.sharedKey, (unsigned char *)"Pair-Verify-AES-Key", 0x13u, (unsigned char *)"Pair-Verify-AES-IV", 0x12u, temp3, temp4);
+	LOGD("<<<<< AES_PairVerify1");
+	if (*((unsigned int *)(app->pair_setup.enKey)))
+	{
+	free((void *)*((unsigned int *)(app->pair_setup.enKey)));
+	*((unsigned int *)(app->pair_setup.enKey)) = 0;
+	}
+
+	AES_PairVerify2(app->pair_setup.enKey, temp3, temp4);
+	LOGD("<<<<< AES_PairVerify2");
+
+	for(i=0;i<64;i++)
+	{
+	LOGD("temp5 [%d] = %d",i,temp5[i]);
+	}
+	AES_PairVerify3(temp2, temp5,
+	64, (aes_key_t *)(*(unsigned int *)((unsigned char *)app->pair_setup.enKey)),
+	(unsigned char *)((*(unsigned int *)((unsigned char *)app->pair_setup.enKey)) + 244), 1);
+	LOGD("<<<<< AES_PairVerify3");
+	memcpy(output96, (void *)app->pair_setup.publicKey, 32);
+	memcpy(output96 + 32, (void *)temp5, 64);
+
+	(*env)->SetByteArrayRegion(env, out, 0, 96, output96);
+	for(i=0;i<96;i++)
+	{
+	LOGD("output96 [%d] = %d",i,output96[i]);
+}
+
+LOGD("<<<<< airplaypairVerify");
+
+}
 
 JNIEXPORT jint JNICALL
 			  Java_com_actionsmicro_airplay_crypto_EzAes_setup(JNIEnv *env, jclass clazz, jdouble ver,

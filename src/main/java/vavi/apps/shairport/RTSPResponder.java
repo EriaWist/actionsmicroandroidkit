@@ -34,6 +34,8 @@ import java.util.regex.Pattern;
 import javax.crypto.Cipher;
 
 import static com.actionsmicro.airplay.AirPlayServer.AIRPLAYER_VERSION_STRING;
+import static com.actionsmicro.airplay.AirPlayServer.isMirroring;
+import static com.actionsmicro.airplay.AirPlayServer.isStreaming;
 import static com.actionsmicro.airplay.AirPlayServer.mEdPublicKey;
 import static com.actionsmicro.airplay.AirPlayServer.mEdSecretKey;
 
@@ -986,7 +988,6 @@ public class RTSPResponder extends Thread{
 							display1.put("refreshRate",24);
 							display1.put("features",14);
 							display1.put("overscanned",false);
-							// TODO uuid
 							display1.put("uuid",UUID.randomUUID().toString());
 							displays.setValue(0,display1);
 							info.put("displays", displays);
@@ -1019,6 +1020,11 @@ public class RTSPResponder extends Thread{
 
 					}
 					else {
+						if("TEARDOWN".equals(request.getReq()))
+						{
+							Log.d(TAG,"mirror,streaming = " +isMirroring + " , " +isStreaming );
+						}
+
 						RTSPResponse response = this.handlePacket(request, requestBodyBuffer);
 
 						// Write the response to the wire
@@ -1031,6 +1037,10 @@ public class RTSPResponder extends Thread{
 						}
 						Log.d("ShairPort", "raw " + response.getRawPacket());
 
+						if( isMirroring && isStreaming && "TEARDOWN".equals(request.getReq())){
+							Log.d(TAG,"don't close server since isStreaming on MirrorState ");
+							continue;
+						}
 						if("TEARDOWN".equals(request.getReq())){
 							releaseAudioServer();
 							socket.close();

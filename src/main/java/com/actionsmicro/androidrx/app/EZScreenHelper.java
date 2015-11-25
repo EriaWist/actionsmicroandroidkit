@@ -1638,7 +1638,7 @@ public class EZScreenHelper implements PlayerListener {
 
 		isExpired = false;
 		if((!airplayInitialized || !needToLoadAirPlay())) {
-			Log.d("dddd", "ezcast connected init airplay");
+			Log.d(TAG, "ezcast connected and init airplay");
 			new Thread(new Runnable() {
 
 				@Override
