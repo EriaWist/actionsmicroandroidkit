@@ -29,8 +29,8 @@ public class AirplayUtil {
 	}
 
 	public static String getServerInfo(Device d) {
-		return String.format(serverInfo, d.getDeviceid(), d.getFeatures(),
-				d.getModel(), d.getProtovers(), d.getSrcvers());
+		return String.format(serverInfo, d.getDeviceid(), d.getFeatures(),d.getDeviceid(),
+				d.getModel(), d.getProtovers(), d.getSrcvers(),"2");
 	}
 	
 	public static String getPlaybackInfo(float duration, float position,
@@ -61,12 +61,16 @@ public class AirplayUtil {
 		res.append("  <string>%1$s</string>").append(HttpProtocol.CRLF);
 		res.append("  <key>features</key>").append(HttpProtocol.CRLF);
 		res.append("  <integer>%2$S</integer>").append(HttpProtocol.CRLF);
+		res.append("  <key>macAddress</key>").append(HttpProtocol.CRLF);
+		res.append("  <integer>%1$s</integer>").append(HttpProtocol.CRLF);
 		res.append("  <key>model</key>").append(HttpProtocol.CRLF);
 		res.append("  <string>%3$s</string>").append(HttpProtocol.CRLF);
 		res.append("  <key>protovers</key>").append(HttpProtocol.CRLF);
 		res.append("  <string>%4$s</string>").append(HttpProtocol.CRLF);
 		res.append("  <key>srcvers</key>").append(HttpProtocol.CRLF);
 		res.append("  <string>%5$s</string>").append(HttpProtocol.CRLF);
+		res.append("  <key>vv</key>").append(HttpProtocol.CRLF);
+		res.append("  <integer>%1$s</integer>").append(HttpProtocol.CRLF);
 		res.append(" </dict>").append(HttpProtocol.CRLF);
 		res.append("</plist>").append(HttpProtocol.CRLF)
 				.append(HttpProtocol.CRLF);
@@ -93,9 +97,9 @@ public class AirplayUtil {
 				HttpProtocol.CRLF);
 		res.append("   </dict> </array>").append(HttpProtocol.CRLF);
 
-		res.append("  <key>playbackBufferEmpty</key> <false/>").append(
+		res.append("  <key>playbackBufferEmpty</key> <true/>").append(
 				HttpProtocol.CRLF);
-		res.append("  <key>playbackBufferFull</key> <true/>").append(
+		res.append("  <key>playbackBufferFull</key> <false/>").append(
 				HttpProtocol.CRLF);
 		res.append("  <key>playbackLikelyToKeepUp</key> <true/>").append(
 				HttpProtocol.CRLF);

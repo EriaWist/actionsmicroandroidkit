@@ -1,12 +1,5 @@
 package com.yutel.silver.http;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.actionsmicro.utils.Log;
 import com.dd.plist.NSDictionary;
 import com.dd.plist.PropertyListParser;
@@ -15,10 +8,18 @@ import com.yutel.silver.util.AirplayUtil;
 import com.yutel.silver.util.StringUtil;
 import com.yutel.silver.vo.AirplayState;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class DefaultHandler {
 	private static final String TAG = "HttpDefaultHandler";
 	protected AirplayServer server;
 	protected HttpWrap wrap;
+	private static boolean mIsServerInfoReady = false;
 
 	public DefaultHandler(AirplayServer server, HttpWrap wrap) {
 		this.server = server;
@@ -28,11 +29,19 @@ public class DefaultHandler {
 	public void process() {
 		try {
 			if ("/reverse".equals(wrap.getContext())) {
+				/*HTTP/1.1 101 Switching Protocols
+				Date: Thu, 23 Feb 2012 17:33:41 GMT
+				Upgrade: PTTH/1.0
+				Connection: Upgrade*/
 				wrap.setResponseCode(101);
+				wrap.getResponseHeads().put("Upgrade", "PTTH/1.0");
+				wrap.getResponseHeads().put("Connection", "Upgrade");
+
 			} else if ("/server-info".equals(wrap.getContext())) {
 				wrap.setResponseCode(200);
 				wrap.getResponseHeads().put("Content-Type", "text/x-apple-plist+xml");
 				String res = AirplayUtil.getServerInfo(server.getDevice());
+				mIsServerInfoReady = true;
 				wrap.setBodys(res);
 			} else if ("/rate".equals(wrap.getContext())) {
 				wrap.setResponseCode(200);
@@ -40,8 +49,9 @@ public class DefaultHandler {
 				if (rate != null) {
 					float ratef = StringUtil.toFloat(rate);
 					int ratei = (int) ratef;
-					if (ratei == 1) {
+					if (ratei == 1 || mIsServerInfoReady) {
 						server.getProxy().videoResume();
+						mIsServerInfoReady = false;
 					} else {
 						server.getProxy().videoPause();
 					}					
@@ -93,7 +103,14 @@ public class DefaultHandler {
 					server.getProxy().setVolume((float)Float.valueOf(wrap.getRequestParameters().get("volume")));
 				}
 				wrap.setResponseCode(200);				
-			} else {
+			} else if ("/pair-setup".equals(wrap.getContext())) {
+				pairSetup();
+			}else if ("/pair-verify".equals(wrap.getContext())) {
+				pairVerify();
+			}else if ("/action".equals(wrap.getContext())) {
+				wrap.setResponseCode(200);
+				server.getProxy().videoStop();
+			}else {
 				Log.e(TAG, "unhanled request:"+wrap.getContext());
 				wrap.setReverse(false);
 				wrap.setResponseCode(404);
@@ -101,6 +118,29 @@ public class DefaultHandler {
 		} catch (AirplayException ae) {
 			ae.printStackTrace();
 		}
+	}
+
+	private void pairVerify() {
+		wrap.setResponseCode(200);
+		if (wrap.getRequestBody()[0] == 1) {
+			wrap.getResponseHeads().put(HttpProtocol.ContentType,
+					AirplayState.binaryStream);
+			byte[] rawBody = server.getProxy().pairVerify(wrap.getRequestBody());
+			wrap.setRawBody(rawBody);
+		} else {
+			wrap.getResponseHeads().put(HttpProtocol.ContentType,
+					AirplayState.binaryStream);
+		}
+
+
+	}
+
+	private void pairSetup() {
+		wrap.setResponseCode(200);
+		wrap.getResponseHeads().put(HttpProtocol.ContentType,
+				AirplayState.binaryStream);
+		byte[] rawBody = server.getProxy().pairSetup();
+		wrap.setRawBody(rawBody);
 	}
 
 	private void setProperty(Map<String, String> requestParameters) {
@@ -121,6 +161,7 @@ public class DefaultHandler {
 				String rate = "0f";
 				String pos = "0f";
 				if (AirplayState.binPLIST.equals(conType)) {
+					Log.e(TAG,"play body length = " +wrap.getRequestBody().length);
 					NSDictionary rootDict = (NSDictionary) PropertyListParser
 							.parse(wrap.getRequestBody());
 					if (rootDict.containsKey("Content-Location")) {

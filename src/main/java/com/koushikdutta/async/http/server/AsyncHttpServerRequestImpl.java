@@ -56,7 +56,7 @@ public abstract class AsyncHttpServerRequestImpl extends FilteredDataEmitter imp
                     statusLine = s;
                     if (!statusLine.contains("HTTP/")) {
                         onNotHttp();
-                        mSocket.setDataCallback(null);
+//                        mSocket.setDataCallback(null);
                     }
                 }
                 else if (!"\r".equals(s)){

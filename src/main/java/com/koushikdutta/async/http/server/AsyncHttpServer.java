@@ -6,6 +6,8 @@ import android.content.res.AssetManager;
 import android.os.Build;
 import android.text.TextUtils;
 
+import com.actionsmicro.utils.Log;
+import com.koushikdutta.async.AsyncNetworkSocket;
 import com.koushikdutta.async.AsyncSSLSocket;
 import com.koushikdutta.async.AsyncSSLSocketWrapper;
 import com.koushikdutta.async.AsyncServer;
@@ -15,6 +17,7 @@ import com.koushikdutta.async.ByteBufferList;
 import com.koushikdutta.async.DataEmitter;
 import com.koushikdutta.async.Util;
 import com.koushikdutta.async.callback.CompletedCallback;
+import com.koushikdutta.async.callback.DataCallback;
 import com.koushikdutta.async.callback.ListenCallback;
 import com.koushikdutta.async.http.AsyncHttpGet;
 import com.koushikdutta.async.http.AsyncHttpHead;
@@ -134,7 +137,17 @@ public class AsyncHttpServer {
     public CompletedCallback getErrorCallback() {
         return mCompletedCallback;
     }
-    
+
+    DataCallback mCustomDataCallBack;
+
+    public DataCallback getCustomDataCallBack() {
+        return mCustomDataCallBack;
+    }
+
+    public void setCustomDataCallBack(DataCallback customDataCallBack) {
+        this.mCustomDataCallBack = customDataCallBack;
+    }
+
     private static class Pair {
         Pattern regex;
         HttpServerRequestCallback callback;
@@ -351,7 +364,14 @@ public class AsyncHttpServer {
         });
     }
 
+    public AsyncSocket getServerSocket() {
+        return mServerSocket;
+    }
+
+    public AsyncSocket mServerSocket;
+
     public void establishConnection(final AsyncSocket socket) {
+        mServerSocket = socket;
 		AsyncHttpServerRequestImpl req = new AsyncHttpServerRequestImpl() {
 		    HttpServerRequestCallback match;
 		    String fullPath;
@@ -494,6 +514,11 @@ public class AsyncHttpServer {
 		    }
 		};
 		req.setSocket(socket);
+        // TODO
+        if (null != mCustomDataCallBack) {
+            socket.setDataCallback(mCustomDataCallBack);
+        }
+
 		socket.resume();
 	}
 

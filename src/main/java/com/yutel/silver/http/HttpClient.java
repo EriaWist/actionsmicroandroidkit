@@ -1,12 +1,12 @@
 package com.yutel.silver.http;
 
+import com.yutel.silver.util.AirplayUtil;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.logging.Logger;
-
-import com.yutel.silver.util.AirplayUtil;
 
 public class HttpClient extends Thread {
 	private static Logger logger = Logger.getLogger(HttpClient.class.getName());
@@ -41,7 +41,7 @@ public class HttpClient extends Thread {
 						logger.info("init:port=" + mSocket.getPort()
 								+ ",mSession=" + mSession);
 					}
-					if (!isReverse) { 
+					if (!isReverse) {
 						DefaultHandler dhh = new DefaultHandler(airplayServer, hw);
 						dhh.process();
 						if (hw.getResponseCode() == 101) {
@@ -54,11 +54,14 @@ public class HttpClient extends Thread {
 							String event = HttpProtocol.getEvent(hw
 									.getReverseEvent());
 							String reverse = AirplayUtil.getEventInfo(event);
-							airplayServer.sendReverseResponse(mSession,reverse);
+							airplayServer.sendReverseResponse(mSession, reverse);
 						}
 						logger.info("> " + hw.buildResponse());
-
-						ha.sendResponse(hw.buildResponse());	
+						if (hw.getRawBody() == null) {
+							ha.sendResponse(hw.buildResponse());
+						} else {
+							ha.sendResponse(hw.buildResponse(), hw.getRawBody());
+						}
 					}
 				} else {
 					if (isReverse && mSession != null) {
