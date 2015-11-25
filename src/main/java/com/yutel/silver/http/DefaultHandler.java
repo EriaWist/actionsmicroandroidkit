@@ -161,7 +161,7 @@ public class DefaultHandler {
 				String rate = "0f";
 				String pos = "0f";
 				if (AirplayState.binPLIST.equals(conType)) {
-					Log.e("dddd","play body length = " +wrap.getRequestBody().length);
+					Log.e(TAG,"play body length = " +wrap.getRequestBody().length);
 					NSDictionary rootDict = (NSDictionary) PropertyListParser
 							.parse(wrap.getRequestBody());
 					if (rootDict.containsKey("Content-Location")) {

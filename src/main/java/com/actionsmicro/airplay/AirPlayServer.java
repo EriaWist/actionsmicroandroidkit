@@ -505,7 +505,7 @@ public class AirPlayServer {
 
 					@Override
 					public void onCompleted(Exception ex) {
-						Log.d("dddd", "mirror onCompleted:streaming");
+						Log.d(TAG, "mirror onCompleted:streaming");
 						if (delegate != null /*&& !isMirroring*/) {
 							delegate.onStopMirroring();
 						}
@@ -1032,13 +1032,13 @@ public class AirPlayServer {
 				try {
 					eventServSock = new ServerSocket(0);
 					eventPort = eventServSock.getLocalPort();
-					Log.d("DDDD", "eventPort = " + eventPort);
+					Log.d(TAG, "eventPort = " + eventPort);
 					eventServSock.setReuseAddress(true);
 					eventServSock.setSoTimeout(0);
 					while (!stopEventThread && !Thread.currentThread().isInterrupted()) {
-						Log.d("DDDD", "waiting event");
+						Log.d(TAG, "waiting event");
 						Socket socket = eventServSock.accept();
-						Log.d("DDDD", "got event connection from " + socket.toString());
+						Log.d(TAG, "got event connection from " + socket.toString());
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -1051,7 +1051,7 @@ public class AirPlayServer {
 	}
 
 	private void stopEventService() {
-		Log.d("dddd", "STOP event service");
+		Log.d(TAG, "STOP event service");
 		if(mEventThread!=null) {
 			stopEventThread = true;
 			closeEventSocket();
