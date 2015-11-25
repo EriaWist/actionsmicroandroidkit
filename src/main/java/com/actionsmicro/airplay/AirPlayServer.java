@@ -60,10 +60,12 @@ public class AirPlayServer {
 	public static byte[] mEdPublicKey;
 	public static byte[] mEdSecretKey;
 	public static int eventPort;
-	// TODO to check if can use state instead of flag
-	public static boolean isMirroring = false;
-	public static boolean isStreaming = false;
+	public static final int AIRPLAY_IDLE = 0;
+	public static final int AIRPLAY_MIRROR = 1;
+	public static final int AIRPLAY_VIDEO = 2;
+	public static final int AIRPLAY_VIDEO_ON_MIRROR = 3;
 
+	public static int airplayState = AIRPLAY_IDLE;
 	public interface AirPlayServerDelegate {
 
 		void loadVideo(String url, float rate, float position);
@@ -499,17 +501,17 @@ public class AirPlayServer {
 						remoteAddress = ((AsyncNetworkSocket) socket).getRemoteAddress().getAddress();
 					}
 					delegate.onStartMirroring(remoteAddress);
-					isMirroring = true;
+					setAirplayState(AIRPLAY_MIRROR);
 				}
 				socket.setEndCallback(new CompletedCallback() {
 
 					@Override
 					public void onCompleted(Exception ex) {
-						Log.d(TAG, "mirror onCompleted:streaming");
-						if (delegate != null /*&& !isMirroring*/) {
+						Log.d(TAG, "mirror onCompleted:streaming, airplayState = " + airplayState);
+						if (delegate != null && airplayState != AIRPLAY_VIDEO_ON_MIRROR) {
 							delegate.onStopMirroring();
+							setAirplayState(AIRPLAY_IDLE);
 						}
-//						isMirroring = false;
 					}
 
 				});
@@ -528,10 +530,10 @@ public class AirPlayServer {
 					@Override
 					public void onDataAvailable(
 							DataEmitter emitter, ByteBufferList bb) {
-						if (isStreaming) {
+						if (airplayState != AIRPLAY_MIRROR) {
 							return;
 						}
-						header.position(0);
+						header.clear();
 						bb.get(header.array());
 						header.order(ByteOrder.LITTLE_ENDIAN);
 						final int payloadSize = header.getInt();
@@ -551,16 +553,16 @@ public class AirPlayServer {
 							public void onDataAvailable(
 									DataEmitter emitter,
 									ByteBufferList bb) {
-								if (isStreaming) {
+								if (airplayState == AIRPLAY_VIDEO_ON_MIRROR) {
 									return;
 								}
 								try {
-									payload.position(0);
+									payload.clear();
+									h264Frame.clear();
 									bb.get(payload.array(), 0, payloadSize);
 									debugLog("onDataAvailable:streaming:"+payloadSize+" bytes of payload read");
 									if (payloadType == 0) { // video bitstream
 										logBytes("onDataAvailable:streaming:payload:", payload.array());
-										h264Frame.position(0);
 										EzAes.decrypt(payload.array(), payloadSize, h264Frame.array());
 										logBytes("onDataAvailable:streaming:h.264:", h264Frame.array());
 										h264Frame.order(ByteOrder.BIG_ENDIAN);
@@ -578,7 +580,7 @@ public class AirPlayServer {
 											h264Frame.put(nal);
 											h264Frame.position(h264Frame.position()+length);
 										}
-										if (delegate != null && !isStreaming) {
+										if (delegate != null && airplayState == AIRPLAY_MIRROR) {
 											debugLog("onH264FrameAvailable ntpTime:" + TimeStamp.getTime(timestamp));
 											delegate.onH264FrameAvailable(h264Frame.array(), 0, payloadSize, TimeStamp.getTime(timestamp));
 										}
@@ -611,8 +613,11 @@ public class AirPlayServer {
 									} else if (payloadType == 2) { // heartbeat
 
 									}
-									mirrorServer.getServerSocket().setDataCallback(headerReader);
-									headerReader.read(128, headerCallback);
+
+									if(airplayState == AIRPLAY_MIRROR) {
+										mirrorServer.getServerSocket().setDataCallback(headerReader);
+										headerReader.read(128, headerCallback);
+									}
 								} catch (Exception e) {
 									mirrorServer.getServerSocket().close();
 									if (delegate != null) {
@@ -675,7 +680,11 @@ public class AirPlayServer {
 			public void video(String url, String rate, String pos)
 					throws AirplayException {
 				Log.d(TAG, "playVideo:"+url);
-				isStreaming = true;
+				if (airplayState == AIRPLAY_MIRROR) {
+					setAirplayState(AIRPLAY_VIDEO_ON_MIRROR);
+				} else {
+					setAirplayState(AIRPLAY_VIDEO);
+				}
 				delegate.loadVideo(url, Float.valueOf(rate), Float.valueOf(pos));
 			}
 
@@ -690,7 +699,11 @@ public class AirPlayServer {
 			
 			@Override
 			public void videoStop() throws AirplayException {
-				isStreaming = false;
+				if (airplayState == AIRPLAY_VIDEO_ON_MIRROR) {
+					setAirplayState(AIRPLAY_MIRROR);
+				} else {
+					setAirplayState(AIRPLAY_IDLE);
+				}
 				delegate.stopVideo();
 			}
 			
@@ -807,7 +820,10 @@ public class AirPlayServer {
 								public void onDisconnected() {
 									if (delegate != null) {
 										delegate.onStopAirTunes();
-										delegate.onStopMirroring();
+										if(airplayState == AIRPLAY_MIRROR) {
+											delegate.onStopMirroring();
+											setAirplayState(AIRPLAY_IDLE);
+										}
 									}
 								}
 
@@ -1064,4 +1080,8 @@ public class AirPlayServer {
 		}
 	}
 
+	public void setAirplayState(int state) {
+		Log.d(TAG, "airplay state :before = " + airplayState + " , after = " + state);
+		airplayState = state;
+	}
 }

@@ -34,11 +34,11 @@ import java.util.regex.Pattern;
 import javax.crypto.Cipher;
 
 import static com.actionsmicro.airplay.AirPlayServer.AIRPLAYER_VERSION_STRING;
-import static com.actionsmicro.airplay.AirPlayServer.isMirroring;
-import static com.actionsmicro.airplay.AirPlayServer.isStreaming;
+import static com.actionsmicro.airplay.AirPlayServer.AIRPLAY_MIRROR;
+import static com.actionsmicro.airplay.AirPlayServer.AIRPLAY_VIDEO_ON_MIRROR;
+import static com.actionsmicro.airplay.AirPlayServer.airplayState;
 import static com.actionsmicro.airplay.AirPlayServer.mEdPublicKey;
 import static com.actionsmicro.airplay.AirPlayServer.mEdSecretKey;
-
 
 /**
  * An primitive RTSP responder for replying iTunes
@@ -1020,15 +1020,14 @@ public class RTSPResponder extends Thread{
 
 					}
 					else {
-						if("TEARDOWN".equals(request.getReq()))
-						{
-							Log.d(TAG,"mirror,streaming = " +isMirroring + " , " +isStreaming );
+						if ("TEARDOWN".equals(request.getReq())) {
+							Log.d(TAG, "TEARDOWN:airplayState = " + airplayState);
 						}
 
 						RTSPResponse response = this.handlePacket(request, requestBodyBuffer);
 
 						// Write the response to the wire
-						try {			
+						try {
 							BufferedWriter oStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 							oStream.write(response.getRawPacket());
 							oStream.flush();
@@ -1037,8 +1036,8 @@ public class RTSPResponder extends Thread{
 						}
 						Log.d("ShairPort", "raw " + response.getRawPacket());
 
-						if( isMirroring && isStreaming && "TEARDOWN".equals(request.getReq())){
-							Log.d(TAG,"don't close server since isStreaming on MirrorState ");
+						if ((airplayState == AIRPLAY_MIRROR || airplayState == AIRPLAY_VIDEO_ON_MIRROR) && "TEARDOWN".equals(request.getReq())) {
+							Log.d(TAG, "don't close server since still in MIRRORING STATE ");
 							continue;
 						}
 						if("TEARDOWN".equals(request.getReq())){
