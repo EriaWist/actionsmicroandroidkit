@@ -11,6 +11,8 @@ import com.yutel.silver.vo.AirplayState;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -107,9 +109,6 @@ public class DefaultHandler {
 				pairSetup();
 			}else if ("/pair-verify".equals(wrap.getContext())) {
 				pairVerify();
-			}else if ("/action".equals(wrap.getContext())) {
-				wrap.setResponseCode(200);
-				server.getProxy().videoStop();
 			}else {
 				Log.e(TAG, "unhanled request:"+wrap.getContext());
 				wrap.setReverse(false);
@@ -161,7 +160,6 @@ public class DefaultHandler {
 				String rate = "0f";
 				String pos = "0f";
 				if (AirplayState.binPLIST.equals(conType)) {
-					Log.e(TAG,"play body length = " +wrap.getRequestBody().length);
 					NSDictionary rootDict = (NSDictionary) PropertyListParser
 							.parse(wrap.getRequestBody());
 					if (rootDict.containsKey("Content-Location")) {
@@ -206,8 +204,12 @@ public class DefaultHandler {
 			ae.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
+		} catch (OutOfMemoryError e) {
+			StringWriter stringWriter = new StringWriter();
+			e.printStackTrace(new PrintWriter(stringWriter));
+			String errorMsg = e.getLocalizedMessage() + "\n" + stringWriter.toString();
+			Log.e(TAG, errorMsg);
 		}
-
 	}
 
 	private void playbackInfo() {

@@ -24,6 +24,8 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -791,6 +793,11 @@ public class RTSPResponder extends Thread{
 								e.printStackTrace();
 							} catch (PropertyListFormatException e) {
 								e.printStackTrace();
+							} catch (OutOfMemoryError e) {
+								StringWriter stringWriter = new StringWriter();
+								e.printStackTrace(new PrintWriter(stringWriter));
+								String errorMsg = e.getLocalizedMessage() + "\n" + stringWriter.toString();
+								Log.e(TAG, errorMsg);
 							}
 						}
 
