@@ -680,12 +680,12 @@ public class AirPlayServer {
 			public void video(String url, String rate, String pos)
 					throws AirplayException {
 				Log.d(TAG, "playVideo:"+url);
+				delegate.loadVideo(url, Float.valueOf(rate), Float.valueOf(pos));
 				if (airplayState == AIRPLAY_MIRROR) {
 					setAirplayState(AIRPLAY_VIDEO_ON_MIRROR);
 				} else {
 					setAirplayState(AIRPLAY_VIDEO);
 				}
-				delegate.loadVideo(url, Float.valueOf(rate), Float.valueOf(pos));
 			}
 
 			@Override
@@ -699,12 +699,12 @@ public class AirPlayServer {
 			
 			@Override
 			public void videoStop() throws AirplayException {
+				delegate.stopVideo();
 				if (airplayState == AIRPLAY_VIDEO_ON_MIRROR) {
 					setAirplayState(AIRPLAY_MIRROR);
 				} else {
 					setAirplayState(AIRPLAY_IDLE);
 				}
-				delegate.stopVideo();
 			}
 			
 			@Override
