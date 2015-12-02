@@ -74,10 +74,14 @@ public class AikaImpl extends Aika {
 		mConfig = new HashMap<String, String>();
 		mConfig.put("deviceid", device.getDeviceid().toUpperCase());
 		mConfig.put("model", device.getModel());
-		mConfig.put("features", "0x"+Long.toHexString(Long.valueOf(device.getFeatures())));
+		mConfig.put("features", device.getFeatures());
 		mConfig.put("srcvers", device.getSrcvers());
 		mConfig.put("rmodel", "EZAir1,1");
-		mConfig.put("pw", "0");
+//		mConfig.put("pw", "0");
+		mConfig.put("pk", device.getPk());
+		mConfig.put("pi", "b08f5a79-db29-4384-b456-a4784d9e6055");
+		mConfig.put("vv","2");
+		mConfig.put("flags","0x4");
 	}
 
 	@Override

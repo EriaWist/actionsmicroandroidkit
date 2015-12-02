@@ -32,6 +32,22 @@ public class AikaProxy implements Aika.AikaConnectListener,
 	}
 
 	/**
+	 * pair-setup
+	 */
+	@Override
+	public byte[] pairSetup() {
+		return connectListener.pairSetup();
+	}
+
+	/**
+	 * pair-verify
+	 */
+	@Override
+	public byte[] pairVerify(byte[] requestBody) {
+		return connectListener.pairVerify(requestBody);
+	}
+
+	/**
 	 * connect
 	 */
 	@Override

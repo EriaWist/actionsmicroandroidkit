@@ -30,7 +30,7 @@ public class AudioServer implements UDPDelegate, AudioPlayer{
 	public static final int BUFFER_FRAMES = 512;	// Total buffer size (number of frame)
 	public static final int START_FILL = 282;		// Alac will wait till there are START_FILL frames in buffer
 	public static final int MAX_PACKET = 2048;		// Also in UDPListener (possible to merge it in one place?)
-	private static final boolean DEBUG_LOG = false;
+	private static final boolean DEBUG_LOG = true;
 	private static final String TAG = "AudioServer";
 	
 	// Sockets
