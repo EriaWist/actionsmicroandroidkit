@@ -1,18 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.androidrx;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.YuvImage;
@@ -38,6 +25,20 @@ import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.Socket;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private static final String TAG = "AndroidRxClient";
 	private static final int HEARTBEAT_PERIOD = 1000;
@@ -45,6 +46,12 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private JSONRPC2Session jsonRpcSession;
 	private InetAddress ipAddress;
 	private int port;
+	private boolean mMirrorServiceReady = false;
+
+	public interface JSonResponseDelegate {
+		void onComplete(JSONRPC2Response response);
+	}
+
 	public AndroidRxClient(Context context, InetAddress ipAddress, int port) {
 		this.context = context;
 		this.ipAddress = ipAddress;
@@ -151,14 +158,21 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		invokeRpcMethod(method, params, 0);
 	}
 	protected void invokeRpcMethod(final String method, final HashMap<String, Object> params, long timeout) {
+		invokeRpcMethod(method, params, 0, null);
+	}
+
+	protected void invokeRpcMethod(final String method, final HashMap<String, Object> params, long timeout, final JSonResponseDelegate delegate) {
 		Runnable runnable = new Runnable() {
 			@Override
 			public void run() {
 				try {
 					JSONRPC2Session jsonRpcSession = getJsonRpcSession();
 					if (jsonRpcSession != null) {
-						jsonRpcSession.send(new JSONRPC2Request(method, params, generateRpcId()));
-					}					
+						JSONRPC2Response response = jsonRpcSession.send(new JSONRPC2Request(method, params, generateRpcId()));
+						if (null != delegate) {
+							delegate.onComplete(response);
+						}
+					}
 				} catch (JSONRPC2SessionException e) {
 					e.printStackTrace();
 				} finally {
@@ -167,7 +181,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 					}
 				}
 			}
-			
+
 		};
 		performOnNetworkThread(runnable);
 		if (timeout > 0) {
@@ -593,6 +607,38 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+		if (!mMirrorServiceReady) {
+			Log.d("dddd", "Mirror Service is not Ready yet");
+			// Use hardcode temporary
+			final HashMap<String, Object> params = new HashMap<String, Object>();
+			params.put("param1", "tGDsVQl9zNDSFTZsTL2IZdFXL3ke31XVidc/Co0arWc2QHwJnDgYPIqVzZPpB9io");
+			params.put("param2", "U2NoSVNUV2tGY2NReXJBNg==");
+			params.put("ntp-server-port", 62752);
+			invokeRpcMethod("stream", params, 0, new JSonResponseDelegate() {
+				@Override
+				public void onComplete(JSONRPC2Response response) {
+					HashMap<String,Object> resMap = (HashMap<String, Object>) response.getResult();
+					String connectType = (String) resMap.get("connection-type");
+					Long mirrorPort = (Long)resMap.get("tcp-port");
+					int p = Integer.valueOf((String) resMap.get("tcp-port"));
+					String version = (String) resMap.get("version");
+					Log.d("dddd", "connectType = " + connectType + " tcpPort = " + mirrorPort + " version = " + version);
+
+					System.out.println("try connect before");
+					try {
+						Socket client = new Socket(ipAddress, p);     // 根據 args[0] 的 TCP Socket.
+						System.out.println("try connect");
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+
+				}
+			});
+
+			mMirrorServiceReady = true;
+			return;
+		}
+		// TODO send
 
 	}
 

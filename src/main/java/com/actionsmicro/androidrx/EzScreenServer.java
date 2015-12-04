@@ -7,6 +7,7 @@ import android.util.Base64;
 
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
+import com.actionsmicro.utils.CipherUtil;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
 import com.koushikdutta.async.AsyncNetworkSocket;
@@ -31,19 +32,12 @@ import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 import org.apache.commons.net.ntp.TimeStamp;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.security.spec.AlgorithmParameterSpec;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.jmdns.ServiceInfo;
 
 public class EzScreenServer {
@@ -249,8 +243,8 @@ public class EzScreenServer {
 						String aesIV = (String) namedParams.get("param2");
 						mNtpServerPort = (Long) namedParams.get("ntp-server-port");
 						mAesIV = Base64.decode(aesIV.getBytes(), Base64.DEFAULT);
-						mAesKey = DecryptAES(encryptedKey,mPredefinedKey, mAesIV);
-						Log.d("dddd","mAesKey = " + mAesKey + " mAesIV = " + mAesIV + " ntp_server_port = " + mNtpServerPort) ;
+						mAesKey = CipherUtil.DecryptAES(encryptedKey,mPredefinedKey, mAesIV);
+						Log.d("dddd","mAesKey = " + mAesKey + " mAesIV = " + aesIV + " ntp_server_port = " + mNtpServerPort) ;
 
 						HashMap<String,Object> resMap = new HashMap();
 						resMap.put("connection-type","tcp");
@@ -389,7 +383,7 @@ public class EzScreenServer {
 										logBytes("onDataAvailable:streaming:payload:", payload.array());
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
-										byte[] decrypByte = DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
 
 										decryptPayload.put(decrypByte);
 										decryptPayload.position(0);
@@ -404,7 +398,7 @@ public class EzScreenServer {
 									} else if (payloadType == 1) { //codec data
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
-										byte[] decrypByte = DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
 										decryptPayload.put(decrypByte);
 										decryptPayload.position(0);
 
@@ -434,7 +428,7 @@ public class EzScreenServer {
 									} else if (payloadType == 3) { // msg
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
-										byte[] decrypByte = DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
 										String decryptString = new String(decrypByte);
 
 										String msg;
@@ -453,7 +447,7 @@ public class EzScreenServer {
 										msgHeadBuf.putLong(currentTime);
 										msgHeadBuf.position(0);
 
-										byte[] encryptBody = EncryptAESCBC(mAesKey.getBytes("UTF-8"),body,mAesIV);
+										byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey.getBytes("UTF-8"),body,mAesIV);
 										ByteBuffer msgBodyBuf = ByteBuffer.allocate(encryptBody.length);
 										msgBodyBuf.put(encryptBody);
 										msgBodyBuf.position(0);
@@ -495,52 +489,5 @@ public class EzScreenServer {
 		}
 	}
 
-	public static final String ALGORITHM_AES_CBC = "AES/CBC/PKCS5Padding";
-	private static final byte[] IV_BYTES = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-
-	public static String DecryptAES(String content, String key, byte[] iv) {
-		byte[] textByte;
-		try {
-			textByte = DecryptAESCBC(key.getBytes("UTF-8"), content.getBytes("UTF-8"), iv, true);
-			return new String(textByte);
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	private static byte[] DecryptAESCBC(byte[] key, byte[] text, byte[] iv,boolean isBase64Encoded) {
-		try {
-			byte[] encryted_bytes;
-			if (isBase64Encoded) {
-				encryted_bytes = Base64.decode(text, Base64.DEFAULT);
-			} else {
-				encryted_bytes = text;
-			}
-			AlgorithmParameterSpec ivSpec = new IvParameterSpec(iv);
-			SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
-			Cipher cipher = Cipher.getInstance(ALGORITHM_AES_CBC);
-			cipher.init(Cipher.DECRYPT_MODE, skeySpec, ivSpec);
-			return cipher.doFinal(encryted_bytes);
-		} catch (Exception ex) {
-			StringWriter stringWriter = new StringWriter();
-			ex.printStackTrace(new PrintWriter(stringWriter));
-			String errorMsg = ex.getLocalizedMessage() + "\n" + stringWriter.toString();
-			Log.e("dddd", errorMsg);
-			return null;
-		}
-	}
-
-	private static byte[] EncryptAESCBC(byte[] key, byte[] text, byte[] iv) {
-		try {
-			AlgorithmParameterSpec ivSpec = new IvParameterSpec(iv);
-			SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
-			Cipher cipher = Cipher.getInstance(ALGORITHM_AES_CBC);
-			cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
-			return cipher.doFinal(text);
-		} catch (Exception ex) {
-			return null;
-		}
-	}
 }
