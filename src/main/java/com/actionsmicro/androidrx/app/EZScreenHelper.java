@@ -1,28 +1,5 @@
 package com.actionsmicro.androidrx.app;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.SocketException;
-import java.net.URL;
-import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.jcodec.codecs.h264.H264Utils;
-import org.jcodec.codecs.h264.io.model.SeqParameterSet;
-import org.jcodec.common.model.Size;
-
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -78,6 +55,29 @@ import com.google.android.gms.analytics.Tracker;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 import com.yutel.silver.vo.AirplayState;
+
+import org.jcodec.codecs.h264.H264Utils;
+import org.jcodec.codecs.h264.io.model.SeqParameterSet;
+import org.jcodec.common.model.Size;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.SocketException;
+import java.net.URL;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class EZScreenHelper implements PlayerListener {
 	private boolean isExpired;
@@ -833,8 +833,6 @@ public class EZScreenHelper implements PlayerListener {
 					int height = sps.frame_cropping_flag ? codedHeight
 							- ((sps.frame_crop_bottom_offset + sps.frame_crop_top_offset) << sps.chroma_format_idc.compHeight[1])
 							: codedHeight;
-					width =16;
-					height =10;
 					Log.v(TAG, "seqParameterSet width:"+width+", height:"+height);
 					updateTransform(width, height);
 				}
@@ -1642,6 +1640,11 @@ public class EZScreenHelper implements PlayerListener {
 			protected void hideMirrorView() {
 				EZScreenHelper.this.hideMirrorView();				
 			}
+
+			@Override
+			protected void doEZScreenMirror(InetAddress remoteAddress) {
+				EZScreenHelper.this.doEZScreenMirror(remoteAddress);
+			}
 		};
 		android.net.wifi.WifiManager wifi =
 				(android.net.wifi.WifiManager)
@@ -1863,6 +1866,29 @@ public class EZScreenHelper implements PlayerListener {
 			}
 		}
 	}
+
+	@SuppressLint("NewApi")
+	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+	private void doEZScreenMirror(InetAddress remoteAddress) {
+		showMirrorView();
+		stopMirrorDecoding();
+		createMirrorClock(remoteAddress);
+		releaseDecoder();
+		releaseMirrorSurface();
+		createMirrorSurface();
+		createDecoder();
+
+		closeTestFile();
+		if (DUMP_H264) {
+			try {
+				testFile = new FileOutputStream("/sdcard/test"+".h264");
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
 	@SuppressLint("NewApi")
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void createDecoder() {

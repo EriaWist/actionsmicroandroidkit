@@ -50,8 +50,7 @@ public class EzScreenConnectedState implements State {
 	public State onStartMirroring(StateContext stateContext,
 			InetAddress remoteAddress) {
 		stateContext.stopVideo();
-		// TODO
-		stateContext.doAirPlayMirror(remoteAddress);
+		stateContext.doEZScreenMirror(remoteAddress);
 		return null;
 	}
 

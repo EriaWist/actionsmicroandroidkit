@@ -32,6 +32,7 @@ import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 import org.apache.commons.net.ntp.TimeStamp;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -42,7 +43,7 @@ import javax.jmdns.ServiceInfo;
 
 public class EzScreenServer {
 	private int mMirrorPort;
-	private String mAesKey;
+	private byte[] mAesKey;
 	private Long mNtpServerPort;
 	private static String mPredefinedKey = "SCREEN21SCREEN90SCREEN23SCREEN43";
 	private byte[] mAesIV;
@@ -199,7 +200,7 @@ public class EzScreenServer {
 				public JSONRPC2Response process(JSONRPC2Request request,
 						MessageContext arg1) {
 					Map<String, Object> namedParams = request.getNamedParams();
-					Log.d("dddd","method = " + request.getMethod());
+					Log.d(TAG,"method = " + request.getMethod());
 					if ("display".equals(request.getMethod())) {
 						String url = (String) namedParams.get("url");
 						if (url != null) {
@@ -242,9 +243,12 @@ public class EzScreenServer {
 
 						String aesIV = (String) namedParams.get("param2");
 						mNtpServerPort = (Long) namedParams.get("ntp-server-port");
-						mAesIV = Base64.decode(aesIV.getBytes(), Base64.DEFAULT);
-						mAesKey = CipherUtil.DecryptAES(encryptedKey,mPredefinedKey, mAesIV);
-						Log.d("dddd","mAesKey = " + mAesKey + " mAesIV = " + aesIV + " ntp_server_port = " + mNtpServerPort) ;
+						mAesIV = Base64.decode(aesIV.getBytes(), Base64.NO_WRAP);
+						try {
+							mAesKey = CipherUtil.DecryptAESCBC(mPredefinedKey.getBytes("UTF-8"),encryptedKey.getBytes("UTF-8"), mAesIV,true);
+						} catch (UnsupportedEncodingException e) {
+							e.printStackTrace();
+						}
 
 						HashMap<String,Object> resMap = new HashMap();
 						resMap.put("connection-type","tcp");
@@ -282,7 +286,7 @@ public class EzScreenServer {
 	}
 
 	private AsyncHttpServer mirrorServer;
-	private static boolean DEBUG_LOG = true;
+	private static boolean DEBUG_LOG = false;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
 			Log.d(TAG, msg);
@@ -312,7 +316,7 @@ public class EzScreenServer {
 
 			@Override
 			public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
-				Log.d("dddd", " receive data................................ ");
+				Log.d(TAG, " receive data................................ ");
 				AsyncSocket socket = mirrorServer.getServerSocket();
 				final ByteBuffer header = ByteBuffer.allocate(32);
 				final ByteBuffer payload = ByteBuffer.allocate(500 * 1024);
@@ -330,7 +334,7 @@ public class EzScreenServer {
 
 					@Override
 					public void onCompleted(Exception ex) {
-						Log.d("dddd", "mirror onCompleted:streaming");
+						Log.d(TAG, "mirror onCompleted:streaming");
 						if (ezScreenServerDelegate != null /*&& airplayState != AIRPLAY_VIDEO_ON_MIRROR*/) {
 							ezScreenServerDelegate.onStopMirroring();
 						}
@@ -352,7 +356,7 @@ public class EzScreenServer {
 					@Override
 					public void onDataAvailable(
 							DataEmitter emitter, ByteBufferList bb) {
-						Log.d("dddd", " header read complete  ");
+						Log.d(TAG, " header read complete  ");
 
 						header.clear();
 						bb.get(header.array());
@@ -383,22 +387,22 @@ public class EzScreenServer {
 										logBytes("onDataAvailable:streaming:payload:", payload.array());
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
-										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
 
+										decryptPayload.order(ByteOrder.BIG_ENDIAN);
 										decryptPayload.put(decrypByte);
 										decryptPayload.position(0);
-										decryptPayload.order(ByteOrder.BIG_ENDIAN);
 
 										if (ezScreenServerDelegate != null) {
 											debugLog("onH264FrameAvailable ntpTime:" + TimeStamp.getTime(timestamp));
-											ezScreenServerDelegate.onH264FrameAvailable(decryptPayload.array(), 0, payloadSize, TimeStamp.getTime(timestamp));
+											ezScreenServerDelegate.onH264FrameAvailable(decryptPayload.array(), 0, decrypByte.length, TimeStamp.getTime(timestamp));
 										}
 
 
 									} else if (payloadType == 1) { //codec data
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
-										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
 										decryptPayload.put(decrypByte);
 										decryptPayload.position(0);
 
@@ -424,13 +428,13 @@ public class EzScreenServer {
 										debugLog("onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
 										logBytes("onDataAvailable:streaming:pps:", pps);
 									} else if (payloadType == 2) { // heartbeat
-
+										debugLog("onDataAvailable:streaming: receive heartbeat");
 									} else if (payloadType == 3) { // msg
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
-										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey.getBytes("UTF-8"), content, mAesIV, false);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
 										String decryptString = new String(decrypByte);
-
+										Log.d(TAG, "decryptString = " + decryptString);
 										String msg;
 										if (decryptString.equals("Luke, I am your Father!")) {
 											msg = "Hello!";
@@ -439,15 +443,15 @@ public class EzScreenServer {
 											msg = "Who's your father?";
 										}
 										byte[] body = msg.getBytes("UTF-8");
+										byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey,body,mAesIV);
 										ByteBuffer msgHeadBuf = ByteBuffer.allocate(32);
 										msgHeadBuf.order(ByteOrder.LITTLE_ENDIAN);
-										msgHeadBuf.putInt(body.length);
+										msgHeadBuf.putInt(encryptBody.length);
 										msgHeadBuf.putShort(payloadType);
 										long currentTime = System.currentTimeMillis();
 										msgHeadBuf.putLong(currentTime);
 										msgHeadBuf.position(0);
 
-										byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey.getBytes("UTF-8"),body,mAesIV);
 										ByteBuffer msgBodyBuf = ByteBuffer.allocate(encryptBody.length);
 										msgBodyBuf.put(encryptBody);
 										msgBodyBuf.position(0);
@@ -478,7 +482,7 @@ public class EzScreenServer {
 		AsyncServerSocket mirrorServerSock = mirrorServer.listen(0);
 		mMirrorPort = mirrorServerSock.getLocalPort();
 
-		Log.d("dddd", "Mirror server listening on "+mMirrorPort);
+		Log.d(TAG, "Mirror server listening on "+mMirrorPort);
 	}
 
 	public void closeAirPlayConnection() {

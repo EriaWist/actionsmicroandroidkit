@@ -109,5 +109,5 @@ public abstract class StateContext {
 	}
 	protected abstract void loadEzScreenVideo(String url, String callback);
 	protected abstract void hideMirrorView();
-	
+	protected abstract void doEZScreenMirror(InetAddress remoteAddress);
 }
