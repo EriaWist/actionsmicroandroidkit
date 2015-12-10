@@ -1,24 +1,12 @@
 package com.actionsmicro.androidkit.ezcast.imp.androidrx;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.YuvImage;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
@@ -26,6 +14,7 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.ezcom.jsonrpc.JSONRPC2Session;
 import com.actionsmicro.graphics.YuvImageToJpegHelper;
+import com.actionsmicro.utils.CipherUtil;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
@@ -38,13 +27,45 @@ import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
+import java.net.Socket;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
+	private static final short PACKET_TYPE_VIDEO_BITSTREAM = 0;
+	private static final short PACKET_TYPE_CODEC = 1;
+	private static final short PACKET_TYPE_HEARTBEAT = 2;
+	private static final short PACKET_TYPE_MSG = 3;
+	private static String mPredefinedKey = "SCREEN21SCREEN90SCREEN23SCREEN43";
 	private static final String TAG = "AndroidRxClient";
 	private static final int HEARTBEAT_PERIOD = 1000;
 
 	private JSONRPC2Session jsonRpcSession;
 	private InetAddress ipAddress;
 	private int port;
+	private boolean mIsHandShaking = false;
+	private Socket mMirrorClientSocket = null;
+	private byte[] mAesKey = null;
+	private byte[] mAesIV = null;
+
+	public interface JSonResponseDelegate {
+		void onComplete(JSONRPC2Response response);
+	}
+
 	public AndroidRxClient(Context context, InetAddress ipAddress, int port) {
 		this.context = context;
 		this.ipAddress = ipAddress;
@@ -151,14 +172,21 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		invokeRpcMethod(method, params, 0);
 	}
 	protected void invokeRpcMethod(final String method, final HashMap<String, Object> params, long timeout) {
+		invokeRpcMethod(method, params, 0, null);
+	}
+
+	protected void invokeRpcMethod(final String method, final HashMap<String, Object> params, long timeout, final JSonResponseDelegate delegate) {
 		Runnable runnable = new Runnable() {
 			@Override
 			public void run() {
 				try {
 					JSONRPC2Session jsonRpcSession = getJsonRpcSession();
 					if (jsonRpcSession != null) {
-						jsonRpcSession.send(new JSONRPC2Request(method, params, generateRpcId()));
-					}					
+						JSONRPC2Response response = jsonRpcSession.send(new JSONRPC2Request(method, params, generateRpcId()));
+						if (null != delegate) {
+							delegate.onComplete(response);
+						}
+					}
 				} catch (JSONRPC2SessionException e) {
 					e.printStackTrace();
 				} finally {
@@ -167,7 +195,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 					}
 				}
 			}
-			
+
 		};
 		performOnNetworkThread(runnable);
 		if (timeout > 0) {
@@ -591,8 +619,261 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		}
 	}
 
+	public static int unsignedToBytes(byte b) {
+		return b & 0xFF;
+	}
+	private final byte[] nal = {0x00, 0x00, 0x00, 0x01};
+
+	// ref: http://stackoverflow.com/questions/1507780/searching-for-a-sequence-of-bytes-in-a-binary-file-with-java
+	/**
+	 * Finds the first occurrence of the pattern in the text.
+	 */
+	public int indexOf(byte[] data, byte[] pattern,int fromIndex) {
+		int[] failure = computeFailure(pattern);
+
+		int j = 0;
+		if (data.length == 0) return -1;
+
+		for (int i = fromIndex; i < data.length; i++) {
+			while (j > 0 && pattern[j] != data[i]) {
+				j = failure[j - 1];
+			}
+			if (pattern[j] == data[i]) { j++; }
+			if (j == pattern.length) {
+				return i - pattern.length + 1;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * Computes the failure function using a boot-strapping process,
+	 * where the pattern is matched against itself.
+	 */
+	private int[] computeFailure(byte[] pattern) {
+		int[] failure = new int[pattern.length];
+
+		int j = 0;
+		for (int i = 1; i < pattern.length; i++) {
+			while (j > 0 && pattern[j] != pattern[i]) {
+				j = failure[j - 1];
+			}
+			if (pattern[j] == pattern[i]) {
+				j++;
+			}
+			failure[i] = j;
+		}
+
+		return failure;
+	}
 	@Override
-	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+	public void sendH264EncodedScreenData(final byte[] contents, int width, int height) throws Exception {
+		if (!mIsHandShaking && null == mMirrorClientSocket) {
+			mIsHandShaking = true;
+
+			Log.d(TAG, "Mirror Service is not Ready yet");
+			final HashMap<String, Object> params = new HashMap<String, Object>();
+			SecureRandom random = new SecureRandom();
+			mAesIV = random.generateSeed(16);
+			String encryptIV = Base64.encodeToString(mAesIV, Base64.NO_WRAP);
+
+			mAesKey = random.generateSeed(32);
+			String encryptKey = Base64.encodeToString(CipherUtil.EncryptAESCBC(mPredefinedKey.getBytes("UTF-8"), mAesKey, mAesIV), Base64.NO_WRAP);
+			params.put("param1", encryptKey);
+			params.put("param2", encryptIV);
+			// TODO start ntp-server-port
+			params.put("ntp-server-port", 62752);
+
+			invokeRpcMethod("stream", params, 0, new JSonResponseDelegate() {
+				@Override
+				public void onComplete(JSONRPC2Response response) {
+					HashMap<String, Object> resMap = (HashMap<String, Object>) response.getResult();
+					String connectType = (String) resMap.get("connection-type");
+					int mirrorPort = ((Long) resMap.get("tcp-port")).intValue();
+					String version = (String) resMap.get("version");
+					Log.d(TAG, "connectType = " + connectType + " tcpPort = " + mirrorPort + " version = " + version);
+
+					try {
+						mMirrorClientSocket = new Socket();
+						mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
+						Log.d("dddd", "try connect client after");
+						// TODO send "Luke, I am your Father!"
+						String msg = "Luke, I am your Father!";
+						byte[] body = msg.getBytes("UTF-8");
+						final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
+						sendMirrorData(PACKET_TYPE_MSG,encryptBody);
+						final InputStream in = mMirrorClientSocket.getInputStream();
+						new Thread(new Runnable() {
+							@Override
+							public void run() {
+								int headerSize = 32;
+
+								try {
+									byte[] payloadHead = new byte[headerSize];
+									int ret = in.read(payloadHead);
+									if (ret != -1) {
+										ByteBuffer payloadBuf = ByteBuffer.wrap(payloadHead);
+										payloadBuf.order(ByteOrder.LITTLE_ENDIAN);
+										int payloadSize = payloadBuf.getInt();
+										final short payloadType = payloadBuf.getShort();
+										final long timestamp = payloadBuf.getLong();
+										StringBuilder headerBuilder = new StringBuilder();
+										for (int i = 0; i < payloadHead.length; i++) {
+											headerBuilder.append((unsignedToBytes(payloadHead[i]) + " "));
+										}
+										Log.d(TAG, " read body ........ payloadsize = " + payloadSize + " payloadType = " + payloadType);
+
+										byte[] payloadBody = new byte[payloadSize];
+										ret = in.read(payloadBody);
+										if (ret != -1) {
+											byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, payloadBody, mAesIV, false);
+											String decryptString = new String(decrypByte);
+											Log.d(TAG, "decryptString = " + decryptString);
+
+											if (decryptString.equals("Hello!")) {
+												Log.d(TAG, "right msg");
+												dequeueH264Data();
+
+												// TODO to check if sendhearbeat is nesscessary
+//												Handler networkHandler = getNetworkHandler();
+//												if (networkHandler != null) {
+//													networkHandler.postDelayed(mirrorHeartBeat, HEARTBEAT_PERIOD);
+//												}
+											} else {
+												Log.d(TAG, "wrong body msg");
+												closeMirrorSocket();
+											}
+
+										} else {
+											Log.d(TAG, "wrong body length = -1");
+											closeMirrorSocket();
+										}
+									} else {
+										Log.d(TAG, "wrong header length = -1");
+										closeMirrorSocket();
+									}
+								} catch (IOException e) {
+									e.printStackTrace();
+									closeMirrorSocket();
+								}
+								Log.d(TAG, "handshake complete");
+
+							}
+						}).start();
+						// TODO send heartbeat
+					} catch (IOException e) {
+						e.printStackTrace();
+						closeMirrorSocket();
+					}
+
+				}
+			});
+			enqueueH264Data(contents);
+		} else if(null == mMirrorClientSocket){
+			enqueueH264Data(contents);
+		} else{
+			sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
+		}
+	}
+
+	private void sendMirrorData(short type, byte[] contents) {
+
+		ByteBuffer msgHeadBuf = ByteBuffer.allocate(32);
+		msgHeadBuf.order(ByteOrder.LITTLE_ENDIAN);
+
+
+		long currentTime = System.currentTimeMillis();
+		byte[] msgBody = new byte[0];
+		switch (type) {
+			case PACKET_TYPE_VIDEO_BITSTREAM:
+				msgBody = CipherUtil.EncryptAESCBC(mAesKey, contents, mAesIV);
+
+				msgHeadBuf.putInt(msgBody.length);
+				msgHeadBuf.putShort(type);
+
+				msgHeadBuf.putLong(currentTime);
+				msgHeadBuf.position(0);
+
+				break;
+			case PACKET_TYPE_CODEC:
+				int nalSpsPos = indexOf(contents, nal, 0);
+				int nalPpsPos = indexOf(contents, nal, nalSpsPos + 4);
+
+				final int spsLen = nalPpsPos - 4;
+				final int ppsLen = contents.length - nalPpsPos - 4;
+
+				final byte[] spsData = new byte[spsLen];
+				final byte[] ppsData = new byte[ppsLen];
+				System.arraycopy(contents, nalSpsPos + 4, spsData, 0, spsLen);
+				System.arraycopy(contents, nalPpsPos + 4, ppsData, 0, ppsLen);
+
+				ByteBuffer codecBody = ByteBuffer.allocate(11 + spsLen + ppsLen);
+				// version
+				codecBody.put((byte) 1);
+				// profile(high)
+				codecBody.put((byte) 100);
+				// compatibility
+				codecBody.put((byte) 0xc0);
+				// level(4.0)
+				codecBody.put((byte) 40);
+				// 6bits:0x3f reserved. 2 bits:nal unuts length-1
+				codecBody.put((byte) 0xff);
+				// 3bits:0x7 reserved, 5 bits:number of SPS
+				codecBody.put((byte) 0xe1);
+				// SPS len
+				codecBody.putShort((short) spsLen);
+				// SPS data
+				codecBody.put(spsData);
+				// number of PPS
+				codecBody.put((byte) 1);
+				// PPS len
+				codecBody.putShort((short) ppsLen);
+				// SPS data
+				codecBody.put(ppsData);
+
+				codecBody.position(0);
+
+				msgBody = CipherUtil.EncryptAESCBC(mAesKey, codecBody.array(), mAesIV);
+				// send codec
+				msgHeadBuf.putInt(msgBody.length);
+				msgHeadBuf.putShort(type);
+				msgHeadBuf.putLong(currentTime);
+				msgHeadBuf.position(0);
+				break;
+			case PACKET_TYPE_HEARTBEAT:
+				msgHeadBuf.putInt(0);
+				msgHeadBuf.putShort(type);
+				msgHeadBuf.putLong(currentTime);
+				msgHeadBuf.position(0);
+				break;
+			case PACKET_TYPE_MSG:
+				msgBody = contents;
+				msgHeadBuf.putInt(msgBody.length);
+				msgHeadBuf.putShort(type);
+				msgHeadBuf.putLong(currentTime);
+				msgHeadBuf.position(0);
+				break;
+		}
+
+		sendDataToMirrorServer(msgHeadBuf.array());
+		if(type != PACKET_TYPE_HEARTBEAT) {
+			sendDataToMirrorServer(msgBody);
+		}
+	}
+
+
+	private void sendDataToMirrorServer(byte[] data) {
+		synchronized (this) {
+			if (mMirrorClientSocket != null) {
+				try {
+					mMirrorClientSocket.getOutputStream().write(data);
+					mMirrorClientSocket.getOutputStream().flush();
+				} catch (IOException e) {
+					closeMirrorSocket();
+					e.printStackTrace();
+				}
+			}
+		}
 
 	}
 
@@ -608,4 +889,56 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	public void setTracker(TrackableApi trackableApi) {
 		this.tracker = trackableApi;
 	}
+
+	private void closeMirrorSocket() {
+		if (mMirrorClientSocket != null) {
+			try {
+				mMirrorClientSocket.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			mMirrorClientSocket = null;
+
+			mIsHandShaking = false;
+			h264Queue.clear();
+			h264Queue = null;
+		}
+	}
+
+	private ArrayList<byte[]> h264Queue = new ArrayList<byte[]>();
+
+	private void enqueueH264Data(byte[] contents) {
+		h264Queue.add(contents);
+	}
+
+	private void dequeueH264Data() {
+		while (h264Queue.size() > 0) {
+			byte[] contents = h264Queue.remove(0);
+			byte nalByte = contents[4];
+			int nalType = nalByte & 0x1f;
+			Log.d(TAG,"dequeueH264Data nalType = " + nalType);
+			if(nalType == 7) {
+				sendMirrorData(PACKET_TYPE_CODEC, contents);
+			} else{
+				sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
+			}
+		}
+	}
+
+	private Runnable mirrorHeartBeat = new Runnable() {
+		@Override
+		public void run() {
+			if (mMirrorClientSocket != null) {
+                Handler networkHandler = getNetworkHandler();
+                if (networkHandler != null) {
+                    networkHandler.postDelayed(mirrorHeartBeat, HEARTBEAT_PERIOD);
+                }
+                sendMirrorData(PACKET_TYPE_HEARTBEAT,null);
+                Log.d(TAG, "send mirror heartbeat");
+
+            }
+		}
+
+	};
 }

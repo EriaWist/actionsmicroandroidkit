@@ -62,6 +62,9 @@ public class AndroidRxDisplayApi extends AndroidRxApi implements DisplayApi {
 
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
-
+		if (getAndroidRxClient() == null) {
+			throw new IllegalStateException("AndroidRxClient should not be null. API is not connected or API was disconnted.");
+		}
+		getAndroidRxClient().sendH264EncodedScreenData(contents,width,height);
 	}
 }

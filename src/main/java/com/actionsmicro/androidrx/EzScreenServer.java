@@ -1,20 +1,26 @@
 package com.actionsmicro.androidrx;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.jmdns.ServiceInfo;
-
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
+import com.actionsmicro.utils.CipherUtil;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
+import com.koushikdutta.async.AsyncNetworkSocket;
+import com.koushikdutta.async.AsyncServerSocket;
+import com.koushikdutta.async.AsyncSocket;
+import com.koushikdutta.async.ByteBufferList;
+import com.koushikdutta.async.DataEmitter;
+import com.koushikdutta.async.DataEmitterReader;
+import com.koushikdutta.async.callback.CompletedCallback;
+import com.koushikdutta.async.callback.DataCallback;
+import com.koushikdutta.async.http.server.AsyncHttpServer;
+import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
+import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Error;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
@@ -23,7 +29,26 @@ import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
+import org.apache.commons.net.ntp.TimeStamp;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.jmdns.ServiceInfo;
+
 public class EzScreenServer {
+	private int mMirrorPort;
+	private byte[] mAesKey;
+	private Long mNtpServerPort;
+	private static String mPredefinedKey = "SCREEN21SCREEN90SCREEN23SCREEN43";
+	private byte[] mAesIV;
+	private boolean mMirrorServiceReady = false;
+
 	public interface EzScreenServerDelegate {
 
 		void displayUrl(String url);
@@ -53,6 +78,16 @@ public class EzScreenServer {
 		void onInitializationFinished();
 
 		void onInitializationFailed(Exception e);
+
+		void onStartMirroring(InetAddress remoteAddress);
+
+		void onStopMirroring();
+
+		void onSpsAvailable(byte[] sps);
+
+		void onPpsAvailable(byte[] pps);
+
+		void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp);
 		
 	}
 	protected static final String TAG = "EzScreenServer";
@@ -64,7 +99,7 @@ public class EzScreenServer {
 	private String deviceID;
 	private boolean mmr;
 	private boolean wmr;
-	
+
 	public EzScreenServer(Context context, InetAddress inetAddress, String name, String deviceID, boolean mmr, boolean wmr, EzScreenServerDelegate delegate) {
 		this.name = name;
 		this.context = context;
@@ -158,13 +193,14 @@ public class EzScreenServer {
 
 				@Override
 				public String[] handledRequests() {
-					return new String[]{"display", "stop_display", "play", "pause", "resume", "stop", "seek", "increase_volume", "decrease_volume"};
+					return new String[]{"display", "stop_display", "play", "pause", "resume", "stop", "seek", "increase_volume", "decrease_volume", "stream"};
 				}
 
 				@Override
 				public JSONRPC2Response process(JSONRPC2Request request,
 						MessageContext arg1) {
 					Map<String, Object> namedParams = request.getNamedParams();
+					Log.d(TAG,"method = " + request.getMethod());
 					if ("display".equals(request.getMethod())) {
 						String url = (String) namedParams.get("url");
 						if (url != null) {
@@ -202,6 +238,24 @@ public class EzScreenServer {
 							return new JSONRPC2Response(Long.valueOf(0), request.getID());
 						}
 						return new JSONRPC2Response(JSONRPC2Error.INVALID_PARAMS, request.getID());
+					} else if ("stream".equals(request.getMethod())) {
+						String encryptedKey = (String) namedParams.get("param1");
+
+						String aesIV = (String) namedParams.get("param2");
+						mNtpServerPort = (Long) namedParams.get("ntp-server-port");
+						mAesIV = Base64.decode(aesIV.getBytes(), Base64.NO_WRAP);
+						try {
+							mAesKey = CipherUtil.DecryptAESCBC(mPredefinedKey.getBytes("UTF-8"),encryptedKey.getBytes("UTF-8"), mAesIV,true);
+						} catch (UnsupportedEncodingException e) {
+							e.printStackTrace();
+						}
+
+						HashMap<String,Object> resMap = new HashMap();
+						resMap.put("connection-type","tcp");
+						resMap.put("tcp-port", mMirrorPort);
+						resMap.put("version","screen-stream-1.0");
+						return new JSONRPC2Response(resMap, request.getID());
+
 					}
 					return new JSONRPC2Response(JSONRPC2Error.INTERNAL_ERROR, request.getID());
 				}
@@ -209,8 +263,8 @@ public class EzScreenServer {
 			});
 			jsonRpcOverHttpServer.start();
 			HashMap<String, String> txtRecord = new HashMap<String, String>();
-			txtRecord.put("txtvers", "20140515");
-			txtRecord.put("srcvers", "20140515");
+			txtRecord.put("txtvers", "20151019");
+			txtRecord.put("srcvers", "20151019");
 			txtRecord.put("deviceid", deviceID);
 			//2015-03-13 erichwang for mac-mirror and windows-mirror
 			txtRecord.put("mmr", String.valueOf(mmr));
@@ -227,5 +281,217 @@ public class EzScreenServer {
 				ezScreenServerDelegate.onInitializationFailed(e);
 			}
 		}
+
+		initMirrorServer();
 	}
+
+	private AsyncHttpServer mirrorServer;
+	private static boolean DEBUG_LOG = false;
+	private static void debugLog(String msg) {
+		if (DEBUG_LOG) {
+			Log.d(TAG, msg);
+		}
+	}
+	private void initMirrorServer() {
+		mirrorServer = new AsyncHttpServer() {
+			@Override
+			protected boolean onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+				Log.d(TAG, "onRequest:"+request.getPath());
+				return false;
+			}
+		};
+		mirrorServer.setErrorCallback(new CompletedCallback() {
+
+			@Override
+			public void onCompleted(Exception ex) {
+				if (!mMirrorServiceReady) {
+//					informDelegateInitializationFailed(ex);
+				}
+			}
+
+		});
+		mirrorServer.setCustomDataCallBack(new DataCallback() {
+			private DataCallback headerCallback;
+			final DataEmitterReader headerReader = new DataEmitterReader();
+
+			@Override
+			public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
+				Log.d(TAG, " receive data................................ ");
+				AsyncSocket socket = mirrorServer.getServerSocket();
+				final ByteBuffer header = ByteBuffer.allocate(32);
+				final ByteBuffer payload = ByteBuffer.allocate(500 * 1024);
+				final ByteBuffer decryptPayload = ByteBuffer.allocate(500 * 1024);
+				mMirrorServiceReady = false;
+
+				if (ezScreenServerDelegate != null) {
+					InetAddress remoteAddress = null;
+					if (socket instanceof AsyncNetworkSocket) {
+						remoteAddress = ((AsyncNetworkSocket) socket).getRemoteAddress().getAddress();
+					}
+					ezScreenServerDelegate.onStartMirroring(remoteAddress);
+				}
+				socket.setEndCallback(new CompletedCallback() {
+
+					@Override
+					public void onCompleted(Exception ex) {
+						Log.d(TAG, "mirror onCompleted:streaming");
+						if (ezScreenServerDelegate != null /*&& airplayState != AIRPLAY_VIDEO_ON_MIRROR*/) {
+							ezScreenServerDelegate.onStopMirroring();
+						}
+					}
+
+				});
+
+				mirrorServer.getServerSocket().setDataCallback(headerReader);
+				headerReader.read(32, headerCallback = new DataCallback() {
+
+					void logBytes(String prefix, byte[] buffer) {
+						if (buffer.length >= 8) {
+							debugLog(prefix + String.format("[%02x %02x %02x %02x  %02x %02x %02x %02x]", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]));
+						} else if (buffer.length >= 4) {
+							debugLog(prefix + String.format("[%02x %02x %02x %02x]", buffer[0], buffer[1], buffer[2], buffer[3]));
+						}
+					}
+
+					@Override
+					public void onDataAvailable(
+							DataEmitter emitter, ByteBufferList bb) {
+						Log.d(TAG, " header read complete  ");
+
+						header.clear();
+						bb.get(header.array());
+						header.order(ByteOrder.LITTLE_ENDIAN);
+
+						final int payloadSize = header.getInt();
+						final short payloadType = header.getShort();
+						final long timestamp = header.getLong();
+						debugLog("onDataAvailable:streaming:"+"payload size:"+payloadSize+", payload type:"+payloadType+", timestamp:"+timestamp);
+						DataEmitterReader payloadReader = new DataEmitterReader();
+						mirrorServer.getServerSocket().setDataCallback(payloadReader);
+						payloadReader.read(payloadSize, new DataCallback() {
+							private int numberOfSps;
+							private byte[] sps;
+							private byte numberOfPps;
+							private byte[] pps;
+							private byte[] nal = {0x00, 0x00, 0x00, 0x01};
+							@Override
+							public void onDataAvailable(
+									DataEmitter emitter,
+									ByteBufferList bb) {
+								try {
+									payload.clear();
+									decryptPayload.clear();
+									bb.get(payload.array(), 0, payloadSize);
+									debugLog("onDataAvailable:streaming:"+payloadSize+" bytes of payload read");
+									if (payloadType == 0) { // video bitstream
+										logBytes("onDataAvailable:streaming:payload:", payload.array());
+										byte[] content = new byte[payloadSize];
+										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
+
+										decryptPayload.order(ByteOrder.BIG_ENDIAN);
+										decryptPayload.put(decrypByte);
+										decryptPayload.position(0);
+
+										if (ezScreenServerDelegate != null) {
+											debugLog("onH264FrameAvailable ntpTime:" + TimeStamp.getTime(timestamp));
+											ezScreenServerDelegate.onH264FrameAvailable(decryptPayload.array(), 0, decrypByte.length, TimeStamp.getTime(timestamp));
+										}
+
+
+									} else if (payloadType == 1) { //codec data
+										byte[] content = new byte[payloadSize];
+										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
+										decryptPayload.put(decrypByte);
+										decryptPayload.position(0);
+
+										decryptPayload.order(ByteOrder.BIG_ENDIAN);
+										decryptPayload.position(5);
+										numberOfSps = decryptPayload.get()&0x1f;
+										short sizeOfSps = decryptPayload.getShort();
+										sps = new byte[sizeOfSps];
+										decryptPayload.get(sps);
+										if (ezScreenServerDelegate != null) {
+											ezScreenServerDelegate.onSpsAvailable(sps);
+										}
+										debugLog("onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
+										logBytes("onDataAvailable:streaming:sps:", sps);
+
+										numberOfPps = decryptPayload.get();
+										short sizeOfPps = decryptPayload.getShort();
+										pps = new byte[sizeOfPps];
+										decryptPayload.get(pps);
+										if (ezScreenServerDelegate != null) {
+											ezScreenServerDelegate.onPpsAvailable(pps);
+										}
+										debugLog("onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
+										logBytes("onDataAvailable:streaming:pps:", pps);
+									} else if (payloadType == 2) { // heartbeat
+										debugLog("onDataAvailable:streaming: receive heartbeat");
+									} else if (payloadType == 3) { // msg
+										byte[] content = new byte[payloadSize];
+										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
+										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
+										String decryptString = new String(decrypByte);
+										Log.d(TAG, "decryptString = " + decryptString);
+										String msg;
+										if (decryptString.equals("Luke, I am your Father!")) {
+											msg = "Hello!";
+											mMirrorServiceReady = true;
+										} else {
+											msg = "Who's your father?";
+										}
+										byte[] body = msg.getBytes("UTF-8");
+										byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey,body,mAesIV);
+										ByteBuffer msgHeadBuf = ByteBuffer.allocate(32);
+										msgHeadBuf.order(ByteOrder.LITTLE_ENDIAN);
+										msgHeadBuf.putInt(encryptBody.length);
+										msgHeadBuf.putShort(payloadType);
+										long currentTime = System.currentTimeMillis();
+										msgHeadBuf.putLong(currentTime);
+										msgHeadBuf.position(0);
+
+										ByteBuffer msgBodyBuf = ByteBuffer.allocate(encryptBody.length);
+										msgBodyBuf.put(encryptBody);
+										msgBodyBuf.position(0);
+										ByteBufferList msgBufList = new ByteBufferList(msgHeadBuf,msgBodyBuf);
+										mirrorServer.getServerSocket().write(msgBufList);
+
+									}
+
+									if(mMirrorServiceReady) {
+										mirrorServer.getServerSocket().setDataCallback(headerReader);
+										headerReader.read(32, headerCallback);
+									}
+								} catch (Exception e) {
+									mirrorServer.getServerSocket().close();
+									if (ezScreenServerDelegate != null) {
+										ezScreenServerDelegate.onStopMirroring();
+									}
+								}
+							}
+
+						});
+
+					}
+
+				});
+			}
+		});
+		AsyncServerSocket mirrorServerSock = mirrorServer.listen(0);
+		mMirrorPort = mirrorServerSock.getLocalPort();
+
+		Log.d(TAG, "Mirror server listening on "+mMirrorPort);
+	}
+
+	public void closeAirPlayConnection() {
+		if (mirrorServer != null) {
+			mirrorServer.stop();
+			AsyncServerSocket mirrorServerSock = mirrorServer.listen(0);
+			mMirrorPort = mirrorServerSock.getLocalPort();
+		}
+	}
+
+
 }
