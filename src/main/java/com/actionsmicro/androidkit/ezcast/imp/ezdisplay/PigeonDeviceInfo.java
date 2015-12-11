@@ -119,7 +119,7 @@ public class PigeonDeviceInfo extends DeviceInfo {
 
 	@Override
 	public boolean supportAd() {
-		return false;
+		return true;
 	}
 
 	@Override
