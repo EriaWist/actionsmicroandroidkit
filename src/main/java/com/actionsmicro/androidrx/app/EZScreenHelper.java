@@ -753,10 +753,11 @@ public class EZScreenHelper implements PlayerListener {
 				}
 
 				@Override
-				public void onStartMirroring(InetAddress remoteAddress) {
+				public void onStartMirroring(InetAddress remoteAddress, int ntpPort) {
 					Log.d(TAG, "onStartMirroring");
 					trackScreenHit("ezcastrx.h264mirror");
-					stateContext.onStartMirroring(remoteAddress);
+					// TODO
+					stateContext.onStartMirroring(remoteAddress, ntpPort);
 //					androidRxSchemaServer.startFunction(AndroidRxSchemaServer.RxFunction.EZAIR_MIRROR);
 
 				}
@@ -913,8 +914,7 @@ public class EZScreenHelper implements PlayerListener {
 
 					}
 					if (outputBufferIndex >= 0) {
-//						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
-						boolean shouldRender = true;
+						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
 						decoder.releaseOutputBuffer(outputBufferIndex, shouldRender);
 					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 						decoder.getOutputBuffers();
@@ -1016,7 +1016,7 @@ public class EZScreenHelper implements PlayerListener {
 				public void onStartMirroring(InetAddress remoteAddress) {
 					Log.d(TAG, "onStartMirroring");
 					trackScreenHit("airplay.mirror");
-					stateContext.onStartMirroring(remoteAddress);
+					stateContext.onStartMirroring(remoteAddress, 7010);
 					androidRxSchemaServer.startFunction(AndroidRxSchemaServer.RxFunction.EZAIR_MIRROR);
 				}
 
@@ -1642,8 +1642,8 @@ public class EZScreenHelper implements PlayerListener {
 			}
 
 			@Override
-			protected void doEZScreenMirror(InetAddress remoteAddress) {
-				EZScreenHelper.this.doEZScreenMirror(remoteAddress);
+			protected void doEZScreenMirror(InetAddress remoteAddress, int ntpPort) {
+				EZScreenHelper.this.doEZScreenMirror(remoteAddress, ntpPort);
 			}
 		};
 		android.net.wifi.WifiManager wifi =
@@ -1850,7 +1850,7 @@ public class EZScreenHelper implements PlayerListener {
 	private void doAirPlayMirror(InetAddress remoteAddress) {
 		showMirrorView();
 		stopMirrorDecoding();
-		createMirrorClock(remoteAddress);
+		createMirrorClock(remoteAddress, 7010);
 		releaseDecoder();
 		releaseMirrorSurface();
 		createMirrorSurface();
@@ -1869,10 +1869,11 @@ public class EZScreenHelper implements PlayerListener {
 
 	@SuppressLint("NewApi")
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-	private void doEZScreenMirror(InetAddress remoteAddress) {
+	private void doEZScreenMirror(InetAddress remoteAddress, int ntpPort) {
 		showMirrorView();
 		stopMirrorDecoding();
-		createMirrorClock(remoteAddress);
+		// TODO change to ntp-server
+		createMirrorClock(remoteAddress, ntpPort);
 		releaseDecoder();
 		releaseMirrorSurface();
 		createMirrorSurface();
@@ -1934,13 +1935,13 @@ public class EZScreenHelper implements PlayerListener {
 			mirrorSurface = new Surface(mirrorSurfaceTexture);
 		}
 	}
-	private void createMirrorClock(InetAddress remoteAddress) {
+	private void createMirrorClock(InetAddress remoteAddress, int ntpPort) {
 		if (playbackClock != null) {
 			playbackClock.release();
 			playbackClock = null;
 		}
 		try {
-			playbackClock = new MirrorClock(remoteAddress, 7010, 100, 25);
+			playbackClock = new MirrorClock(remoteAddress, ntpPort, 100, 25);
 		} catch (SocketException e1) {
 			e1.printStackTrace();
 		}

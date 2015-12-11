@@ -54,7 +54,7 @@ public class AirPlayPhotoState implements State {
 
 	@Override
 	public State onStartMirroring(StateContext stateContext,
-			InetAddress remoteAddress) {
+								  InetAddress remoteAddress, int ntpPort) {
 		// TODO Auto-generated method stub
 		return null;
 	}

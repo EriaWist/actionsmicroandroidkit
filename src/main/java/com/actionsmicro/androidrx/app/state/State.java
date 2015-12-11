@@ -20,7 +20,7 @@ public interface State {
 
 	State onReceiveAirTunesCoverArt(StateContext stateContext, byte[] byteArray);
 
-	State onStartMirroring(StateContext stateContext, InetAddress remoteAddress);
+	State onStartMirroring(StateContext stateContext, InetAddress remoteAddress, int ntpPort);
 
 	State onStopMirroring(StateContext stateContext);
 

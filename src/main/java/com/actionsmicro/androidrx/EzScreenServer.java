@@ -79,7 +79,7 @@ public class EzScreenServer {
 
 		void onInitializationFailed(Exception e);
 
-		void onStartMirroring(InetAddress remoteAddress);
+		void onStartMirroring(InetAddress remoteAddress, int ntpPort);
 
 		void onStopMirroring();
 
@@ -286,7 +286,7 @@ public class EzScreenServer {
 	}
 
 	private AsyncHttpServer mirrorServer;
-	private static boolean DEBUG_LOG = false;
+	private static boolean DEBUG_LOG = true;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
 			Log.d(TAG, msg);
@@ -328,7 +328,7 @@ public class EzScreenServer {
 					if (socket instanceof AsyncNetworkSocket) {
 						remoteAddress = ((AsyncNetworkSocket) socket).getRemoteAddress().getAddress();
 					}
-					ezScreenServerDelegate.onStartMirroring(remoteAddress);
+					ezScreenServerDelegate.onStartMirroring(remoteAddress, mNtpServerPort.intValue());
 				}
 				socket.setEndCallback(new CompletedCallback() {
 

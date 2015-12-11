@@ -27,6 +27,8 @@ import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
+import org.apache.commons.net.ntp.TimeStamp;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -696,8 +698,6 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 					try {
 						mMirrorClientSocket = new Socket();
 						mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
-						Log.d("dddd", "try connect client after");
-						// TODO send "Luke, I am your Father!"
 						String msg = "Luke, I am your Father!";
 						byte[] body = msg.getBytes("UTF-8");
 						final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
@@ -780,9 +780,9 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 
 		ByteBuffer msgHeadBuf = ByteBuffer.allocate(32);
 		msgHeadBuf.order(ByteOrder.LITTLE_ENDIAN);
-
-
-		long currentTime = System.currentTimeMillis();
+		TimeStamp ntpStamp = TimeStamp.getCurrentTime();
+		long ntpTime = ntpStamp.ntpValue();
+		Log.d("ddddd", "current time  = " + System.currentTimeMillis() + " ntpTime = " + ntpStamp.getTime());
 		byte[] msgBody = new byte[0];
 		switch (type) {
 			case PACKET_TYPE_VIDEO_BITSTREAM:
@@ -790,8 +790,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 
 				msgHeadBuf.putInt(msgBody.length);
 				msgHeadBuf.putShort(type);
-
-				msgHeadBuf.putLong(currentTime);
+				msgHeadBuf.putLong(ntpTime);
 				msgHeadBuf.position(0);
 
 				break;
@@ -837,28 +836,26 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 				// send codec
 				msgHeadBuf.putInt(msgBody.length);
 				msgHeadBuf.putShort(type);
-				msgHeadBuf.putLong(currentTime);
+				msgHeadBuf.putLong(ntpTime);
 				msgHeadBuf.position(0);
 				break;
 			case PACKET_TYPE_HEARTBEAT:
 				msgHeadBuf.putInt(0);
 				msgHeadBuf.putShort(type);
-				msgHeadBuf.putLong(currentTime);
+				msgHeadBuf.putLong(ntpTime);
 				msgHeadBuf.position(0);
 				break;
 			case PACKET_TYPE_MSG:
 				msgBody = contents;
 				msgHeadBuf.putInt(msgBody.length);
 				msgHeadBuf.putShort(type);
-				msgHeadBuf.putLong(currentTime);
+				msgHeadBuf.putLong(ntpTime);
 				msgHeadBuf.position(0);
 				break;
 		}
 
 		sendDataToMirrorServer(msgHeadBuf.array());
-		if(type != PACKET_TYPE_HEARTBEAT) {
-			sendDataToMirrorServer(msgBody);
-		}
+		sendDataToMirrorServer(msgBody);
 	}
 
 

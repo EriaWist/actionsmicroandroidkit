@@ -48,9 +48,9 @@ public class EzScreenConnectedState implements State {
 
 	@Override
 	public State onStartMirroring(StateContext stateContext,
-			InetAddress remoteAddress) {
+								  InetAddress remoteAddress, int ntpPort) {
 		stateContext.stopVideo();
-		stateContext.doEZScreenMirror(remoteAddress);
+		stateContext.doEZScreenMirror(remoteAddress, ntpPort);
 		return null;
 	}
 
