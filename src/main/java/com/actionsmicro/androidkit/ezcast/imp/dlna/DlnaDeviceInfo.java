@@ -174,6 +174,11 @@ public class DlnaDeviceInfo extends DeviceInfo {
 		return true;
 	}
 
+	@Override
+	public boolean supportH264Streaming() {
+		return false;
+	}
+
 	public String getManufacturer() {
 		try {
 			String manufacturer = device.getDetails().getManufacturerDetails().getManufacturer();

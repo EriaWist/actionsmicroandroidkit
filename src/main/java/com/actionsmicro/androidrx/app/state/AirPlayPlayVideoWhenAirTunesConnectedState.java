@@ -50,7 +50,7 @@ public class AirPlayPlayVideoWhenAirTunesConnectedState implements State {
 
 	@Override
 	public State onStartMirroring(StateContext stateContext,
-			InetAddress remoteAddress) {
+								  InetAddress remoteAddress, int ntpPort) {
 		stateContext.stopVideo();
 		stateContext.doAirPlayMirror(remoteAddress);
 		return new AirPlayMirrorState();

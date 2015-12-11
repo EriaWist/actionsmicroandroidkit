@@ -10,11 +10,12 @@ import org.apache.commons.net.ntp.TimeInfo;
 
 import com.actionsmicro.airplay.clock.AirPlayPlaybackClockBase;
 import com.actionsmicro.airplay.clock.PlaybackClock;
+import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.ThreadUtils;
 
 public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClock {
 	private static final String TAG = "MirrorClock";
-	private static final boolean DEBUG_LOG = false;
+	private static final boolean DEBUG_LOG = true;
 	private Thread timingThread;
 	public MirrorClock(final InetAddress ntpServer, final int ntpPort, long latencyTolerance, int exceptionLimit) throws SocketException {
 		super(latencyTolerance, exceptionLimit, DEBUG_LOG, TAG);
@@ -27,7 +28,9 @@ public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClo
 					ntpClient.open();
 					while (!Thread.currentThread().isInterrupted()) {
 						try {
+							Log.d("dddd","ntp get time ntpPort = " + ntpPort);
 							TimeInfo info = ntpClient.getTime(ntpServer, ntpPort);
+							Log.d("dddd","ntp get time complete~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 							info.computeDetails();
 							updateSyncInfo(info.getDelay(), info.getOffset());
 							Thread.sleep(3000);

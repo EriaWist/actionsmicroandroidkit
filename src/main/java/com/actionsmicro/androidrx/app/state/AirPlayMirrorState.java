@@ -52,7 +52,7 @@ public class AirPlayMirrorState implements State {
 
 	@Override
 	public State onStartMirroring(StateContext stateContext,
-			InetAddress remoteAddress) {
+								  InetAddress remoteAddress, int ntpPort) {
 		return null;
 	}
 
