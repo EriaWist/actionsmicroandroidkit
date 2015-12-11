@@ -1,6 +1,7 @@
 package com.actionsmicro.androidrx;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -269,7 +270,10 @@ public class EzScreenServer {
 			//2015-03-13 erichwang for mac-mirror and windows-mirror
 			txtRecord.put("mmr", String.valueOf(mmr));
 			txtRecord.put("wmr", String.valueOf(wmr));
-			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE+"local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord));
+			String supportH264Decode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN ? "enable" : "disable";
+			txtRecord.put("h264stream", supportH264Decode);
+			ServiceInfo screenServiceInfo = ServiceInfo.create(AndroidRxFinder.SERVICE_TYPE + "local.", EzScreenServer.this.name, jsonRpcOverHttpServer.getListeningPort(), 0, 0, txtRecord);
+			bonjourServiceAdvertiser = new BonjourServiceAdvertiser(screenServiceInfo);
 			bonjourServiceAdvertiser.register();
 			if (ezScreenServerDelegate != null) {
 				ezScreenServerDelegate.onInitializationFinished();

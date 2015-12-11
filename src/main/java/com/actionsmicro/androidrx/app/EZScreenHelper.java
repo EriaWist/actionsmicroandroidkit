@@ -914,7 +914,8 @@ public class EZScreenHelper implements PlayerListener {
 
 					}
 					if (outputBufferIndex >= 0) {
-						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
+//						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
+						boolean shouldRender = true;
 						decoder.releaseOutputBuffer(outputBufferIndex, shouldRender);
 					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 						decoder.getOutputBuffers();
