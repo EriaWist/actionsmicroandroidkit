@@ -32,20 +32,28 @@ import org.apache.commons.net.ntp.TimeStamp;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import vavi.apps.shairport.UDPDelegate;
+import vavi.apps.shairport.UDPListener;
 
 public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private static final short PACKET_TYPE_VIDEO_BITSTREAM = 0;
@@ -55,6 +63,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private static String mPredefinedKey = "SCREEN21SCREEN90SCREEN23SCREEN43";
 	private static final String TAG = "AndroidRxClient";
 	private static final int HEARTBEAT_PERIOD = 1000;
+	private static final Date DATE_BASE_TIME = new Date(0);
 
 	private JSONRPC2Session jsonRpcSession;
 	private InetAddress ipAddress;
@@ -63,6 +72,11 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private Socket mMirrorClientSocket = null;
 	private byte[] mAesKey = null;
 	private byte[] mAesIV = null;
+	private boolean stopNtpServerThread;
+	private Thread mNtpServerThread;
+	private int mNtpPort;
+	private DatagramSocket mNtpServSock;
+	private UDPListener udpListener;
 
 	public interface JSonResponseDelegate {
 		void onComplete(JSONRPC2Response response);
@@ -525,7 +539,9 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		if (mediaPlayerStateListener != null) {
 			mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxClient.this, Cause.USER);
 		}
-		stopHttpFileServer();		
+		stopHttpFileServer();
+		closeMirrorSocket();
+		closeNtpServer();
 		commitMediaUsageTracking();
 		return true;
 	}
@@ -673,7 +689,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		if (!mIsHandShaking && null == mMirrorClientSocket) {
 			h264Queue = new ArrayList<byte[]>();
 			mIsHandShaking = true;
-
+			initNtpServerService();
 			Log.d(TAG, "Mirror Service is not Ready yet");
 			final HashMap<String, Object> params = new HashMap<String, Object>();
 			SecureRandom random = new SecureRandom();
@@ -684,8 +700,11 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			String encryptKey = Base64.encodeToString(CipherUtil.EncryptAESCBC(mPredefinedKey.getBytes("UTF-8"), mAesKey, mAesIV), Base64.NO_WRAP);
 			params.put("param1", encryptKey);
 			params.put("param2", encryptIV);
-			// TODO start ntp-server-port
-			params.put("ntp-server-port", 62752);
+			synchronized (mNtpServerThread) {
+				mNtpServerThread.wait();
+			}
+			Log.d(TAG,"ntp server ready, mNtpPort = " + mNtpPort);
+			params.put("ntp-server-port", mNtpPort);
 
 			invokeRpcMethod("stream", params, 0, new JSonResponseDelegate() {
 				@Override
@@ -783,7 +802,6 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		msgHeadBuf.order(ByteOrder.LITTLE_ENDIAN);
 		TimeStamp ntpStamp = TimeStamp.getCurrentTime();
 		long ntpTime = ntpStamp.ntpValue();
-		Log.d("ddddd", "current time  = " + System.currentTimeMillis() + " ntpTime = " + ntpStamp.getTime());
 		byte[] msgBody = new byte[0];
 		switch (type) {
 			case PACKET_TYPE_VIDEO_BITSTREAM:
@@ -939,4 +957,104 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		}
 
 	};
+
+	private void initNtpServerService() {
+		stopNtpServerThread = false;
+		closeNtpServer();
+		mNtpServerThread = new Thread() {
+			@Override
+			public void run() {
+				try {
+					mNtpServSock = new DatagramSocket();
+					mNtpPort = mNtpServSock.getLocalPort();
+					synchronized(this) {
+						this.notifyAll();
+					}
+					udpListener = new UDPListener(mNtpServSock, new UDPDelegate() {
+
+						@Override
+						public void packetReceived(DatagramSocket socket, DatagramPacket packet) {
+							Log.d(TAG, "receive ntp data");
+
+							/*0000   24 01 02 e8 00 00 00 00 00 00 00 00 41 49 52 50
+							0010   00 00 00 00 00 00 00 00 00 00 01 c4 c8 ac 5d b5
+							0020   00 00 01 c4 c9 6a 0b a1 00 00 01 c4 c9 78 73 d2
+							Network Time Protocol
+							Flags: 0x24
+							00.. .... = Leap Indicator: no warning (0)
+									..10 0... = Version number: NTP Version 4 (4)
+							.... .100 = Mode: server (4)
+							Peer Clock Stratum: primary reference (1)
+							Peer Polling Interval: invalid (2)
+							Peer Clock Precision: 0.000000 sec
+							Root Delay: 0.0000 sec
+							Root Dispersion: 0.0000 sec
+							Reference ID: Unidentified reference source 'AIRP'
+							Reference Timestamp: Jan 1, 1970 00:00:00.000000000 UTC
+							Origin Timestamp: Jan 1, 1900 00:07:32.783880000 UTC
+							Receive Timestamp: Jan 1, 1900 00:07:32.786774000 UTC
+							Transmit Timestamp: Jan 1, 1900 00:07:32.786994000 UTC*/
+
+							long receiveTime = System.currentTimeMillis();
+							TimeStamp serverReceiveTime = new TimeStamp(new Date(receiveTime));
+
+							ByteBuffer packetBuffer = ByteBuffer.wrap(packet.getData());
+							packetBuffer.order(ByteOrder.BIG_ENDIAN);
+							packetBuffer.position(40);
+
+							long clientSentTimeTime = packetBuffer.getLong();
+							ByteBuffer ntpPacket = ByteBuffer.allocate(48);
+							ntpPacket.order(ByteOrder.BIG_ENDIAN);
+							ntpPacket.put((byte)0x24);
+							ntpPacket.put((byte)0x01);
+							ntpPacket.put((byte) 0x02);
+							ntpPacket.put((byte) 0x00);
+
+							// delay
+							ntpPacket.putInt(0);
+							// Dispersion
+							ntpPacket.putInt(0);
+							// Reference ID
+							String refId = "AIRP";
+							try {
+								ntpPacket.put(refId.getBytes("UTF-8"));
+							} catch (UnsupportedEncodingException e) {
+								e.printStackTrace();
+							}
+							TimeStamp ntpBaseTime = new TimeStamp(DATE_BASE_TIME);
+							Log.d(TAG,"ntp sever port: ntpBaseTime = " + ntpBaseTime.getDate());
+							ntpPacket.putLong(ntpBaseTime.ntpValue());
+							TimeStamp clientTimeStamp = new TimeStamp(clientSentTimeTime);
+							Log.d(TAG,"clientTimeStamep = " + clientTimeStamp.getDate());
+							ntpPacket.putLong(clientSentTimeTime);
+							ntpPacket.putLong(serverReceiveTime.ntpValue());
+							Log.d(TAG, "serverReceiveTime  = " + serverReceiveTime.getDate() );
+							TimeStamp ntpServerSendTime = TimeStamp.getCurrentTime();
+							ntpPacket.putLong(ntpServerSendTime.ntpValue());
+							Log.d(TAG,"ntp sever port: currentNtpTime = " + ntpServerSendTime.getDate());
+
+							try {
+								socket.send(new DatagramPacket(ntpPacket.array(), ntpPacket.capacity(), packet.getAddress(), packet.getPort()));
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+					});
+				} catch (SocketException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		mNtpServerThread.start();
+	}
+
+	private void closeNtpServer() {
+		if (mNtpServSock != null) {
+			if(null != udpListener) {
+				udpListener.stopThread();
+			}
+			mNtpServSock.close();
+			mNtpServSock = null;
+		}
+	}
 }

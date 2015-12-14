@@ -1,17 +1,18 @@
 package com.actionsmicro.airplay.mirror;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-
-import org.apache.commons.net.ntp.NTPUDPClient;
-import org.apache.commons.net.ntp.TimeInfo;
-
 import com.actionsmicro.airplay.clock.AirPlayPlaybackClockBase;
 import com.actionsmicro.airplay.clock.PlaybackClock;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.ThreadUtils;
+
+import org.apache.commons.net.ntp.NTPUDPClient;
+import org.apache.commons.net.ntp.NtpV3Packet;
+import org.apache.commons.net.ntp.TimeInfo;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClock {
 	private static final String TAG = "MirrorClock";
@@ -28,9 +29,7 @@ public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClo
 					ntpClient.open();
 					while (!Thread.currentThread().isInterrupted()) {
 						try {
-							Log.d("dddd","ntp get time ntpPort = " + ntpPort);
 							TimeInfo info = ntpClient.getTime(ntpServer, ntpPort);
-							Log.d("dddd","ntp get time complete~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 							info.computeDetails();
 							updateSyncInfo(info.getDelay(), info.getOffset());
 							Thread.sleep(3000);

@@ -854,6 +854,7 @@ public class EZScreenHelper implements PlayerListener {
 					});
 				}
 
+				@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 				private void decodeBytesWithPrefix(byte[] prefix, byte[] data, int offset, int length, long timestamp, int flags, long timeoutUs) {
 					if (decoder != null && length > 0) {
 						int bufferIndex = -1;
@@ -902,6 +903,7 @@ public class EZScreenHelper implements PlayerListener {
 					renderThread.start();
 				}
 
+				@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 				private void doRender(MediaCodec.BufferInfo bufferInfo) {
 					int outputBufferIndex = -1;
 					try {
@@ -914,8 +916,7 @@ public class EZScreenHelper implements PlayerListener {
 
 					}
 					if (outputBufferIndex >= 0) {
-//						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
-						boolean shouldRender = true;
+						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
 						decoder.releaseOutputBuffer(outputBufferIndex, shouldRender);
 					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 						decoder.getOutputBuffers();
