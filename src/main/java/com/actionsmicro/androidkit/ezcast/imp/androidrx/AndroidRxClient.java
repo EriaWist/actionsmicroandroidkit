@@ -540,8 +540,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxClient.this, Cause.USER);
 		}
 		stopHttpFileServer();
-		closeMirrorSocket();
-		closeNtpServer();
+		closeMirrorServer();
 		commitMediaUsageTracking();
 		return true;
 	}
@@ -689,7 +688,6 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		if (!mIsHandShaking && null == mMirrorClientSocket) {
 			h264Queue = new ArrayList<byte[]>();
 			mIsHandShaking = true;
-			initNtpServerService();
 			Log.d(TAG, "Mirror Service is not Ready yet");
 			final HashMap<String, Object> params = new HashMap<String, Object>();
 			SecureRandom random = new SecureRandom();
@@ -700,6 +698,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			String encryptKey = Base64.encodeToString(CipherUtil.EncryptAESCBC(mPredefinedKey.getBytes("UTF-8"), mAesKey, mAesIV), Base64.NO_WRAP);
 			params.put("param1", encryptKey);
 			params.put("param2", encryptIV);
+			initNtpServerService();
 			synchronized (mNtpServerThread) {
 				mNtpServerThread.wait();
 			}
@@ -761,29 +760,28 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 //												}
 											} else {
 												Log.d(TAG, "wrong body msg");
-												closeMirrorSocket();
+												closeMirrorServer();
 											}
 
 										} else {
 											Log.d(TAG, "wrong body length = -1");
-											closeMirrorSocket();
+											closeMirrorServer();
 										}
 									} else {
 										Log.d(TAG, "wrong header length = -1");
-										closeMirrorSocket();
+										closeMirrorServer();
 									}
 								} catch (IOException e) {
 									e.printStackTrace();
-									closeMirrorSocket();
+									closeMirrorServer();
 								}
 								Log.d(TAG, "handshake complete");
 
 							}
 						}).start();
-						// TODO send heartbeat
 					} catch (IOException e) {
 						e.printStackTrace();
-						closeMirrorSocket();
+						closeMirrorServer();
 					}
 
 				}
@@ -879,18 +877,17 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 
 
 	private void sendDataToMirrorServer(byte[] data) {
-		synchronized (this) {
-			if (mMirrorClientSocket != null) {
+		if (mMirrorClientSocket != null) {
+			synchronized (mMirrorClientSocket) {
 				try {
 					mMirrorClientSocket.getOutputStream().write(data);
 					mMirrorClientSocket.getOutputStream().flush();
 				} catch (IOException e) {
-					closeMirrorSocket();
+					closeMirrorServer();
 					e.printStackTrace();
 				}
 			}
 		}
-
 	}
 
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
@@ -906,19 +903,25 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		this.tracker = trackableApi;
 	}
 
-	private void closeMirrorSocket() {
+	private void closeMirrorServer() {
 		if (mMirrorClientSocket != null) {
-			try {
-				mMirrorClientSocket.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			mMirrorClientSocket = null;
+			synchronized (mMirrorClientSocket) {
+				closeNtpServer();
 
-			mIsHandShaking = false;
-			h264Queue.clear();
-			h264Queue = null;
+				if (mMirrorClientSocket != null) {
+					try {
+						mMirrorClientSocket.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					mMirrorClientSocket = null;
+
+					mIsHandShaking = false;
+					h264Queue.clear();
+					h264Queue = null;
+				}
+			}
 		}
 	}
 

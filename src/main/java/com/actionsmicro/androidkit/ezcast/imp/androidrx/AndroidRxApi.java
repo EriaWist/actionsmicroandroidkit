@@ -52,11 +52,11 @@ public class AndroidRxApi extends TrackableApi implements Api {
 	@Override
 	public void disconnect() {
 		if (androidRxClient != null) {
-            synchronized (androidRxClient) {
-                androidRxClientManager.release(androidRxClient, apiBuilder);
-                androidRxClient.removeConnectionManager(connectionManagerWrapper);
-                androidRxClient = null;
-            }
+			androidRxClientManager.release(androidRxClient, apiBuilder);
+			if(null != connectionManagerWrapper) {
+				androidRxClient.removeConnectionManager(connectionManagerWrapper);
+			}
+			androidRxClient = null;
 		}
 		super.disconnect();
 	}
