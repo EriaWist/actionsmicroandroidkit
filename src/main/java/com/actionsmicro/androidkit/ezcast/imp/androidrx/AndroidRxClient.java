@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -77,6 +78,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private int mNtpPort;
 	private DatagramSocket mNtpServSock;
 	private UDPListener udpListener;
+	private boolean mIsAuth;
 
 	public interface JSonResponseDelegate {
 		void onComplete(JSONRPC2Response response);
@@ -691,10 +693,9 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			Log.d(TAG, "Mirror Service is not Ready yet");
 			final HashMap<String, Object> params = new HashMap<String, Object>();
 			SecureRandom random = new SecureRandom();
-			mAesIV = random.generateSeed(16);
+			mAesIV = genAlphaNumber(random,16).getBytes("UTF-8");
 			String encryptIV = Base64.encodeToString(mAesIV, Base64.NO_WRAP);
-
-			mAesKey = random.generateSeed(32);
+			mAesKey = genAlphaNumber(random,32).getBytes("UTF-8");
 			String encryptKey = Base64.encodeToString(CipherUtil.EncryptAESCBC(mPredefinedKey.getBytes("UTF-8"), mAesKey, mAesIV), Base64.NO_WRAP);
 			params.put("param1", encryptKey);
 			params.put("param2", encryptIV);
@@ -758,6 +759,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 //												if (networkHandler != null) {
 //													networkHandler.postDelayed(mirrorHeartBeat, HEARTBEAT_PERIOD);
 //												}
+												mIsAuth = true;
 											} else {
 												Log.d(TAG, "wrong body msg");
 												closeMirrorServer();
@@ -789,9 +791,13 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			enqueueH264Data(contents);
 		} else if(null == mMirrorClientSocket){
 			enqueueH264Data(contents);
-		} else{
+		} else if(mIsAuth){
 			sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
 		}
+	}
+
+	private String genAlphaNumber(SecureRandom random, int len) {
+		return new BigInteger(len * 5, random).toString(32);
 	}
 
 	private void sendMirrorData(short type, byte[] contents) {
@@ -904,6 +910,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 
 	private void closeMirrorServer() {
+		mIsAuth = false;
 		if (mMirrorClientSocket != null) {
 			synchronized (mMirrorClientSocket) {
 				closeNtpServer();
