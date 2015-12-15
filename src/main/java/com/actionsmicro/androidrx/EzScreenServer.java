@@ -194,7 +194,7 @@ public class EzScreenServer {
 
 				@Override
 				public String[] handledRequests() {
-					return new String[]{"display", "stop_display", "play", "pause", "resume", "stop", "seek", "increase_volume", "decrease_volume", "stream"};
+					return new String[]{"display", "stop_display", "play", "pause", "resume", "stop", "seek", "increase_volume", "decrease_volume", "stream", "getStreamInfo"};
 				}
 
 				@Override
@@ -255,6 +255,17 @@ public class EzScreenServer {
 						resMap.put("connection-type","tcp");
 						resMap.put("tcp-port", mMirrorPort);
 						resMap.put("version","screen-stream-1.0");
+						return new JSONRPC2Response(resMap, request.getID());
+
+					} else if ("getStreamInfo".equals(request.getMethod())) {
+
+						String supportH264Decode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN ? "true" : "false";
+						HashMap<String,Object> resMap = new HashMap();
+						resMap.put("h264stream",supportH264Decode);
+						if ("true".equals(supportH264Decode)) {
+							resMap.put("height", "1280");
+							resMap.put("width", "720");
+						}
 						return new JSONRPC2Response(resMap, request.getID());
 
 					}
@@ -378,6 +389,46 @@ public class EzScreenServer {
 							private byte numberOfPps;
 							private byte[] pps;
 							private byte[] nal = {0x00, 0x00, 0x00, 0x01};
+
+							public int indexOf(byte[] data, byte[] pattern,int fromIndex) {
+								int[] failure = computeFailure(pattern);
+
+								int j = 0;
+								if (data.length == 0) return -1;
+
+								for (int i = fromIndex; i < data.length; i++) {
+									while (j > 0 && pattern[j] != data[i]) {
+										j = failure[j - 1];
+									}
+									if (pattern[j] == data[i]) { j++; }
+									if (j == pattern.length) {
+										return i - pattern.length + 1;
+									}
+								}
+								return -1;
+							}
+
+							/**
+							 * Computes the failure function using a boot-strapping process,
+							 * where the pattern is matched against itself.
+							 */
+							private int[] computeFailure(byte[] pattern) {
+								int[] failure = new int[pattern.length];
+
+								int j = 0;
+								for (int i = 1; i < pattern.length; i++) {
+									while (j > 0 && pattern[j] != pattern[i]) {
+										j = failure[j - 1];
+									}
+									if (pattern[j] == pattern[i]) {
+										j++;
+									}
+									failure[i] = j;
+								}
+
+								return failure;
+							}
+
 							@Override
 							public void onDataAvailable(
 									DataEmitter emitter,
@@ -392,6 +443,19 @@ public class EzScreenServer {
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
 										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
+
+										int nalPos = 0;
+										while(nalPos >= 0)
+										{
+											nalPos = indexOf(decrypByte, nal, nalPos);
+											Log.d("dddd","nalPos = " + nalPos);
+
+											if(nalPos >= 0)
+											{
+												nalPos +=4;
+											}
+										}
+
 
 										decryptPayload.order(ByteOrder.BIG_ENDIAN);
 										decryptPayload.put(decrypByte);
