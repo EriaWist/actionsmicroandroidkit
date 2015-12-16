@@ -19,7 +19,6 @@ import javax.jmdns.ServiceInfo;
 
 public class AndroidRxInfo extends BonjourDeviceInfo {
 
-	private boolean mSupportH264Streaming;
 	private String deviceID;
 
 	public AndroidRxInfo(Parcel in) {
@@ -30,11 +29,6 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 	public AndroidRxInfo(ServiceInfo newService) {
 		super(newService);
 		deviceID = newService.getPropertyString("deviceid");
-		mSupportH264Streaming = false;
-		String supportH264 = newService.getPropertyString("h264stream");
-		if (null != supportH264 && supportH264.equals("enable")) {
-			mSupportH264Streaming = true;
-		}
 	}
 	
 	public static final Parcelable.Creator<AndroidRxInfo> CREATOR = new Parcelable.Creator<AndroidRxInfo>() {
@@ -104,11 +98,6 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 	@Override
 	public boolean supportAd() {
 		return true;
-	}
-
-	@Override
-	public boolean supportH264Streaming() {
-		return mSupportH264Streaming;
 	}
 
 	@Override

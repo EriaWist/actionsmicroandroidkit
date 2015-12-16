@@ -63,10 +63,4 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	 */
 	public abstract boolean supportAd();
 
-	/**
-	 * To determine whether the device supports h264streaming.
-	 * @return Whether the device supports h264streaming.
-	 * @since 2.6
-	 */
-	public abstract boolean supportH264Streaming();
 }
