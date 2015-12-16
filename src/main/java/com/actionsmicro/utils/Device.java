@@ -21,6 +21,7 @@ public class Device {
 	
 	private static final String TAG = "Device";
 
+	public static final String APP_UNIQUEID_PREF_KEY = "com.actionsmicro.appuuid";
 	static public int getDeviceNaturlOrientation(Activity activity) {
 
 		WindowManager windowManager = activity.getWindowManager();
@@ -95,10 +96,15 @@ public class Device {
 		}
 		return defaultValue;
 	}
+	public static void saveAppUniqueId(Context context, String macAdd) {
+		SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(context).edit();
+		editor.putString(APP_UNIQUEID_PREF_KEY, macAdd);
+		editor.commit();
+	}
 	public static String getAppUniqueId(Context context) {
-		String uniqueId = getAppMacAddress(context, null);
-		if (uniqueId == null) {
-			uniqueId = getUUID(context, "com.actionsmicro.appuuid");
+		String uniqueId = getAppMacAddress(context, "02:00:00:00:00:00");
+		if ("02:00:00:00:00:00".equals(uniqueId)) {
+			uniqueId = getUUID(context, APP_UNIQUEID_PREF_KEY);
 		}
 		return uniqueId;
 	}
