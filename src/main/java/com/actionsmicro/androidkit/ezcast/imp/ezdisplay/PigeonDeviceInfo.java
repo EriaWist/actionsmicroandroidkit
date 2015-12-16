@@ -123,11 +123,6 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	}
 
 	@Override
-	public boolean supportH264Streaming() {
-		return true;
-	}
-
-	@Override
 	protected AudioApi createAudioApi(AudioApiBuilder audioApiBuilder) {
 		return new PigeonAudioApi(audioApiBuilder);
 	}

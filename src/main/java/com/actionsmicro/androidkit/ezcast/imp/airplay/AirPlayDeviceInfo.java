@@ -106,11 +106,6 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 	}
 
 	@Override
-	public boolean supportH264Streaming() {
-		return false;
-	}
-
-	@Override
 	public String getParameter(String key) {
 		if (key.equalsIgnoreCase("ezcast.service.android")) {
 			return Long.toHexString(SERVICE_VIDEO | SERVICE_WEB | SERVICE_CLOUD_VIDEO | SERVICE_CLOUD_STORAGE | SERVICE_LIVE | SERVICE_EZCAST | SERVICE_COMMENT | SERVICE_UPDATE | SERVICE_SOCIAL);   

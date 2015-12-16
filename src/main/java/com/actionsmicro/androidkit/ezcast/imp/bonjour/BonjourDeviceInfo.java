@@ -67,11 +67,6 @@ public abstract class BonjourDeviceInfo extends DeviceInfo {
 		return name;
 	}
 
-	@Override
-	public boolean supportH264Streaming() {
-		return false;
-	}
-
 
 	public BonjourDeviceInfo() {
 		super();
