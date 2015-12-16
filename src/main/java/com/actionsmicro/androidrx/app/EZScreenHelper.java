@@ -1911,7 +1911,6 @@ public class EZScreenHelper implements PlayerListener {
 
 				Log.v(TAG, "createVideoFormat width:"+res.getWidth()+", height:"+res.getHeight());
 				MediaFormat videoFormat = MediaFormat.createVideoFormat(MIME_VIDEO_AVC, res.getWidth(), res.getHeight());
-				videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
 				decoder.configure(videoFormat, mirrorSurface, null, 0);
 				decoder.start();
 				inputBuffers = decoder.getInputBuffers();
