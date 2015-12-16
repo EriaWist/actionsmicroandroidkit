@@ -14,6 +14,7 @@ import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
@@ -916,7 +917,8 @@ public class EZScreenHelper implements PlayerListener {
 
 					}
 					if (outputBufferIndex >= 0) {
-						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
+//						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
+						boolean shouldRender = true;
 						decoder.releaseOutputBuffer(outputBufferIndex, shouldRender);
 					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 						decoder.getOutputBuffers();
@@ -1908,7 +1910,9 @@ public class EZScreenHelper implements PlayerListener {
 				}
 
 				Log.v(TAG, "createVideoFormat width:"+res.getWidth()+", height:"+res.getHeight());
-				decoder.configure(MediaFormat.createVideoFormat(MIME_VIDEO_AVC, res.getWidth(), res.getHeight()), mirrorSurface, null, 0);
+				MediaFormat videoFormat = MediaFormat.createVideoFormat(MIME_VIDEO_AVC, res.getWidth(), res.getHeight());
+				videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
+				decoder.configure(videoFormat, mirrorSurface, null, 0);
 				decoder.start();
 				inputBuffers = decoder.getInputBuffers();
 				break;
@@ -1950,7 +1954,7 @@ public class EZScreenHelper implements PlayerListener {
 	}
 	private FileOutputStream testFile;
 	private static final byte[] nalHeader = {0x00, 0x00, 0x00, 0x01};
-	private static final boolean DUMP_H264 = false;
+	private static final boolean DUMP_H264 = true;
 	private static final String MIME_VIDEO_AVC = "video/avc";
 	private ByteBuffer[] inputBuffers;
 	private PlaybackClock playbackClock;

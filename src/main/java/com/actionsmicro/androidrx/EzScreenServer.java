@@ -259,12 +259,12 @@ public class EzScreenServer {
 
 					} else if ("getStreamInfo".equals(request.getMethod())) {
 
-						String supportH264Decode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN ? "true" : "false";
+						boolean supportH264Decode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN ? true : false;
 						HashMap<String,Object> resMap = new HashMap();
 						resMap.put("h264stream",supportH264Decode);
-						if ("true".equals(supportH264Decode)) {
-							resMap.put("height", "1280");
-							resMap.put("width", "720");
+						if (supportH264Decode) {
+							resMap.put("height", 1280);
+							resMap.put("width", 720);
 						}
 						return new JSONRPC2Response(resMap, request.getID());
 
@@ -301,7 +301,7 @@ public class EzScreenServer {
 	}
 
 	private AsyncHttpServer mirrorServer;
-	private static boolean DEBUG_LOG = true;
+	private static boolean DEBUG_LOG = false;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
 			Log.d(TAG, msg);
@@ -389,6 +389,7 @@ public class EzScreenServer {
 							private byte numberOfPps;
 							private byte[] pps;
 							private byte[] nal = {0x00, 0x00, 0x00, 0x01};
+//							private byte[] nal3 = {0x00, 0x00, 0x01};
 
 							public int indexOf(byte[] data, byte[] pattern,int fromIndex) {
 								int[] failure = computeFailure(pattern);
@@ -444,18 +445,18 @@ public class EzScreenServer {
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
 										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
 
-										int nalPos = 0;
-										while(nalPos >= 0)
-										{
-											nalPos = indexOf(decrypByte, nal, nalPos);
-											Log.d("dddd","nalPos = " + nalPos);
-
-											if(nalPos >= 0)
-											{
-												nalPos +=4;
-											}
-										}
-
+//										int nalPos = 0;
+//										while(nalPos >= 0)
+//										{
+//											nalPos = indexOf(decrypByte, nal, nalPos);
+//											Log.d("dddd","nalPos = " + nalPos);
+//
+//											if(nalPos >= 0)
+//											{
+//												nalPos +=4;
+//											}
+//										}
+										Log.d("dddd","decrypByte len = " + decrypByte.length);
 
 										decryptPayload.order(ByteOrder.BIG_ENDIAN);
 										decryptPayload.put(decrypByte);
