@@ -687,7 +687,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 	@Override
 	public void sendH264EncodedScreenData(final byte[] contents, int width, int height) throws Exception {
-		if (!mIsHandShaking && null == mMirrorClientSocket) {
+		if (!mIsHandShaking && null == mMirrorClientSocket && !mIsAuth) {
 			h264Queue = new ArrayList<byte[]>();
 			mIsHandShaking = true;
 			Log.d(TAG, "Mirror Service is not Ready yet");

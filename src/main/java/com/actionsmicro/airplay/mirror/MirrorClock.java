@@ -16,7 +16,7 @@ import java.net.SocketTimeoutException;
 
 public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClock {
 	private static final String TAG = "MirrorClock";
-	private static final boolean DEBUG_LOG = true;
+	private static final boolean DEBUG_LOG = false;
 	private Thread timingThread;
 	public MirrorClock(final InetAddress ntpServer, final int ntpPort, long latencyTolerance, int exceptionLimit) throws SocketException {
 		super(latencyTolerance, exceptionLimit, DEBUG_LOG, TAG);

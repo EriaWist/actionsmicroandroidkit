@@ -352,6 +352,7 @@ public class EzScreenServer {
 						Log.d(TAG, "mirror onCompleted:streaming");
 						if (ezScreenServerDelegate != null /*&& airplayState != AIRPLAY_VIDEO_ON_MIRROR*/) {
 							ezScreenServerDelegate.onStopMirroring();
+//							closeMirrorConnection();
 						}
 					}
 
@@ -388,48 +389,6 @@ public class EzScreenServer {
 							private byte[] sps;
 							private byte numberOfPps;
 							private byte[] pps;
-							private byte[] nal = {0x00, 0x00, 0x00, 0x01};
-//							private byte[] nal3 = {0x00, 0x00, 0x01};
-
-							public int indexOf(byte[] data, byte[] pattern,int fromIndex) {
-								int[] failure = computeFailure(pattern);
-
-								int j = 0;
-								if (data.length == 0) return -1;
-
-								for (int i = fromIndex; i < data.length; i++) {
-									while (j > 0 && pattern[j] != data[i]) {
-										j = failure[j - 1];
-									}
-									if (pattern[j] == data[i]) { j++; }
-									if (j == pattern.length) {
-										return i - pattern.length + 1;
-									}
-								}
-								return -1;
-							}
-
-							/**
-							 * Computes the failure function using a boot-strapping process,
-							 * where the pattern is matched against itself.
-							 */
-							private int[] computeFailure(byte[] pattern) {
-								int[] failure = new int[pattern.length];
-
-								int j = 0;
-								for (int i = 1; i < pattern.length; i++) {
-									while (j > 0 && pattern[j] != pattern[i]) {
-										j = failure[j - 1];
-									}
-									if (pattern[j] == pattern[i]) {
-										j++;
-									}
-									failure[i] = j;
-								}
-
-								return failure;
-							}
-
 							@Override
 							public void onDataAvailable(
 									DataEmitter emitter,
@@ -444,20 +403,6 @@ public class EzScreenServer {
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
 										byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, content, mAesIV, false);
-
-//										int nalPos = 0;
-//										while(nalPos >= 0)
-//										{
-//											nalPos = indexOf(decrypByte, nal, nalPos);
-//											Log.d("dddd","nalPos = " + nalPos);
-//
-//											if(nalPos >= 0)
-//											{
-//												nalPos +=4;
-//											}
-//										}
-										Log.d("dddd","decrypByte len = " + decrypByte.length);
-
 										decryptPayload.order(ByteOrder.BIG_ENDIAN);
 										decryptPayload.put(decrypByte);
 										decryptPayload.position(0);
@@ -466,8 +411,6 @@ public class EzScreenServer {
 											debugLog("onH264FrameAvailable ntpTime:" + TimeStamp.getTime(timestamp));
 											ezScreenServerDelegate.onH264FrameAvailable(decryptPayload.array(), 0, decrypByte.length, TimeStamp.getTime(timestamp));
 										}
-
-
 									} else if (payloadType == 1) { //codec data
 										byte[] content = new byte[payloadSize];
 										System.arraycopy(payload.array(), 0, content, 0, payloadSize);
@@ -554,7 +497,7 @@ public class EzScreenServer {
 		Log.d(TAG, "Mirror server listening on "+mMirrorPort);
 	}
 
-	public void closeAirPlayConnection() {
+	public void closeMirrorConnection() {
 		if (mirrorServer != null) {
 			mirrorServer.stop();
 			AsyncServerSocket mirrorServerSock = mirrorServer.listen(0);

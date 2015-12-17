@@ -10,7 +10,7 @@ public class SimplePlaybackClock implements PlaybackClock {
 	private String debugTag;
 	private long latencyTolerance;
 	private static final String TAG = "SimplePlaybackClock";
-	private static final boolean DEBUG_LOG = true;
+	private static final boolean DEBUG_LOG = false;
 	
 	public SimplePlaybackClock(long presentationTime, long latencyTolerance, String debugTag) {
 		this.debugTag = debugTag;
