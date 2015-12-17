@@ -757,9 +757,8 @@ public class EZScreenHelper implements PlayerListener {
 				public void onStartMirroring(InetAddress remoteAddress, int ntpPort) {
 					Log.d(TAG, "onStartMirroring");
 					trackScreenHit("ezcastrx.h264mirror");
-					// TODO
 					stateContext.onStartMirroring(remoteAddress, ntpPort);
-//					androidRxSchemaServer.startFunction(AndroidRxSchemaServer.RxFunction.EZAIR_MIRROR);
+					androidRxSchemaServer.startFunction(AndroidRxSchemaServer.RxFunction.EZCAST_MIRROR);
 
 				}
 
@@ -767,7 +766,7 @@ public class EZScreenHelper implements PlayerListener {
 				public void onStopMirroring() {
 					Log.d(TAG, "onStopMirroring");
 					stateContext.onStopMirroring();
-//					androidRxSchemaServer.stopFunction();
+					androidRxSchemaServer.stopFunction();
 				}
 
 				@Override

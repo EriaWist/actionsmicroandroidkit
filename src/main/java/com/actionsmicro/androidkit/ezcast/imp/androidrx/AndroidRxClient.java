@@ -78,7 +78,6 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private int mNtpPort;
 	private DatagramSocket mNtpServSock;
 	private UDPListener udpListener;
-	private boolean mIsAuth;
 
 	public interface JSonResponseDelegate {
 		void onComplete(JSONRPC2Response response);
@@ -464,6 +463,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	public void disconnect() {
 		this.sendRpcNotification("disconnect", 3000);
 		stopMjpegServerIfNeeded();
+		closeMirrorServer();
 		stop();
 		if (jsonRpcOverHttpServer != null) {
 			jsonRpcOverHttpServer.stop();
@@ -604,6 +604,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		invokeRpcMethod("stop_display", 3000);
 		synchronized (this) {
 			stopMjpegServerIfNeeded();
+			closeMirrorServer();
 		}
 	}
 	private void stopMjpegServerIfNeeded() {
@@ -687,7 +688,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 	@Override
 	public void sendH264EncodedScreenData(final byte[] contents, int width, int height) throws Exception {
-		if (!mIsHandShaking && null == mMirrorClientSocket && !mIsAuth) {
+		if (!mIsHandShaking && null == mMirrorClientSocket) {
 			h264Queue = new ArrayList<byte[]>();
 			mIsHandShaking = true;
 			Log.d(TAG, "Mirror Service is not Ready yet");
@@ -759,7 +760,6 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 //												if (networkHandler != null) {
 //													networkHandler.postDelayed(mirrorHeartBeat, HEARTBEAT_PERIOD);
 //												}
-												mIsAuth = true;
 											} else {
 												Log.d(TAG, "wrong body msg");
 												closeMirrorServer();
@@ -791,7 +791,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			enqueueH264Data(contents);
 		} else if(null == mMirrorClientSocket){
 			enqueueH264Data(contents);
-		} else if(mIsAuth){
+		} else {
 			sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
 		}
 	}
@@ -910,7 +910,6 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 
 	private void closeMirrorServer() {
-		mIsAuth = false;
 		if (mMirrorClientSocket != null) {
 			synchronized (mMirrorClientSocket) {
 				closeNtpServer();

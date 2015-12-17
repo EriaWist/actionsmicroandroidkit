@@ -338,13 +338,6 @@ public class EzScreenServer {
 				final ByteBuffer decryptPayload = ByteBuffer.allocate(500 * 1024);
 				mMirrorServiceReady = false;
 
-				if (ezScreenServerDelegate != null) {
-					InetAddress remoteAddress = null;
-					if (socket instanceof AsyncNetworkSocket) {
-						remoteAddress = ((AsyncNetworkSocket) socket).getRemoteAddress().getAddress();
-					}
-					ezScreenServerDelegate.onStartMirroring(remoteAddress, mNtpServerPort.intValue());
-				}
 				socket.setEndCallback(new CompletedCallback() {
 
 					@Override
@@ -451,6 +444,14 @@ public class EzScreenServer {
 										if (decryptString.equals("Luke, I am your Father!")) {
 											msg = "Hello!";
 											mMirrorServiceReady = true;
+											AsyncSocket socket = mirrorServer.getServerSocket();
+											if (ezScreenServerDelegate != null) {
+												InetAddress remoteAddress = null;
+												if (socket instanceof AsyncNetworkSocket) {
+													remoteAddress = ((AsyncNetworkSocket) socket).getRemoteAddress().getAddress();
+												}
+												ezScreenServerDelegate.onStartMirroring(remoteAddress, mNtpServerPort.intValue());
+											}
 										} else {
 											msg = "Who's your father?";
 										}
