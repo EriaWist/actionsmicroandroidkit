@@ -447,6 +447,11 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			e.printStackTrace();
 		}
 		sendRpcNotification("connect", 0);
+		try {
+			initKey();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
 	}
 
 	protected void setMediaUsageResultCode(String string, int errorCode) {
@@ -542,7 +547,6 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxClient.this, Cause.USER);
 		}
 		stopHttpFileServer();
-		closeMirrorServer();
 		commitMediaUsageTracking();
 		return true;
 	}
@@ -693,10 +697,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			mIsHandShaking = true;
 			Log.d(TAG, "Mirror Service is not Ready yet");
 			final HashMap<String, Object> params = new HashMap<String, Object>();
-			SecureRandom random = new SecureRandom();
-			mAesIV = genAlphaNumber(random,16).getBytes("UTF-8");
-			String encryptIV = Base64.encodeToString(mAesIV, Base64.NO_WRAP);
-			mAesKey = genAlphaNumber(random,32).getBytes("UTF-8");
+			final String encryptIV = Base64.encodeToString(mAesIV, Base64.NO_WRAP);
 			String encryptKey = Base64.encodeToString(CipherUtil.EncryptAESCBC(mPredefinedKey.getBytes("UTF-8"), mAesKey, mAesIV), Base64.NO_WRAP);
 			params.put("param1", encryptKey);
 			params.put("param2", encryptIV);
@@ -710,6 +711,11 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			invokeRpcMethod("stream", params, 0, new JSonResponseDelegate() {
 				@Override
 				public void onComplete(JSONRPC2Response response) {
+					if (null == response) {
+						Log.e(TAG, "handshake fail");
+						disconnect();
+						return;
+					}
 					HashMap<String, Object> resMap = (HashMap<String, Object>) response.getResult();
 					String connectType = (String) resMap.get("connection-type");
 					int mirrorPort = ((Long) resMap.get("tcp-port")).intValue();
@@ -794,6 +800,12 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		} else {
 			sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
 		}
+	}
+
+	private void initKey() throws UnsupportedEncodingException {
+		SecureRandom random = new SecureRandom();
+		mAesIV = genAlphaNumber(random,16).getBytes("UTF-8");
+		mAesKey = genAlphaNumber(random,32).getBytes("UTF-8");
 	}
 
 	private String genAlphaNumber(SecureRandom random, int len) {
@@ -938,6 +950,9 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 
 	private void dequeueH264Data() {
+		if (h264Queue == null) {
+			return;
+		}
 		while (h264Queue.size() > 0) {
 			byte[] contents = h264Queue.remove(0);
 			byte nalByte = contents[4];

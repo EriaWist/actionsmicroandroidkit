@@ -343,7 +343,7 @@ public class EzScreenServer {
 					@Override
 					public void onCompleted(Exception ex) {
 						Log.d(TAG, "mirror onCompleted:streaming");
-						if (ezScreenServerDelegate != null /*&& airplayState != AIRPLAY_VIDEO_ON_MIRROR*/) {
+						if (ezScreenServerDelegate != null) {
 							ezScreenServerDelegate.onStopMirroring();
 //							closeMirrorConnection();
 						}
