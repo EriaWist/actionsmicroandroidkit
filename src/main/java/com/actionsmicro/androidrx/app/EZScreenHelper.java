@@ -14,7 +14,6 @@ import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaCodec;
-import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
@@ -916,8 +915,7 @@ public class EZScreenHelper implements PlayerListener {
 
 					}
 					if (outputBufferIndex >= 0) {
-//						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
-						boolean shouldRender = true;
+						boolean shouldRender = playbackClock.waitUntilTime(bufferInfo.presentationTimeUs);
 						decoder.releaseOutputBuffer(outputBufferIndex, shouldRender);
 					} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 						decoder.getOutputBuffers();
@@ -1853,7 +1851,7 @@ public class EZScreenHelper implements PlayerListener {
 	private void doAirPlayMirror(InetAddress remoteAddress) {
 		showMirrorView();
 		stopMirrorDecoding();
-		createMirrorClock(remoteAddress, 7010);
+		createMirrorClock(remoteAddress, 7010, 100);
 		releaseDecoder();
 		releaseMirrorSurface();
 		createMirrorSurface();
@@ -1876,7 +1874,7 @@ public class EZScreenHelper implements PlayerListener {
 		showMirrorView();
 		stopMirrorDecoding();
 		// TODO change to ntp-server
-		createMirrorClock(remoteAddress, ntpPort);
+		createMirrorClock(remoteAddress, ntpPort, 300);
 		releaseDecoder();
 		releaseMirrorSurface();
 		createMirrorSurface();
@@ -1939,13 +1937,13 @@ public class EZScreenHelper implements PlayerListener {
 			mirrorSurface = new Surface(mirrorSurfaceTexture);
 		}
 	}
-	private void createMirrorClock(InetAddress remoteAddress, int ntpPort) {
+	private void createMirrorClock(InetAddress remoteAddress, int ntpPort, int latencyTolerance) {
 		if (playbackClock != null) {
 			playbackClock.release();
 			playbackClock = null;
 		}
 		try {
-			playbackClock = new MirrorClock(remoteAddress, ntpPort, 100, 25);
+			playbackClock = new MirrorClock(remoteAddress, ntpPort, latencyTolerance, 25);
 		} catch (SocketException e1) {
 			e1.printStackTrace();
 		}

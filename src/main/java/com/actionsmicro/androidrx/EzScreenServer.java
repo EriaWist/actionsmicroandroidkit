@@ -31,6 +31,7 @@ import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
 import org.apache.commons.net.ntp.TimeStamp;
+import org.jcodec.codecs.h264.io.model.SeqParameterSet;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -353,6 +354,7 @@ public class EzScreenServer {
 
 				mirrorServer.getServerSocket().setDataCallback(headerReader);
 				headerReader.read(32, headerCallback = new DataCallback() {
+					private int storedWidth = 0;
 
 					void logBytes(String prefix, byte[] buffer) {
 						if (buffer.length >= 8) {
@@ -417,21 +419,33 @@ public class EzScreenServer {
 										short sizeOfSps = decryptPayload.getShort();
 										sps = new byte[sizeOfSps];
 										decryptPayload.get(sps);
-										if (ezScreenServerDelegate != null) {
-											ezScreenServerDelegate.onSpsAvailable(sps);
-										}
-										debugLog("onDataAvailable:streaming:sps: number:"+numberOfSps+" size:"+sizeOfSps);
-										logBytes("onDataAvailable:streaming:sps:", sps);
 
-										numberOfPps = decryptPayload.get();
-										short sizeOfPps = decryptPayload.getShort();
-										pps = new byte[sizeOfPps];
-										decryptPayload.get(pps);
-										if (ezScreenServerDelegate != null) {
-											ezScreenServerDelegate.onPpsAvailable(pps);
+										ByteBuffer dataBuf = ByteBuffer.wrap(sps, 1, sps.length - 1);
+										dataBuf.order(ByteOrder.LITTLE_ENDIAN);
+										SeqParameterSet spsParam = SeqParameterSet.read(dataBuf);
+										int codedWidth = (spsParam.pic_width_in_mbs_minus1 + 1) << 4;
+
+										if (codedWidth != storedWidth) {
+											storedWidth = codedWidth;
+											if (ezScreenServerDelegate != null) {
+												ezScreenServerDelegate.onSpsAvailable(sps);
+											}
+											debugLog("onDataAvailable:streaming:sps: number:" + numberOfSps + " size:" + sizeOfSps);
+											logBytes("onDataAvailable:streaming:sps:", sps);
+
+											numberOfPps = decryptPayload.get();
+											short sizeOfPps = decryptPayload.getShort();
+											pps = new byte[sizeOfPps];
+											decryptPayload.get(pps);
+											if (ezScreenServerDelegate != null) {
+												ezScreenServerDelegate.onPpsAvailable(pps);
+											}
+											debugLog("onDataAvailable:streaming:pps: number:" + numberOfPps + " size:" + sizeOfPps);
+											logBytes("onDataAvailable:streaming:pps:", pps);
+										} else {
+											debugLog("onDataAvailable:streaming: same sps width");
 										}
-										debugLog("onDataAvailable:streaming:pps: number:"+numberOfPps+" size:"+sizeOfPps);
-										logBytes("onDataAvailable:streaming:pps:", pps);
+
 									} else if (payloadType == 2) { // heartbeat
 										debugLog("onDataAvailable:streaming: receive heartbeat");
 									} else if (payloadType == 3) { // msg
