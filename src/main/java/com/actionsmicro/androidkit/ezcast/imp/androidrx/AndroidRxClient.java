@@ -468,7 +468,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	public void disconnect() {
 		this.sendRpcNotification("disconnect", 3000);
 		stopMjpegServerIfNeeded();
-		closeMirrorServer();
+		closeMirrorClient();
 		stop();
 		if (jsonRpcOverHttpServer != null) {
 			jsonRpcOverHttpServer.stop();
@@ -608,7 +608,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		invokeRpcMethod("stop_display", 3000);
 		synchronized (this) {
 			stopMjpegServerIfNeeded();
-			closeMirrorServer();
+			closeMirrorClient();
 		}
 	}
 	private void stopMjpegServerIfNeeded() {
@@ -693,113 +693,117 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	@Override
 	public void sendH264EncodedScreenData(final byte[] contents, int width, int height) throws Exception {
 		if (!mIsHandShaking && null == mMirrorClientSocket) {
-			h264Queue = new ArrayList<byte[]>();
-			mIsHandShaking = true;
-			Log.d(TAG, "Mirror Service is not Ready yet");
-			final HashMap<String, Object> params = new HashMap<String, Object>();
-			final String encryptIV = Base64.encodeToString(mAesIV, Base64.NO_WRAP);
-			String encryptKey = Base64.encodeToString(CipherUtil.EncryptAESCBC(mPredefinedKey.getBytes("UTF-8"), mAesKey, mAesIV), Base64.NO_WRAP);
-			params.put("param1", encryptKey);
-			params.put("param2", encryptIV);
-			initNtpServerService();
-			synchronized (mNtpServerThread) {
-				mNtpServerThread.wait();
-			}
-			Log.d(TAG,"ntp server ready, mNtpPort = " + mNtpPort);
-			params.put("ntp-server-port", mNtpPort);
-
-			invokeRpcMethod("stream", params, 0, new JSonResponseDelegate() {
-				@Override
-				public void onComplete(JSONRPC2Response response) {
-					if (null == response) {
-						Log.e(TAG, "handshake fail");
-						disconnect();
-						return;
-					}
-					HashMap<String, Object> resMap = (HashMap<String, Object>) response.getResult();
-					String connectType = (String) resMap.get("connection-type");
-					int mirrorPort = ((Long) resMap.get("tcp-port")).intValue();
-					String version = (String) resMap.get("version");
-					Log.d(TAG, "connectType = " + connectType + " tcpPort = " + mirrorPort + " version = " + version);
-
-					try {
-						mMirrorClientSocket = new Socket();
-						mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
-						String msg = "Luke, I am your Father!";
-						byte[] body = msg.getBytes("UTF-8");
-						final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
-						sendMirrorData(PACKET_TYPE_MSG,encryptBody);
-						final InputStream in = mMirrorClientSocket.getInputStream();
-						new Thread(new Runnable() {
-							@Override
-							public void run() {
-								int headerSize = 32;
-
-								try {
-									byte[] payloadHead = new byte[headerSize];
-									int ret = in.read(payloadHead);
-									if (ret != -1) {
-										ByteBuffer payloadBuf = ByteBuffer.wrap(payloadHead);
-										payloadBuf.order(ByteOrder.LITTLE_ENDIAN);
-										int payloadSize = payloadBuf.getInt();
-										final short payloadType = payloadBuf.getShort();
-										final long timestamp = payloadBuf.getLong();
-										StringBuilder headerBuilder = new StringBuilder();
-										for (int i = 0; i < payloadHead.length; i++) {
-											headerBuilder.append((unsignedToBytes(payloadHead[i]) + " "));
-										}
-										Log.d(TAG, " read body ........ payloadsize = " + payloadSize + " payloadType = " + payloadType);
-
-										byte[] payloadBody = new byte[payloadSize];
-										ret = in.read(payloadBody);
-										if (ret != -1) {
-											byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, payloadBody, mAesIV, false);
-											String decryptString = new String(decrypByte);
-											Log.d(TAG, "decryptString = " + decryptString);
-
-											if (decryptString.equals("Hello!")) {
-												Log.d(TAG, "right msg");
-												dequeueH264Data();
-
-												// TODO to check if sendhearbeat is nesscessary
-//												Handler networkHandler = getNetworkHandler();
-//												if (networkHandler != null) {
-//													networkHandler.postDelayed(mirrorHeartBeat, HEARTBEAT_PERIOD);
-//												}
-											} else {
-												Log.d(TAG, "wrong body msg");
-												closeMirrorServer();
-											}
-
-										} else {
-											Log.d(TAG, "wrong body length = -1");
-											closeMirrorServer();
-										}
-									} else {
-										Log.d(TAG, "wrong header length = -1");
-										closeMirrorServer();
-									}
-								} catch (IOException e) {
-									e.printStackTrace();
-									closeMirrorServer();
-								}
-								Log.d(TAG, "handshake complete");
-
-							}
-						}).start();
-					} catch (IOException e) {
-						e.printStackTrace();
-						closeMirrorServer();
-					}
-
-				}
-			});
+			initMirrorClient();
 			enqueueH264Data(contents);
-		} else if(null == mMirrorClientSocket){
+		} else if (null == mMirrorClientSocket) {
 			enqueueH264Data(contents);
 		} else {
 			sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
 		}
+	}
+
+	private void initMirrorClient() throws UnsupportedEncodingException, InterruptedException {
+		h264Queue = new ArrayList<byte[]>();
+		mIsHandShaking = true;
+		Log.d(TAG, "Mirror Service is not Ready yet");
+		final HashMap<String, Object> params = new HashMap<String, Object>();
+		final String encryptIV = Base64.encodeToString(mAesIV, Base64.NO_WRAP);
+		String encryptKey = Base64.encodeToString(CipherUtil.EncryptAESCBC(mPredefinedKey.getBytes("UTF-8"), mAesKey, mAesIV), Base64.NO_WRAP);
+		params.put("param1", encryptKey);
+		params.put("param2", encryptIV);
+		initNtpServerService();
+		synchronized (mNtpServerThread) {
+            mNtpServerThread.wait();
+        }
+		Log.d(TAG,"ntp server ready, mNtpPort = " + mNtpPort);
+		params.put("ntp-server-port", mNtpPort);
+
+		invokeRpcMethod("stream", params, 0, new JSonResponseDelegate() {
+            @Override
+            public void onComplete(JSONRPC2Response response) {
+                if (null == response) {
+                    Log.e(TAG, "handshake fail");
+                    disconnect();
+                    return;
+                }
+                HashMap<String, Object> resMap = (HashMap<String, Object>) response.getResult();
+                String connectType = (String) resMap.get("connection-type");
+                int mirrorPort = ((Long) resMap.get("tcp-port")).intValue();
+                String version = (String) resMap.get("version");
+                Log.d(TAG, "connectType = " + connectType + " tcpPort = " + mirrorPort + " version = " + version);
+
+                try {
+                    mMirrorClientSocket = new Socket();
+                    mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
+                    String msg = "Luke, I am your Father!";
+                    byte[] body = msg.getBytes("UTF-8");
+                    final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
+                    sendMirrorData(PACKET_TYPE_MSG,encryptBody);
+                    final InputStream in = mMirrorClientSocket.getInputStream();
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            int headerSize = 32;
+
+                            try {
+                                byte[] payloadHead = new byte[headerSize];
+                                int ret = in.read(payloadHead);
+                                if (ret != -1) {
+                                    ByteBuffer payloadBuf = ByteBuffer.wrap(payloadHead);
+                                    payloadBuf.order(ByteOrder.LITTLE_ENDIAN);
+                                    int payloadSize = payloadBuf.getInt();
+                                    final short payloadType = payloadBuf.getShort();
+                                    final long timestamp = payloadBuf.getLong();
+                                    StringBuilder headerBuilder = new StringBuilder();
+                                    for (int i = 0; i < payloadHead.length; i++) {
+                                        headerBuilder.append((unsignedToBytes(payloadHead[i]) + " "));
+                                    }
+                                    Log.d(TAG, " read body ........ payloadsize = " + payloadSize + " payloadType = " + payloadType);
+
+                                    byte[] payloadBody = new byte[payloadSize];
+                                    ret = in.read(payloadBody);
+                                    if (ret != -1) {
+                                        byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, payloadBody, mAesIV, false);
+                                        String decryptString = new String(decrypByte);
+                                        Log.d(TAG, "decryptString = " + decryptString);
+
+                                        if (decryptString.equals("Hello!")) {
+                                            Log.d(TAG, "right msg");
+                                            dequeueH264Data();
+
+                                            // TODO to check if sendhearbeat is nesscessary
+//												Handler networkHandler = getNetworkHandler();
+//												if (networkHandler != null) {
+//													networkHandler.postDelayed(mirrorHeartBeat, HEARTBEAT_PERIOD);
+//												}
+                                        } else {
+                                            Log.d(TAG, "wrong body msg");
+                                            closeMirrorClient();
+                                        }
+
+                                    } else {
+                                        Log.d(TAG, "wrong body length = -1");
+                                        closeMirrorClient();
+                                    }
+                                } else {
+                                    Log.d(TAG, "wrong header length = -1");
+                                    closeMirrorClient();
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                                closeMirrorClient();
+                            }
+                            Log.d(TAG, "handshake complete");
+
+                        }
+                    }).start();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    closeMirrorClient();
+                }
+
+            }
+        });
 	}
 
 	private void initKey() throws UnsupportedEncodingException {
@@ -901,7 +905,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 					mMirrorClientSocket.getOutputStream().write(data);
 					mMirrorClientSocket.getOutputStream().flush();
 				} catch (IOException e) {
-					closeMirrorServer();
+					closeMirrorClient();
 					e.printStackTrace();
 				}
 			}
@@ -921,7 +925,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		this.tracker = trackableApi;
 	}
 
-	private void closeMirrorServer() {
+	private void closeMirrorClient() {
 		if (mMirrorClientSocket != null) {
 			synchronized (mMirrorClientSocket) {
 				closeNtpServer();
