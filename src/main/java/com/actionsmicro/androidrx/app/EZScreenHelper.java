@@ -1669,7 +1669,13 @@ public class EZScreenHelper implements PlayerListener {
 			Date expireDate = getAirPlayExpireDate();
 			Calendar c = Calendar.getInstance();
 			Date currentDate = c.getTime();
-			isExpired = currentDate.getTime() > expireDate.getTime();
+
+			// enable airplay if ezcast screen is bundled in ezcast
+			if (context.getPackageName().toLowerCase().contains("ezcast")) {
+				isExpired = false;
+			} else {
+				isExpired = currentDate.getTime() > expireDate.getTime();
+			}
 			if (!isExpired) {
 				Log.d(TAG, "Airplay not expire,init airplay");
 				new Thread(new Runnable() {
