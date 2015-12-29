@@ -56,9 +56,9 @@ public abstract class StateContext {
 		setCurrentState(currentState.onReceiveAirTunesCoverArt(this, byteArray));		
 	}
 	protected abstract void updateAirTunesCoverArt(byte[] byteArray);
-	public synchronized void onStartMirroring(InetAddress remoteAddress) {
+	public synchronized void onStartMirroring(InetAddress remoteAddress, int ntpPort) {
 		Log.d(TAG, "onStartMirroring");
-		setCurrentState(currentState.onStartMirroring(this, remoteAddress));
+		setCurrentState(currentState.onStartMirroring(this, remoteAddress, ntpPort));
 	}
 	protected abstract void doAirPlayMirror(InetAddress remoteAddress);
 	protected abstract void stopMirror();
@@ -109,5 +109,5 @@ public abstract class StateContext {
 	}
 	protected abstract void loadEzScreenVideo(String url, String callback);
 	protected abstract void hideMirrorView();
-	
+	protected abstract void doEZScreenMirror(InetAddress remoteAddress, int ntpPort);
 }

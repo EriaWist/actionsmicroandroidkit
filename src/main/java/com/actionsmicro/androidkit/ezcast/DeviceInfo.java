@@ -62,4 +62,5 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	 * @since 2.5
 	 */
 	public abstract boolean supportAd();
+
 }

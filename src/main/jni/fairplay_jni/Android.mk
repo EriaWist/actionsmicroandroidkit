@@ -104,7 +104,9 @@ LOCAL_SRC_FILES := fairplay/code1.c \
 		fairplay/code94.c \
 		fairplay/code95.c \
 		fairplay/code97.c \
-		fairplay/interface.c
+		fairplay/interface.c \
+		subxy/x.c \
+		subxy/y.c
 
 LOCAL_LDLIBS    := -llog
 

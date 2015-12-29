@@ -1,24 +1,12 @@
 package com.actionsmicro.androidkit.ezcast.imp.androidrx;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.YuvImage;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
@@ -26,6 +14,7 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.ezcom.jsonrpc.JSONRPC2Session;
 import com.actionsmicro.graphics.YuvImageToJpegHelper;
+import com.actionsmicro.utils.CipherUtil;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.JsonRpcOverHttpServer;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
@@ -38,13 +27,62 @@ import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
+import org.apache.commons.net.ntp.TimeStamp;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import vavi.apps.shairport.UDPDelegate;
+import vavi.apps.shairport.UDPListener;
+
 public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
+	private static final short PACKET_TYPE_VIDEO_BITSTREAM = 0;
+	private static final short PACKET_TYPE_CODEC = 1;
+	private static final short PACKET_TYPE_HEARTBEAT = 2;
+	private static final short PACKET_TYPE_MSG = 3;
+	private static String mPredefinedKey = "SCREEN21SCREEN90SCREEN23SCREEN43";
 	private static final String TAG = "AndroidRxClient";
 	private static final int HEARTBEAT_PERIOD = 1000;
+	private static final Date DATE_BASE_TIME = new Date(0);
 
 	private JSONRPC2Session jsonRpcSession;
 	private InetAddress ipAddress;
 	private int port;
+	private boolean mIsHandShaking = false;
+	private Socket mMirrorClientSocket = null;
+	private byte[] mAesKey = null;
+	private byte[] mAesIV = null;
+	private boolean stopNtpServerThread;
+	private Thread mNtpServerThread;
+	private int mNtpPort;
+	private DatagramSocket mNtpServSock;
+	private UDPListener udpListener;
+
+	public interface JSonResponseDelegate {
+		void onComplete(JSONRPC2Response response);
+	}
+
 	public AndroidRxClient(Context context, InetAddress ipAddress, int port) {
 		this.context = context;
 		this.ipAddress = ipAddress;
@@ -151,14 +189,21 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		invokeRpcMethod(method, params, 0);
 	}
 	protected void invokeRpcMethod(final String method, final HashMap<String, Object> params, long timeout) {
+		invokeRpcMethod(method, params, 0, null);
+	}
+
+	protected void invokeRpcMethod(final String method, final HashMap<String, Object> params, long timeout, final JSonResponseDelegate delegate) {
 		Runnable runnable = new Runnable() {
 			@Override
 			public void run() {
 				try {
 					JSONRPC2Session jsonRpcSession = getJsonRpcSession();
 					if (jsonRpcSession != null) {
-						jsonRpcSession.send(new JSONRPC2Request(method, params, generateRpcId()));
-					}					
+						JSONRPC2Response response = jsonRpcSession.send(new JSONRPC2Request(method, params, generateRpcId()));
+						if (null != delegate) {
+							delegate.onComplete(response);
+						}
+					}
 				} catch (JSONRPC2SessionException e) {
 					e.printStackTrace();
 				} finally {
@@ -167,7 +212,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 					}
 				}
 			}
-			
+
 		};
 		performOnNetworkThread(runnable);
 		if (timeout > 0) {
@@ -402,6 +447,11 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			e.printStackTrace();
 		}
 		sendRpcNotification("connect", 0);
+		try {
+			initKey();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
 	}
 
 	protected void setMediaUsageResultCode(String string, int errorCode) {
@@ -418,6 +468,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	public void disconnect() {
 		this.sendRpcNotification("disconnect", 3000);
 		stopMjpegServerIfNeeded();
+		closeMirrorClient();
 		stop();
 		if (jsonRpcOverHttpServer != null) {
 			jsonRpcOverHttpServer.stop();
@@ -495,7 +546,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		if (mediaPlayerStateListener != null) {
 			mediaPlayerStateListener.mediaPlayerDidStop(AndroidRxClient.this, Cause.USER);
 		}
-		stopHttpFileServer();		
+		stopHttpFileServer();
 		commitMediaUsageTracking();
 		return true;
 	}
@@ -557,6 +608,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		invokeRpcMethod("stop_display", 3000);
 		synchronized (this) {
 			stopMjpegServerIfNeeded();
+			closeMirrorClient();
 		}
 	}
 	private void stopMjpegServerIfNeeded() {
@@ -591,9 +643,273 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		}
 	}
 
-	@Override
-	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+	public static int unsignedToBytes(byte b) {
+		return b & 0xFF;
+	}
+	private final byte[] nal = {0x00, 0x00, 0x00, 0x01};
 
+	// ref: http://stackoverflow.com/questions/1507780/searching-for-a-sequence-of-bytes-in-a-binary-file-with-java
+	/**
+	 * Finds the first occurrence of the pattern in the text.
+	 */
+	public int indexOf(byte[] data, byte[] pattern,int fromIndex) {
+		int[] failure = computeFailure(pattern);
+
+		int j = 0;
+		if (data.length == 0) return -1;
+
+		for (int i = fromIndex; i < data.length; i++) {
+			while (j > 0 && pattern[j] != data[i]) {
+				j = failure[j - 1];
+			}
+			if (pattern[j] == data[i]) { j++; }
+			if (j == pattern.length) {
+				return i - pattern.length + 1;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * Computes the failure function using a boot-strapping process,
+	 * where the pattern is matched against itself.
+	 */
+	private int[] computeFailure(byte[] pattern) {
+		int[] failure = new int[pattern.length];
+
+		int j = 0;
+		for (int i = 1; i < pattern.length; i++) {
+			while (j > 0 && pattern[j] != pattern[i]) {
+				j = failure[j - 1];
+			}
+			if (pattern[j] == pattern[i]) {
+				j++;
+			}
+			failure[i] = j;
+		}
+
+		return failure;
+	}
+	@Override
+	public void sendH264EncodedScreenData(final byte[] contents, int width, int height) throws Exception {
+		if (!mIsHandShaking && null == mMirrorClientSocket) {
+			initMirrorClient();
+			enqueueH264Data(contents);
+		} else if (null == mMirrorClientSocket) {
+			enqueueH264Data(contents);
+		} else {
+			sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
+		}
+	}
+
+	private void initMirrorClient() throws UnsupportedEncodingException, InterruptedException {
+		h264Queue = new ArrayList<byte[]>();
+		mIsHandShaking = true;
+		Log.d(TAG, "Mirror Service is not Ready yet");
+		final HashMap<String, Object> params = new HashMap<String, Object>();
+		final String encryptIV = Base64.encodeToString(mAesIV, Base64.NO_WRAP);
+		String encryptKey = Base64.encodeToString(CipherUtil.EncryptAESCBC(mPredefinedKey.getBytes("UTF-8"), mAesKey, mAesIV), Base64.NO_WRAP);
+		params.put("param1", encryptKey);
+		params.put("param2", encryptIV);
+		initNtpServerService();
+		synchronized (mNtpServerThread) {
+            mNtpServerThread.wait();
+        }
+		Log.d(TAG,"ntp server ready, mNtpPort = " + mNtpPort);
+		params.put("ntp-server-port", mNtpPort);
+
+		invokeRpcMethod("stream", params, 0, new JSonResponseDelegate() {
+            @Override
+            public void onComplete(JSONRPC2Response response) {
+                if (null == response) {
+                    Log.e(TAG, "handshake fail");
+                    disconnect();
+                    return;
+                }
+                HashMap<String, Object> resMap = (HashMap<String, Object>) response.getResult();
+                String connectType = (String) resMap.get("connection-type");
+                int mirrorPort = ((Long) resMap.get("tcp-port")).intValue();
+                String version = (String) resMap.get("version");
+                Log.d(TAG, "connectType = " + connectType + " tcpPort = " + mirrorPort + " version = " + version);
+
+                try {
+                    mMirrorClientSocket = new Socket();
+                    mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
+                    String msg = "Luke, I am your Father!";
+                    byte[] body = msg.getBytes("UTF-8");
+                    final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
+                    sendMirrorData(PACKET_TYPE_MSG,encryptBody);
+                    final InputStream in = mMirrorClientSocket.getInputStream();
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            int headerSize = 32;
+
+                            try {
+                                byte[] payloadHead = new byte[headerSize];
+                                int ret = in.read(payloadHead);
+                                if (ret != -1) {
+                                    ByteBuffer payloadBuf = ByteBuffer.wrap(payloadHead);
+                                    payloadBuf.order(ByteOrder.LITTLE_ENDIAN);
+                                    int payloadSize = payloadBuf.getInt();
+                                    final short payloadType = payloadBuf.getShort();
+                                    final long timestamp = payloadBuf.getLong();
+                                    StringBuilder headerBuilder = new StringBuilder();
+                                    for (int i = 0; i < payloadHead.length; i++) {
+                                        headerBuilder.append((unsignedToBytes(payloadHead[i]) + " "));
+                                    }
+                                    Log.d(TAG, " read body ........ payloadsize = " + payloadSize + " payloadType = " + payloadType);
+
+                                    byte[] payloadBody = new byte[payloadSize];
+                                    ret = in.read(payloadBody);
+                                    if (ret != -1) {
+                                        byte[] decrypByte = CipherUtil.DecryptAESCBC(mAesKey, payloadBody, mAesIV, false);
+                                        String decryptString = new String(decrypByte);
+                                        Log.d(TAG, "decryptString = " + decryptString);
+
+                                        if (decryptString.equals("Hello!")) {
+                                            Log.d(TAG, "right msg");
+                                            dequeueH264Data();
+
+                                            // TODO to check if sendhearbeat is nesscessary
+//												Handler networkHandler = getNetworkHandler();
+//												if (networkHandler != null) {
+//													networkHandler.postDelayed(mirrorHeartBeat, HEARTBEAT_PERIOD);
+//												}
+                                        } else {
+                                            Log.d(TAG, "wrong body msg");
+                                            closeMirrorClient();
+                                        }
+
+                                    } else {
+                                        Log.d(TAG, "wrong body length = -1");
+                                        closeMirrorClient();
+                                    }
+                                } else {
+                                    Log.d(TAG, "wrong header length = -1");
+                                    closeMirrorClient();
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                                closeMirrorClient();
+                            }
+                            Log.d(TAG, "handshake complete");
+
+                        }
+                    }).start();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    closeMirrorClient();
+                }
+
+            }
+        });
+	}
+
+	private void initKey() throws UnsupportedEncodingException {
+		SecureRandom random = new SecureRandom();
+		mAesIV = genAlphaNumber(random,16).getBytes("UTF-8");
+		mAesKey = genAlphaNumber(random,32).getBytes("UTF-8");
+	}
+
+	private String genAlphaNumber(SecureRandom random, int len) {
+		return new BigInteger(len * 5, random).toString(32);
+	}
+
+	private void sendMirrorData(short type, byte[] contents) {
+
+		ByteBuffer msgHeadBuf = ByteBuffer.allocate(32);
+		msgHeadBuf.order(ByteOrder.LITTLE_ENDIAN);
+		TimeStamp ntpStamp = TimeStamp.getCurrentTime();
+		long ntpTime = ntpStamp.ntpValue();
+		byte[] msgBody = new byte[0];
+		switch (type) {
+			case PACKET_TYPE_VIDEO_BITSTREAM:
+				msgBody = CipherUtil.EncryptAESCBC(mAesKey, contents, mAesIV);
+
+				msgHeadBuf.putInt(msgBody.length);
+				msgHeadBuf.putShort(type);
+				msgHeadBuf.putLong(ntpTime);
+				msgHeadBuf.position(0);
+
+				break;
+			case PACKET_TYPE_CODEC:
+				int nalSpsPos = indexOf(contents, nal, 0);
+				int nalPpsPos = indexOf(contents, nal, nalSpsPos + 4);
+
+				final int spsLen = nalPpsPos - 4;
+				final int ppsLen = contents.length - nalPpsPos - 4;
+
+				final byte[] spsData = new byte[spsLen];
+				final byte[] ppsData = new byte[ppsLen];
+				System.arraycopy(contents, nalSpsPos + 4, spsData, 0, spsLen);
+				System.arraycopy(contents, nalPpsPos + 4, ppsData, 0, ppsLen);
+
+				ByteBuffer codecBody = ByteBuffer.allocate(11 + spsLen + ppsLen);
+				// version
+				codecBody.put((byte) 1);
+				// profile(high)
+				codecBody.put((byte) 100);
+				// compatibility
+				codecBody.put((byte) 0xc0);
+				// level(4.0)
+				codecBody.put((byte) 40);
+				// 6bits:0x3f reserved. 2 bits:nal unuts length-1
+				codecBody.put((byte) 0xff);
+				// 3bits:0x7 reserved, 5 bits:number of SPS
+				codecBody.put((byte) 0xe1);
+				// SPS len
+				codecBody.putShort((short) spsLen);
+				// SPS data
+				codecBody.put(spsData);
+				// number of PPS
+				codecBody.put((byte) 1);
+				// PPS len
+				codecBody.putShort((short) ppsLen);
+				// SPS data
+				codecBody.put(ppsData);
+
+				codecBody.position(0);
+
+				msgBody = CipherUtil.EncryptAESCBC(mAesKey, codecBody.array(), mAesIV);
+				// send codec
+				msgHeadBuf.putInt(msgBody.length);
+				msgHeadBuf.putShort(type);
+				msgHeadBuf.putLong(ntpTime);
+				msgHeadBuf.position(0);
+				break;
+			case PACKET_TYPE_HEARTBEAT:
+				msgHeadBuf.putInt(0);
+				msgHeadBuf.putShort(type);
+				msgHeadBuf.putLong(ntpTime);
+				msgHeadBuf.position(0);
+				break;
+			case PACKET_TYPE_MSG:
+				msgBody = contents;
+				msgHeadBuf.putInt(msgBody.length);
+				msgHeadBuf.putShort(type);
+				msgHeadBuf.putLong(ntpTime);
+				msgHeadBuf.position(0);
+				break;
+		}
+
+		sendDataToMirrorServer(msgHeadBuf.array());
+		sendDataToMirrorServer(msgBody);
+	}
+
+
+	private void sendDataToMirrorServer(byte[] data) {
+		if (mMirrorClientSocket != null) {
+			synchronized (mMirrorClientSocket) {
+				try {
+					mMirrorClientSocket.getOutputStream().write(data);
+					mMirrorClientSocket.getOutputStream().flush();
+				} catch (IOException e) {
+					closeMirrorClient();
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
@@ -607,5 +923,166 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 	public void setTracker(TrackableApi trackableApi) {
 		this.tracker = trackableApi;
+	}
+
+	private void closeMirrorClient() {
+		if (mMirrorClientSocket != null) {
+			synchronized (mMirrorClientSocket) {
+				closeNtpServer();
+
+				if (mMirrorClientSocket != null) {
+					try {
+						mMirrorClientSocket.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					mMirrorClientSocket = null;
+
+					mIsHandShaking = false;
+					h264Queue.clear();
+					h264Queue = null;
+				}
+			}
+		}
+	}
+
+	private ArrayList<byte[]> h264Queue;
+
+	private void enqueueH264Data(byte[] contents) {
+		h264Queue.add(contents);
+	}
+
+	private void dequeueH264Data() {
+		if (h264Queue == null) {
+			return;
+		}
+		while (h264Queue.size() > 0) {
+			byte[] contents = h264Queue.remove(0);
+			byte nalByte = contents[4];
+			int nalType = nalByte & 0x1f;
+			Log.d(TAG,"dequeueH264Data nalType = " + nalType);
+			if(nalType == 7) {
+				sendMirrorData(PACKET_TYPE_CODEC, contents);
+			} else{
+				sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
+			}
+		}
+	}
+
+	private Runnable mirrorHeartBeat = new Runnable() {
+		@Override
+		public void run() {
+			if (mMirrorClientSocket != null) {
+                Handler networkHandler = getNetworkHandler();
+                if (networkHandler != null) {
+                    networkHandler.postDelayed(mirrorHeartBeat, HEARTBEAT_PERIOD);
+                }
+                sendMirrorData(PACKET_TYPE_HEARTBEAT,null);
+                Log.d(TAG, "send mirror heartbeat");
+
+            }
+		}
+
+	};
+
+	private void initNtpServerService() {
+		stopNtpServerThread = false;
+		closeNtpServer();
+		mNtpServerThread = new Thread() {
+			@Override
+			public void run() {
+				try {
+					mNtpServSock = new DatagramSocket();
+					mNtpPort = mNtpServSock.getLocalPort();
+					synchronized(this) {
+						this.notifyAll();
+					}
+					udpListener = new UDPListener(mNtpServSock, new UDPDelegate() {
+
+						@Override
+						public void packetReceived(DatagramSocket socket, DatagramPacket packet) {
+							Log.d(TAG, "receive ntp data");
+
+							/*0000   24 01 02 e8 00 00 00 00 00 00 00 00 41 49 52 50
+							0010   00 00 00 00 00 00 00 00 00 00 01 c4 c8 ac 5d b5
+							0020   00 00 01 c4 c9 6a 0b a1 00 00 01 c4 c9 78 73 d2
+							Network Time Protocol
+							Flags: 0x24
+							00.. .... = Leap Indicator: no warning (0)
+									..10 0... = Version number: NTP Version 4 (4)
+							.... .100 = Mode: server (4)
+							Peer Clock Stratum: primary reference (1)
+							Peer Polling Interval: invalid (2)
+							Peer Clock Precision: 0.000000 sec
+							Root Delay: 0.0000 sec
+							Root Dispersion: 0.0000 sec
+							Reference ID: Unidentified reference source 'AIRP'
+							Reference Timestamp: Jan 1, 1970 00:00:00.000000000 UTC
+							Origin Timestamp: Jan 1, 1900 00:07:32.783880000 UTC
+							Receive Timestamp: Jan 1, 1900 00:07:32.786774000 UTC
+							Transmit Timestamp: Jan 1, 1900 00:07:32.786994000 UTC*/
+
+							long receiveTime = System.currentTimeMillis();
+							TimeStamp serverReceiveTime = new TimeStamp(new Date(receiveTime));
+
+							ByteBuffer packetBuffer = ByteBuffer.wrap(packet.getData());
+							packetBuffer.order(ByteOrder.BIG_ENDIAN);
+							packetBuffer.position(40);
+
+							long clientSentTimeTime = packetBuffer.getLong();
+							ByteBuffer ntpPacket = ByteBuffer.allocate(48);
+							ntpPacket.order(ByteOrder.BIG_ENDIAN);
+							ntpPacket.put((byte)0x24);
+							ntpPacket.put((byte)0x01);
+							ntpPacket.put((byte) 0x02);
+							ntpPacket.put((byte) 0x00);
+
+							// delay
+							ntpPacket.putInt(0);
+							// Dispersion
+							ntpPacket.putInt(0);
+							// Reference ID
+							String refId = "AIRP";
+							try {
+								ntpPacket.put(refId.getBytes("UTF-8"));
+							} catch (UnsupportedEncodingException e) {
+								e.printStackTrace();
+							}
+							TimeStamp ntpBaseTime = new TimeStamp(DATE_BASE_TIME);
+							Log.d(TAG,"ntp sever port: ntpBaseTime = " + ntpBaseTime.getDate());
+							ntpPacket.putLong(ntpBaseTime.ntpValue());
+							TimeStamp clientTimeStamp = new TimeStamp(clientSentTimeTime);
+							Log.d(TAG,"clientTimeStamep = " + clientTimeStamp.getDate());
+							ntpPacket.putLong(clientSentTimeTime);
+							ntpPacket.putLong(serverReceiveTime.ntpValue());
+							Log.d(TAG, "serverReceiveTime  = " + serverReceiveTime.getDate() );
+							TimeStamp ntpServerSendTime = TimeStamp.getCurrentTime();
+							ntpPacket.putLong(ntpServerSendTime.ntpValue());
+							Log.d(TAG,"ntp sever port: currentNtpTime = " + ntpServerSendTime.getDate());
+
+							try {
+								socket.send(new DatagramPacket(ntpPacket.array(), ntpPacket.capacity(), packet.getAddress(), packet.getPort()));
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+					});
+				} catch (SocketException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		mNtpServerThread.start();
+	}
+
+	private void closeNtpServer() {
+		if (mNtpServSock != null) {
+			if(null != udpListener) {
+				udpListener.stopThread();
+			}
+			mNtpServSock.close();
+			mNtpServSock = null;
+		}
 	}
 }

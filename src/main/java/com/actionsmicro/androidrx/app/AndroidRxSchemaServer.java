@@ -39,7 +39,8 @@ public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 	public enum RxFunction{
 		EZCAST("com.actionsmicro.androidrx.AndroidRxSchemaServer.EZCAST", 0),
 		EZAIR("com.actionsmicro.androidrx.AndroidRxSchemaServer.EZAIR", 1),
-		EZAIR_MIRROR("com.actionsmicro.androidrx.AndroidRxSchemaServer.EZAIR_MIRROR", 2);
+		EZAIR_MIRROR("com.actionsmicro.androidrx.AndroidRxSchemaServer.EZAIR_MIRROR", 2),
+		EZCAST_MIRROR("com.actionsmicro.androidrx.AndroidRxSchemaServer.EZCAST_MIRROR", 3);
 		
 		private String sValue;
 		private int iValue;

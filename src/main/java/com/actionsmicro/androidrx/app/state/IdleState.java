@@ -67,7 +67,7 @@ public class IdleState implements State {
 
 	@Override
 	public State onStartMirroring(StateContext stateContext,
-			InetAddress remoteAddress) {
+								  InetAddress remoteAddress, int ntpPort) {
 //		when switching between Music/Mirror, rstp connections may intercept in current system. 		
 //		05-22 18:29:29.218 D/StateContext(10041): onStopMirroring
 //		05-22 18:29:39.603 D/StateContext(10041): state==>com.actionsmicro.androidrx.app.state.IdleState@45277d58

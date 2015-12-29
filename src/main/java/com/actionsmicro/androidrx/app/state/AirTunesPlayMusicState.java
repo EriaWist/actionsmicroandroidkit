@@ -54,7 +54,7 @@ public class AirTunesPlayMusicState implements State {
 
 	@Override
 	public State onStartMirroring(StateContext stateContext,
-			InetAddress remoteAddress) {
+								  InetAddress remoteAddress, int ntpPort) {
 		stateContext.hideMusicView();
 		stateContext.doAirPlayMirror(remoteAddress);
 		return new AirPlayMirrorState();

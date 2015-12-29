@@ -42,6 +42,10 @@ public abstract class Aika {
 
 	public interface AikaConnectListener {
 
+		public byte[] pairSetup();
+
+		public byte[] pairVerify(byte[] requestBody);
+
 		public void video(String url, String rate, String pos)
 				throws AirplayException;
 

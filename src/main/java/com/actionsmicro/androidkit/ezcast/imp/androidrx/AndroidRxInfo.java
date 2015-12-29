@@ -18,7 +18,7 @@ import com.actionsmicro.androidkit.ezcast.imp.bonjour.BonjourDeviceInfo;
 import javax.jmdns.ServiceInfo;
 
 public class AndroidRxInfo extends BonjourDeviceInfo {
-	
+
 	private String deviceID;
 
 	public AndroidRxInfo(Parcel in) {

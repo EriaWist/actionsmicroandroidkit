@@ -1,16 +1,18 @@
 package com.actionsmicro.airplay.mirror;
 
+import com.actionsmicro.airplay.clock.AirPlayPlaybackClockBase;
+import com.actionsmicro.airplay.clock.PlaybackClock;
+import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.ThreadUtils;
+
+import org.apache.commons.net.ntp.NTPUDPClient;
+import org.apache.commons.net.ntp.NtpV3Packet;
+import org.apache.commons.net.ntp.TimeInfo;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-
-import org.apache.commons.net.ntp.NTPUDPClient;
-import org.apache.commons.net.ntp.TimeInfo;
-
-import com.actionsmicro.airplay.clock.AirPlayPlaybackClockBase;
-import com.actionsmicro.airplay.clock.PlaybackClock;
-import com.actionsmicro.utils.ThreadUtils;
 
 public class MirrorClock extends AirPlayPlaybackClockBase implements PlaybackClock {
 	private static final String TAG = "MirrorClock";

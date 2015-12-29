@@ -19,5 +19,6 @@ public class AirplayState {
 	public final static String TEXT = "text/parameters";
 	public final static String binPLIST = "application/x-apple-binary-plist";
 	public final static String txtPLIST = "text/x-apple-plist+xml";
+	public final static String binaryStream = "application/octet-stream";
 	public final static String ContentLength = "Content-Length";
 }

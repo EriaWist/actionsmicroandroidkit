@@ -1,8 +1,8 @@
 package com.actionsmicro.airplay.clock;
 
-import org.apache.commons.net.ntp.TimeStamp;
-
 import com.actionsmicro.utils.Log;
+
+import org.apache.commons.net.ntp.TimeStamp;
 
 public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
 
@@ -26,7 +26,7 @@ public abstract class AirPlayPlaybackClockBase implements PlaybackClock {
 	@Override
 	public boolean waitUntilTime(long presentationTime) {
 		presentationTime = presentationTime - clockOffset;
-		if (presentationTime < now()) {
+		if (presentationTime < now() && clockOffset != 0) {
 			if ((now() - presentationTime) > latencyTolerance) {
 				debugLogW("presentationTime:"+presentationTime+" is too late for "+(now() - presentationTime)+"ms"+", exceptionCount:"+exceptionCount);
 				exceptionCount++;

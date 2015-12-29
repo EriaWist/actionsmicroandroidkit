@@ -51,7 +51,7 @@ public class AirTunesConnectedState implements State {
 
 	@Override
 	public State onStartMirroring(StateContext stateContext,
-			InetAddress remoteAddress) {
+								  InetAddress remoteAddress, int ntpPort) {
 		stateContext.doAirPlayMirror(remoteAddress);
 		return new AirPlayMirrorState();
 	}
