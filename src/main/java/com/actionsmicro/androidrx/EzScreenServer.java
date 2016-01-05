@@ -1,10 +1,13 @@
 package com.actionsmicro.androidrx;
 
 import android.content.Context;
+import android.graphics.Point;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
+import android.view.Display;
+import android.view.WindowManager;
 
 import com.actionsmicro.androidkit.ezcast.imp.androidrx.AndroidRxFinder;
 import com.actionsmicro.bonjour.BonjourServiceAdvertiser;
@@ -264,8 +267,14 @@ public class EzScreenServer {
 						HashMap<String,Object> resMap = new HashMap();
 						resMap.put("h264stream",supportH264Decode);
 						if (supportH264Decode) {
-							resMap.put("height", 1280);
-							resMap.put("width", 720);
+							WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+							Display display = wm.getDefaultDisplay();
+							Point size = new Point();
+							display.getSize(size);
+							int width = size.x;
+							int height = size.y;
+							resMap.put("height", height);
+							resMap.put("width", width);
 						}
 						return new JSONRPC2Response(resMap, request.getID());
 
