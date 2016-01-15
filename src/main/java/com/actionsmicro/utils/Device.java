@@ -81,7 +81,7 @@ public class Device {
 		return DEVICE_TYPE_PHONE;
 	}
 	public static String getAppMacAddress(Context context) {
-		return getAppMacAddress(context, "01:23:45:67:89:ab");
+		return getAppUniqueId(context);
 	}
 	public static String getAppMacAddress(Context context, String defaultValue) {
 		WifiManager wifiMan = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
