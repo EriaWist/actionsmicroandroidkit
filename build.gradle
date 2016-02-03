@@ -32,6 +32,12 @@ android {
     }
 }
 
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
 dependencies {
     compile 'com.google.code.gson:gson:2.2.4'
     compile files('libs/apache-mime4j-0.6.jar')
@@ -68,4 +74,5 @@ dependencies {
     compile 'com.google.android.gms:play-services:6.5.87'
     //    compile 'com.android.support:multidex:1.0.1'
     compile 'com.android.support:support-v4:19.0.1'
+    compile(name: 'libvlc', ext: 'aar')
 }
