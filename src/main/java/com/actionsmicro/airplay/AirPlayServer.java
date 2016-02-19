@@ -66,6 +66,9 @@ public class AirPlayServer {
 	public static final int AIRPLAY_VIDEO_ON_MIRROR = 3;
 
 	public static int airplayState = AIRPLAY_IDLE;
+	// android 6.0's default mac addr
+	private static final String DEFAULT_MAC_ADDRESS = "02:00:00:00:00:00";
+
 	public interface AirPlayServerDelegate {
 
 		void loadVideo(String url, float rate, float position);
@@ -868,7 +871,11 @@ public class AirPlayServer {
 					if (ni != null) {
 		                try {
 		                	String[] as = com.actionsmicro.utils.Device.getAppMacAddress(context).split(":");
-			                hwAddr = new byte[as.length];
+							// use default mac addr if can't get macaddress
+							if (as.length != 6) {
+								as = DEFAULT_MAC_ADDRESS.split(":");
+							}
+							hwAddr = new byte[as.length];
 			                int i = 0;
 			                for (String a : as) {
 			                    hwAddr[i++] = Integer.valueOf(a, 16).byteValue();
