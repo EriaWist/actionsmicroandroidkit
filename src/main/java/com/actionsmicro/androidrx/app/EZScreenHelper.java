@@ -174,14 +174,14 @@ public class EZScreenHelper implements PlayerListener {
 		if (networkThread == null) {
 			networkThread = new LooperThread();
 			networkThread.start();
-		}
-		try {
-			synchronized(networkThread) {
-				networkThread.wait();
+			try {
+				synchronized (networkThread) {
+					networkThread.wait();
+				}
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 	}
 	private void hidePhotoView() {
@@ -1348,6 +1348,12 @@ public class EZScreenHelper implements PlayerListener {
 		closeMediaCallbackRpcSessionIfNeeded();
 		createMediaCallbackRpcSession(callback);
 		stopMediaPlayer();
+		mainHandler.postDelayed(new Runnable() {
+			@Override
+			public void run() {
+
+			}
+		},1000);
 		mediaPlayerHelper = new MediaPlayerHelper(context, container, this);
 		mediaPlayerHelper.load(url);
 		if (autoplay) {
