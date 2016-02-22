@@ -1348,12 +1348,6 @@ public class EZScreenHelper implements PlayerListener {
 		closeMediaCallbackRpcSessionIfNeeded();
 		createMediaCallbackRpcSession(callback);
 		stopMediaPlayer();
-		mainHandler.postDelayed(new Runnable() {
-			@Override
-			public void run() {
-
-			}
-		},1000);
 		mediaPlayerHelper = new MediaPlayerHelper(context, container, this);
 		mediaPlayerHelper.load(url);
 		if (autoplay) {
