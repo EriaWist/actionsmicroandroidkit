@@ -260,7 +260,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 		});
 	}
 	private void playImp(int startpos) {
-		playVideoAtPath();
+		playMediaAtPath();
 		if (playerListener != null) {
 			playerListener.onPlay();
 		}
@@ -281,26 +281,31 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 //		}
 	}
 
-	private void setMediaPath(String media) {
+	private void setMediaPath(String mediaUrl) {
+		setMediaPath(mediaUrl, false);
+	}
+
+	private void setMediaPath(String mediaPath, boolean enableHWDecoded) {
 		Media m;
-		if (media.contains("http")) {
-			m = new Media(libvlc, Uri.parse(media));
+		if (mediaPath.contains("http")) {
+			m = new Media(libvlc, Uri.parse(mediaPath));
 		} else {
-			m = new Media(libvlc, media);
+			m = new Media(libvlc, mediaPath);
 		}
 
-		if (media.contains("mov") || media.contains("mts")) {
+		if (!enableHWDecoded|| mediaPath.contains("mov") || mediaPath.contains("mts")) {
 			m.setHWDecoderEnabled(false, false);
 		}
 
 		mMediaPlayer.setMedia(m);
+		m.release();
 	}
 
-	private void playVideoAtPath() {
+	private void playMediaAtPath() {
 		try {
 			mMediaPlayer.play();
 		} catch (Exception e) {
-			Log.e(TAG, "Error creating player!", e);
+			Log.e(TAG, "Play fail", e);
 		}
 	}
 
@@ -521,9 +526,6 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 	@Override
 	public void eventHardwareAccelerationError() {
 		Log.e(TAG, "Error with hardware acceleration");
-		releasePlayer();
-		Toast.makeText(mCtx, "Error with hardware acceleration", Toast.LENGTH_LONG).show();
-
 	}
 
 	private void setSize(int width, int height) {

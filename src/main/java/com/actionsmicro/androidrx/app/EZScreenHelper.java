@@ -1867,7 +1867,6 @@ public class EZScreenHelper implements PlayerListener {
 
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void releaseDecoder() {
-		Log.d("dddd,","releaseDecoder ");
 		if (decoder != null) {
 			decoder.stop();
 			decoder.release();
