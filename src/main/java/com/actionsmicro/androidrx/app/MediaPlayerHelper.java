@@ -2,11 +2,8 @@ package com.actionsmicro.androidrx.app;
 
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnErrorListener;
-import android.media.MediaPlayer.OnInfoListener;
-import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -17,8 +14,6 @@ import android.view.SurfaceView;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.FrameLayout;
-import android.widget.Toast;
-import android.widget.VideoView;
 
 import com.actionsmicro.utils.Log;
 
@@ -59,7 +54,6 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 			@Override
 			public void run() {
 				initSurfaceView(context,container,playerListener);
-//				initVideoView(context, container, playerListener);
 			}
 
 		});
@@ -82,32 +76,11 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 		mSurface = new SurfaceView(context);
 		FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER);
 		mSurface.setLayoutParams(layoutParams);
+		mSurface.setBackgroundColor(Color.BLACK);
 		container.addView(mSurface);
 		createMediaPlayerifNeeded();
 	}
 
-	private OnInfoListener onInfoListener = new OnInfoListener() {
-
-		@Override
-		public boolean onInfo(MediaPlayer mp, int what, int extra) {
-			Log.v(TAG, "onInfo: what:"+what+", extra:"+extra);
-			Log.v(TAG, "onInfo: duration:"+mp.getDuration()/1000);
-			switch (what) {
-			case MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
-				if (playerListener != null) {
-					playerListener.onPlaying();
-				}
-				setDuration(mp.getDuration()/1000);					
-				break;
-			case MediaPlayer.MEDIA_INFO_METADATA_UPDATE:
-				Log.v(TAG, "onInfo: duration:"+mp.getDuration()/1000);
-				setDuration(mp.getDuration()/1000);					
-				break;
-			}
-			return false;
-		}
-
-	};
 
 	private void setDuration(int duration) {
 		if (this.duration != duration) {
@@ -196,6 +169,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 	private void stopImp() {
 		if(mMediaPlayer!=null) {
 			mMediaPlayer.stop();
+			mSurface.setBackgroundColor(Color.BLACK);
 			container.removeView(mSurface);
 			releasePlayer();
 		}
@@ -286,7 +260,6 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 					break;
 				case org.videolan.libvlc.MediaPlayer.Event.EndReached:
 					playerListener.onEnded();
-//					mediaPlayerStateListener.mediaPlayerDidStop(DemoMediaPlayerApi.this, MediaPlayerApi.Cause.REMOTE);
 					break;
 				case org.videolan.libvlc.MediaPlayer.Event.TimeChanged:
 					break;
@@ -297,11 +270,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 					break;
 				case org.videolan.libvlc.MediaPlayer.Event.Playing:
 					playerListener.onPlaying();
-					playerListener.onDurationChange((int) (mMediaPlayer.getLength()/1000));
-//					setDuration((int) (mMediaPlayer.getLength()/1000));
-//					mState = MediaPlayerApi.State.PLAYING;
-//					mediaPlayerStateListener.mediaPlayerDidStart(DemoMediaPlayerApi.this);
-//					mediaPlayerStateListener.mediaPlayerDurationIsReady(DemoMediaPlayerApi.this,mMediaPlayer.getLength()/1000);
+					setDuration((int) (mMediaPlayer.getLength()/1000));
 					break;
 				case org.videolan.libvlc.MediaPlayer.Event.Paused:
 					playerListener.onPaused();
@@ -378,7 +347,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 	public void onNewLayout(IVLCVout vout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
 		if (width * height == 0)
 			return;
-
+		mSurface.setBackgroundColor(Color.TRANSPARENT);
 		// store video size
 		mVideoWidth = width;
 		mVideoHeight = height;
