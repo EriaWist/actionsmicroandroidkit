@@ -364,10 +364,10 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 				} else if (EZCASTPLAYER_ONDURATIONCHANGE.equals(notification.getMethod())) {
 					Log.d(TAG, EZCASTPLAYER_ONDURATIONCHANGE+":"+namedParams.get("duration"));
 					long duration = Float.valueOf(namedParams.get("duration").toString()).longValue();
-					setMediaUsageDuration((int) duration);
 					if (mediaPlayerStateListener != null) {
 						mediaPlayerStateListener.mediaPlayerDurationIsReady(AndroidRxClient.this, duration);
 					}
+					setMediaUsageDuration((int) duration);
 				} else if (EZCASTPLAYER_ONERROR.equals(notification.getMethod())) {
 					int errorCode = convertErrorCode(Integer.valueOf(namedParams.get("error").toString()));
 					setMediaUsageResultCode(namedParams.get("error").toString(), errorCode);
