@@ -82,6 +82,7 @@ public class EZScreenHelper implements PlayerListener {
 	private boolean isExpired;
 	private byte[] mSps;
 	private byte[] mPps;
+	private byte[] mLastIFrame;
 
 	public interface ConnectionListener {
 		public void onConnected();
@@ -810,6 +811,7 @@ public class EZScreenHelper implements PlayerListener {
 					androidRxSchemaServer.stopFunction();
 					mSps = null;
 					mPps = null;
+					mLastIFrame = null;
 				}
 
 				@Override
@@ -850,8 +852,18 @@ public class EZScreenHelper implements PlayerListener {
 
 				@Override
 				public void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp) {
+					int nalType = ((int)frame[4])&0x1f;
+					if (!mIsAirplaySurfaceLive) {
+						if (nalType == 5) {
+							storeLastFrame(frame, size);
+						}
+					}
+
 					if (mIsAirplaySurfaceLive) {
 						if (renderThread == null) {
+							if (nalType == 5) {
+								storeLastFrame(frame, size);
+							}
 							startRenderer();
 						}
 						if (playbackClock == null) {
@@ -1129,15 +1141,23 @@ public class EZScreenHelper implements PlayerListener {
 
 				@Override
 				public void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp) {
+					int nalType = ((int)frame[4])&0x1f;
+					if (!mIsAirplaySurfaceLive) {
+						if (nalType == 5) {
+							storeLastFrame(frame, size);
+						}
+					}
+
 					if (mIsAirplaySurfaceLive) {
 						if (renderThread == null) {
+							if (nalType == 5) {
+								storeLastFrame(frame, size);
+							}
 							startRenderer();
 						}
 						if (playbackClock == null) {
 							playbackClock = new SimplePlaybackClock(timestamp, 1000, TAG);
 						}
-
-						Log.d(TAG, "mIsAirplaySurfaceLive = " + mIsAirplaySurfaceLive);
 
 						decodeBytesWithPrefix(null, frame, offset, size, timestamp, 0, 5000);
 					}
@@ -1157,6 +1177,7 @@ public class EZScreenHelper implements PlayerListener {
 					androidRxSchemaServer.stopFunction();
 					mSps = null;
 					mPps = null;
+					mLastIFrame = null;
 				}
 
 				private void doRender(MediaCodec.BufferInfo bufferInfo) {
@@ -1272,6 +1293,11 @@ public class EZScreenHelper implements PlayerListener {
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void storeLastFrame(byte[] frame, int size) {
+		mLastIFrame = new byte[size];
+		System.arraycopy(frame, 0, mLastIFrame, 0, size);
 	}
 
 	private void updateTransformAccodingToSps(byte[] spsData) {
@@ -1463,6 +1489,18 @@ public class EZScreenHelper implements PlayerListener {
 					int ppsWrite = inputBuffers[bufferIndex].position();
 					inputBuffers[bufferIndex].rewind();
 					decoder.queueInputBuffer(bufferIndex, 0, ppsWrite, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+
+					if(mLastIFrame != null) {
+						bufferIndex = decoder.dequeueInputBuffer(-1);
+						Log.d(TAG, "last frame bufferIndex = " + bufferIndex);
+						inputBuffers[bufferIndex].clear();
+						inputBuffers[bufferIndex].put(mLastIFrame, 0, mLastIFrame.length);
+						int firstFrameWrite = inputBuffers[bufferIndex].position();
+						inputBuffers[bufferIndex].rewind();
+
+						decoder.queueInputBuffer(bufferIndex, 0, firstFrameWrite, System.currentTimeMillis(), 0);
+					}
+
 				}
 				mIsAirplaySurfaceLive = true;
 			}
