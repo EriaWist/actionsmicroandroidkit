@@ -7,10 +7,10 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.FrameLayout;
@@ -31,6 +31,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 	protected int duration = -1;
 	protected MediaPlayer mediaPlayer;
 	private Context mCtx;
+	private View.OnLayoutChangeListener mOnLayoutChangeListener;
 
 	public interface PlayerListener {
 		public void onDurationChange(int seconds);
@@ -157,6 +158,9 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 
 	public void stop() {
 		Log.v(TAG, "stop:");
+		if (null != mOnLayoutChangeListener) {
+			container.removeOnLayoutChangeListener(mOnLayoutChangeListener);
+		}
 		runOnUiThread(new Runnable() {
 
 			@Override
@@ -379,10 +383,27 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 		if(holder == null || mSurface == null)
 			return;
 
+		// force surface buffer size
+		holder.setFixedSize(mVideoWidth, mVideoHeight);
+
 		// get screen size
-		DisplayMetrics metrics = mCtx.getResources().getDisplayMetrics();
-		int w = metrics.widthPixels;
-		int h = metrics.heightPixels;
+//		DisplayMetrics metrics = mCtx.getResources().getDisplayMetrics();
+		updateSurfaceLayout();
+
+		mOnLayoutChangeListener = new View.OnLayoutChangeListener() {
+			@Override
+			public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft,
+									   int oldTop, int oldRight, int oldBottom) {
+
+				updateSurfaceLayout();
+			}
+		};
+		container.addOnLayoutChangeListener(mOnLayoutChangeListener);
+	}
+
+	private void updateSurfaceLayout() {
+		int w = container.getWidth();
+		int h = container.getHeight();
 
 		boolean isPortrait = mCtx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
 		if (w > h && isPortrait || w < h && !isPortrait) {
@@ -399,11 +420,8 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 		else
 			w = (int) (h * videoAR);
 
-		// force surface buffer size
-		holder.setFixedSize(mVideoWidth, mVideoHeight);
-
 		// set display size
-		ViewGroup.LayoutParams lp = mSurface.getLayoutParams();
+		LayoutParams lp = mSurface.getLayoutParams();
 		lp.width = w;
 		lp.height = h;
 		mSurface.setLayoutParams(lp);

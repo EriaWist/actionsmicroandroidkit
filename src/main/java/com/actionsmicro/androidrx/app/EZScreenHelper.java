@@ -82,6 +82,7 @@ public class EZScreenHelper implements PlayerListener {
 	private boolean isExpired;
 	private byte[] mSps;
 	private byte[] mPps;
+	private byte[] mLastIFrame;
 
 	public interface ConnectionListener {
 		public void onConnected();
@@ -810,6 +811,7 @@ public class EZScreenHelper implements PlayerListener {
 					androidRxSchemaServer.stopFunction();
 					mSps = null;
 					mPps = null;
+					mLastIFrame = null;
 				}
 
 				@Override
@@ -850,8 +852,18 @@ public class EZScreenHelper implements PlayerListener {
 
 				@Override
 				public void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp) {
+					int nalType = ((int)frame[4])&0x1f;
+					if (!mIsAirplaySurfaceLive) {
+						if (nalType == 5) {
+							storeLastFrame(frame, size);
+						}
+					}
+
 					if (mIsAirplaySurfaceLive) {
 						if (renderThread == null) {
+							if (nalType == 5) {
+								storeLastFrame(frame, size);
+							}
 							startRenderer();
 						}
 						if (playbackClock == null) {
@@ -1129,15 +1141,23 @@ public class EZScreenHelper implements PlayerListener {
 
 				@Override
 				public void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp) {
+					int nalType = ((int)frame[4])&0x1f;
+					if (!mIsAirplaySurfaceLive) {
+						if (nalType == 5) {
+							storeLastFrame(frame, size);
+						}
+					}
+
 					if (mIsAirplaySurfaceLive) {
 						if (renderThread == null) {
+							if (nalType == 5) {
+								storeLastFrame(frame, size);
+							}
 							startRenderer();
 						}
 						if (playbackClock == null) {
 							playbackClock = new SimplePlaybackClock(timestamp, 1000, TAG);
 						}
-
-						Log.d(TAG, "mIsAirplaySurfaceLive = " + mIsAirplaySurfaceLive);
 
 						decodeBytesWithPrefix(null, frame, offset, size, timestamp, 0, 5000);
 					}
@@ -1157,6 +1177,7 @@ public class EZScreenHelper implements PlayerListener {
 					androidRxSchemaServer.stopFunction();
 					mSps = null;
 					mPps = null;
+					mLastIFrame = null;
 				}
 
 				private void doRender(MediaCodec.BufferInfo bufferInfo) {
@@ -1272,6 +1293,11 @@ public class EZScreenHelper implements PlayerListener {
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void storeLastFrame(byte[] frame, int size) {
+		mLastIFrame = new byte[size];
+		System.arraycopy(frame, 0, mLastIFrame, 0, size);
 	}
 
 	private void updateTransformAccodingToSps(byte[] spsData) {
@@ -1432,6 +1458,8 @@ public class EZScreenHelper implements PlayerListener {
 		container.addView(mirrorView);
 		hideMirrorView();
 		mirrorView.setSurfaceTextureListener(new SurfaceTextureListener() {
+			private int mDelta = 0;
+
 			@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 			@Override
 			public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture,
@@ -1446,23 +1474,8 @@ public class EZScreenHelper implements PlayerListener {
 					createDecoder();
 					Log.d(TAG, "enqueue csd:sps/pps");
 					updateTransformAccodingToSps(mSps);
-					int bufferIndex = decoder.dequeueInputBuffer(-1);
-					Log.d(TAG, "sps bufferIndex = " + bufferIndex);
-					inputBuffers[bufferIndex].clear();
-					inputBuffers[bufferIndex].put(nalHeader);
-					inputBuffers[bufferIndex].put(mSps, 0, mSps.length);
-					int spsWrite = inputBuffers[bufferIndex].position();
-					inputBuffers[bufferIndex].rewind();
-					decoder.queueInputBuffer(bufferIndex, 0, spsWrite, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
-
-					bufferIndex = decoder.dequeueInputBuffer(-1);
-					Log.d(TAG, "pps bufferIndex = " + bufferIndex);
-					inputBuffers[bufferIndex].clear();
-					inputBuffers[bufferIndex].put(nalHeader);
-					inputBuffers[bufferIndex].put(mPps, 0, mPps.length);
-					int ppsWrite = inputBuffers[bufferIndex].position();
-					inputBuffers[bufferIndex].rewind();
-					decoder.queueInputBuffer(bufferIndex, 0, ppsWrite, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+					enqueueCSD();
+					enqueueLastFrame();
 				}
 				mIsAirplaySurfaceLive = true;
 			}
@@ -1475,7 +1488,7 @@ public class EZScreenHelper implements PlayerListener {
 				mirrorSurfaceTexture.release();
 				mirrorSurfaceTexture = null;
 				inputBuffers = null;
-
+				mDelta = 0;
 				return true;
 			}
 
@@ -1483,6 +1496,13 @@ public class EZScreenHelper implements PlayerListener {
 			public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
 													int width, int height) {
 				Log.d(TAG, "onSurfaceTextureSizeChanged:" + " w:" + width + " h:" + height);
+				if (mIsAirplaySurfaceLive && mSps != null) {
+					mDelta += (surfaceWidth - width);
+					if (Math.abs(mDelta) > 20) {
+						updateTransformAccodingToSps(mSps);
+						mDelta = 0;
+					}
+				}
 				surfaceWidth = width;
 				surfaceHeight = height;
 			}
@@ -1494,6 +1514,40 @@ public class EZScreenHelper implements PlayerListener {
 			}
 
 		});
+	}
+
+	private void enqueueCSD() {
+		int bufferIndex = decoder.dequeueInputBuffer(-1);
+		Log.d(TAG, "sps bufferIndex = " + bufferIndex);
+		inputBuffers[bufferIndex].clear();
+		inputBuffers[bufferIndex].put(nalHeader);
+		inputBuffers[bufferIndex].put(mSps, 0, mSps.length);
+		int spsWrite = inputBuffers[bufferIndex].position();
+		inputBuffers[bufferIndex].rewind();
+		decoder.queueInputBuffer(bufferIndex, 0, spsWrite, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+
+		bufferIndex = decoder.dequeueInputBuffer(-1);
+		Log.d(TAG, "pps bufferIndex = " + bufferIndex);
+		inputBuffers[bufferIndex].clear();
+		inputBuffers[bufferIndex].put(nalHeader);
+		inputBuffers[bufferIndex].put(mPps, 0, mPps.length);
+		int ppsWrite = inputBuffers[bufferIndex].position();
+		inputBuffers[bufferIndex].rewind();
+		decoder.queueInputBuffer(bufferIndex, 0, ppsWrite, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+	}
+
+	private void enqueueLastFrame() {
+		int bufferIndex;
+		if(mLastIFrame != null) {
+            bufferIndex = decoder.dequeueInputBuffer(-1);
+            Log.d(TAG, "last frame bufferIndex = " + bufferIndex);
+            inputBuffers[bufferIndex].clear();
+            inputBuffers[bufferIndex].put(mLastIFrame, 0, mLastIFrame.length);
+            int firstFrameWrite = inputBuffers[bufferIndex].position();
+            inputBuffers[bufferIndex].rewind();
+
+            decoder.queueInputBuffer(bufferIndex, 0, firstFrameWrite, System.currentTimeMillis(), 0);
+        }
 	}
 
 	private void hideAllViewsExcept(View exception) {
