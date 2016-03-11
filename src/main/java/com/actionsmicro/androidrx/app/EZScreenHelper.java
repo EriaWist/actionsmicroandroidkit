@@ -852,7 +852,7 @@ public class EZScreenHelper implements PlayerListener {
 
 				@Override
 				public void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp) {
-					int nalType = ((int)frame[4])&0x1f;
+					int nalType = ((int) frame[4]) & 0x1f;
 					if (!mIsAirplaySurfaceLive) {
 						if (nalType == 5) {
 							storeLastFrame(frame, size);
@@ -897,14 +897,14 @@ public class EZScreenHelper implements PlayerListener {
 							decoder.queueInputBuffer(bufferIndex, 0, totalWrite, timestamp, flags);
 						} else {
 							Log.w(TAG, "MediaCodec input buffer is not enough.");
-				}
+						}
 					}
 				}
 
 				private void startRenderer() {
 					stopRenderer = false;
 					renderThread = new Thread(new Runnable() {
-	
+
 						@Override
 						public void run() {
 							synchronized (renderThread) {
