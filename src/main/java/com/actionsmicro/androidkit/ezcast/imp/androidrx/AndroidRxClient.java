@@ -736,14 +736,19 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
                 Log.d(TAG, "connectType = " + connectType + " tcpPort = " + mirrorPort + " version = " + version);
 
                 try {
-                    mMirrorClientSocket = new Socket();
-                    mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
-                    String msg = "Luke, I am your Father!";
-                    byte[] body = msg.getBytes("UTF-8");
-                    final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
-                    sendMirrorData(PACKET_TYPE_MSG,encryptBody);
-                    final InputStream in = mMirrorClientSocket.getInputStream();
-                    new Thread(new Runnable() {
+					final InputStream in;
+					synchronized (mMirrorLock) {
+						mMirrorClientSocket = new Socket();
+						mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
+						String msg = "Luke, I am your Father!";
+						byte[] body = msg.getBytes("UTF-8");
+						Log.d(TAG, "body size = " + body.length);
+						final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
+						Log.d(TAG, "encryptBody size = " + encryptBody.length);
+						sendMirrorData(PACKET_TYPE_MSG, encryptBody);
+						in = mMirrorClientSocket.getInputStream();
+					}
+					new Thread(new Runnable() {
                         @Override
                         public void run() {
                             int headerSize = 32;
