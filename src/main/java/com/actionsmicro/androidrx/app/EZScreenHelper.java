@@ -638,6 +638,11 @@ public class EZScreenHelper implements PlayerListener {
 							}
 						}
 						if (bitmap != null) {
+							if (!EZScreenHelper.this.getMjpegView().isAvailable() && mjpegView.getVisibility() == View.VISIBLE) {
+								if (connectionListener != null) {
+									connectionListener.onUpdateScreen(View.VISIBLE);
+								}
+							}
 							Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
 							if (canvas != null) {
 								final int savedState = canvas.save();
