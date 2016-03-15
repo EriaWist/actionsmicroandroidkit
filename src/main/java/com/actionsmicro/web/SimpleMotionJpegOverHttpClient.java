@@ -138,7 +138,7 @@ public class SimpleMotionJpegOverHttpClient {
 		if (!stopped) {
 			stopped = true;
 			try {
-				clientThread.join();
+				clientThread.join(3000);
 			} catch (InterruptedException e) {
 			}
 		}

@@ -88,6 +88,8 @@ public class EZScreenHelper implements PlayerListener {
 		public void onConnected();
 
 		public void onDisconnected();
+
+		public void onUpdateScreen(int visibility);
 	}
 
 	public interface DisplayImageInterface {
@@ -416,6 +418,10 @@ public class EZScreenHelper implements PlayerListener {
 		Log.d(TAG, "onLoadStart:");
 		sendCallbackNotification("ezcastplayer.onloadstart", null);
 
+		if (connectionListener != null) {
+			connectionListener.onUpdateScreen(View.VISIBLE);
+		}
+
 //		state = AirplayState.CACHING;
 //		airplayService.sendEvent();
 	}
@@ -539,7 +545,6 @@ public class EZScreenHelper implements PlayerListener {
 
 	private void setViewVisibility(final View view, final int visibility) {
 		if (view != null) {
-
 			this.getMainHandler().post(new Runnable() {
 
 				@Override
@@ -1991,6 +1996,9 @@ public class EZScreenHelper implements PlayerListener {
 	@SuppressLint("NewApi")
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void doAirPlayMirror(InetAddress remoteAddress) {
+		if (connectionListener != null) {
+			connectionListener.onUpdateScreen(View.VISIBLE);
+		}
 		showMirrorView();
 		stopMirrorDecoding();
 		createMirrorClock(remoteAddress, 7010, 100);
@@ -1998,7 +2006,6 @@ public class EZScreenHelper implements PlayerListener {
 			createMirrorSurface();
 			createDecoder();
 		}
-
 
 		closeTestFile();
 		if (DUMP_H264) {
@@ -2014,6 +2021,9 @@ public class EZScreenHelper implements PlayerListener {
 	@SuppressLint("NewApi")
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void doEZScreenMirror(InetAddress remoteAddress, int ntpPort) {
+		if (connectionListener != null) {
+			connectionListener.onUpdateScreen(View.VISIBLE);
+		}
 		showMirrorView();
 		stopMirrorDecoding();
 		// TODO change to ntp-server

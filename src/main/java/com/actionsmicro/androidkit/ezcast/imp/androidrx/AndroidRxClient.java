@@ -78,6 +78,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private int mNtpPort;
 	private DatagramSocket mNtpServSock;
 	private UDPListener udpListener;
+	final Object mMirrorLock = new Object();
 
 	public interface JSonResponseDelegate {
 		void onComplete(JSONRPC2Response response);
@@ -899,8 +900,8 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 
 
 	private void sendDataToMirrorServer(byte[] data) {
-		if (mMirrorClientSocket != null) {
-			synchronized (mMirrorClientSocket) {
+		synchronized (mMirrorLock) {
+			if (mMirrorClientSocket != null) {
 				try {
 					mMirrorClientSocket.getOutputStream().write(data);
 					mMirrorClientSocket.getOutputStream().flush();
@@ -926,10 +927,9 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 
 	private void closeMirrorClient() {
-		if (mMirrorClientSocket != null) {
-			synchronized (mMirrorClientSocket) {
+		synchronized (mMirrorLock) {
+			if (mMirrorClientSocket != null) {
 				closeNtpServer();
-
 				if (mMirrorClientSocket != null) {
 					try {
 						mMirrorClientSocket.close();
