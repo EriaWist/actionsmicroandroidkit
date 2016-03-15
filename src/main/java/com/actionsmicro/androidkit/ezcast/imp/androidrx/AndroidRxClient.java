@@ -199,6 +199,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			public void run() {
 				try {
 					JSONRPC2Session jsonRpcSession = getJsonRpcSession();
+					Log.d(TAG,"method " + method);
 					if (jsonRpcSession != null) {
 						JSONRPC2Response response = jsonRpcSession.send(new JSONRPC2Request(method, params, generateRpcId()));
 						if (null != delegate) {
@@ -236,6 +237,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			public void run() {
 				try {
 					JSONRPC2Session jsonRpcSession = getJsonRpcSession();
+					Log.d(TAG,"method" + method);
 					if (jsonRpcSession != null) {
 						jsonRpcSession.send(new JSONRPC2Request(method, generateRpcId()));
 					}
