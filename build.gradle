@@ -24,13 +24,17 @@ android {
     buildTypes {
         debug {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt', 'proguard-google-api-client.txt', 'proguard.txt'
         }
 
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt', 'proguard-google-api-client.txt', 'proguard.txt'
+            consumerProguardFiles 'proguard-project.txt', 'proguard-google-api-client.txt' , 'proguard.txt'
         }
+    }
+}
+
+repositories {
+    flatDir {
+        dirs 'libs'
     }
 }
 
@@ -70,4 +74,5 @@ dependencies {
     compile 'com.google.android.gms:play-services:6.5.87'
     //    compile 'com.android.support:multidex:1.0.1'
     compile 'com.android.support:support-v4:19.0.1'
+    compile(name: 'libvlc', ext: 'aar')
 }

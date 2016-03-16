@@ -287,6 +287,7 @@ public class EzScreenServer {
 			HashMap<String, String> txtRecord = new HashMap<String, String>();
 			txtRecord.put("txtvers", "20151019");
 			txtRecord.put("srcvers", "20151019");
+			txtRecord.put("deviceOS", "android");
 			txtRecord.put("deviceid", deviceID);
 			//2015-03-13 erichwang for mac-mirror and windows-mirror
 			txtRecord.put("mmr", String.valueOf(mmr));
