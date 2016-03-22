@@ -88,6 +88,8 @@ public class EZScreenHelper implements PlayerListener {
 		public void onConnected();
 
 		public void onDisconnected();
+
+		public void onUpdateScreen(int visibility);
 	}
 
 	public interface DisplayImageInterface {
@@ -416,6 +418,10 @@ public class EZScreenHelper implements PlayerListener {
 		Log.d(TAG, "onLoadStart:");
 		sendCallbackNotification("ezcastplayer.onloadstart", null);
 
+		if (connectionListener != null) {
+			connectionListener.onUpdateScreen(View.VISIBLE);
+		}
+
 //		state = AirplayState.CACHING;
 //		airplayService.sendEvent();
 	}
@@ -539,7 +545,6 @@ public class EZScreenHelper implements PlayerListener {
 
 	private void setViewVisibility(final View view, final int visibility) {
 		if (view != null) {
-
 			this.getMainHandler().post(new Runnable() {
 
 				@Override
@@ -633,6 +638,11 @@ public class EZScreenHelper implements PlayerListener {
 							}
 						}
 						if (bitmap != null) {
+							if (!EZScreenHelper.this.getMjpegView().isAvailable() && mjpegView.getVisibility() == View.VISIBLE) {
+								if (connectionListener != null) {
+									connectionListener.onUpdateScreen(View.VISIBLE);
+								}
+							}
 							Canvas canvas = EZScreenHelper.this.getMjpegView().lockCanvas();
 							if (canvas != null) {
 								final int savedState = canvas.save();
@@ -852,7 +862,7 @@ public class EZScreenHelper implements PlayerListener {
 
 				@Override
 				public void onH264FrameAvailable(byte[] frame, int offset, int size, long timestamp) {
-					int nalType = ((int)frame[4])&0x1f;
+					int nalType = ((int) frame[4]) & 0x1f;
 					if (!mIsAirplaySurfaceLive) {
 						if (nalType == 5) {
 							storeLastFrame(frame, size);
@@ -897,14 +907,14 @@ public class EZScreenHelper implements PlayerListener {
 							decoder.queueInputBuffer(bufferIndex, 0, totalWrite, timestamp, flags);
 						} else {
 							Log.w(TAG, "MediaCodec input buffer is not enough.");
-				}
+						}
 					}
 				}
 
 				private void startRenderer() {
 					stopRenderer = false;
 					renderThread = new Thread(new Runnable() {
-	
+
 						@Override
 						public void run() {
 							synchronized (renderThread) {
@@ -1991,6 +2001,9 @@ public class EZScreenHelper implements PlayerListener {
 	@SuppressLint("NewApi")
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void doAirPlayMirror(InetAddress remoteAddress) {
+		if (connectionListener != null) {
+			connectionListener.onUpdateScreen(View.VISIBLE);
+		}
 		showMirrorView();
 		stopMirrorDecoding();
 		createMirrorClock(remoteAddress, 7010, 100);
@@ -1998,7 +2011,6 @@ public class EZScreenHelper implements PlayerListener {
 			createMirrorSurface();
 			createDecoder();
 		}
-
 
 		closeTestFile();
 		if (DUMP_H264) {
@@ -2014,6 +2026,9 @@ public class EZScreenHelper implements PlayerListener {
 	@SuppressLint("NewApi")
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void doEZScreenMirror(InetAddress remoteAddress, int ntpPort) {
+		if (connectionListener != null) {
+			connectionListener.onUpdateScreen(View.VISIBLE);
+		}
 		showMirrorView();
 		stopMirrorDecoding();
 		// TODO change to ntp-server

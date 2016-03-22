@@ -78,6 +78,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private int mNtpPort;
 	private DatagramSocket mNtpServSock;
 	private UDPListener udpListener;
+	final Object mMirrorLock = new Object();
 
 	public interface JSonResponseDelegate {
 		void onComplete(JSONRPC2Response response);
@@ -198,6 +199,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			public void run() {
 				try {
 					JSONRPC2Session jsonRpcSession = getJsonRpcSession();
+					Log.d(TAG,"method " + method);
 					if (jsonRpcSession != null) {
 						JSONRPC2Response response = jsonRpcSession.send(new JSONRPC2Request(method, params, generateRpcId()));
 						if (null != delegate) {
@@ -235,6 +237,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 			public void run() {
 				try {
 					JSONRPC2Session jsonRpcSession = getJsonRpcSession();
+					Log.d(TAG,"method" + method);
 					if (jsonRpcSession != null) {
 						jsonRpcSession.send(new JSONRPC2Request(method, generateRpcId()));
 					}
@@ -733,14 +736,19 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
                 Log.d(TAG, "connectType = " + connectType + " tcpPort = " + mirrorPort + " version = " + version);
 
                 try {
-                    mMirrorClientSocket = new Socket();
-                    mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
-                    String msg = "Luke, I am your Father!";
-                    byte[] body = msg.getBytes("UTF-8");
-                    final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
-                    sendMirrorData(PACKET_TYPE_MSG,encryptBody);
-                    final InputStream in = mMirrorClientSocket.getInputStream();
-                    new Thread(new Runnable() {
+					final InputStream in;
+					synchronized (mMirrorLock) {
+						mMirrorClientSocket = new Socket();
+						mMirrorClientSocket.connect(new InetSocketAddress(ipAddress, mirrorPort), 0);
+						String msg = "Luke, I am your Father!";
+						byte[] body = msg.getBytes("UTF-8");
+						Log.d(TAG, "body size = " + body.length);
+						final byte[] encryptBody = CipherUtil.EncryptAESCBC(mAesKey, body, mAesIV);
+						Log.d(TAG, "encryptBody size = " + encryptBody.length);
+						sendMirrorData(PACKET_TYPE_MSG, encryptBody);
+						in = mMirrorClientSocket.getInputStream();
+					}
+					new Thread(new Runnable() {
                         @Override
                         public void run() {
                             int headerSize = 32;
@@ -899,8 +907,8 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 
 
 	private void sendDataToMirrorServer(byte[] data) {
-		if (mMirrorClientSocket != null) {
-			synchronized (mMirrorClientSocket) {
+		synchronized (mMirrorLock) {
+			if (mMirrorClientSocket != null) {
 				try {
 					mMirrorClientSocket.getOutputStream().write(data);
 					mMirrorClientSocket.getOutputStream().flush();
@@ -926,10 +934,9 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 
 	private void closeMirrorClient() {
-		if (mMirrorClientSocket != null) {
-			synchronized (mMirrorClientSocket) {
+		synchronized (mMirrorLock) {
+			if (mMirrorClientSocket != null) {
 				closeNtpServer();
-
 				if (mMirrorClientSocket != null) {
 					try {
 						mMirrorClientSocket.close();

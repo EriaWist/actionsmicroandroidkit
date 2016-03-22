@@ -8,6 +8,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 
 import com.actionsmicro.utils.Log;
+import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncServerSocket;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.http.Headers;
@@ -139,6 +140,7 @@ public class JsonRpcOverHttpServer {
 		serverSocket = httpServer.listen(portNumber);
 	}
 	public void stop() {
+		AsyncServer.getDefault().stop();
 		httpServer.stop();
 	}
 	public int getListeningPort() {
