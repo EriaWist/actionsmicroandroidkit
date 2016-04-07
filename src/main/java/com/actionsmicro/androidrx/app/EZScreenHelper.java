@@ -1508,13 +1508,17 @@ public class EZScreenHelper implements PlayerListener {
 				Log.d(TAG, "onSurfaceTextureSizeChanged:" + " w:" + width + " h:" + height);
 				if (mIsAirplaySurfaceLive && mSps != null) {
 					mDelta += (surfaceWidth - width);
+					surfaceWidth = width;
+					surfaceHeight = height;
 					if (Math.abs(mDelta) > 20) {
 						updateTransformAccodingToSps(mSps);
 						mDelta = 0;
 					}
+				} else {
+					surfaceWidth = width;
+					surfaceHeight = height;
 				}
-				surfaceWidth = width;
-				surfaceHeight = height;
+
 			}
 
 			@Override

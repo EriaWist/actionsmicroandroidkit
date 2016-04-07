@@ -61,7 +61,7 @@ public class Falcon {
 	private static final String PARAMETER_DISCOVERY_KEY = "discovery";
 	private static final String TAG = "Falcon";
 	private static final String REMOTE_CONTROL_MESSGAE_CHARSET = "UTF-8";
-	
+
 	/**
 	 * This contains basic information about the device.
 	 * @author James Chen
@@ -835,6 +835,19 @@ public class Falcon {
 			sendLookupCommand();
 		}		
 	}
+
+	synchronized public void search(String targetHost) {
+		startListening();
+		if (broadcastSocket != null) {
+			Log.d(TAG, "Clear projector list");
+			synchronized(projectors) {
+				projectors.clear();
+			}
+			searching = true;
+			lookupInterval = INITIAL_LOOKUP_INTERVAL;
+			sendLookupCommand(targetHost);
+		}
+	}
 	/**
 	 * Indicate whether it's searching.
 	 * @return Whether it's searching.
@@ -1018,6 +1031,67 @@ public class Falcon {
 							}
 						} catch (SocketTimeoutException e) {
 							e.printStackTrace();					
+						} catch (SocketException e) {
+							e.printStackTrace();
+						} catch (UnknownHostException e) {
+							e.printStackTrace();
+						} catch (IOException e) {
+							e.printStackTrace();
+						} finally {
+							synchronized(Falcon.this) {
+								if (pendingLookup != null) {
+									mainThreadHandler.removeCallbacks(pendingLookup);
+									pendingLookup = null;
+								}
+
+								pendingLookup = new Runnable() {
+									@Override
+									public void run() {
+										synchronized(Falcon.this) {
+											pendingLookup = null;
+										}
+										sendLookupCommand();
+									}
+								};
+							}
+							mainThreadHandler.postDelayed(pendingLookup, lookupInterval * 1000);
+							lookupInterval = lookupInterval + 1;
+							if (lookupInterval > MAX_LOOKUP_INTERVAL) {
+								lookupInterval = MAX_LOOKUP_INTERVAL;
+							}
+						}
+					}
+				}
+			}
+		});
+		commandThread.start();
+	}
+
+	private void sendLookupCommand(final String targetHost) {
+		Log.d(TAG, "sendLookupCommand");
+
+		Thread commandThread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				Log.d(TAG, "sendLookupCommand thread");
+				synchronized(Falcon.this) {
+					Log.d(TAG, "sendLookupCommand thread:" + broadcastSocket);
+					if (broadcastSocket != null) {
+						try {
+							InetAddress broadcastAddress = InetAddress.getByName(targetHost);
+								byte[] command = {'0',':','3'};
+								// send EZ Remote Lookup
+							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_REMOTE_CONTROL_PORT_NUMBER));
+
+							Log.d(TAG, "send entry command");
+							// copy the logic from CSocketEx for Windows.
+							//							command = generateNoOperationCommand("android", "android");
+							//							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+							//							Thread.sleep(1000);
+							command = generateEntryCommand("android", "android");
+							broadcastSocket.send(new DatagramPacket(command, command.length, broadcastAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+						} catch (SocketTimeoutException e) {
+							e.printStackTrace();
 						} catch (SocketException e) {
 							e.printStackTrace();
 						} catch (UnknownHostException e) {
