@@ -17,4 +17,6 @@ public abstract class DeviceFinderBase {
 	public abstract void stop();
 
 	public abstract void search();
+
+	public abstract void search(String targetHost);
 }

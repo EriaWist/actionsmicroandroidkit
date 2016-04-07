@@ -69,4 +69,9 @@ public class GoogleCastFinder extends DeviceFinderBase {
 		}
 	}
 
+	@Override
+	public void search(String targetHost) {
+
+	}
+
 }

@@ -10,6 +10,11 @@ public class AirPlayDeviceFinder extends BonjourDeviceFinder<AirPlayDeviceInfo> 
 	public AirPlayDeviceFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy, SERVICE_TYPE);		
 	}
+
+	@Override
+	public void search(String targetHost) {
+	}
+
 	@Override
 	protected AirPlayDeviceInfo createFromService(ServiceInfo newService) {
 		return new AirPlayDeviceInfo(newService);

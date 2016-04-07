@@ -65,4 +65,9 @@ public class DlnaDeviceFinder extends DeviceFinderBase {
 		UpnpService.getUpnpService().search();
 	}
 
+	@Override
+	public void search(String targetHost) {
+
+	}
+
 }

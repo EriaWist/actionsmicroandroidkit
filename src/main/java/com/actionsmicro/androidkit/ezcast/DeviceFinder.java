@@ -154,6 +154,18 @@ public class DeviceFinder {
 			deviceFinderImp.search();
 		}
 	}
+
+	/**
+	 * Force device finder to search targetHost.
+	 * @param targetHost Target host ip, ex: 192.168.1.1
+	 * @since 2.7
+	 */
+	public void search(String targetHost) {
+		searching = true;
+		for (DeviceFinderBase deviceFinderImp : imps) {
+			deviceFinderImp.search(targetHost);
+		}
+	}
 	/**
 	 * Internal use only, you shouldn't call this method directly.
 	 * @return Android Context object.

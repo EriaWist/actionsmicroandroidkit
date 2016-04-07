@@ -11,6 +11,12 @@ public class AndroidRxFinder extends BonjourDeviceFinder<AndroidRxInfo> {
 	public AndroidRxFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy, SERVICE_TYPE);		
 	}
+
+	@Override
+	public void search(String targetHost) {
+
+	}
+
 	@Override
 	protected AndroidRxInfo createFromService(ServiceInfo newService) {
 		return new AndroidRxInfo(newService);

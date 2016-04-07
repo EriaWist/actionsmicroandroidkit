@@ -60,4 +60,9 @@ public class FalconDeviceFinder extends DeviceFinderBase {
 		Falcon.getInstance().search();
 	}
 
+	@Override
+	public void search(String targetHost) {
+		Falcon.getInstance().search(targetHost);
+	}
+
 }
