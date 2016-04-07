@@ -483,7 +483,9 @@ public class RTSPResponder extends Thread{
 						String contentType = request.valueOfHeader("Content-Type");
 						String userAgent = request.valueOfHeader("User-Agent");
 						ByteArrayOutputStream binaryPlist = new ByteArrayOutputStream();
-						double airplayVersion = Double.valueOf(userAgent.split("/")[1]);
+						String airplayFullVersion = userAgent.split("/")[1];
+						int airplayMajorVersion = Integer.valueOf(airplayFullVersion.split("\\.")[0]);
+						int airplayMinorVersion = Integer.valueOf(airplayFullVersion.split("\\.")[1]);
 						if (request.valueOfHeader("Transport") != null) {
 							/*
 							SETUP rtsp://fe80::217:f2ff:fe0f:e0f6/3413821438 RTSP/1.0
@@ -562,7 +564,7 @@ public class RTSPResponder extends Thread{
 								byte[] temp9 = new byte[64];
 								byte[] temp10 = new byte[64];
 								if (streamConnectionID != null) {
-									EzAes.setup(airplayVersion, eiv, fpaeskey, streamConnectionID.longValue(), temp8, temp9, temp10);
+									EzAes.setup(airplayMajorVersion, eiv, fpaeskey, streamConnectionID.longValue(), temp8, temp9, temp10);
 								}
 
 								if (type == 110) {
@@ -621,7 +623,7 @@ public class RTSPResponder extends Thread{
 									streamDict.put("type", type);
 									streamArray.setValue(0, streamDict);
 									setupInfo.put("streams", streamArray);
-									if (airplayVersion < 230.00) {
+									if (airplayMajorVersion < 230) {
 										setupInfo.put("eventPort", AirPlayServer.eventPort);
 									}
 									setupInfo.put("timingPort", timingPort);
@@ -661,7 +663,7 @@ public class RTSPResponder extends Thread{
 									releaseAudioServer();
 									byte[] pair_aesKey = new byte[16];
 									byte[] pair_aesiv = new byte[16];
-									if (streamConnectionID != null || airplayVersion < 230) {
+									if (streamConnectionID != null || airplayMajorVersion < 230) {
 										if (streamConnectionID != null) {
 											System.arraycopy(temp8, 0, pair_aesKey, 0, 16);
 										} else {
@@ -678,7 +680,7 @@ public class RTSPResponder extends Thread{
 										serv = new AudioServer(session);
 									}
 
-									if(airplayVersion >= 230) {
+									if(airplayMajorVersion >= 230) {
 										/*const char fmt_content_96[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"\
 										"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\r\n"\
 										"<plist version=\"1.0\">\r\n"\
