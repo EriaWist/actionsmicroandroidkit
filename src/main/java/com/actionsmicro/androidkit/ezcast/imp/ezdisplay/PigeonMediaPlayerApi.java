@@ -1,9 +1,5 @@
 package com.actionsmicro.androidkit.ezcast.imp.ezdisplay;
 
-import java.io.File;
-import java.io.InputStream;
-import java.net.URLDecoder;
-
 import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
@@ -13,18 +9,22 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
-import com.actionsmicro.pigeon.MediaStreamingContentUriDataSource;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.pigeon.MediaStreamingHttpDataSource;
 import com.actionsmicro.pigeon.MediaStreamingStateListener;
+import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.actionsmicro.web.Utils;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLDecoder;
 
 public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 	private MediaStreaming mediaStreaming;
 	private DataSource dataSource;
 	private MediaPlayerStateListener mediaPlayerStateListener;
 	private static final String DEFAULT_USER_AGENT_STRING = "Mozilla/5.0 (Linux; U; Android 4.1.1; zh-tw; A210 Build/JRO03H) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Safari/534.30 ezcast";
-	
 	public PigeonMediaPlayerApi(MediaPlayerApiBuilder mediaPlayerApiBuilder) {
 		super(mediaPlayerApiBuilder);
 		mediaPlayerStateListener = mediaPlayerApiBuilder.getMediaPlayerStateListener();
@@ -102,6 +102,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		if (mediaStreaming != null) {
 			mediaStreaming.stopMediaStreaming();
 		}
+		stopHttpFileServer();
 		commitMediaUsageTracking();
 		return true;
 	}
@@ -111,14 +112,35 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			dataSource.setMediaStreamingStateListener(null);
 			dataSource = null;
 		}
+
+		stopHttpFileServer();
+
 		commitMediaUsageTracking();
 		if (mediaUrl.startsWith("http") || mediaUrl.startsWith("rtsp") || mediaUrl.startsWith("mms")) {
 			dataSource = new MediaStreamingHttpDataSource(mediaUrl, userAgentString != null?userAgentString:DEFAULT_USER_AGENT_STRING, mediaContentLength);
-		} else if (mediaUrl.startsWith(ContentResolver.SCHEME_CONTENT)) { 
-			dataSource = new MediaStreamingContentUriDataSource(context, Uri.parse(mediaUrl));
-		} else if (MediaStreamingFileDataSource.supportsFileExt(com.actionsmicro.utils.Utils.getFileExtension(mediaUrl).toLowerCase())) {
-			File mediaFile = new File(mediaUrl);
-			dataSource = new MediaStreamingFileDataSource(mediaFile);
+		} else if (MediaStreamingFileDataSource.supportsFileExt(com.actionsmicro.utils.Utils.getFileExtension(mediaUrl).toLowerCase())
+				|| mediaUrl.startsWith(ContentResolver.SCHEME_CONTENT)) {
+
+			Uri mediaUri = null;
+			try {
+				mediaUri = Uri.parse(mediaUrl);
+				if (mediaUri.getScheme() == null) {
+					mediaUri = mediaUri.buildUpon().scheme("file").build();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				mediaUri = Uri.fromFile(new File(mediaUrl));
+			}
+
+
+			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			try {
+				simpleHttpFileServer.start();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			String mediaUriString = simpleHttpFileServer.getServerUrl();
+			dataSource = new MediaStreamingHttpDataSource(mediaUriString, DEFAULT_USER_AGENT_STRING, mediaContentLength);
 		} else {
 			return false;
 		}
@@ -174,6 +196,16 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				mediaStreaming.startMediaStreaming(dataSource);
 			}
 		}
+
 		return true;
+	}
+
+	private SimpleContentUriHttpFileServer simpleHttpFileServer;
+
+	private void stopHttpFileServer() {
+		if (simpleHttpFileServer != null) {
+			simpleHttpFileServer.stop();
+			simpleHttpFileServer = null;
+		}
 	}
 }
