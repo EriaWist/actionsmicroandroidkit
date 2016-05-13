@@ -804,6 +804,8 @@ public class Falcon {
 		 * @param projectorInfo The device which was just found.
 		 */
 		public void falconSearchDidFindProjector(Falcon falcon, ProjectorInfo projectorInfo);
+
+		public void falconSearchDidRemoveProjector(Falcon falcon, ProjectorInfo projectorInfo);
 //		/**
 //		 * Called when the Falcon stops searching.
 //		 * @param falcon The falcon which is about to stop searching.
@@ -1222,6 +1224,12 @@ public class Falcon {
 			if (projectorInfo.supportClientMode() || isDirectConnenctedIpAddress(projectorInfo.getAddress())) {
 				addProjector(projectorInfo);
 				mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
+				mainThreadHandler.postDelayed(new Runnable() {
+					@Override
+					public void run() {
+						notifyListenerDidFind(projectorInfo);
+					}
+				},10000);
 			} else {
 				synchronized (tempProjectors) {
 					tempProjectors.remove(projectorInfo);
