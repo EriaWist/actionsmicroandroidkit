@@ -1,15 +1,5 @@
 package com.actionsmicro.web;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Collections;
-import java.util.Locale;
-import java.util.Map;
-
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
@@ -22,11 +12,22 @@ import android.webkit.MimeTypeMap;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Collections;
+import java.util.Locale;
+import java.util.Map;
+
 import fi.iki.elonen.NanoHTTPD;
 
 public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
 	private static final String TAG = "SimpleContentUriHttpFileServer";
+	private boolean mEnableChunk;
 	private long contentLength = -1;
 	private Context context;
 	private Uri contentUri;
@@ -34,6 +35,14 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 		super(portNumber);
 		this.context = context;
 		this.contentUri = contentUri;
+
+	}
+
+	public SimpleContentUriHttpFileServer(Context context, Uri contentUri, int portNumber,boolean enableChunk) {
+		super(portNumber);
+		this.context = context;
+		this.contentUri = contentUri;
+		mEnableChunk = enableChunk;
 	}
 
 	@Override
@@ -193,14 +202,18 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
 	private Response createResponse(Response.Status status, String mimeType, String message) {
         Response res = new Response(status, mimeType, message);
-//        res.setChunkedTransfer(true);
-        res.addHeader("Accept-Ranges", "bytes");
+		if (mEnableChunk) {
+			res.setChunkedTransfer(true);
+		}
+		res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
 	private Response createResponse(Response.Status status, String mimeType, InputStream message) {
         Response res = new Response(status, mimeType, message);
-//        res.setChunkedTransfer(true);
-        res.addHeader("Accept-Ranges", "bytes");
+		if (mEnableChunk) {
+			res.setChunkedTransfer(true);
+		}
+		res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
 	public static final String MIME_DEFAULT_BINARY = "application/octet-stream";

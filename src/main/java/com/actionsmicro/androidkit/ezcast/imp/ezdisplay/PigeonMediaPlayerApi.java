@@ -133,7 +133,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			}
 
 
-			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0 , true);
 			try {
 				simpleHttpFileServer.start();
 			} catch (IOException e) {
