@@ -423,7 +423,7 @@ public class AirPlayClient {
 				String mediaUriString = url;
 				if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
 						mediaUri.getScheme().equalsIgnoreCase("file")) {
-					simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+					simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0 , false);
 					try {
 						simpleHttpFileServer.start();
 					} catch (IOException e) {
