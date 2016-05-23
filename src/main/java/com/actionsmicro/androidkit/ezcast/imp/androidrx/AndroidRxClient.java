@@ -65,6 +65,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	private static final String TAG = "AndroidRxClient";
 	private static final int HEARTBEAT_PERIOD = 1000;
 	private static final Date DATE_BASE_TIME = new Date(0);
+	private final String mDeviceOS;
 
 	private JSONRPC2Session jsonRpcSession;
 	private InetAddress ipAddress;
@@ -84,10 +85,11 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		void onComplete(JSONRPC2Response response);
 	}
 
-	public AndroidRxClient(Context context, InetAddress ipAddress, int port) {
+	public AndroidRxClient(Context context, InetAddress ipAddress, int port, String deviceOS) {
 		this.context = context;
 		this.ipAddress = ipAddress;
 		this.port = port;
+		this.mDeviceOS = deviceOS;
 	}
 	private JSONRPC2Session getJsonRpcSession() {
 		return jsonRpcSession;
@@ -572,7 +574,12 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		String mediaUriString = url;
 		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
 				mediaUri.getScheme().equalsIgnoreCase("file")) {
-			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			if (mDeviceOS.equalsIgnoreCase("mac") || mDeviceOS.equalsIgnoreCase("ios")) {
+				simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0, false);
+			} else {
+				simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			}
+
 			try {
 				simpleHttpFileServer.start();
 			} catch (IOException e) {
