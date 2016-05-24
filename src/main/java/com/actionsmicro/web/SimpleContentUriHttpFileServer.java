@@ -27,7 +27,7 @@ import fi.iki.elonen.NanoHTTPD;
 public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
 	private static final String TAG = "SimpleContentUriHttpFileServer";
-	private boolean mEnableChunk = true;
+	private boolean mEnableChunk = false;
 	private long contentLength = -1;
 	private Context context;
 	private Uri contentUri;

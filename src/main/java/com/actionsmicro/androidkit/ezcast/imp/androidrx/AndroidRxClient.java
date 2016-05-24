@@ -574,11 +574,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		String mediaUriString = url;
 		if (mediaUri.getScheme().equalsIgnoreCase(ContentResolver.SCHEME_CONTENT) || 
 				mediaUri.getScheme().equalsIgnoreCase("file")) {
-			if (mDeviceOS.equalsIgnoreCase("mac") || mDeviceOS.equalsIgnoreCase("ios")) {
-				simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0, false);
-			} else {
-				simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
-			}
+			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
 
 			try {
 				simpleHttpFileServer.start();
