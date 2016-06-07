@@ -9,7 +9,9 @@ import android.net.wifi.WifiManager;
 import android.provider.OpenableColumns;
 import android.webkit.MimeTypeMap;
 
+import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Reachability;
 import com.actionsmicro.utils.Utils;
 
 import java.io.File;
@@ -32,14 +34,13 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 	private Context context;
 	private Uri contentUri;
 	public SimpleContentUriHttpFileServer(Context context, Uri contentUri, int portNumber) {
-		super(portNumber);
+		super(Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : null, portNumber);
 		this.context = context;
 		this.contentUri = contentUri;
-
 	}
 
 	public SimpleContentUriHttpFileServer(Context context, Uri contentUri, int portNumber,boolean enableChunk) {
-		super(portNumber);
+		super(Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : null, portNumber);
 		this.context = context;
 		this.contentUri = contentUri;
 		mEnableChunk = enableChunk;
@@ -65,7 +66,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
     }
 	public String getServerUrl() {
 		try {
-			return new URL("http", getIPAddress(true), getListeningPort(), "").toString();
+			return new URL("http", Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : getIPAddress(true), getListeningPort(), "").toString();
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
