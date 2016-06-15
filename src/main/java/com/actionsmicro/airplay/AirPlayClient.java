@@ -452,6 +452,7 @@ public class AirPlayClient {
 								if (e != null) {
 									e.printStackTrace();
 									handleNetworkException(e);
+									finishPendingTask(self);
 									return;
 								}
 								Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
@@ -591,6 +592,7 @@ public class AirPlayClient {
 								if (e != null) {
 									e.printStackTrace();
 									handleNetworkException(e);
+									finishPendingTask(self);
 									return;
 								}
 								currentSessionId = -1;
