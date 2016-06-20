@@ -227,6 +227,10 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
         	if (mime == null) {
         		mime = MIME_DEFAULT_BINARY;
         	}
+			// workaround for dongle for compatibility issue
+			if(mime.equalsIgnoreCase("application/ogg")){
+				mime="audio/ogg";
+			}
         }
         return mime;
     }
