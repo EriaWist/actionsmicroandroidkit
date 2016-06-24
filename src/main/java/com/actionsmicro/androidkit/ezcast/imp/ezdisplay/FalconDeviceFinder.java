@@ -35,7 +35,24 @@ public class FalconDeviceFinder extends DeviceFinderBase {
 					return;
 				}
 			}
-			
+
+			@Override
+			public void falconSearchDidRemoveProjector(Falcon falcon, ProjectorInfo projectorInfo) {
+				if (filters.size() == 0) {
+					getDeviceFinderProxy().notifyListeneroOnDeviceRemoved(new PigeonDeviceInfo(projectorInfo));
+					return;
+				}
+				AndFilter andFilter = new AndFilter();
+				for (FilterInterface filter : filters) {
+					andFilter.addFilter(filter);
+				}
+				if (andFilter.accept(projectorInfo)) {
+					getDeviceFinderProxy().notifyListeneroOnDeviceRemoved(new PigeonDeviceInfo(projectorInfo));
+					return;
+				}
+
+			}
+
 		});
 	}
 	public void addFilter(FilterInterface filter) {

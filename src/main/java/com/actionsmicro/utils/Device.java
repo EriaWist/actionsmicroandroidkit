@@ -1,5 +1,9 @@
 package com.actionsmicro.utils;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.Enumeration;
 import java.util.UUID;
 
 import android.app.Activity;
@@ -9,6 +13,7 @@ import android.content.res.Configuration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -109,11 +114,6 @@ public class Device {
 		return uniqueId;
 	}
 	public static String getEZScreenServiceName(Context context, String preferenceKey) {
-//		String macAdd = getAppMacAddress(context);
-//		macAdd = macAdd.replace(":", "");
-//		String mac3End = macAdd.substring(macAdd.length() - 3);
-//		Integer hex = Integer.parseInt(mac3End, 16 );
-//		return "EZCastScreen" + hex;
 		String uuid = getUUID(context, preferenceKey);
 		return "EZCastScreen-" + uuid.substring(uuid.length()-3);
 	}
@@ -127,5 +127,37 @@ public class Device {
 			editor.commit();
 		}
         return uuidString;
+	}
+
+	public static final String USB_AUDIO_AUTOMATIC_ROUTING_DISABLED =
+			"usb_audio_automatic_routing_disabled";
+
+	public static int isUsbAudioAutoDisabled(Context context) {
+		int isDisabled = Settings.Secure.getInt(context.getContentResolver(),
+				USB_AUDIO_AUTOMATIC_ROUTING_DISABLED, 0);
+		return isDisabled;
+	}
+
+	public static String getWifiApIpAddress() {
+		try {
+			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
+					.hasMoreElements();) {
+				NetworkInterface intf = en.nextElement();
+				if (intf.getName().contains("wlan")) {
+					for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr
+							.hasMoreElements();) {
+						InetAddress inetAddress = enumIpAddr.nextElement();
+						if (!inetAddress.isLoopbackAddress()
+								&& (inetAddress.getAddress().length == 4)) {
+							Log.d(TAG, inetAddress.getHostAddress());
+							return inetAddress.getHostAddress();
+						}
+					}
+				}
+			}
+		} catch (SocketException ex) {
+			Log.e(TAG, ex.toString());
+		}
+		return null;
 	}
 }

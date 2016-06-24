@@ -1,5 +1,19 @@
 package com.actionsmicro.web;
 
+import android.content.ContentResolver;
+import android.content.Context;
+import android.database.Cursor;
+import android.net.Uri;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.provider.OpenableColumns;
+import android.webkit.MimeTypeMap;
+
+import com.actionsmicro.utils.Device;
+import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Reachability;
+import com.actionsmicro.utils.Utils;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -10,30 +24,26 @@ import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
 
-import android.content.ContentResolver;
-import android.content.Context;
-import android.database.Cursor;
-import android.net.Uri;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
-import android.provider.OpenableColumns;
-import android.webkit.MimeTypeMap;
-
-import com.actionsmicro.utils.Log;
-import com.actionsmicro.utils.Utils;
-
 import fi.iki.elonen.NanoHTTPD;
 
 public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
 	private static final String TAG = "SimpleContentUriHttpFileServer";
+	private boolean mEnableChunk = false;
 	private long contentLength = -1;
 	private Context context;
 	private Uri contentUri;
 	public SimpleContentUriHttpFileServer(Context context, Uri contentUri, int portNumber) {
-		super(portNumber);
+		super(Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : null, portNumber);
 		this.context = context;
 		this.contentUri = contentUri;
+	}
+
+	public SimpleContentUriHttpFileServer(Context context, Uri contentUri, int portNumber,boolean enableChunk) {
+		super(Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : null, portNumber);
+		this.context = context;
+		this.contentUri = contentUri;
+		mEnableChunk = enableChunk;
 	}
 
 	@Override
@@ -56,7 +66,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
     }
 	public String getServerUrl() {
 		try {
-			return new URL("http", getIPAddress(true), getListeningPort(), "").toString();
+			return new URL("http", Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : getIPAddress(true), getListeningPort(), "").toString();
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -193,14 +203,18 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
 	private Response createResponse(Response.Status status, String mimeType, String message) {
         Response res = new Response(status, mimeType, message);
-//        res.setChunkedTransfer(true);
-        res.addHeader("Accept-Ranges", "bytes");
+		if (mEnableChunk) {
+			res.setChunkedTransfer(true);
+		}
+		res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
 	private Response createResponse(Response.Status status, String mimeType, InputStream message) {
         Response res = new Response(status, mimeType, message);
-//        res.setChunkedTransfer(true);
-        res.addHeader("Accept-Ranges", "bytes");
+		if (mEnableChunk) {
+			res.setChunkedTransfer(true);
+		}
+		res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
 	public static final String MIME_DEFAULT_BINARY = "application/octet-stream";
@@ -210,10 +224,22 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
         String mime = MIME_DEFAULT_BINARY;
         if (ext != null) {
         	mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.toLowerCase(Locale.getDefault()));
+
         	if (mime == null) {
         		mime = MIME_DEFAULT_BINARY;
         	}
-        }
+			if (mime.equalsIgnoreCase("application/ogg")) {
+				mime = "audio/ogg";
+			}
+			if (ext.equalsIgnoreCase("rm")) {
+				mime = "video/rm";
+			}
+			// workaround for dongle for compatibility issue
+			if (mime.equalsIgnoreCase("video/x-ms-asf") || mime.equalsIgnoreCase("video/mp2ts")) {
+				mime = MIME_DEFAULT_BINARY;
+			}
+
+		}
         return mime;
     }
 }

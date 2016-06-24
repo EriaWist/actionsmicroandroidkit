@@ -30,6 +30,16 @@ android {
             consumerProguardFiles 'proguard-project.txt', 'proguard-google-api-client.txt' , 'proguard.txt'
         }
     }
+
+    packagingOptions {
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'LICENSE.txt'
+        pickFirst 'META-INF/beans.xml'
+    }
 }
 
 repositories {

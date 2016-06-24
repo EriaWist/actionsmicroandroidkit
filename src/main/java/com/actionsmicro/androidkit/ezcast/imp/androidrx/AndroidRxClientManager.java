@@ -16,7 +16,7 @@ public class AndroidRxClientManager extends
 	@Override
 	protected AndroidRxClient createInstance(ApiBuilder<?> apiBuilder) {
 		AndroidRxInfo device = (AndroidRxInfo) apiBuilder.getDevice();
-		AndroidRxClient androidRxClient = new AndroidRxClient(apiBuilder.getContext(), device.getIpAddress(), device.getPort());
+		AndroidRxClient androidRxClient = new AndroidRxClient(apiBuilder.getContext(), device.getIpAddress(), device.getPort(),device.getParameter("deviceOS"));
 		androidRxClient.connect();
 		return androidRxClient;
 	}

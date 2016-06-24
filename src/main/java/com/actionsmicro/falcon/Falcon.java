@@ -34,6 +34,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -51,7 +52,7 @@ import java.util.Set;
  * @since 1.0
  */
 public class Falcon {
-	
+
 	private static final String PARAMETER_VENDOR_KEY = "vendor";
 	private static final String PARAMETER_MODEL_KEY = "model";
 	private static final String MD5_SECRET = ":secret=82280189";
@@ -61,6 +62,7 @@ public class Falcon {
 	private static final String PARAMETER_DISCOVERY_KEY = "discovery";
 	private static final String TAG = "Falcon";
 	private static final String REMOTE_CONTROL_MESSGAE_CHARSET = "UTF-8";
+	private static final int DEVICE_ALIVE_TIMEOUT = 10000;
 
 	/**
 	 * This contains basic information about the device.
@@ -459,6 +461,7 @@ public class Falcon {
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
 	private ArrayList<ProjectorInfo> projectors = new ArrayList<ProjectorInfo>();
 	private ArrayList<ProjectorInfo> tempProjectors = new ArrayList<ProjectorInfo>(); // for WiFi display response only
+	private HashMap<String,Runnable> mProjectorTimeoutMap =  new HashMap<String, Runnable>();
 	private static Falcon singleton;
 	/**
 	 * Return the shared instance of Falcon.
@@ -804,6 +807,8 @@ public class Falcon {
 		 * @param projectorInfo The device which was just found.
 		 */
 		public void falconSearchDidFindProjector(Falcon falcon, ProjectorInfo projectorInfo);
+
+		public void falconSearchDidRemoveProjector(Falcon falcon, ProjectorInfo projectorInfo);
 //		/**
 //		 * Called when the Falcon stops searching.
 //		 * @param falcon The falcon which is about to stop searching.
@@ -878,8 +883,23 @@ public class Falcon {
 			mainThreadHandler.removeCallbacks(pendingLookup);
 			pendingLookup = null;
 		}
+
+		removeTimeOutRunnable();
+
 		searching = false;
 	}
+
+	private void removeTimeOutRunnable() {
+		if (null != mProjectorTimeoutMap) {
+			Iterator it = mProjectorTimeoutMap.entrySet().iterator();
+			while (it.hasNext()) {
+				Map.Entry<String, Runnable> pair = (Map.Entry) it.next();
+				mainThreadHandler.removeCallbacks(pair.getValue());
+				it.remove(); // avoids a ConcurrentModificationException
+			}
+		}
+	}
+
 	private Thread receivingThread;
 	private void waitFeedbackInBackground() {
 		shouldStopReceiving = false;
@@ -1176,6 +1196,16 @@ public class Falcon {
 			}
 		}
 	}
+
+	private void notifyListenerDidRemove(ProjectorInfo projector) {
+		synchronized(listeners) {
+			Iterator<SearchReultListener> iterator = listeners.listIterator();
+			while (iterator.hasNext()) {
+				SearchReultListener listener = iterator.next();
+				listener.falconSearchDidRemoveProjector(Falcon.this, projector);
+			}
+		}
+	}
 //	private void notifyListenerSearchDidEnd() {
 //		Iterator<SearchReultListener> iterator = listeners.listIterator();
 //		while (iterator.hasNext()) {
@@ -1220,6 +1250,9 @@ public class Falcon {
 		} else if (receiveString.startsWith("EZREMOTE:")) {
 			parseRemoteControlResponseString(receiveString, projectorInfo);
 			if (projectorInfo.supportClientMode() || isDirectConnenctedIpAddress(projectorInfo.getAddress())) {
+				if(null == projectorInfo.getOsVerion()) {
+					projectorInfo.osVerion = "2";
+				}
 				addProjector(projectorInfo);
 				mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 			} else {
@@ -1271,6 +1304,21 @@ public class Falcon {
 		synchronized (projectors) {
 			if (!projectors.contains(projectorInfo)) {
 				projectors.add(projectorInfo);
+				Runnable timeoutRunnable = new Runnable() {
+					@Override
+					public void run() {
+						Log.d(TAG, "notifyListenerDidRemove:" + projectorInfo.getName());
+						notifyListenerDidRemove(projectorInfo);
+					}
+				};
+				mProjectorTimeoutMap.put(projectorInfo.getName(), timeoutRunnable);
+				mainThreadHandler.postDelayed(timeoutRunnable, DEVICE_ALIVE_TIMEOUT);
+			} else{
+				Runnable timeoutRunnable = mProjectorTimeoutMap.get(projectorInfo.getName());
+				if (null != timeoutRunnable) {
+					mainThreadHandler.removeCallbacks(timeoutRunnable);
+					mainThreadHandler.postDelayed(timeoutRunnable, DEVICE_ALIVE_TIMEOUT);
+				}
 			}
 		}
 		synchronized (tempProjectors) {
