@@ -224,10 +224,22 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
         String mime = MIME_DEFAULT_BINARY;
         if (ext != null) {
         	mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.toLowerCase(Locale.getDefault()));
+
         	if (mime == null) {
         		mime = MIME_DEFAULT_BINARY;
         	}
-        }
+			if (mime.equalsIgnoreCase("application/ogg")) {
+				mime = "audio/ogg";
+			}
+			if (ext.equalsIgnoreCase("rm")) {
+				mime = "video/rm";
+			}
+			// workaround for dongle for compatibility issue
+			if (mime.equalsIgnoreCase("video/x-ms-asf") || mime.equalsIgnoreCase("video/mp2ts")) {
+				mime = MIME_DEFAULT_BINARY;
+			}
+
+		}
         return mime;
     }
 }

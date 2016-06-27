@@ -1250,6 +1250,9 @@ public class Falcon {
 		} else if (receiveString.startsWith("EZREMOTE:")) {
 			parseRemoteControlResponseString(receiveString, projectorInfo);
 			if (projectorInfo.supportClientMode() || isDirectConnenctedIpAddress(projectorInfo.getAddress())) {
+				if(null == projectorInfo.getOsVerion()) {
+					projectorInfo.osVerion = "2";
+				}
 				addProjector(projectorInfo);
 				mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();
 			} else {
