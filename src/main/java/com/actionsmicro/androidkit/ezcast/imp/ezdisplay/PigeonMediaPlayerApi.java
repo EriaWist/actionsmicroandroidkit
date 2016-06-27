@@ -133,7 +133,15 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			}
 
 
-			simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			String type  = projectorInfo.getParameter("type");
+			if (type != null && type.equals("wire")) {
+				// USB Tether's ip is 192.168.42.129, reference:Tethering.java from aosp
+				// private static final String USB_NEAR_IFACE_ADDR      = "192.168.42.129";
+				simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, "192.168.42.129", 0);
+			} else {
+				simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+			}
+
 			try {
 				simpleHttpFileServer.start();
 			} catch (IOException e) {
