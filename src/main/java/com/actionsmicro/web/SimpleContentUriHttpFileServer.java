@@ -29,12 +29,20 @@ import fi.iki.elonen.NanoHTTPD;
 public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 
 	private static final String TAG = "SimpleContentUriHttpFileServer";
+	private String mHostName;
 	private boolean mEnableChunk = false;
 	private long contentLength = -1;
 	private Context context;
 	private Uri contentUri;
 	public SimpleContentUriHttpFileServer(Context context, Uri contentUri, int portNumber) {
 		super(Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : null, portNumber);
+		this.context = context;
+		this.contentUri = contentUri;
+	}
+
+	public SimpleContentUriHttpFileServer(Context context, Uri contentUri,String hostName ,int portNumber) {
+		super(Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : null, portNumber);
+		this.mHostName = hostName;
 		this.context = context;
 		this.contentUri = contentUri;
 	}
@@ -66,13 +74,26 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
     }
 	public String getServerUrl() {
 		try {
-			return new URL("http", Reachability.isWifiApEnabled(context) ? Device.getWifiApIpAddress() : getIPAddress(true), getListeningPort(), "").toString();
+			String hostName = getHostName();
+			return new URL("http", hostName, getListeningPort(), "").toString();
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
 	}
+
+	private String getHostName() {
+		if (mHostName != null) {
+			return mHostName;
+		}
+		String hostName = getIPAddress(true);
+		if (Reachability.isWifiApEnabled(context)) {
+			hostName = Device.getWifiApIpAddress();
+		}
+		return hostName;
+	}
+
 	@Override
     public Response serve(IHTTPSession session) {
 		Map<String, String> header = session.getHeaders();
