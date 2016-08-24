@@ -252,7 +252,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 			if (mime.equalsIgnoreCase("application/ogg")) {
 				mime = "audio/ogg";
 			}
-			if (ext.equalsIgnoreCase("rm")) {
+			if (ext.equalsIgnoreCase("rm") || ext.equalsIgnoreCase("rmvb")) {
 				mime = "video/rm";
 			}
 			// workaround for dongle for compatibility issue
