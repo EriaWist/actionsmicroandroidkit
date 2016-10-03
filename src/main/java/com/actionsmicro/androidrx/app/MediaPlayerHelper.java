@@ -23,7 +23,7 @@ import org.videolan.libvlc.Media;
 
 import java.util.ArrayList;
 
-public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAccelerationError{
+public class MediaPlayerHelper implements IVLCVout.Callback{
 
 	private static final String TAG = "MediaPlayerHelper";
 	private ViewGroup container;
@@ -295,9 +295,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 			options.add("--audio-time-stretch"); // time stretching
 			options.add("-vvv"); // verbosity
 
-			libvlc = new LibVLC(options);
-
-			libvlc.setOnHardwareAccelerationError(this);
+			libvlc = new LibVLC(mCtx,options);
 		}
 
 		if(mMediaPlayer == null) {
@@ -370,7 +368,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback, LibVLC.HardwareAcce
 	}
 
 	@Override
-	public void eventHardwareAccelerationError() {
+	public void onHardwareAccelerationError(IVLCVout ivlcVout) {
 		Log.e(TAG, "Error with hardware acceleration");
 	}
 
