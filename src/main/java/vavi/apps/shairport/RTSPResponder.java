@@ -52,6 +52,8 @@ public class RTSPResponder extends Thread{
 	private byte[] eiv;
 	private byte[] fpaeskey;
 	private int timingPort;
+	private String model="";
+
 
 	public interface AirTunesListener {
 
@@ -542,145 +544,80 @@ public class RTSPResponder extends Thread{
 						if (contentType.equalsIgnoreCase("application/x-apple-binary-plist")) {
 							try {
 								NSDictionary pDict = (NSDictionary) BinaryPropertyListParser.parse(requestBodyBuffer.toByteArray());
-								if ((null != pDict.get("eiv"))) {
+								if (null != pDict.get("eiv")) {
 									eiv = ((NSData) pDict.get("eiv")).bytes();
 								}
 
-								if ((null != pDict.get("ekey"))) {
+								if (null != pDict.get("ekey")) {
 									byte[] ekey = ((NSData) pDict.get("ekey")).bytes();
 									fpaeskey = FairPlay.decrypt(ekey, 0x48);
 								}
 
-								if ((null != pDict.get("timingPort"))) {
+								if (null != pDict.get("timingPort")) {
 									timingPort = ((NSNumber) pDict.get("timingPort")).intValue();
 								}
-
-								NSDictionary estream = (NSDictionary) ((NSArray) pDict.get("streams")).getArray()[0];
-								int type = ((NSNumber) estream.get("type")).intValue();
-
-								NSNumber streamConnectionID = (NSNumber)estream.get("streamConnectionID");
-
-								byte[] temp8 = new byte[64];
-								byte[] temp9 = new byte[64];
-								byte[] temp10 = new byte[64];
-								if (streamConnectionID != null) {
-									EzAes.setup(airplayMajorVersion, eiv, fpaeskey, streamConnectionID.longValue(), temp8, temp9, temp10);
+								if (null != pDict.get("model")) {
+									model = pDict.get("model").toString().toLowerCase();
 								}
+								if(null != pDict.get("streams")) {
+									NSDictionary estream = (NSDictionary) ((NSArray) pDict.get("streams")).getArray()[0];
+									int type = ((NSNumber) estream.get("type")).intValue();
 
-								if (type == 110) {
-									byte[] videoAesKey = new byte[16];
-									byte[] videoAesIV = new byte[16];
-									System.arraycopy(temp9,0,videoAesKey,0,16);
-									System.arraycopy(temp10, 0, videoAesIV, 0, 16);
+									NSNumber streamConnectionID = (NSNumber)estream.get("streamConnectionID");
+									if (streamConnectionID == null) {
+										streamConnectionID = new NSNumber(0);
+									}
+
+									byte[] temp8 = new byte[64];
+									byte[] temp9 = new byte[64];
+									byte[] temp10 = new byte[64];
 									if (streamConnectionID != null) {
-										EzAes.init(videoAesKey, videoAesIV);
+										EzAes.setup(airplayMajorVersion, eiv, fpaeskey, streamConnectionID.longValue(), temp8, temp9, temp10);
 									}
-									// ios9 format
-									/*const char fmt_content_110[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"\
-									"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\r\n"\
-									"<plist version=\"1.0\">\r\n"\
-									"<dict>\r\n"\
-									"<key>streams</key>\r\n"\
-									"<array>\r\n"\
-									"<dict>\r\n"\
-									"<key>dataPort</key>\r\n"\
-									"<integer>%d</integer>\r\n"\
-									"<key>type</key>\r\n"\
-									"<integer>110</integer>\r\n"\
-									"</dict>\r\n"\
-									"</array>\r\n"\
-									"<key>timingPort</key>\r\n"\
-									"<integer>%d</integer>\r\n"\
-									"</dict>\r\n"\
-									"</plist>\r\n";*/
-
-									// ios 8 format
-									/*const char fmt_content_110_ios8[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"\
-									"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\r\n"\
-									"<plist version=\"1.0\">\r\n"\
-									"<dict>\r\n"\
-									"<key>streams</key>\r\n"\
-									"<array>\r\n"\
-									"<dict>\r\n"\
-									"<key>dataPort</key>\r\n"\
-									"<integer>%d</integer>\r\n"\
-									"<key>type</key>\r\n"\
-									"<integer>110</integer>\r\n"\
-									"</dict>\r\n"\
-									"</array>\r\n"\
-									"<key>eventPort</key>\r\n"\
-									"<integer>%d</integer>\r\n"\
-									"<key>timingPort</key>\r\n"\
-									"<integer>%d</integer>\r\n"\
-									"</dict>\r\n"\
-									"</plist>\r\n";*/
-									NSDictionary setupInfo = new NSDictionary();
-
-									NSArray streamArray = new NSArray(1);
-									NSNumber dataPort = new NSNumber(7100);
-									NSDictionary streamDict = new NSDictionary();
-									streamDict.put("dataPort", dataPort);
-									streamDict.put("type", type);
-									streamArray.setValue(0, streamDict);
-									setupInfo.put("streams", streamArray);
-									if (airplayMajorVersion < 230) {
-										setupInfo.put("eventPort", AirPlayServer.eventPort);
-									}
-									setupInfo.put("timingPort", timingPort);
-
-									BinaryPropertyListWriter.write(binaryPlist, setupInfo);
-
-									response.append("Content-Length", String.valueOf(binaryPlist.size()));
-									response.append("Server", "AirTunes/" + AIRPLAYER_VERSION_STRING);
-									response.append("CSeq", request.valueOfHeader("CSeq"));
-									response.finalize();
-									StringBuilder sb = new StringBuilder();
-									sb.append(response.getRawPacket());
-									// Write the response to the wire
-									try {
-										socket.getOutputStream().write(sb.toString().getBytes());
-										socket.getOutputStream().write(binaryPlist.toByteArray());
-										socket.getOutputStream().flush();
-									} catch (IOException e) {
-										e.printStackTrace();
-										shouldStop = true;
-									}
-									Log.d("ShairPort","sb string" + sb.toString());
-
-								} else if (type == 96) {
-									// TODO start RTSP
-									int controlPort = ((NSNumber) estream.get("controlPort")).intValue();
-									int audioFormat = ((NSNumber) estream.get("audioFormat")).intValue();
-									int spf = ((NSNumber) estream.get("spf")).intValue();
-
-									if (audioFormat == 0x40000) {
-										fmtpString = "96 352 0 16 40 10 14 2 255 0 0 44100";
-									} else {
-										fmtpString = "96 mode=AAC-eld; constantDuration=480";
-									}
-									Log.d(TAG, "SETUP RTP..................");
-									// Launching audioserver
-									releaseAudioServer();
-									byte[] pair_aesKey = new byte[16];
-									byte[] pair_aesiv = new byte[16];
-									if (streamConnectionID != null || airplayMajorVersion < 230) {
+									if (type == 110) {
+										byte[] videoAesKey = new byte[16];
+										byte[] videoAesIV = new byte[16];
+										System.arraycopy(temp9,0,videoAesKey,0,16);
+										System.arraycopy(temp10, 0, videoAesIV, 0, 16);
 										if (streamConnectionID != null) {
-											System.arraycopy(temp8, 0, pair_aesKey, 0, 16);
-										} else {
-											// ios8
-											System.arraycopy(fpaeskey, 0, pair_aesKey, 0, 16);
+											EzAes.init(videoAesKey, videoAesIV);
 										}
-										System.arraycopy(eiv, 0, pair_aesiv, 0, 16);
-									}
+										initAirplaySetup(request, response, binaryPlist, airplayMajorVersion, type);
 
-									AudioSession session = new AudioSession(pair_aesiv, pair_aesKey, fmtpString, controlPort, timingPort, socket.getInetAddress());
-									if (session.isAacEldEncoding()) {
-										serv = new com.actionsmicro.airplay.airtunes.AudioPlayer(session);
-									} else if (session.isAppleLosslessEncoding()) {
-										serv = new AudioServer(session);
-									}
+									} else if (type == 96) {
+										// TODO start RTSP
+										int controlPort = ((NSNumber) estream.get("controlPort")).intValue();
+										int audioFormat = ((NSNumber) estream.get("audioFormat")).intValue();
+										int spf = ((NSNumber) estream.get("spf")).intValue();
 
-									if(airplayMajorVersion >= 230) {
+										if (audioFormat == 0x40000) {
+											fmtpString = "96 352 0 16 40 10 14 2 255 0 0 44100";
+										} else {
+											fmtpString = "96 mode=AAC-eld; constantDuration=480";
+										}
+										Log.d(TAG, "SETUP RTP..................");
+										// Launching audioserver
+										releaseAudioServer();
+										byte[] pair_aesKey = new byte[16];
+										byte[] pair_aesiv = new byte[16];
+										if (streamConnectionID != null || airplayMajorVersion < 230) {
+											if (streamConnectionID != null) {
+												System.arraycopy(temp8, 0, pair_aesKey, 0, 16);
+											} else {
+												// ios8
+												System.arraycopy(fpaeskey, 0, pair_aesKey, 0, 16);
+											}
+											System.arraycopy(eiv, 0, pair_aesiv, 0, 16);
+										}
+
+										AudioSession session = new AudioSession(pair_aesiv, pair_aesKey, fmtpString, controlPort, timingPort, socket.getInetAddress());
+										if (session.isAacEldEncoding()) {
+											serv = new com.actionsmicro.airplay.airtunes.AudioPlayer(session);
+										} else if (session.isAppleLosslessEncoding()) {
+											serv = new AudioServer(session);
+										}
+
+										if(airplayMajorVersion >= 230) {
 										/*const char fmt_content_96[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"\
 										"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\r\n"\
 										"<plist version=\"1.0\">\r\n"\
@@ -701,38 +638,38 @@ public class RTSPResponder extends Thread{
 										"</dict>\r\n"\
 										"</plist>\r\n";*/
 
-										NSDictionary setupInfo = new NSDictionary();
+											NSDictionary setupInfo = new NSDictionary();
 
-										NSArray streamArray = new NSArray(1);
-										NSDictionary streamDict = new NSDictionary();
-										streamDict.put("dataPort", serv.getServerPort());
-										streamDict.put("controlPort", serv.getControlPort());
-										streamDict.put("type", type);
-										streamArray.setValue(0, streamDict);
-										setupInfo.put("streams", streamArray);
-										setupInfo.put("timingPort", timingPort);
+											NSArray streamArray = new NSArray(1);
+											NSDictionary streamDict = new NSDictionary();
+											streamDict.put("dataPort", serv.getServerPort());
+											streamDict.put("controlPort", serv.getControlPort());
+											streamDict.put("type", type);
+											streamArray.setValue(0, streamDict);
+											setupInfo.put("streams", streamArray);
+											setupInfo.put("timingPort", timingPort);
 
-										BinaryPropertyListWriter.write(binaryPlist, setupInfo);
+											BinaryPropertyListWriter.write(binaryPlist, setupInfo);
 
-										response.append("Content-Length", String.valueOf(binaryPlist.size()));
-										response.append("Server", "AirTunes/" + AIRPLAYER_VERSION_STRING);
-										response.append("CSeq", request.valueOfHeader("CSeq"));
-										response.finalize();
-										StringBuilder sb = new StringBuilder();
-										sb.append(response.getRawPacket());
-										// Write the response to the wire
-										try {
-											socket.getOutputStream().write(sb.toString().getBytes());
-											socket.getOutputStream().write(binaryPlist.toByteArray());
-											socket.getOutputStream().flush();
-										} catch (IOException e) {
-											e.printStackTrace();
-											shouldStop = true;
-										}
-										Log.d("ShairPort","sb string" + sb.toString());
-										Log.d(TAG, "SETUP ios9 rtp..................");
-									} else{
-										//TODO ios8
+											response.append("Content-Length", String.valueOf(binaryPlist.size()));
+											response.append("Server", "AirTunes/" + AIRPLAYER_VERSION_STRING);
+											response.append("CSeq", request.valueOfHeader("CSeq"));
+											response.finalize();
+											StringBuilder sb = new StringBuilder();
+											sb.append(response.getRawPacket());
+											// Write the response to the wire
+											try {
+												socket.getOutputStream().write(sb.toString().getBytes());
+												socket.getOutputStream().write(binaryPlist.toByteArray());
+												socket.getOutputStream().flush();
+											} catch (IOException e) {
+												e.printStackTrace();
+												shouldStop = true;
+											}
+											Log.d("ShairPort","sb string" + sb.toString());
+											Log.d(TAG, "SETUP ios9 rtp..................");
+										} else{
+											//TODO ios8
 										/*const char fmt_content_96_ios8[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"\
 										"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\r\n"\
 										"<plist version=\"1.0\">\r\n"\
@@ -755,41 +692,48 @@ public class RTSPResponder extends Thread{
 										"</dict>\r\n"\
 										"</plist>\r\n";*/
 
-										NSDictionary setupInfo = new NSDictionary();
+											NSDictionary setupInfo = new NSDictionary();
 
-										NSArray streamArray = new NSArray(1);
-										NSDictionary streamDict = new NSDictionary();
-										streamDict.put("dataPort", serv.getServerPort());
-										streamDict.put("controlPort", serv.getControlPort());
-										streamDict.put("type", type);
-										streamArray.setValue(0, streamDict);
-										NSNumber eventPort = new NSNumber(AirPlayServer.eventPort);
+											NSArray streamArray = new NSArray(1);
+											NSDictionary streamDict = new NSDictionary();
+											streamDict.put("dataPort", serv.getServerPort());
+											streamDict.put("controlPort", serv.getControlPort());
+											streamDict.put("type", type);
+											streamArray.setValue(0, streamDict);
+											NSNumber eventPort = new NSNumber(AirPlayServer.eventPort);
 
-										setupInfo.put("streams", streamArray);
-										setupInfo.put("eventPort", eventPort);
-										setupInfo.put("timingPort", timingPort);
+											setupInfo.put("streams", streamArray);
+											setupInfo.put("eventPort", eventPort);
+											setupInfo.put("timingPort", timingPort);
 
-										BinaryPropertyListWriter.write(binaryPlist, setupInfo);
+											BinaryPropertyListWriter.write(binaryPlist, setupInfo);
 
-										response.append("Content-Length", String.valueOf(binaryPlist.size()));
-										response.append("Server", "AirTunes/" + AIRPLAYER_VERSION_STRING);
-										response.append("CSeq", request.valueOfHeader("CSeq"));
-										response.finalize();
-										StringBuilder sb = new StringBuilder();
-										sb.append(response.getRawPacket());
-										// Write the response to the wire
-										try {
-											socket.getOutputStream().write(sb.toString().getBytes());
-											socket.getOutputStream().write(binaryPlist.toByteArray());
-											socket.getOutputStream().flush();
-										} catch (IOException e) {
-											e.printStackTrace();
-											shouldStop = true;
+											response.append("Content-Length", String.valueOf(binaryPlist.size()));
+											response.append("Server", "AirTunes/" + AIRPLAYER_VERSION_STRING);
+											response.append("CSeq", request.valueOfHeader("CSeq"));
+											response.finalize();
+											StringBuilder sb = new StringBuilder();
+											sb.append(response.getRawPacket());
+											// Write the response to the wire
+											try {
+												socket.getOutputStream().write(sb.toString().getBytes());
+												socket.getOutputStream().write(binaryPlist.toByteArray());
+												socket.getOutputStream().flush();
+											} catch (IOException e) {
+												e.printStackTrace();
+												shouldStop = true;
+											}
+											Log.d("ShairPort","sb string" + sb.toString());
+											Log.d(TAG, "SETUP ios8 rtp..................");
+
 										}
-										Log.d("ShairPort","sb string" + sb.toString());
-										Log.d(TAG, "SETUP ios8 rtp..................");
-
 									}
+								} else if (airplayMajorVersion > 300){
+									// for iOS10
+									int type = 110;
+									initAirplaySetup(request, response, binaryPlist, airplayMajorVersion, type);
+
+
 								}
 							} catch (IOException e) {
 								e.printStackTrace();
@@ -985,6 +929,10 @@ public class RTSPResponder extends Thread{
 
 							int height = 720;
 							int width = 1280;
+							if (isIphone5Series()) {
+								height = 1080;
+								width = 1920;
+							}
 							NSArray displays = new NSArray(1);
 							NSDictionary display1 = new NSDictionary();
 							display1.put("height",height);
@@ -1086,6 +1034,88 @@ public class RTSPResponder extends Thread{
 			}
 		}
 		Log.d("ShairPort", "connection ended.");
+	}
+
+	private boolean isIphone5Series() {
+		//iPhone(5c/5s/SE)
+		if(model.startsWith("iphone5,") || model.startsWith("iphone6,") || model.startsWith("iphone8,4")) {
+			return true;
+		}
+		return false;
+	}
+
+	private void initAirplaySetup(RTSPPacket request, RTSPResponse response, ByteArrayOutputStream binaryPlist, int airplayMajorVersion, int type) throws IOException {
+		// ios9 format
+		/*const char fmt_content_110[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"\
+		"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\r\n"\
+		"<plist version=\"1.0\">\r\n"\
+		"<dict>\r\n"\
+		"<key>streams</key>\r\n"\
+		"<array>\r\n"\
+		"<dict>\r\n"\
+		"<key>dataPort</key>\r\n"\
+		"<integer>%d</integer>\r\n"\
+		"<key>type</key>\r\n"\
+		"<integer>110</integer>\r\n"\
+		"</dict>\r\n"\
+		"</array>\r\n"\
+		"<key>timingPort</key>\r\n"\
+		"<integer>%d</integer>\r\n"\
+		"</dict>\r\n"\
+		"</plist>\r\n";*/
+
+		// ios 8 format
+		/*const char fmt_content_110_ios8[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"\
+		"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\r\n"\
+		"<plist version=\"1.0\">\r\n"\
+		"<dict>\r\n"\
+		"<key>streams</key>\r\n"\
+		"<array>\r\n"\
+		"<dict>\r\n"\
+		"<key>dataPort</key>\r\n"\
+		"<integer>%d</integer>\r\n"\
+		"<key>type</key>\r\n"\
+		"<integer>110</integer>\r\n"\
+		"</dict>\r\n"\
+		"</array>\r\n"\
+		"<key>eventPort</key>\r\n"\
+		"<integer>%d</integer>\r\n"\
+		"<key>timingPort</key>\r\n"\
+		"<integer>%d</integer>\r\n"\
+		"</dict>\r\n"\
+		"</plist>\r\n";*/
+		NSDictionary setupInfo = new NSDictionary();
+
+		NSArray streamArray = new NSArray(1);
+		NSNumber dataPort = new NSNumber(7100);
+		NSDictionary streamDict = new NSDictionary();
+		streamDict.put("dataPort", dataPort);
+		streamDict.put("type", type);
+		streamArray.setValue(0, streamDict);
+		setupInfo.put("streams", streamArray);
+		if (airplayMajorVersion < 230) {
+			setupInfo.put("eventPort", AirPlayServer.eventPort);
+		}
+		setupInfo.put("timingPort", timingPort);
+
+		BinaryPropertyListWriter.write(binaryPlist, setupInfo);
+
+		response.append("Content-Length", String.valueOf(binaryPlist.size()));
+		response.append("Server", "AirTunes/" + AIRPLAYER_VERSION_STRING);
+		response.append("CSeq", request.valueOfHeader("CSeq"));
+		response.finalize();
+		StringBuilder sb = new StringBuilder();
+		sb.append(response.getRawPacket());
+		// Write the response to the wire
+		try {
+			socket.getOutputStream().write(sb.toString().getBytes());
+			socket.getOutputStream().write(binaryPlist.toByteArray());
+			socket.getOutputStream().flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+			shouldStop = true;
+		}
+		Log.d("ShairPort", "sb string" + sb.toString());
 	}
 
 	private final byte[] readBuffer = new byte[100*1024];

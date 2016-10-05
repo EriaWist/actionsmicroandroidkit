@@ -21,6 +21,7 @@ import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.StrictMode;
 import android.text.format.Formatter;
 import android.view.Surface;
 import android.view.TextureView;
@@ -160,6 +161,10 @@ public class EZScreenHelper implements PlayerListener {
 	private boolean mIsAirplaySurfaceLive;
 
 	public EZScreenHelper(Context context, String serviceName, ViewGroup frame, WebView webView, TextureView textureView, ViewGroup musicView, int servers) {
+		if (Build.VERSION.SDK_INT >= 24) {
+			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+			StrictMode.setThreadPolicy(policy);
+		}
 		this.context = context;
 		this.musicView = musicView;
 		this.webView = webView;
