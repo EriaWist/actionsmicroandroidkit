@@ -930,8 +930,8 @@ public class RTSPResponder extends Thread{
 							int height = 720;
 							int width = 1280;
 							if (isIphone5Series()) {
-								height = 1080;
-								width = 1920;
+								height = 768;
+								width = 1366;
 							}
 							NSArray displays = new NSArray(1);
 							NSDictionary display1 = new NSDictionary();
