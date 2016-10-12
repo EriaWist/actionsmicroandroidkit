@@ -223,12 +223,12 @@ public class RTSPResponder extends Thread{
         }
 //        else if (REQ.contentEquals("POST") && packet.getDirectory().equals("/fp-setup")) {
 //        	String content = packet.getContent();
-//        	Log.d("ShairPort", "length:"+content.length());
+//        	Log.d(TAG, "length:"+content.length());
 //        	
 //        } 
         else {
-			Log.e("ShairPort", "REQUEST(" + REQ + "): Not Supported Yet!");
-//			Log.d("ShairPort", packet.getRawPacket());
+			Log.e(TAG, "REQUEST(" + REQ + "): Not Supported Yet!");
+//			Log.d(TAG, packet.getRawPacket());
 		}
 		response.append("Server", "AirTunes/" + AIRPLAYER_VERSION_STRING);
 		
@@ -296,27 +296,27 @@ public class RTSPResponder extends Thread{
 		try {
 			ByteArrayBuffer requestBodyBuffer = new ByteArrayBuffer(655360);			
 			do {
-				Log.d("ShairPort", "listening packets ... ");
+				Log.d(TAG, "listening packets ... ");
 				requestBodyBuffer.clear();
 				StringBuilder packet = new StringBuilder();
 				int ret = readRequestHeader(packet);
 				int contentLength = 0;
 				if (ret != -1) {
-					Log.d("ShairPort", "read body ... ");
+					Log.d(TAG, "read body ... ");
 					Matcher m = requestHeaderPattern.matcher(packet.toString());
 				    contentLength = getContentLength(m);
 				    ret = readRequestBody(contentLength, packet, requestBodyBuffer);
 				} else {
-					Log.d("ShairPort", "corrupt packet:"+packet.toString());
+					Log.d(TAG, "corrupt packet:"+packet.toString());
 				}
 				if (ret!=-1) {
 					// We handle the packet
 					RTSPPacket request = new RTSPPacket(packet.toString());
-					Log.d("ShairPort", "raw " + request.getRawPacket());
+					Log.d(TAG, "raw " + request.getRawPacket());
 					if (request.getReq().equals("POST")){
 						String dir = request.getDirectory();
 						if (dir.equals("/fp-setup")) {
-							Log.d("ShairPort", "requestBodyBuffer.length:" + requestBodyBuffer.length());
+							Log.d(TAG, "requestBodyBuffer.length:" + requestBodyBuffer.length());
 							byte packageData[] = requestBodyBuffer.toByteArray();
 							if (requestBodyBuffer.length() == 16) {
 								FairPlay.init();
@@ -345,7 +345,7 @@ public class RTSPResponder extends Thread{
 									e.printStackTrace();
 									shouldStop = true;
 								}
-								Log.d("ShairPort", sb.toString());
+								Log.d(TAG, sb.toString());
 
 							} else if (requestBodyBuffer.length() == 164) {
 								byte responseData[] = FairPlay.setupPhase2(requestBodyBuffer.buffer(), requestBodyBuffer.length(), true);
@@ -372,7 +372,7 @@ public class RTSPResponder extends Thread{
 									e.printStackTrace();
 									shouldStop = true;
 								}
-								Log.d("ShairPort", sb.toString());
+								Log.d(TAG, sb.toString());
 							}
 						} else if (dir.equals("/pair-setup")) {
 							Log.d(TAG, "dir 11" + dir);
@@ -393,7 +393,7 @@ public class RTSPResponder extends Thread{
 								e.printStackTrace();
 								shouldStop = true;
 							}
-							Log.d("ShairPort","sb string" + sb.toString());
+							Log.d(TAG,"sb string" + sb.toString());
 
 						} else if (dir.equals("/pair-verify")) {
 							if(readBuffer[0] == 1)
@@ -436,7 +436,7 @@ public class RTSPResponder extends Thread{
 									e.printStackTrace();
 									shouldStop = true;
 								}
-								Log.d("ShairPort", sb.toString());
+								Log.d(TAG, sb.toString());
 							} else {
 								RTSPResponse response = new RTSPResponse("RTSP/1.0 200 OK");
 								response.append("Content-Type", "application/octet-stream");
@@ -453,7 +453,7 @@ public class RTSPResponder extends Thread{
 									e.printStackTrace();
 									shouldStop = true;
 								}
-								Log.d("ShairPort", sb.toString());
+								Log.d(TAG, sb.toString());
 
 							}
 //
@@ -473,7 +473,7 @@ public class RTSPResponder extends Thread{
 								e.printStackTrace();
 								shouldStop = true;
 							}
-							Log.d("ShairPort", sb.toString());
+							Log.d(TAG, sb.toString());
 
 						} else{
 							//TODO
@@ -666,7 +666,7 @@ public class RTSPResponder extends Thread{
 												e.printStackTrace();
 												shouldStop = true;
 											}
-											Log.d("ShairPort","sb string" + sb.toString());
+											Log.d(TAG,"sb string" + sb.toString());
 											Log.d(TAG, "SETUP ios9 rtp..................");
 										} else{
 											//TODO ios8
@@ -723,7 +723,7 @@ public class RTSPResponder extends Thread{
 												e.printStackTrace();
 												shouldStop = true;
 											}
-											Log.d("ShairPort","sb string" + sb.toString());
+											Log.d(TAG,"sb string" + sb.toString());
 											Log.d(TAG, "SETUP ios8 rtp..................");
 
 										}
@@ -966,7 +966,7 @@ public class RTSPResponder extends Thread{
 								e.printStackTrace();
 								shouldStop = true;
 							}
-							Log.d("ShairPort","sb string" + sb.toString());
+							Log.d(TAG,"sb string" + sb.toString());
 							Log.d(TAG, "GET info..................");
 
 
@@ -991,7 +991,7 @@ public class RTSPResponder extends Thread{
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
-						Log.d("ShairPort", "raw " + response.getRawPacket());
+						Log.d(TAG, "raw " + response.getRawPacket());
 
 						if ((airplayState == AIRPLAY_MIRROR || airplayState == AIRPLAY_VIDEO_ON_MIRROR) && "TEARDOWN".equals(request.getReq())) {
 							Log.d(TAG, "don't close server since still in MIRRORING STATE ");
@@ -1005,7 +1005,7 @@ public class RTSPResponder extends Thread{
 						}
 					}
 				} else {
-					Log.d("ShairPort", "raw " + "return == -1");
+					Log.d(TAG, "raw " + "return == -1");
 	    			socket.close();
 	    			socket = null;
 	    			shouldStop = true;
@@ -1033,7 +1033,7 @@ public class RTSPResponder extends Thread{
 				airTunesListener.onDisconnected();
 			}
 		}
-		Log.d("ShairPort", "connection ended.");
+		Log.d(TAG, "connection ended.");
 	}
 
 	private boolean isIphone5Series() {
@@ -1115,7 +1115,7 @@ public class RTSPResponder extends Thread{
 			e.printStackTrace();
 			shouldStop = true;
 		}
-		Log.d("ShairPort", "sb string" + sb.toString());
+		Log.d(TAG, "sb string" + sb.toString());
 	}
 
 	private final byte[] readBuffer = new byte[100*1024];
@@ -1126,10 +1126,10 @@ public class RTSPResponder extends Thread{
 		int ret = 0;
 		int readMore = contentLength;
 		while (readMore > 0) {
-			Log.d("ShairPort", "readMore:"+readMore);
+			Log.d(TAG, "readMore:"+readMore);
 			ret = in.read(readBuffer, 0, Math.min(readMore, readBuffer.length));
 			if (ret!=-1) {
-				Log.d("ShairPort", "readMore:ret:"+ret);
+				Log.d(TAG, "readMore:ret:"+ret);
 				packet.append(new String(readBuffer, 0, ret));
 				requestBodyBuffer.append(readBuffer, 0, ret);
 				readMore -= ret;
