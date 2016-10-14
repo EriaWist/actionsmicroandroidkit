@@ -1,6 +1,7 @@
 package com.actionsmicro.airplay;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 
 import com.actionsmicro.airplay.crypto.EzAes;
 import com.actionsmicro.airplay.crypto.FairPlay;
@@ -143,7 +144,7 @@ public class AirPlayServer {
 	private Thread mEventThread;
 	protected ServerSocket eventServSock;
 
-	private static boolean DEBUG_LOG = false;
+	private static boolean DEBUG_LOG = true;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
 			Log.d(TAG, msg);
@@ -787,9 +788,36 @@ public class AirPlayServer {
 		airplayServiceReady = true;
 		checkInitializationState();
 	}
-	private String getMacAddress() {		
-		return com.actionsmicro.utils.Device.getAppMacAddress(context);
+	private String getMacAddress() {
+
+		String appMacAddress = com.actionsmicro.utils.Device.getAppMacAddress(context);
+		// generate fake addr from uuid to fix rtsp TEARDOWN issue
+		if (!appMacAddress.contains(":")) {
+			appMacAddress = genFakeMacFromUUID(appMacAddress);
+		}
+		return appMacAddress;
 	}
+
+	@NonNull
+	private String genFakeMacFromUUID(String appMacAddress) {
+		StringBuilder fakeMacAddr = new StringBuilder();
+		int count = 0;
+		for (int i = 0; i < appMacAddress.length(); i++) {
+            char currentChar = appMacAddress.charAt(i);
+            if (Character.isLetterOrDigit(currentChar)) {
+                fakeMacAddr.append(currentChar);
+                count++;
+                if (count % 2 == 0 && count < 12) {
+                    fakeMacAddr.append(":");
+                }
+                if (count == 12) {
+                    break;
+                }
+            }
+        }
+		return fakeMacAddr.toString();
+	}
+
 	private static final int RAOP_PORTNUMBER = 47000;
 	
 	private void initRaopService() {
