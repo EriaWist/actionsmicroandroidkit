@@ -730,10 +730,7 @@ public class RTSPResponder extends Thread{
 									}
 								} else if (airplayMajorVersion > 300){
 									// for iOS10
-									int type = 110;
-									initAirplaySetup(request, response, binaryPlist, airplayMajorVersion, type);
-
-
+									airplay10SetupPhase1(request, response);
 								}
 							} catch (IOException e) {
 								e.printStackTrace();
@@ -1034,6 +1031,24 @@ public class RTSPResponder extends Thread{
 			}
 		}
 		Log.d(TAG, "connection ended.");
+	}
+
+	private void airplay10SetupPhase1(RTSPPacket request, RTSPResponse response) {
+		response.append("Content-Length", "0");
+		response.append("Server", "AirTunes/" + AIRPLAYER_VERSION_STRING);
+		response.append("CSeq", request.valueOfHeader("CSeq"));
+		response.finalize();
+		StringBuilder sb = new StringBuilder();
+		sb.append(response.getRawPacket());
+		// Write the response to the wire
+		try {
+            socket.getOutputStream().write(sb.toString().getBytes());
+            socket.getOutputStream().flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+            shouldStop = true;
+        }
+		Log.d(TAG, "sb string" + sb.toString());
 	}
 
 	private boolean isIphone5Series() {
