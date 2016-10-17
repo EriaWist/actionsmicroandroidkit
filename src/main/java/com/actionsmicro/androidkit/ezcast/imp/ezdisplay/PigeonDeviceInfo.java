@@ -118,11 +118,6 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	}
 
 	@Override
-	public boolean supportAd() {
-		return true;
-	}
-
-	@Override
 	public boolean supportH264Streaming() {
 		return true;
 	}
