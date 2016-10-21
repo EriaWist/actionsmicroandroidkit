@@ -144,7 +144,7 @@ public class AirPlayServer {
 	private Thread mEventThread;
 	protected ServerSocket eventServSock;
 
-	private static boolean DEBUG_LOG = true;
+	private static boolean DEBUG_LOG = false;
 	private static void debugLog(String msg) {
 		if (DEBUG_LOG) {
 			Log.d(TAG, msg);
