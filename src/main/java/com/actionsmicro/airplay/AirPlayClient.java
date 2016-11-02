@@ -452,6 +452,7 @@ public class AirPlayClient {
 								if (e != null) {
 									e.printStackTrace();
 									handleNetworkException(e);
+									finishPendingTask(self);
 									return;
 								}
 								Log.d(TAG, source.getRequest().getRequestLine() + " Server says: " + result);
@@ -459,10 +460,11 @@ public class AirPlayClient {
 									AirPlayClient.this.videoStateListener.onVideoPlayed();
 								}
 								startPeriodicalPoller();
-								finishPendingTask(self);
 								synchronized (playVideo) {
 									playVideo.notifyAll();
 								}
+								// Move finishPendingTask to the line after playVideo.notify. so, it won't indirectly blocked by playVideo.wait.
+								finishPendingTask(self);
 							}
 						});
 						playVideo.wait(5000);
@@ -515,10 +517,13 @@ public class AirPlayClient {
 		}
 	}
 	
-	private void stopPeriodicalPoller() {
+	private synchronized void stopPeriodicalPoller() {
 		if (timerThread != null) {
 			timerThread.quit();
 			timerThread = null;
+		}
+		if (null != timerHandler) {
+			timerHandler = null;
 		}
 	}
 	public void scrubVideo(float position) {
@@ -587,6 +592,7 @@ public class AirPlayClient {
 								if (e != null) {
 									e.printStackTrace();
 									handleNetworkException(e);
+									finishPendingTask(self);
 									return;
 								}
 								currentSessionId = -1;
@@ -597,10 +603,14 @@ public class AirPlayClient {
 								if (videoStateListener != null) {
 									videoStateListener.onVideoStopped(Cause.USER);
 								}
-								finishPendingTask(self);
+
+								// make sure playVideo not called during stop.
+								stopPeriodicalPoller();
 								synchronized (stop) {
 									stop.notifyAll();
 								}
+								// Move finishPendingTask to the line after stop.notify. so, it won't indirectly blocked by it.
+								finishPendingTask(self);
 							}
 						});
 						// make it synchronous to prevent overlapping with play command.
@@ -611,7 +621,6 @@ public class AirPlayClient {
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
-				stopPeriodicalPoller();
 			}
 			
 		};
@@ -664,21 +673,23 @@ public class AirPlayClient {
 	private float duration = -1;
 	private float position;
 	private float rate;
-	private void startPeriodicalPoller() {
+	private synchronized void startPeriodicalPoller() {
 		timerThread = new HandlerThread("AirPlayTimerThread");
 		timerThread.start();
 		timerHandler = new Handler(timerThread.getLooper());
 		schedulePlaybackInfoPoller();
 	}
-	private void schedulePlaybackInfoPoller() {
-		timerHandler.postDelayed(new Runnable() {
 
-			@Override
-			public void run() {
-				inqueryPlaybackInfo();
-			}
-			
-		}, 1000);
+	private synchronized void schedulePlaybackInfoPoller() {
+		if (null != timerHandler) {
+			timerHandler.postDelayed(new Runnable() {
+				@Override
+				public void run() {
+					inqueryPlaybackInfo();
+				}
+
+			}, 1000);
+		}
 	}
 	private void setRate(float rate) {
 		if (this.rate != rate) {

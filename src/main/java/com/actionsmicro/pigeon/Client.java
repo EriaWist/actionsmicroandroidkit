@@ -3,6 +3,8 @@ package com.actionsmicro.pigeon;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.YuvImage;
+import android.os.Build;
+import android.os.StrictMode;
 
 import com.actionsmicro.androidkit.ezcast.helper.ImageSender.BitmapManager;
 import com.actionsmicro.utils.Log;
@@ -143,6 +145,10 @@ public class Client {
 	 * @param portNumber The port number of the server.
 	 */
 	protected Client(String serverAddress, int portNumber) {
+		if (Build.VERSION.SDK_INT >= 24) {
+			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+			StrictMode.setThreadPolicy(policy);
+		}
 		this.serverAddress = serverAddress;
 		this.portNumber = portNumber;
 		
