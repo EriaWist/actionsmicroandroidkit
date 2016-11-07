@@ -23,10 +23,12 @@ public class Device {
 	public static final String DEVICE_TYPE_PHONE = "phone";
 	public static final String DEVICE_TYPE_PAD = "pad";
 	public static final String DEVICE_TYPE_TV = "tv";
-	
+
 	private static final String TAG = "Device";
 
 	public static final String APP_UNIQUEID_PREF_KEY = "com.actionsmicro.appuuid";
+	public static final String DEFAULT_WIFIAP_ADDRESS = "192.168.43.1";
+
 	static public int getDeviceNaturlOrientation(Activity activity) {
 
 		WindowManager windowManager = activity.getWindowManager();
@@ -143,7 +145,7 @@ public class Device {
 			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
 					.hasMoreElements();) {
 				NetworkInterface intf = en.nextElement();
-				if (intf.getName().contains("wlan")) {
+				if (intf.getName().startsWith("wlan") || intf.getName().startsWith("ap")) {
 					for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr
 							.hasMoreElements();) {
 						InetAddress inetAddress = enumIpAddr.nextElement();
@@ -158,6 +160,6 @@ public class Device {
 		} catch (SocketException ex) {
 			Log.e(TAG, ex.toString());
 		}
-		return null;
+		return DEFAULT_WIFIAP_ADDRESS;
 	}
 }
