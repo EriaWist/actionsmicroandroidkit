@@ -167,7 +167,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	public synchronized void sendJpegEncodedScreenData(InputStream input, long length) {
 //		Log.d(TAG,   ": try to sendJpegEncodedScreenData");
-		if (getState() == State.PLAYING && mIsStopping == false) {
+		if ((getState() == State.PLAYING && mIsStopping == false) || !isReadyToDisplay()) {
 			return;
 		}
 		if (simpleMotionJpegHttpServer != null) {
