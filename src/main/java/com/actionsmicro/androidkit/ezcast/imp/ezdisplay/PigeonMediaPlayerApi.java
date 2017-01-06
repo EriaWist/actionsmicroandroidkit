@@ -150,6 +150,9 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			String mediaUriString = simpleHttpFileServer.getServerUrl();
 			dataSource = new MediaStreamingHttpDataSource(mediaUriString, DEFAULT_USER_AGENT_STRING, mediaContentLength);
 		} else {
+			if (mediaPlayerStateListener != null) {
+				mediaPlayerStateListener.mediaPlayerDidStop(PigeonMediaPlayerApi.this, Cause.REMOTE);
+			}
 			return false;
 		}
 		beginMediaUsageTracking(context, mediaUrl, userAgentString, title);
