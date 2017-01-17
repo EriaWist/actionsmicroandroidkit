@@ -6,8 +6,6 @@ import android.content.res.AssetManager;
 import android.os.Build;
 import android.text.TextUtils;
 
-import com.actionsmicro.utils.Log;
-import com.koushikdutta.async.AsyncNetworkSocket;
 import com.koushikdutta.async.AsyncSSLSocket;
 import com.koushikdutta.async.AsyncSSLSocketWrapper;
 import com.koushikdutta.async.AsyncServer;
@@ -36,6 +34,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -90,6 +89,10 @@ public class AsyncHttpServer {
         return server.listen(null, port, mListenCallback);
     }
 
+    public AsyncServerSocket listen(final InetAddress host, AsyncServer server, int port) {
+        return server.listen(host, port, mListenCallback);
+    }
+
     private void report(Exception ex) {
         if (mCompletedCallback != null)
             mCompletedCallback.onCompleted(ex);
@@ -97,6 +100,10 @@ public class AsyncHttpServer {
     
     public AsyncServerSocket listen(int port) {
         return listen(AsyncServer.getDefault(), port);
+    }
+
+    public AsyncServerSocket listen(final InetAddress host, int port) {
+        return listen(host, AsyncServer.getDefault(), port);
     }
 
     public void listenSecure(final int port, final SSLContext sslContext) {
