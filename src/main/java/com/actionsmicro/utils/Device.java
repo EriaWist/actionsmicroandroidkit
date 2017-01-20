@@ -1,11 +1,5 @@
 package com.actionsmicro.utils;
 
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Enumeration;
-import java.util.UUID;
-
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -17,6 +11,13 @@ import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.Surface;
 import android.view.WindowManager;
+
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.Enumeration;
+import java.util.Locale;
+import java.util.UUID;
 
 public class Device {
 
@@ -162,4 +163,23 @@ public class Device {
 		}
 		return DEFAULT_WIFIAP_ADDRESS;
 	}
+
+	public static String getHostIpAddress(Context context, boolean useIPv4) {
+		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+		int ip = wifiInfo.getIpAddress();
+
+		String ipString = String.format(Locale.US,
+				"%d.%d.%d.%d",
+				(ip & 0xff),
+				(ip >> 8 & 0xff),
+				(ip >> 16 & 0xff),
+				(ip >> 24 & 0xff));
+
+		if (Reachability.isWifiApEnabled(context)) {
+			ipString = getWifiApIpAddress();
+		}
+
+		return ipString;
+    }
 }

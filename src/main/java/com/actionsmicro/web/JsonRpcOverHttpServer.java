@@ -1,13 +1,10 @@
 package com.actionsmicro.web;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-
 import android.content.Context;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 
+import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Reachability;
 import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncServerSocket;
 import com.koushikdutta.async.callback.CompletedCallback;
@@ -24,6 +21,11 @@ import com.thetransactioncompany.jsonrpc2.JSONRPC2Response;
 import com.thetransactioncompany.jsonrpc2.server.Dispatcher;
 import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
+
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.UnknownHostException;
 
 
 public class JsonRpcOverHttpServer {
@@ -101,27 +103,14 @@ public class JsonRpcOverHttpServer {
 	private AsyncServerSocket serverSocket;
 	public String getServerUrl() {
 		try {
-			return new URL("http", getIPAddress(true), getListeningPort(), "").toString();
+			return new URL("http", Device.getHostIpAddress(context, true), getListeningPort(), "").toString();
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
 	}
-	private String getIPAddress(boolean useIPv4) { //TODO  DRY
-		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-		int ip = wifiInfo.getIpAddress();
 
-		String ipString = String.format(
-				"%d.%d.%d.%d",
-				(ip & 0xff),
-				(ip >> 8 & 0xff),
-				(ip >> 16 & 0xff),
-				(ip >> 24 & 0xff));
-
-		return ipString;
-    }
 	public void registerRpcRequestHandler(RequestHandler requestHandler) throws IllegalStateException {
 		if (dispatcher != null) {
 			dispatcher.register(requestHandler);
@@ -137,7 +126,17 @@ public class JsonRpcOverHttpServer {
 		}
 	}
 	public void start() {
-		serverSocket = httpServer.listen(portNumber);
+		if(Reachability.isWifiApEnabled(context)){
+			try {
+				InetAddress hostAddr = InetAddress.getByName(Device.getWifiApIpAddress());
+				serverSocket = httpServer.listen(hostAddr,portNumber);
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			}
+		} else {
+			serverSocket = httpServer.listen(portNumber);
+		}
+
 	}
 	public void stop() {
 		AsyncServer.getDefault().stop();

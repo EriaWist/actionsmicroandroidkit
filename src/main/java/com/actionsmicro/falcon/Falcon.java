@@ -37,6 +37,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import static com.actionsmicro.falcon.Falcon.ProjectorInfo.SERVICE_APP_HTTP_STREAMING;
+import static com.actionsmicro.falcon.Falcon.ProjectorInfo.SERVICE_EZENCODEPRO;
+import static com.actionsmicro.falcon.Falcon.ProjectorInfo.SERVICE_MEDIA_STREAM_AUDIO;
+
+
 /**
  * This class is in charge of device discovery.
  * <p>
@@ -70,18 +75,19 @@ public class Falcon {
 	 *
 	 */
 	public static class ProjectorInfo implements Parcelable, Comparable<ProjectorInfo> {
-		private static final int SERVICE_WIFI_LAN_DISPLAY 	= 0x01 << 0;
-		private static final int SERVICE_MEDIA_STREAMING 	= 0x01 << 1;
-		private static final int SERVICE_APP_PHOTO_VIEWER 	= 0x01 << 2;
-		private static final int SERVICE_APP_LIVE_CAM 		= 0x01 << 3;
-		private static final int SERVICE_APP_STREAMIG_DOC 	= 0x01 << 4;
-		private static final int SERVICE_SPLIT_SCREEN 		= 0x01 << 5;
-		private static final int SERVICE_APP_DROPBOX 		= 0x01 << 6;
-		private static final int SERVICE_APP_WEB_VIEWER 	= 0x01 << 7;
-		private static final int SERVICE_APP_QUALITY_MODE 	= 0x01 << 8;
-		private static final int SERVICE_APP_HTTP_STREAMING = 0x01 << 9;
-		private static final int SERVICE_APP_REMOTE_CONTROL = 0x01 << 10;
-		private static final int SERVICE_MEDIA_STREAM_AUDIO = 0x01 << 11;
+		public static final int SERVICE_WIFI_LAN_DISPLAY 	= 0x01 << 0;
+		public static final int SERVICE_MEDIA_STREAMING 	= 0x01 << 1;
+		public static final int SERVICE_APP_PHOTO_VIEWER 	= 0x01 << 2;
+		public static final int SERVICE_APP_LIVE_CAM 		= 0x01 << 3;
+		public static final int SERVICE_APP_STREAMIG_DOC 	= 0x01 << 4;
+		public static final int SERVICE_SPLIT_SCREEN 		= 0x01 << 5;
+		public static final int SERVICE_APP_DROPBOX 		= 0x01 << 6;
+		public static final int SERVICE_APP_WEB_VIEWER 	= 0x01 << 7;
+		public static final int SERVICE_APP_QUALITY_MODE 	= 0x01 << 8;
+		public static final int SERVICE_APP_HTTP_STREAMING = 0x01 << 9;
+		public static final int SERVICE_APP_REMOTE_CONTROL = 0x01 << 10;
+		public static final int SERVICE_MEDIA_STREAM_AUDIO = 0x01 << 11;
+		public static final int SERVICE_EZENCODEPRO = 0x01 << 11;
 
 		// REMOTE_CONTROL_COMMAND
 		private static final int COMMAND_CONNECT = 0;
@@ -1252,6 +1258,7 @@ public class Falcon {
 			if (projectorInfo.supportClientMode() || isDirectConnenctedIpAddress(projectorInfo.getAddress())) {
 				if(null == projectorInfo.getOsVerion()) {
 					projectorInfo.osVerion = "2";
+					projectorInfo.service |= SERVICE_APP_HTTP_STREAMING | SERVICE_MEDIA_STREAM_AUDIO | SERVICE_EZENCODEPRO;
 				}
 				addProjector(projectorInfo);
 				mainThreadHandler.obtainMessage(MSG_SearchDidFind, projectorInfo).sendToTarget();

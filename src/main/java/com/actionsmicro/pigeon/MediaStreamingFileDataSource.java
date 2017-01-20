@@ -1,5 +1,8 @@
 package com.actionsmicro.pigeon;
 
+import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.Utils;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -7,9 +10,6 @@ import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import com.actionsmicro.utils.Log;
-import com.actionsmicro.utils.Utils;
 
 public class MediaStreamingFileDataSource extends MediaStreamingFileBaseDataSource {
 	

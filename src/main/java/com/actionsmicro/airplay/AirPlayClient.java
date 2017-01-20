@@ -4,14 +4,13 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.YuvImage;
 import android.net.Uri;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 
 import com.actionsmicro.airplay.http.PlistBody;
 import com.actionsmicro.airplay.mirror.TsStreamer;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
+import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
@@ -984,7 +983,7 @@ public class AirPlayClient {
 	private String getM3u8ServerUrl() {
 		if (m3u8ServerSocket != null) {
 			try {
-				return new URL("http", getIPAddress(true), m3u8ServerSocket.getLocalPort(), "").toString();
+				return new URL("http", Device.getHostIpAddress(context, true), m3u8ServerSocket.getLocalPort(), "").toString();
 			} catch (MalformedURLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -995,7 +994,7 @@ public class AirPlayClient {
 	private String getTsServerUrl() {
 		if (tsStreamer != null) {
 			try {
-				return new URL("http", getIPAddress(true), tsStreamer.getListeningPort(), "").toString();
+				return new URL("http", Device.getHostIpAddress(context, true), tsStreamer.getListeningPort(), "").toString();
 			} catch (MalformedURLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -1003,18 +1002,4 @@ public class AirPlayClient {
 		}
 		return null;
 	}
-	private String getIPAddress(boolean useIPv4) { //TODO  DRY
-		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-		int ip = wifiInfo.getIpAddress();
-
-		String ipString = String.format(
-				"%d.%d.%d.%d",
-				(ip & 0xff),
-				(ip >> 8 & 0xff),
-				(ip >> 16 & 0xff),
-				(ip >> 24 & 0xff));
-
-		return ipString;
-    }
 }
