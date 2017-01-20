@@ -565,7 +565,7 @@ public class AirPlayServer {
 									h264Frame.clear();
 									bb.get(payload.array(), 0, payloadSize);
 									debugLog("onDataAvailable:streaming:"+payloadSize+" bytes of payload read");
-									if (payloadType == 0) { // video bitstream
+									if (payloadType == 0 || payloadType == 0x1000) { // video bitstream
 										logBytes("onDataAvailable:streaming:payload:", payload.array());
 										EzAes.decrypt(payload.array(), payloadSize, h264Frame.array());
 										logBytes("onDataAvailable:streaming:h.264:", h264Frame.array());

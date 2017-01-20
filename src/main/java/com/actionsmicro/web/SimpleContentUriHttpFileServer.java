@@ -4,8 +4,6 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.provider.OpenableColumns;
 import android.webkit.MimeTypeMap;
 
@@ -58,20 +56,6 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
     public void stop() {
 		super.stop();
 	}
-	public String getIPAddress(boolean useIPv4) { //TODO  DRY
-		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-		int ip = wifiInfo.getIpAddress();
-
-		String ipString = String.format(
-				"%d.%d.%d.%d",
-				(ip & 0xff),
-				(ip >> 8 & 0xff),
-				(ip >> 16 & 0xff),
-				(ip >> 24 & 0xff));
-
-		return ipString;
-    }
 	public String getServerUrl() {
 		try {
 			String hostName = getHostName();
@@ -87,10 +71,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 		if (mHostName != null) {
 			return mHostName;
 		}
-		String hostName = getIPAddress(true);
-		if (Reachability.isWifiApEnabled(context)) {
-			hostName = Device.getWifiApIpAddress();
-		}
+		String hostName = Device.getHostIpAddress(context, true);
 		return hostName;
 	}
 

@@ -3,6 +3,7 @@ package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.support.v7.media.MediaControlIntent;
 import android.support.v7.media.MediaRouteSelector;
 import android.support.v7.media.MediaRouter;
 import android.support.v7.media.MediaRouter.Callback;
@@ -18,11 +19,12 @@ public class GoogleCastFinder extends DeviceFinderBase {
 
 	public static final String CAST_APP_ID = "E3A71BDC"; //TODO move to app
 	public static final String CAST_MEDIA_PLAYER_ID = "D3D8AEDC";
-	public static final String CAST_DEV_APP_ID = "E3A71BDC";//"B8CFAD80"; 
+	public static final String CAST_DEV_APP_ID = "E3A71BDC";//"B8CFAD80";
 	private MediaRouter mediaRouter;
 	private Callback callback;
 	private MediaRouteSelector mediaSelector = new MediaRouteSelector.Builder()
 	.addControlCategory(CastMediaControlIntent.categoryForCast(CAST_APP_ID))
+ 	.addControlCategory(CastMediaControlIntent.CATEGORY_CAST)
 	.build();
 	protected String TAG = "GoogleCastFinder";
 	public GoogleCastFinder(DeviceFinder deviceFinderProxy) {

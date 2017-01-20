@@ -36,7 +36,7 @@ public class GoogleCastAuthorizationApi extends GoogleCastApi implements Authori
 								e.printStackTrace();
 							}
 						}
-						if (authorizationListener != null) {
+						if (googleCastClient != null && authorizationListener != null) {
 							authorizationListener.authorizationIsGranted(GoogleCastAuthorizationApi.this, 1, 1);
 						}
 					}				
