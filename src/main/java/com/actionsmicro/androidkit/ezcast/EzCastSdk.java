@@ -58,7 +58,7 @@ public class EzCastSdk {
 	private static final String SDK_VERSION_STRING = "{SDK_VERSION_STRING_LITE}";
 	private static final String PREF_KEY_SUPPORT_LIST = "support_list";
 	private static final String PREF_NAME_EZCAST_SDK = "ezcastsdk";
-	private static final int INITIALIZATION_TIMEOUT_MS = 3000;
+	private static final int INITIALIZATION_TIMEOUT_MS = 10000;
 	private static final int LOCATION_TIMEOUT_MS = 3000;
 	private static final String TAG = "EzCastSdk";
 	private String appKey;
