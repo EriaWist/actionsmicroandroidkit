@@ -1,5 +1,6 @@
 package vavi.apps.shairport;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import android.annotation.TargetApi;
@@ -15,23 +16,27 @@ public class AacEldDecoder {
 	private BufferInfo bufferInfo;
 
 	public AacEldDecoder() {
-    	decocder = MediaCodec.createByCodecName("OMX.google.aac.decoder");//MediaCodec.createDecoderByType("audio/mp4a-latm");
-    	MediaFormat mediaFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 44100, 2);
-//    	mediaFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectELD);
-//    	mediaFormat.setInteger(MediaFormat.KEY_IS_ADTS, 1); 
-    	byte[] bytes = new byte[]{(byte) 0xF8, (byte)0xE8, 0x50, 0x00};
-        ByteBuffer bb = ByteBuffer.wrap(bytes);
-        mediaFormat.setByteBuffer("csd-0", bb);
-    	decocder.configure(mediaFormat, null, null, 0);
-    	decocder.start();
-    	
-//    	int decInBufIdx = decocder.dequeueInputBuffer(10000); 
-//		if (decInBufIdx >= 0) {
-//			decocder.getInputBuffers()[decInBufIdx].position(0); 
-//			decocder.getInputBuffers()[decInBufIdx].put(bytes, 0, bytes.length); 
-//			decocder.getInputBuffers()[decInBufIdx].rewind();
-//			decocder.queueInputBuffer(decInBufIdx, 0, bytes.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
-//		}
+		try {
+			decocder = MediaCodec.createByCodecName("OMX.google.aac.decoder");//MediaCodec.createDecoderByType("audio/mp4a-latm");
+			MediaFormat mediaFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 44100, 2);
+	//    	mediaFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectELD);
+	//    	mediaFormat.setInteger(MediaFormat.KEY_IS_ADTS, 1);
+			byte[] bytes = new byte[]{(byte) 0xF8, (byte)0xE8, 0x50, 0x00};
+			ByteBuffer bb = ByteBuffer.wrap(bytes);
+			mediaFormat.setByteBuffer("csd-0", bb);
+			decocder.configure(mediaFormat, null, null, 0);
+			decocder.start();
+
+	//    	int decInBufIdx = decocder.dequeueInputBuffer(10000);
+	//		if (decInBufIdx >= 0) {
+	//			decocder.getInputBuffers()[decInBufIdx].position(0);
+	//			decocder.getInputBuffers()[decInBufIdx].put(bytes, 0, bytes.length);
+	//			decocder.getInputBuffers()[decInBufIdx].rewind();
+	//			decocder.queueInputBuffer(decInBufIdx, 0, bytes.length, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+	//		}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	public byte[] decode(byte[] au, int length) { 
 		try {
