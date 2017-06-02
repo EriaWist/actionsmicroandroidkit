@@ -58,11 +58,17 @@ public class AvcEncoder {
 //				
 //		}
 		if (mediaCodec == null) {
-			mediaCodec = MediaCodec.createEncoderByType("video/avc");
+			try {
+				mediaCodec = MediaCodec.createEncoderByType("video/avc");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
-		MediaFormat mediaFormat = getMediaFormat(bitRate, framerate, iFrameInterval);
-		mediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-		mediaCodec.start();
+		if (mediaCodec != null) {
+			MediaFormat mediaFormat = getMediaFormat(bitRate, framerate, iFrameInterval);
+			mediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+			mediaCodec.start();
+		}
 	}
 	public MediaFormat getMediaFormat(int bitRate, int framerate, int iFrameInterval) {
 		MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height);

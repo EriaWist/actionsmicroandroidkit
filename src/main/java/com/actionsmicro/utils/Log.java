@@ -13,7 +13,7 @@ public class Log {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     // DUMP_LOG is used for some case that logcat will lose logs : ex: ezcast wire
     private static final boolean DUMP_LOG = false;
-
+    private static final boolean DEBUG = BuildConfig.DEBUG;
     public static void dumpLog(String message) {
         FileOutputStream fop = null;
         File file;
@@ -49,7 +49,7 @@ public class Log {
     }
 
     public static void d(String tag, String string) {
-        if (BuildConfig.DEBUG) {
+        if (DEBUG) {
             android.util.Log.d(tag, string);
             if (DUMP_LOG) {
                 dumpLog(tag + " :" + string);
@@ -58,7 +58,7 @@ public class Log {
     }
 
     public static void i(String tag, String string) {
-        if (BuildConfig.DEBUG) {
+        if (DEBUG) {
             android.util.Log.i(tag, string);
         }
     }
@@ -72,7 +72,7 @@ public class Log {
     }
 
     public static void v(String tag, String string) {
-        if (BuildConfig.DEBUG) {
+        if (DEBUG) {
             android.util.Log.v(tag, string);
         }
     }
