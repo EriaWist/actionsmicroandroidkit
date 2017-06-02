@@ -297,38 +297,28 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private List<Runnable> pendingTasks = new ArrayList<Runnable>();
 	public void stopApplication(final GoogleCastApp application,
 			final ResultCallback<Status> resultCallback) {
-		Runnable stopApp = new Runnable() {
+		Log.d(TAG, "stopApplication:"+(application!=null?application.getAppId():application));
+		if (application != null) {
+			final String appId = application.getAppId();
+			application.stopApplication(new ResultCallback<Status>() {
 
-			@Override
-			public void run() {
-				Log.d(TAG, "stopApplication:"+(application!=null?application.getAppId():application));
-				if (application != null) {
-					final Runnable runnable = this;
-					final String appId = application.getAppId();
-					application.stopApplication(new ResultCallback<Status>() {
-
-						@Override
-						public void onResult(Status result) {
-							if (result != null && !result.isSuccess()) {
-								Log.d(TAG, "stopApplication -> failed onResult:"+result);
-							}
-							Log.d(TAG, "application " + appId+" stopped");
-							
-							if (resultCallback != null) {
-								resultCallback.onResult(result);
-							}
-							finishPendingTask(runnable);
-						}				
-					});
-				} else {
-					if (resultCallback != null) {
-						resultCallback.onResult(null);
+				@Override
+				public void onResult(Status result) {
+					if (result != null && !result.isSuccess()) {
+						Log.d(TAG, "stopApplication -> failed onResult:"+result);
 					}
-					finishPendingTask(this);
+					Log.d(TAG, "application " + appId+" stopped");
+
+					if (resultCallback != null) {
+						resultCallback.onResult(result);
+					}
 				}
-			}			
-		};
-		executeOrSchedule("stopApp", stopApp);
+			});
+		} else {
+			if (resultCallback != null) {
+				resultCallback.onResult(null);
+			}
+		}
 	}
 	private void disconnectEzCastChannel() throws IOException {
 		if (googleCastApiClient != null) {
@@ -519,6 +509,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					final Runnable runnable = this;
 					if (mRemoteMediaPlayer != null &&
 							playerState != State.STOPPED) {
+						Log.d(TAG, "going to stop mRemoteMediaPlayer");
 						mRemoteMediaPlayer.stop(googleCastApiClient).setResultCallback(new ResultCallback<MediaChannelResult>() {
 
 							@Override
@@ -541,6 +532,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 							
 						});
 					} else {
+						Log.d(TAG, "mRemoteMediaPlayer already stopped");
 						mIsStopping = false;
 						playerState = State.STOPPED;
 						finishPendingTask(runnable);
@@ -713,10 +705,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 								case MediaStatus.PLAYER_STATE_UNKNOWN:
 									break;
 								case MediaStatus.PLAYER_STATE_IDLE:
-									playerState = State.STOPPED;
-									if (mRemoteMediaPlayer.getStreamDuration() != 0) {
+									if (playerState != State.STOPPED && mRemoteMediaPlayer.getStreamDuration() != 0) {
 										handleMediaPlayerStop(Cause.REMOTE);
 									}
+									playerState = State.STOPPED;
 									break;
 								}
 							}
@@ -769,21 +761,13 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			public void run() {
 				final Runnable runnable = this;
 				Log.d(TAG, "launcheApplication:"+castAppId+", currentApplication:"+(currentApplication!=null?currentApplication.getAppId():null));
+				final GoogleCastApp appToBeLaunched = new GoogleCastApp(googleCastApiClient, castAppId);
 				if ((currentApplication == null || !currentApplication.getAppId().equals(castAppId))) {
 					GoogleCastApp appToBeStopped = currentApplication;
-					final GoogleCastApp appToBeLaunched = new GoogleCastApp(googleCastApiClient, castAppId);
 					currentApplication = null;
 					stopApplication(appToBeStopped, new ResultCallback<Status>() {
 						@Override
 						public void onResult(Status result) {
-							
-						}				
-					});
-					Runnable doLaunchApp = new Runnable() {
-
-						@Override
-						public void run() {
-							final Runnable runnable = this;
 							appToBeLaunched.launcheApplication(new ResultCallback<Cast.ApplicationConnectionResult>() {
 
 								@Override
@@ -794,18 +778,23 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 										resultCallback.onResult(result);
 									}
 									finishPendingTask(runnable);
-								}							
+								}
 							});
-						}
-
-					};
-					executeOrSchedule("doLaunchApp", doLaunchApp);
-					finishPendingTask(runnable);						
+						}				
+					});
 				} else {
-					if (resultCallback != null) {
-						resultCallback.onResult(null);
-					}
-					finishPendingTask(runnable);
+					appToBeLaunched.launcheApplication(new ResultCallback<Cast.ApplicationConnectionResult>() {
+
+						@Override
+						public void onResult(
+								ApplicationConnectionResult result) {
+							currentApplication = appToBeLaunched;
+							if (resultCallback != null) {
+								resultCallback.onResult(result);
+							}
+							finishPendingTask(runnable);
+						}
+					});
 				}
 			}
 		};
