@@ -24,7 +24,7 @@ public class GoogleCastFinder extends DeviceFinderBase {
 	private Callback callback;
 	private MediaRouteSelector mediaSelector = new MediaRouteSelector.Builder()
 	.addControlCategory(CastMediaControlIntent.categoryForCast(CAST_APP_ID))
- 	.addControlCategory(CastMediaControlIntent.CATEGORY_CAST)
+ 	.addControlCategory(CastMediaControlIntent.categoryForRemotePlayback())
 	.build();
 	protected String TAG = "GoogleCastFinder";
 	public GoogleCastFinder(DeviceFinder deviceFinderProxy) {
@@ -36,6 +36,7 @@ public class GoogleCastFinder extends DeviceFinderBase {
 	public List<DeviceInfo> getDevices() {
 		ArrayList<DeviceInfo> devices = new ArrayList<DeviceInfo>();
 		for (RouteInfo routeInfo : mediaRouter.getRoutes()) {
+			Log.d(TAG, "evaluate route:" + routeInfo);
 			if (routeInfo.matchesSelector(mediaSelector)) {
 				devices.add(new GoogleCastDeviceInfo(routeInfo));
 			}
@@ -55,7 +56,7 @@ public class GoogleCastFinder extends DeviceFinderBase {
 	public void search() {
 		stop();
 		if (callback == null) {
-			
+			Log.d(TAG, "Add route callback");
 			mediaRouter.addCallback(mediaSelector, callback = new Callback() {
 				@Override
 				public void onRouteAdded (MediaRouter router, MediaRouter.RouteInfo route) {
@@ -67,7 +68,13 @@ public class GoogleCastFinder extends DeviceFinderBase {
 					Log.d(TAG, "onRouteRemoved:"+route.getName());
 					getDeviceFinderProxy().notifyListeneroOnDeviceRemoved(new GoogleCastDeviceInfo(route));					
 				}
-			}, MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN);
+				@Override
+				public void onRouteChanged(MediaRouter router, RouteInfo route) {
+					Log.d(TAG, "onRouteChanged:"+route.getName());
+					getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new GoogleCastDeviceInfo(route));
+				}
+
+			}, MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN | MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY);
 		}
 	}
 
