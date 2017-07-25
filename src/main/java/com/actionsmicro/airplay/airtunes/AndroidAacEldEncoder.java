@@ -1,5 +1,6 @@
 package com.actionsmicro.airplay.airtunes;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import android.annotation.TargetApi;
@@ -15,13 +16,18 @@ public class AndroidAacEldEncoder implements IAacEldEncoder {
 
 	@Override
 	public void init() {
-		MediaCodec mediaCodec = MediaCodec.createByCodecName("OMX.google.aac.decoder");//MediaCodec.createDecoderByType("audio/mp4a-latm");
-    	MediaFormat mediaFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 0, 0);
-    	byte[] bytes = new byte[]{(byte) 0xF8, (byte) 0xE8, 0x50, 0x00};
-        ByteBuffer bb = ByteBuffer.wrap(bytes);
-        mediaFormat.setByteBuffer("csd-0", bb);
-    	mediaCodec.configure(mediaFormat, null, null, 0);
-    	decoder = mediaCodec;
+		try {
+			MediaCodec mediaCodec = null;//MediaCodec.createDecoderByType("audio/mp4a-latm");
+			mediaCodec = MediaCodec.createByCodecName("OMX.google.aac.decoder");
+			MediaFormat mediaFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 0, 0);
+			byte[] bytes = new byte[]{(byte) 0xF8, (byte) 0xE8, 0x50, 0x00};
+			ByteBuffer bb = ByteBuffer.wrap(bytes);
+			mediaFormat.setByteBuffer("csd-0", bb);
+			mediaCodec.configure(mediaFormat, null, null, 0);
+			decoder = mediaCodec;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override

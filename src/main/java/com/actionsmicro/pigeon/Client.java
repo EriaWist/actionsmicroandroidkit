@@ -342,7 +342,7 @@ public class Client {
             Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
             Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
             BufferedOutputStream socketStream = null;
-            Log.d(TAG, "try to sentImageToServer("+serverAddress+":"+portNumber+")");
+            Log.d(TAG, "try to sentH264ImageToServer("+serverAddress+":"+portNumber+")");
             socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
             socketStream.write(createPacketHeaderForSendingH264Image(width, height, h264Data.length).array());
             socketStream.write(h264Data);

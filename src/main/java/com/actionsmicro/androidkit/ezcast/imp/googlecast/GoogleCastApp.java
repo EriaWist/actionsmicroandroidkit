@@ -3,6 +3,7 @@ package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 import com.actionsmicro.utils.Log;
 import com.google.android.gms.cast.ApplicationMetadata;
 import com.google.android.gms.cast.Cast;
+import com.google.android.gms.cast.LaunchOptions;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
@@ -23,11 +24,11 @@ public class GoogleCastApp {
 		return applicationStarted;
 	}
 	
-	public void launcheApplication(final ResultCallback<Cast.ApplicationConnectionResult> resultCallback) {
+	public void launcheApplication(final ResultCallback<Cast.ApplicationConnectionResult> resultCallback, LaunchOptions launchOptions) {
 		if (googleCastApiClient != null && !applicationStarted) {
 			try {
 				Log.d(TAG, "launching application("+castAppId);
-				Cast.CastApi.launchApplication(googleCastApiClient, castAppId, false)
+				Cast.CastApi.launchApplication(googleCastApiClient, castAppId, launchOptions)
 				.setResultCallback(
 						new ResultCallback<Cast.ApplicationConnectionResult>() {
 							@Override
