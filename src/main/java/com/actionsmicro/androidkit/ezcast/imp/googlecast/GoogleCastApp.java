@@ -24,11 +24,10 @@ public class GoogleCastApp {
 		return applicationStarted;
 	}
 	
-	public void launcheApplication(final ResultCallback<Cast.ApplicationConnectionResult> resultCallback) {
+	public void launcheApplication(final ResultCallback<Cast.ApplicationConnectionResult> resultCallback, LaunchOptions launchOptions) {
 		if (googleCastApiClient != null && !applicationStarted) {
 			try {
 				Log.d(TAG, "launching application("+castAppId);
-				LaunchOptions launchOptions = new LaunchOptions.Builder().setRelaunchIfRunning(true).build();
 				Cast.CastApi.launchApplication(googleCastApiClient, castAppId, launchOptions)
 				.setResultCallback(
 						new ResultCallback<Cast.ApplicationConnectionResult>() {

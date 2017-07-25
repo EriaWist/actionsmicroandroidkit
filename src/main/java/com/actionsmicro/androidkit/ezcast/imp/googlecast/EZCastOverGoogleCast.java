@@ -21,6 +21,7 @@ import com.google.android.gms.cast.Cast.ApplicationConnectionResult;
 import com.google.android.gms.cast.Cast.Listener;
 import com.google.android.gms.cast.Cast.MessageReceivedCallback;
 import com.google.android.gms.cast.CastDevice;
+import com.google.android.gms.cast.LaunchOptions;
 import com.google.android.gms.cast.MediaInfo;
 import com.google.android.gms.cast.MediaMetadata;
 import com.google.android.gms.cast.MediaStatus;
@@ -668,7 +669,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 				}
 			}
 
-		});
+		}, new LaunchOptions.Builder().setRelaunchIfRunning(true).build());
 	}
 	private void stopHttpFileServer() {
 		if (simpleHttpFileServer != null) {
@@ -757,7 +758,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			mSeekbarTimer = null;
 		}
 	}
-	private void launcheApplication(final String castAppId, final ResultCallback<Cast.ApplicationConnectionResult> resultCallback) {
+	private void launcheApplication(final String castAppId, final ResultCallback<Cast.ApplicationConnectionResult> resultCallback, final LaunchOptions options) {
 		Runnable launchApp = new Runnable() {
 
 			@Override
@@ -782,7 +783,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 									}
 									finishPendingTask(runnable);
 								}
-							});
+							}, options);
 						}				
 					});
 				} else {
@@ -797,13 +798,14 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 							}
 							finishPendingTask(runnable);
 						}
-					});
+					}, options);
 				}
 			}
 		};
 		executeOrSchedule("launchApp", launchApp);		
 	}
 	private void launcheEZCastApp(final boolean startDisplaying) {
+
 		launcheApplication(getEzCastAppId(), new ResultCallback<Cast.ApplicationConnectionResult>() {
 
 			@Override
@@ -818,7 +820,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 				}
 			}
 
-		});
+		}, new LaunchOptions.Builder().setRelaunchIfRunning(false).build());
 	}
 	private String getEzCastAppId() {
 		String castAppId = GoogleCastFinder.CAST_APP_ID;
