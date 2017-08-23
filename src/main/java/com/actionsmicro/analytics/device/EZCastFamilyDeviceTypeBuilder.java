@@ -21,7 +21,9 @@ public class EZCastFamilyDeviceTypeBuilder {
 					} else if (type.equals("car")) {
 						return "ezcastcar";
 					} else if (type.equals("lite")) {
-						return "ezcastlite";						
+						return "ezcastlite";
+					} else if(type.equals("mirascreen")){
+						return "mirascreen";
 					}
 				}
 				return "ezcast";

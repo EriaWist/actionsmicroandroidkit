@@ -144,7 +144,8 @@ public class EzCastSdk {
 				supportList.contains("ezcast") ||
 				supportList.contains("ezcastlite") ||
 				supportList.contains("ezcastmusic") ||
-				supportList.contains("ezcastcar")) {
+				supportList.contains("ezcastcar") ||
+				supportList.contains("mirascreen")) {
 			FalconDeviceFinder falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
 			if (filter != null) {
 				falconDeviceFinder.addFilter(filter);
@@ -260,7 +261,7 @@ public class EzCastSdk {
 				e.printStackTrace();
 			}
 		}
-		return Arrays.asList("ezcast", "ezscreen", "ezcastpro"); // default value
+		return Arrays.asList("ezcast", "ezscreen", "ezcastpro", "mirascreen"); // default value
 	}
 	protected static List<String> convertJsonArrayToList(String supportListString)
 			throws JSONException {
