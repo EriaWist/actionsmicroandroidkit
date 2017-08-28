@@ -58,7 +58,7 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
             // https://groups.google.com/forum/?fromgroups=#!topic/netty/UCfqPPk5O4s
             // certs that use this extension will throw in Cipher.java.
             // fallback is to use a custom SSLContext, and hack around the x509 extension.
-            if (Build.VERSION.SDK_INT <= 15)
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
                 throw new Exception();
             defaultSSLContext = SSLContext.getInstance("Default");
         }
@@ -103,7 +103,10 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
         socket.setClosedCallback(new CompletedCallback() {
             @Override
             public void onCompleted(Exception ex) {
-                callback.onHandshakeCompleted(new SSLException(ex), null);
+                if (ex != null)
+                    callback.onHandshakeCompleted(ex, null);
+                else
+                    callback.onHandshakeCompleted(new SSLException("socket closed during handshake"), null);
             }
         });
         try {
@@ -299,7 +302,9 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
                                     verifier.verify(mHost, StrictHostnameVerifier.getCNs(peerCertificates[0]), StrictHostnameVerifier.getDNSSubjectAlts(peerCertificates[0]));
                                 }
                                 else {
-                                    hostnameVerifier.verify(mHost, engine.getSession());
+                                    if (!hostnameVerifier.verify(mHost, engine.getSession())) {
+                                        throw new SSLException("hostname <" + mHost + "> has been denied");
+                                    }
                                 }
                             }
                             trusted = true;
@@ -325,8 +330,17 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
                 }
                 handshakeCallback.onHandshakeCompleted(null, this);
                 handshakeCallback = null;
-                if (mWriteableCallback != null)
-                    mWriteableCallback.onWriteable();
+
+                mSocket.setClosedCallback(null);
+                // handshake can complete during a wrap, so make sure that the call
+                // stack and wrap flag is cleared before invoking writable
+                getServer().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mWriteableCallback != null)
+                            mWriteableCallback.onWriteable();
+                    }
+                });
                 onDataAvailable();
             }
         }
@@ -412,6 +426,8 @@ public class AsyncSSLSocketWrapper implements AsyncSocketWrapper, AsyncSSLSocket
             handshakeCallback = null;
             mSocket.setDataCallback(new DataCallback.NullDataCallback());
             mSocket.end();
+            // handshake sets this callback. unset it.
+            mSocket.setClosedCallback(null);
             mSocket.close();
             hs.onHandshakeCompleted(e, null);
             return;
