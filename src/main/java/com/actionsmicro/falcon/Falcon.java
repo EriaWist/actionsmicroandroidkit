@@ -1013,7 +1013,11 @@ public class Falcon {
 	private static final int IPMSG_BR_ENTRY		= 0x0001;
 	private static final int IPMSG_BR_EXIT 		= 0x0002;
 	private static final int IPMSG_ANSENTRY 	= 0x0003;
+    private static final int IPMSG_SENDDATA 	= 0x0022;
+    private static final int IMAGE_PACKET_HEADER_SIZE = 16;
 	private static final int MAX_LOOKUP_INTERVAL = 6;
+    private static final int EZ_DISPLAY_QUERY_HEADER_SIZE = 24;
+    private static final int PICO_QUERY_CMD = 1;
 	
 	private static long s_commandSequenceNumber = 0;
 	private static final byte[] generateCommand(String username, String hostname, int command) {
@@ -1021,12 +1025,20 @@ public class Falcon {
 		s_commandSequenceNumber++;
 		return commandInString.getBytes();
 	}
+    private static final byte[] generateCleanCommand(String username, String hostname, int command) {
+        String commandInString = IPMSG_VERSION+":"+s_commandSequenceNumber+":"+username+":"+hostname+":"+command+":"+"\0";
+        s_commandSequenceNumber++;
+        return commandInString.getBytes();
+    }
 	private static final byte[] generateEntryCommand(String username, String hostname) {
 		return generateCommand(username, hostname, IPMSG_BR_ENTRY);
 	}
 	private static final byte[] generateExitCommand(String username, String hostname) {
 		return generateCommand(username, hostname, IPMSG_BR_EXIT);
 	}
+    private static final byte[] generateQueryCommand(String username, String hostname) {
+        return generateCleanCommand(username, hostname, IPMSG_SENDDATA);
+    }
 	@SuppressWarnings("unused")
 	private static final byte[] generateNoOperationCommand(String username, String hostname) {
 		return generateCommand(username, hostname, IPMSG_NOOPERATION);
@@ -1407,7 +1419,11 @@ public class Falcon {
 				projectorInfo.name = parameters[3];
 			}
 			HashMap<String, String> keyValuePairs = parseKeyValuePairs(parameters);
-			if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY)) {
+
+            int[] res = getMaxResoulution(projectorInfo);
+			keyValuePairs.put("max_w", String.valueOf(res[0]));
+			keyValuePairs.put("max_h", String.valueOf(res[1]));
+            if (keyValuePairs.containsKey(PARAMETER_DISCOVERY_KEY)) {
 				projectorInfo.discoveryVersion = Integer.valueOf(keyValuePairs.get(PARAMETER_DISCOVERY_KEY));
 				if (checkMd5(parameters)) {
 					processAllValue(keyValuePairs, projectorInfo);
@@ -1425,6 +1441,73 @@ public class Falcon {
 		}
 		return false;
 	}
+
+    private synchronized static int[] getMaxResoulution(ProjectorInfo projector) {
+        int[] res = new int[]{1920, 1080};
+        try {
+            InetAddress targetAddress = projector.getAddress();
+            DatagramSocket clientSocket = new DatagramSocket();
+            clientSocket.setSoTimeout(1000);
+            byte[] command = generateQueryCommand("android", "android");
+            ByteBuffer packetBuffer = ByteBuffer.allocate(command.length + IMAGE_PACKET_HEADER_SIZE + EZ_DISPLAY_QUERY_HEADER_SIZE);
+            ByteBuffer imagepacketHeader = createPacketHeaderForImagePackeyHeader();
+            ByteBuffer queryHeader = createPacketHeaderForQueryStatus();
+            packetBuffer.order(ByteOrder.LITTLE_ENDIAN);
+            // command
+            packetBuffer.put(command);
+            packetBuffer.put(imagepacketHeader.array());
+            packetBuffer.put(queryHeader.array());
+
+            byte[] packetBytes = packetBuffer.array();
+            clientSocket.send(new DatagramPacket(packetBytes, packetBytes.length, targetAddress, EZ_WIFI_DISPLAY_PORT_NUMBER));
+            final byte[] recvBuf = new byte[1024];
+            final DatagramPacket recvPacket2 = new DatagramPacket(recvBuf, recvBuf.length);
+            clientSocket.receive(recvPacket2);
+
+            final String[] receiveStrings = new String(recvPacket2.getData(), 0, recvPacket2.getLength(), Charset.forName("UTF-8")).split("\0");
+            byte[] status_packet = new byte[24];
+            System.arraycopy(recvBuf, receiveStrings[0].length() + 1, status_packet, 0, 24);
+            ByteBuffer picoStatusBuffer = ByteBuffer.wrap(status_packet);
+            picoStatusBuffer.order(ByteOrder.LITTLE_ENDIAN);
+            picoStatusBuffer.position(8);
+            res[0] = picoStatusBuffer.getInt();
+            res[1] = picoStatusBuffer.getInt();
+        } catch (SocketTimeoutException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return res;
+    }
+
+    private static ByteBuffer createPacketHeaderForImagePackeyHeader() {
+        ByteBuffer header = ByteBuffer.allocate(IMAGE_PACKET_HEADER_SIZE);
+        header.order(ByteOrder.LITTLE_ENDIAN);
+        int packetLength = 24;
+        header.putShort((short) 1); // totalPacket
+        header.putShort((short) 0); // curPacketIdx
+        header.putInt(0);  // offset
+        header.putInt(packetLength);
+        header.putInt(0);
+
+        return header;
+    }
+
+    private static ByteBuffer createPacketHeaderForQueryStatus() {
+        ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_QUERY_HEADER_SIZE);
+        header.order(ByteOrder.LITTLE_ENDIAN);
+        header.putInt(PICO_QUERY_CMD); //tag == 1;
+        header.put((byte) 0); // flag = 0
+        header.put((byte) 0);
+        header.put((byte) 0); // reserve0
+        header.put((byte) 0); // reserve1
+        header.putInt(0);
+        header.putInt(0);
+        header.putInt(0);
+        header.putInt(0);
+        return header;
+    }
+
 	private static void processAllValue(HashMap<String, String> keyValuePairs, ProjectorInfo projectorInfo) {
 		if (keyValuePairs.containsKey(PARAMETER_NAME_KEY)) {
 			projectorInfo.name = keyValuePairs.get(PARAMETER_NAME_KEY);
