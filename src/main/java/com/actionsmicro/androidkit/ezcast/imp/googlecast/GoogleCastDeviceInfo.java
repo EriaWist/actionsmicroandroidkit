@@ -150,6 +150,11 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	}
 
 	@Override
+	public boolean supportAd() {
+		return true;
+	}
+
+	@Override
 	public boolean supportH264Streaming() {
 		return false;
 	}

@@ -101,6 +101,11 @@ public class AirPlayDeviceInfo extends BonjourDeviceInfo {
 	}
 
 	@Override
+	public boolean supportAd() {
+		return true;
+	}
+
+	@Override
 	public boolean supportH264Streaming() {
 		return false;
 	}

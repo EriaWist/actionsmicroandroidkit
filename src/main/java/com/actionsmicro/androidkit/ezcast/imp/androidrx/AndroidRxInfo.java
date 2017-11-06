@@ -96,6 +96,11 @@ public class AndroidRxInfo extends BonjourDeviceInfo {
 	}
 
 	@Override
+	public boolean supportAd() {
+		return true;
+	}
+
+	@Override
 	public boolean supportH264Streaming() {
 		return true;
 	}
