@@ -18,13 +18,14 @@ import com.actionsmicro.utils.InputStreamKnownSizeBody;
 import com.actionsmicro.utils.Log;
 
 public class Utils {
+	private static final int SOCKET_OPERATION_TIMEOUT = 5 * 1000;
 	public static HttpResponse uploadInputStreamToServer(InputStream source, String fileName, String server, String dir) throws IOException {
 		HttpResponse response = null;
 		try {
 			URI dest = new URI(server + dir);
 			final HttpParams httpParams = new BasicHttpParams();
-		    HttpConnectionParams.setConnectionTimeout(httpParams, 1000);
-		    HttpConnectionParams.setSoTimeout(httpParams, 1000);
+		    HttpConnectionParams.setConnectionTimeout(httpParams, SOCKET_OPERATION_TIMEOUT);
+		    HttpConnectionParams.setSoTimeout(httpParams, SOCKET_OPERATION_TIMEOUT);
 			HttpClient httpclient = new DefaultHttpClient(httpParams);
 			HttpPost httppost = new HttpPost(dest);
 			MultipartEntity reqEntity = new MultipartEntity(HttpMultipartMode.BROWSER_COMPATIBLE);
