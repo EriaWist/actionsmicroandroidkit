@@ -139,7 +139,10 @@ public class JsonRpcOverHttpServer {
 
 	}
 	public void stop() {
-		AsyncServer.getDefault().stop();
+		// avoid use AsyncServer.getDefault().stop() to kill all httpserver which caused wierd behavior
+		// ref:https://github.com/koush/AndroidAsync/issues/351
+		// The feature per se is good to have something the Google folks call "lameducking", meaning that the server will continue to server ongoing requests until they are finished.
+		// AsyncServer.getDefault().stop();
 		httpServer.stop();
 	}
 	public int getListeningPort() {
