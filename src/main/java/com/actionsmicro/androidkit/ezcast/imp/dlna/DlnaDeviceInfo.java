@@ -179,6 +179,11 @@ public class DlnaDeviceInfo extends DeviceInfo {
 		return false;
 	}
 
+	@Override
+	public boolean supportImageToH264() {
+		return false;
+	}
+
 	public String getManufacturer() {
 		try {
 			String manufacturer = device.getDetails().getManufacturerDetails().getManufacturer();

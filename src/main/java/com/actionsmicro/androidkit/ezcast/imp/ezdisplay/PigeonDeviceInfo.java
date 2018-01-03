@@ -128,6 +128,11 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	}
 
 	@Override
+	public boolean supportImageToH264() {
+		return true;
+	}
+
+	@Override
 	protected AudioApi createAudioApi(AudioApiBuilder audioApiBuilder) {
 		return new PigeonAudioApi(audioApiBuilder);
 	}
