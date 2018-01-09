@@ -51,6 +51,7 @@ repositories {
 
 dependencies {
     compile 'com.google.code.gson:gson:2.2.4'
+    compile (name:'aiurjsproxy', ext:'aar')
     compile files('libs/apache-mime4j-0.6.jar')
     compile files('libs/cling-core-2.0.1.jar')
     compile files('libs/cling-support-2.0.1.jar')
