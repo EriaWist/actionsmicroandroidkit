@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
 
+import com.actionsmicro.airplay.auth.AirPlayAuth;
 import com.actionsmicro.airplay.http.PlistBody;
 import com.actionsmicro.airplay.mirror.TsStreamer;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
@@ -23,6 +24,7 @@ import com.dd.plist.XMLPropertyListParser;
 import com.koushikdutta.async.AsyncServer;
 import com.koushikdutta.async.AsyncServerSocket;
 import com.koushikdutta.async.AsyncSocket;
+import com.koushikdutta.async.ByteBufferList;
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.future.Future;
 import com.koushikdutta.async.http.AsyncHttpClient;
@@ -81,10 +83,10 @@ public class AirPlayClient {
 
 	}
 	public interface ConnectionManager {
-
 		void onConnectionFailed(Exception e);
-		
 	}
+
+	private static final String USER_AGENT_AUTH_STRING = "AirPlay/320.20";
 	private static final String USER_AGENT_STRING = "MediaControl/1.0";
 	private static final String TAG = "AirPlayClient";
 	private InetAddress serverAddress;
@@ -124,7 +126,7 @@ public class AirPlayClient {
 	private VideoStateListener videoStateListener;
 	private String sessionId = UUID.randomUUID().toString();
 	private AsyncHttpClient asyncHttpClient;
-	
+	private AirPlayAuth airplayAuth = new AirPlayAuth();
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 	private Context context;
 	private List<ConnectionManager> managers = new ArrayList<ConnectionManager>();
@@ -152,17 +154,236 @@ public class AirPlayClient {
 			}
 		}
 	}
+
 	public AirPlayClient(Context context, InetAddress inetAddress) {
 		this.context = context;
 		this.serverAddress = inetAddress;
+
+		DoAirplayAuth();
+		/*
 		reverseConnectionForEvent.run(true, true);
 		inqueryServerInfo();
 		prepareEventServer();
 		establishReverseHttpConnectionForEvent();
 		prepareSlideshowServer();
-		establishReverseHttpConnectionForSlideshow();		
+		establishReverseHttpConnectionForSlideshow();
+		*/
 	}
-	
+
+	/*	IOS10.2 airplay Authentication flow
+	*  Do Authentication: PairVerify1 -> PairVerify2
+	*  If Pair Verify failed => Do PairSetup:
+	*  		1. Post to airplay server: "/pair-pin-start"
+	*  		2. Get user input PIN code
+	*		3. Do pairing: doPairSetupPin1 -> doPairSetupPin2 -> doPairSetupPin3
+	*  		4. Success => Do Authentication
+	*/
+	private void DoAirplayAuth() {
+		airplayAuth.authenticate();//Initial keys
+		try {
+			byte[] data = airplayAuth.getPairVerify1();
+			Headers headers = new Headers();
+			headers.add("Content-Length", String.valueOf(data.length));
+			headers.add("Content-Type", "application/octet-stream");
+			headers.add("User-Agent", USER_AGENT_AUTH_STRING);
+			headers.add("X-Apple-Session-ID", getSessionId());
+			AsyncHttpPost pv1 = new AsyncHttpPost(getServerUri("/pair-verify"), headers);
+			pv1.setBody(new StreamBody(new ByteArrayInputStream(data), data.length));
+			getHttpClient().executeByteBufferList(pv1, new AsyncHttpClient.DownloadCallback() {
+				@Override
+				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
+					if (e != null) {
+						e.printStackTrace();
+						DoPairSetup();
+					}
+					else if(asyncHttpResponse.code() != 200){
+						Log.d(TAG, "PairVerify1 failed");
+						DoPairSetup();
+					}
+					else {
+						//Do PairVerify2
+						DoPairVerify2(byteBufferList.getAllByteArray());
+					}
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+			notifyConnectionManagerDidFailed(e);
+		}
+	}
+
+	private void DoPairVerify2(byte[] input) {
+		try {
+			byte[] data = airplayAuth.getPairVerify2(input);
+			Headers headers = new Headers();
+			headers.add("Content-Length", String.valueOf(data.length));
+			headers.add("Content-Type", "application/octet-stream");
+			headers.add("User-Agent", USER_AGENT_AUTH_STRING);
+			headers.add("X-Apple-Session-ID", getSessionId());
+			AsyncHttpPost pv2 = new AsyncHttpPost(getServerUri("/pair-verify"), headers);
+			pv2.setBody(new StreamBody(new ByteArrayInputStream(data), data.length));
+			getHttpClient().executeByteBufferList(pv2, new AsyncHttpClient.DownloadCallback() {
+				@Override
+				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
+					if (e != null) {
+						e.printStackTrace();
+						DoPairSetup();
+					}
+					else if(asyncHttpResponse.code() != 200){
+						Log.d(TAG, "PairVerify2 failed");
+						DoPairSetup();
+					}
+					else {
+						Log.d(TAG, "Airplay Authentication Success");
+						//TODO: Old flow still work after authentication?
+						reverseConnectionForEvent.run(true, true);
+						inqueryServerInfo();
+						prepareEventServer();
+						establishReverseHttpConnectionForEvent();
+						prepareSlideshowServer();
+						establishReverseHttpConnectionForSlideshow();
+					}
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+			notifyConnectionManagerDidFailed(e);
+		}
+	}
+
+	private void DoPairSetup() {
+		try {
+			Headers headers = new Headers();
+			headers.add("Content-Length", "0");
+			headers.add("User-Agent", USER_AGENT_AUTH_STRING);
+			headers.add("X-Apple-Session-ID", getSessionId());
+			AsyncHttpPost pps = new AsyncHttpPost(getServerUri("/pair-pin-start"), headers);
+			getHttpClient().executeByteBufferList(pps, new AsyncHttpClient.DownloadCallback() {
+				@Override
+				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
+					if (e != null) {
+						e.printStackTrace();
+						notifyConnectionManagerDidFailed(e);
+					}
+					else if(asyncHttpResponse.code() != 200){
+						Log.d(TAG, "PairPinStart failed");
+						notifyConnectionManagerDidFailed(e);
+					}
+					else {
+						DoGetPinCode();
+					}
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+			notifyConnectionManagerDidFailed(e);
+		}
+	}
+
+	//TODO: Should pass to UI thread
+	private void DoGetPinCode() {
+		/*
+		String code = "1234";
+		DoPairSetup1(code);
+		*/
+	}
+
+	private void DoPairSetup1(final String pin) {
+		try {
+			byte[] data = airplayAuth.getPairSetupPin1();
+			Headers headers = new Headers();
+			headers.add("Content-Length", String.valueOf(data.length));
+			headers.add("Content-Type", "application/x-apple-binary-plist");
+			headers.add("User-Agent", USER_AGENT_AUTH_STRING);
+			headers.add("X-Apple-Session-ID", getSessionId());
+			AsyncHttpPost ps1 = new AsyncHttpPost(getServerUri("/pair-setup-pin"), headers);
+			ps1.setBody(new StreamBody(new ByteArrayInputStream(data), data.length));
+			getHttpClient().executeByteBufferList(ps1, new AsyncHttpClient.DownloadCallback() {
+				@Override
+				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
+					if (e != null) {
+						e.printStackTrace();
+						notifyConnectionManagerDidFailed(e);
+					}
+					else if(asyncHttpResponse.code() != 200){
+						Log.d(TAG, "DoPairSetup1 failed");
+						notifyConnectionManagerDidFailed(e);
+					}
+					else {
+						DoPairSetup2(byteBufferList.getAllByteArray(), pin);
+					}
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+			notifyConnectionManagerDidFailed(e);
+		}
+	}
+
+	private void DoPairSetup2(byte[] input, final String PIN) {
+		try {
+			byte[] data = airplayAuth.getPairSetupPin2(input, PIN);
+			Headers headers = new Headers();
+			headers.add("Content-Length", String.valueOf(data.length));
+			headers.add("Content-Type", "application/x-apple-binary-plist");
+			headers.add("User-Agent", USER_AGENT_AUTH_STRING);
+			headers.add("X-Apple-Session-ID", getSessionId());
+			AsyncHttpPost ps1 = new AsyncHttpPost(getServerUri("/pair-setup-pin"), headers);
+			ps1.setBody(new StreamBody(new ByteArrayInputStream(data), data.length));
+			getHttpClient().executeByteBufferList(ps1, new AsyncHttpClient.DownloadCallback() {
+				@Override
+				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
+					if (e != null) {
+						e.printStackTrace();
+						notifyConnectionManagerDidFailed(e);
+					}
+					else if(asyncHttpResponse.code() != 200){
+						Log.d(TAG, "DoPairSetup2 failed");
+						notifyConnectionManagerDidFailed(e);
+					}
+					else {
+						DoPairSetup3(byteBufferList.getAllByteArray());
+					}
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+			notifyConnectionManagerDidFailed(e);
+		}
+	}
+
+	private void DoPairSetup3(byte[] input){
+		try {
+			byte[] data = airplayAuth.getPairSetupPin3(input);
+			Headers headers = new Headers();
+			headers.add("Content-Length", String.valueOf(data.length));
+			headers.add("Content-Type", "application/x-apple-binary-plist");
+			headers.add("User-Agent", USER_AGENT_AUTH_STRING);
+			headers.add("X-Apple-Session-ID", getSessionId());
+			AsyncHttpPost ps1 = new AsyncHttpPost(getServerUri("/pair-setup-pin"), headers);
+			ps1.setBody(new StreamBody(new ByteArrayInputStream(data), data.length));
+			getHttpClient().executeByteBufferList(ps1, new AsyncHttpClient.DownloadCallback() {
+				@Override
+				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
+					if (e != null) {
+						e.printStackTrace();
+						notifyConnectionManagerDidFailed(e);
+					}
+					else if(asyncHttpResponse.code() != 200){
+						Log.d(TAG, "DoPairSetup3 failed");
+						notifyConnectionManagerDidFailed(e);
+					}
+					else {
+						DoAirplayAuth();
+					}
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+			notifyConnectionManagerDidFailed(e);
+		}
+	}
+
 	private void inqueryServerInfo() {
 		Headers headers = new Headers();
 		headers.add("Content-Length", "0");

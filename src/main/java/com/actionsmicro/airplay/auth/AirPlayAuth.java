@@ -3,8 +3,6 @@ package com.actionsmicro.airplay.auth;
 import com.dd.plist.NSData;
 import com.dd.plist.NSDictionary;
 import com.dd.plist.PropertyListParser;
-import com.koushikdutta.async.http.AsyncHttpClient;
-import com.koushikdutta.async.http.Headers;
 import com.nimbusds.srp6.BigIntegerUtils;
 import com.nimbusds.srp6.SRP6ClientSession;
 import com.nimbusds.srp6.SRP6CryptoParams;
@@ -20,7 +18,6 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
-import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
@@ -34,7 +31,9 @@ import java.util.Random;
  */
 public class AirPlayAuth {
 
+    private static String authToken = "";
     public final String clientId;
+    //public final String clientId;
     public final EdDSAPrivateKey authKey;
     public byte[] randomPrivateKey = new byte[32];
     public byte[] randomPublicKey = new byte[32];
@@ -46,9 +45,10 @@ public class AirPlayAuth {
      */
     public AirPlayAuth() {
         try {
-            String authToken = generateNewAuthToken();
+            if(authToken.length() == 0)
+                authToken = generateNewAuthToken();
             String[] authTokenSplit = authToken.split("@");
-            this.clientId = authTokenSplit[0];
+            clientId = authTokenSplit[0];
 
             PKCS8EncodedKeySpec encoded = new PKCS8EncodedKeySpec(net.i2p.crypto.eddsa.Utils.hexToBytes(authTokenSplit[1]));
             this.authKey = new EdDSAPrivateKey(encoded);
@@ -100,6 +100,10 @@ public class AirPlayAuth {
     public void authenticate(){
         new Random().nextBytes(randomPrivateKey);
         Curve25519.keygen(randomPublicKey, null, randomPrivateKey);
+        /*
+        byte[] pairVerify1Response = doPairVerify1(socket, randomPublicKey);
+        doPairVerify2(socket, pairVerify1Response, randomPrivateKey, randomPublicKey);
+         */
     }
 
     public byte[] getPairSetupPin1() throws Exception {
@@ -109,13 +113,12 @@ public class AirPlayAuth {
         }});
     }
 
-    public byte[] getPairSetupPin2(String pin, final byte[] pairSetupPin1ResponseBytes) throws Exception {
+    public byte[] getPairSetupPin2(final byte[] pairSetupPin1ResponseBytes, String pin) throws Exception {
         NSDictionary pairSetupPin1Response = (NSDictionary) PropertyListParser.parse(pairSetupPin1ResponseBytes);
         if (pairSetupPin1Response.containsKey("pk") && pairSetupPin1Response.containsKey("salt")) {
             byte[] pk = ((NSData) pairSetupPin1Response.get("pk")).bytes();
             byte[] salt = ((NSData) pairSetupPin1Response.get("salt")).bytes();
 
-            final SRP6ClientSession srp6ClientSession = new AppleSRP6ClientSessionImpl();
             srp6ClientSession.step1(clientId, pin);
             srp6ClientSession.step2(SRP6CryptoParams.getInstance(2048, "SHA-1"), BigIntegerUtils.bigIntegerFromBytes(salt), BigIntegerUtils.bigIntegerFromBytes(pk));
 
