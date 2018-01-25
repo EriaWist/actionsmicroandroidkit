@@ -4,19 +4,24 @@ import java.io.InputStream;
 
 import android.graphics.YuvImage;
 
+import com.actionsmicro.airplay.AirPlayClient;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.DisplayApiBuilder;
+import com.actionsmicro.androidkit.ezcast.EzCastSdk;
 import com.actionsmicro.graphics.YuvImageToJpegHelper;
+import com.actionsmicro.utils.Log;
 
 public class AirPlayDisplayApi extends AirPlayApi implements DisplayApi {
 
+	private DisplayListener displayListener;
 	public AirPlayDisplayApi(DisplayApiBuilder apiBuilder) {
 		super(apiBuilder);
-		// TODO Auto-generated constructor stub
+		displayListener = apiBuilder.getDisplayListener();
 	}
 
 	@Override
 	public void startDisplaying() {
+		getAirPlayClient().CheckAuthState(displayListener, this);
 		startTrackingWifiDisplay();
 	}
 
@@ -51,5 +56,10 @@ public class AirPlayDisplayApi extends AirPlayApi implements DisplayApi {
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
 
+	}
+
+	@Override
+	public void setPinCode(String code) throws Exception {
+		getAirPlayClient().SetPinCode(code);
 	}
 }

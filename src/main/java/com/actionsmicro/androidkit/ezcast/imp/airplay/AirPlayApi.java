@@ -20,8 +20,10 @@ public class AirPlayApi extends TrackableApi implements Api {
 	protected AirPlayClient getAirPlayClient() {
 		return airPlayClient;
 	}
+
 	@Override
 	public void connect() {
+		//20180124 Sheen: do airplay auth at construction and set auth state
 		airPlayClient = airPlayClientManager.create(apiBuilder);
 		connectionManagerWrapper = new AirPlayClient.ConnectionManager() {
 			

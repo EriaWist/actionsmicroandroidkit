@@ -708,6 +708,11 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		}
 	}
 
+	@Override
+	public void setPinCode(String code) throws Exception {
+
+	}
+
 	private void initMirrorClient() throws UnsupportedEncodingException, InterruptedException {
 		h264Queue = new ArrayList<byte[]>();
 		mIsHandShaking = true;

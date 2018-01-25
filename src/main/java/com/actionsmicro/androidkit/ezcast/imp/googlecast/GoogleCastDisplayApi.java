@@ -49,4 +49,9 @@ public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
 
 	}
+
+	@Override
+	public void setPinCode(String code) throws Exception {
+
+	}
 }

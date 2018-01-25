@@ -10,6 +10,7 @@ import android.os.HandlerThread;
 import com.actionsmicro.airplay.auth.AirPlayAuth;
 import com.actionsmicro.airplay.http.PlistBody;
 import com.actionsmicro.airplay.mirror.TsStreamer;
+import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi.Cause;
 import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
@@ -65,6 +66,15 @@ import java.util.concurrent.Semaphore;
 import javax.xml.parsers.ParserConfigurationException;
 
 public class AirPlayClient {
+	public enum AuthState {
+		Init,
+		Auth,
+		Pin,
+		Verify,
+		Done,
+		Fail
+	}
+
 	public interface VideoStateListener {
 
 		void onVideoResumed();
@@ -121,6 +131,10 @@ public class AirPlayClient {
 			return false;
 		}
 	};
+
+	private DisplayApi m_displayApi;
+	private DisplayApi.DisplayListener m_displayListener;
+	private AuthState authState;
 	private HandlerThread timerThread;
 	private Handler timerHandler;
 	private VideoStateListener videoStateListener;
@@ -158,16 +172,7 @@ public class AirPlayClient {
 	public AirPlayClient(Context context, InetAddress inetAddress) {
 		this.context = context;
 		this.serverAddress = inetAddress;
-
-		DoAirplayAuth();
-		/*
-		reverseConnectionForEvent.run(true, true);
-		inqueryServerInfo();
-		prepareEventServer();
-		establishReverseHttpConnectionForEvent();
-		prepareSlideshowServer();
-		establishReverseHttpConnectionForSlideshow();
-		*/
+		authState = AuthState.Init;
 	}
 
 	/*	IOS10.2 airplay Authentication flow
@@ -178,7 +183,22 @@ public class AirPlayClient {
 	*		3. Do pairing: doPairSetupPin1 -> doPairSetupPin2 -> doPairSetupPin3
 	*  		4. Success => Do Authentication
 	*/
+
+	public void SetPinCode(String code) {
+		if(authState != AuthState.Pin)
+			return;
+		DoPairSetup1(code);
+	}
+
+	public AuthState CheckAuthState(DisplayApi.DisplayListener listener, DisplayApi displayApi) {
+		m_displayApi = displayApi;
+		m_displayListener = listener;
+		DoAirplayAuth();
+		return authState;
+	}
+
 	private void DoAirplayAuth() {
+		authState = AuthState.Auth;
 		airplayAuth.authenticate();//Initial keys
 		try {
 			byte[] data = airplayAuth.getPairVerify1();
@@ -192,23 +212,24 @@ public class AirPlayClient {
 			getHttpClient().executeByteBufferList(pv1, new AsyncHttpClient.DownloadCallback() {
 				@Override
 				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
+					authState = AuthState.Pin;
 					if (e != null) {
 						e.printStackTrace();
-						DoPairSetup();
+						DoPairPinStart();
 					}
 					else if(asyncHttpResponse.code() != 200){
-						Log.d(TAG, "PairVerify1 failed");
-						DoPairSetup();
+						Log.d(TAG, "Airplay auth failed. Go to Pin verify.");
+						DoPairPinStart();
 					}
 					else {
-						//Do PairVerify2
+						authState = AuthState.Auth;
 						DoPairVerify2(byteBufferList.getAllByteArray());
 					}
 				}
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
-			notifyConnectionManagerDidFailed(e);
+			authState = AuthState.Fail;
 		}
 	}
 
@@ -227,13 +248,14 @@ public class AirPlayClient {
 				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
 					if (e != null) {
 						e.printStackTrace();
-						DoPairSetup();
+						DoPairPinStart();
 					}
 					else if(asyncHttpResponse.code() != 200){
 						Log.d(TAG, "PairVerify2 failed");
-						DoPairSetup();
+						DoPairPinStart();
 					}
 					else {
+						authState = AuthState.Done;
 						Log.d(TAG, "Airplay Authentication Success");
 						//TODO: Old flow still work after authentication?
 						reverseConnectionForEvent.run(true, true);
@@ -247,11 +269,12 @@ public class AirPlayClient {
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
-			notifyConnectionManagerDidFailed(e);
+			authState = AuthState.Pin;
+			DoPairPinStart();
 		}
 	}
 
-	private void DoPairSetup() {
+	private void DoPairPinStart() {
 		try {
 			Headers headers = new Headers();
 			headers.add("Content-Length", "0");
@@ -261,35 +284,28 @@ public class AirPlayClient {
 			getHttpClient().executeByteBufferList(pps, new AsyncHttpClient.DownloadCallback() {
 				@Override
 				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
+					authState = AuthState.Fail;
 					if (e != null) {
 						e.printStackTrace();
-						notifyConnectionManagerDidFailed(e);
 					}
 					else if(asyncHttpResponse.code() != 200){
 						Log.d(TAG, "PairPinStart failed");
-						notifyConnectionManagerDidFailed(e);
 					}
 					else {
-						DoGetPinCode();
+						authState = AuthState.Pin;
+						m_displayListener.requireInputPin(m_displayApi);
 					}
 				}
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
-			notifyConnectionManagerDidFailed(e);
+			authState = AuthState.Fail;
 		}
-	}
-
-	//TODO: Should pass to UI thread
-	private void DoGetPinCode() {
-		/*
-		String code = "1234";
-		DoPairSetup1(code);
-		*/
 	}
 
 	private void DoPairSetup1(final String pin) {
 		try {
+			authState = AuthState.Verify;
 			byte[] data = airplayAuth.getPairSetupPin1();
 			Headers headers = new Headers();
 			headers.add("Content-Length", String.valueOf(data.length));
@@ -303,11 +319,11 @@ public class AirPlayClient {
 				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
 					if (e != null) {
 						e.printStackTrace();
-						notifyConnectionManagerDidFailed(e);
+						authState = AuthState.Fail;
 					}
 					else if(asyncHttpResponse.code() != 200){
 						Log.d(TAG, "DoPairSetup1 failed");
-						notifyConnectionManagerDidFailed(e);
+						authState = AuthState.Fail;
 					}
 					else {
 						DoPairSetup2(byteBufferList.getAllByteArray(), pin);
@@ -316,7 +332,7 @@ public class AirPlayClient {
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
-			notifyConnectionManagerDidFailed(e);
+			authState = AuthState.Fail;
 		}
 	}
 
@@ -335,11 +351,11 @@ public class AirPlayClient {
 				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
 					if (e != null) {
 						e.printStackTrace();
-						notifyConnectionManagerDidFailed(e);
+						authState = AuthState.Fail;
 					}
 					else if(asyncHttpResponse.code() != 200){
 						Log.d(TAG, "DoPairSetup2 failed");
-						notifyConnectionManagerDidFailed(e);
+						authState = AuthState.Fail;
 					}
 					else {
 						DoPairSetup3(byteBufferList.getAllByteArray());
@@ -348,7 +364,7 @@ public class AirPlayClient {
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
-			notifyConnectionManagerDidFailed(e);
+			authState = AuthState.Fail;
 		}
 	}
 
@@ -367,11 +383,11 @@ public class AirPlayClient {
 				public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, ByteBufferList byteBufferList) {
 					if (e != null) {
 						e.printStackTrace();
-						notifyConnectionManagerDidFailed(e);
+						authState = AuthState.Fail;
 					}
 					else if(asyncHttpResponse.code() != 200){
 						Log.d(TAG, "DoPairSetup3 failed");
-						notifyConnectionManagerDidFailed(e);
+						authState = AuthState.Fail;
 					}
 					else {
 						DoAirplayAuth();
@@ -380,7 +396,7 @@ public class AirPlayClient {
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
-			notifyConnectionManagerDidFailed(e);
+			authState = AuthState.Fail;
 		}
 	}
 

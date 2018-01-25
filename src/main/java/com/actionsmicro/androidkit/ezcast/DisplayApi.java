@@ -81,6 +81,13 @@ public interface DisplayApi extends Api {
 		 * @since 2.0
 		 */
 		void roleDidChange(DisplayApi display, Role newRole);
+
+		/**
+		 * The device need input pin code for displaying
+		 * @param display The Display API object.
+		 * @since 2.6
+		 */
+		void requireInputPin(DisplayApi display);
 	}
 	/**
 	 * Before sending contents, app should call startDisplaying.
@@ -124,4 +131,12 @@ public interface DisplayApi extends Api {
 	 * @since 2.4
 	 */
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception;
+
+	/**
+	 * Set PIN code for the display device
+	 * @param code PIN code from user input
+	 * @throws Exception
+	 * @since 2.6
+	 */
+	public void setPinCode(String code) throws Exception;
 }

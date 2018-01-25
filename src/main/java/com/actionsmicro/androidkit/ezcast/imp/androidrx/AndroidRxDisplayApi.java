@@ -67,4 +67,9 @@ public class AndroidRxDisplayApi extends AndroidRxApi implements DisplayApi {
 		}
 		getAndroidRxClient().sendH264EncodedScreenData(contents,width,height);
 	}
+
+	@Override
+	public void setPinCode(String code) throws Exception {
+
+	}
 }

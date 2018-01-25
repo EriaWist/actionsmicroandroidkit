@@ -95,4 +95,9 @@ public class PigeonDisplayApi extends PigeonApi implements DisplayApi {
 			pigeonClient.sendH264ImageBytesToServer(contents, width, height);
 		}
 	}
+
+	@Override
+	public void setPinCode(String code) throws Exception {
+
+	}
 }

@@ -182,6 +182,11 @@ public class DlnaDisplayApi extends DlnaApi implements DisplayApi {
 
 	}
 
+	@Override
+	public void setPinCode(String code) throws Exception {
+
+	}
+
 	private void displayYuvImageViaTsStreamer(YuvImage yuvImage) {
 		if (mp4Streamer != null) {
 			mp4Streamer.displayYuvImage(yuvImage);
