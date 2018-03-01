@@ -129,7 +129,7 @@ public class PigeonDeviceInfo extends DeviceInfo {
 
 	@Override
 	public boolean supportImageToH264() {
-		return false;
+		return true;
 	}
 
 	@Override
