@@ -208,7 +208,7 @@ public class EzCastSdk {
 			final InitializationListener listener, final FilterInterface filter) {
 		long expire = System.currentTimeMillis() * 1000 + 60 + 90;
 		try {
-			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.iezvu.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1&o=android&v="+URLEncoder.encode(SDK_VERSION_STRING, "utf-8"));
+			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.ezcast.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1&o=android&v="+URLEncoder.encode(SDK_VERSION_STRING, "utf-8"));
 			getSupportList.setTimeout(INITIALIZATION_TIMEOUT_MS);
 			initTask = AsyncHttpClient.getDefaultInstance().executeJSONObject(getSupportList, new JSONObjectCallback() {
 

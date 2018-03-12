@@ -20,8 +20,8 @@ import com.koushikdutta.async.http.AsyncHttpResponse;
 import com.koushikdutta.async.http.body.StringBody;
 
 public class ActionsUploader implements Uploader {
-	private static final String BASE_URL = "https://cloud.iezvu.com";
-	private static final String DEV_BASE_URL = "https://dev-cloud.iezvu.com";
+	private static final String BASE_URL = "https://cloud.ezcast.com";
+	private static final String DEV_BASE_URL = "https://dev-cloud.ezcast.com";
 	private static final String PATH_UPLOAD_LOG = "/cloud/sdk/api";
 	private String appSecret;
 	private String appKey;
