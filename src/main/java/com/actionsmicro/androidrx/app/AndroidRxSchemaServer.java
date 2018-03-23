@@ -260,7 +260,7 @@ public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 		return prefs.getLong(func.toString(), 0);
 	}
 	private void sendAndroidRxInfo() {
-		String url = "http://cloud.iezvu.com/dongleinfo_rx.php?" + "&type=android";
+		String url = "http://cloud.ezcast.com/dongleinfo_rx.php?" + "&type=android";
 		Utils.sendDataToServer(url, schemaJSONString);
 	}
 
