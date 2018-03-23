@@ -5,7 +5,9 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.YuvImage;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.StrictMode;
 
 import com.actionsmicro.BuildConfig;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
@@ -61,6 +63,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>(); 
 
 	public EZCastOverGoogleCast(Context context, CastDevice castDevice, TrackableApi trackableApi) {
+		if (Build.VERSION.SDK_INT >= 24) {
+			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+			StrictMode.setThreadPolicy(policy);
+		}
 		this.context = context;
 		this.castDevice = castDevice;
 		this.trackableApi = trackableApi;
