@@ -2,6 +2,7 @@ package com.actionsmicro.androidkit.ezcast.imp.ezdisplay;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
@@ -18,6 +19,7 @@ import com.actionsmicro.web.Utils;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.net.URLDecoder;
 
 public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
@@ -134,7 +136,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 
 
 			String type  = projectorInfo.getParameter("type");
-			if (type != null && type.equals("wire")) {
+			if (isUsbTethered(context)) {
 				// USB Tether's ip is 192.168.42.129, reference:Tethering.java from aosp
 				// private static final String USB_NEAR_IFACE_ADDR      = "192.168.42.129";
 				simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, "192.168.42.129", 0);
@@ -218,5 +220,37 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			simpleHttpFileServer.stop();
 			simpleHttpFileServer = null;
 		}
+	}
+
+	public static String[] getTetheredIfaces(Context ctx) {
+		String[] tetheredIfaces = null;
+		ConnectivityManager cm = (ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+		Method[] wmMethods = cm.getClass().getMethods();
+		for (Method method : wmMethods) {
+			if (method.getName().equals("getTetheredIfaces")) {
+				try {
+					tetheredIfaces = (String[]) method.invoke(cm);
+					for (String t : tetheredIfaces) {
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return tetheredIfaces;
+	}
+
+	public static boolean isUsbTethered(Context ctx) {
+		boolean ret = false;
+		String[] ifaces = getTetheredIfaces(ctx);
+		if (null != ifaces) {
+			for (String iface : ifaces) {
+				if (iface.toLowerCase().startsWith("rndis") || iface.toLowerCase().startsWith("usb")) {
+					ret = true;
+					break;
+				}
+			}
+		}
+		return ret;
 	}
 }
