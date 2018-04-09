@@ -178,6 +178,10 @@ public class Device {
 
 		if (Reachability.isWifiApEnabled(context)) {
 			ipString = getWifiApIpAddress();
+		} else {
+			if (ipString.equals("0.0.0.0")) {
+				ipString = DEFAULT_WIFIAP_ADDRESS;
+			}
 		}
 
 		return ipString;
