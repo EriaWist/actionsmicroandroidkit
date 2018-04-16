@@ -1,8 +1,8 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion '25.0.3'
+    compileSdkVersion 26
+    buildToolsVersion '26.0.2'
     publishNonDefault true
     useLibrary 'org.apache.http.legacy'
 
@@ -80,11 +80,11 @@ dependencies {
     compile files('libs/seamless-util-1.1.0.jar')
     compile files('libs/seamless-xml-1.1.0.jar')
     compile files('libs/slf4j-jdk14-1.7.7.jar')
-    compile 'com.android.support:appcompat-v7:25.3.1'
-    compile 'com.android.support:mediarouter-v7:25.3.1'
-    compile 'com.google.android.gms:play-services-analytics:10.2.6'
-    compile 'com.google.android.gms:play-services-cast-framework:10.2.6'
+    compile 'com.android.support:appcompat-v7:26.1.0'
+    compile 'com.android.support:mediarouter-v7:26.1.0'
+    compile 'com.google.android.gms:play-services-analytics:12.0.0'
+    compile 'com.google.android.gms:play-services-cast-framework:12.0.0'
     //    compile 'com.android.support:multidex:1.0.1'
-//    compile 'com.android.support:support-core-utils:25.3.1'
+//    compile 'com.android.support:support-core-utils:26.1.0'
     compile(name: 'libvlc', ext: 'aar')
 }

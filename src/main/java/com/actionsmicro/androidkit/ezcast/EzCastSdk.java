@@ -145,7 +145,8 @@ public class EzCastSdk {
 				supportList.contains("ezcastlite") ||
 				supportList.contains("ezcastmusic") ||
 				supportList.contains("ezcastcar") ||
-				supportList.contains("mirascreen")) {
+				supportList.contains("mirascreen") ||
+				supportList.contains("quattro")) {
 			FalconDeviceFinder falconDeviceFinder = new FalconDeviceFinder(deviceFinder);
 			if (filter != null) {
 				falconDeviceFinder.addFilter(filter);

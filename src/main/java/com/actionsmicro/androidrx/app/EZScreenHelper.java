@@ -111,6 +111,15 @@ public class EZScreenHelper implements PlayerListener {
 
 	}
 
+	public interface AnalyticsListener{
+		boolean allowTrack();
+	}
+
+	public void setAnalyticsListener(AnalyticsListener analyticsListener) {
+		mAnalyticsListener = analyticsListener;
+	}
+
+	private AnalyticsListener mAnalyticsListener;
 	private static final String TAG = "EZScreenHelper";
 	private PlaybackDelegate playbackDelegate;
 	private WebView webView;
@@ -2165,7 +2174,14 @@ public class EZScreenHelper implements PlayerListener {
 		this.playbackDelegate = playbackDelegate;
 	}
 
+	private boolean allowTrack(){
+		return gaTracker != null && mAnalyticsListener!= null && mAnalyticsListener.allowTrack();
+	}
+
 	private void trackScreenHit(String screenName) {
+		if(!allowTrack()){
+			return;
+		}
 		if (gaTracker != null) {
 			gaTracker.setScreenName(screenName);
 			gaTracker.send(new HitBuilders.AppViewBuilder().build());
@@ -2173,6 +2189,9 @@ public class EZScreenHelper implements PlayerListener {
 	}
 
 	private void trackScreenHit(String screenName, int customDimensionIndex, String dimension) {
+		if(!allowTrack()){
+			return;
+		}
 		if (gaTracker != null) {
 			gaTracker.setScreenName(screenName);
 			gaTracker.send(new HitBuilders.AppViewBuilder().setCustomDimension(customDimensionIndex, dimension).build());
