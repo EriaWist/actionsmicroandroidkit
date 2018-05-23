@@ -207,44 +207,26 @@ public class EzCastSdk {
 	}
 	private void fetchSupportListAndInit(
 			final InitializationListener listener, final FilterInterface filter) {
-		long expire = System.currentTimeMillis() * 1000 + 60 + 90;
-		try {
-			AsyncHttpGet getSupportList = new AsyncHttpGet("https://cloud.ezcast.com/cloud/sdk/api/support"+"?"+"key="+appKey+"&e="+expire+"&c="+computeHash(expire)+"&p=1&o=android&v="+URLEncoder.encode(SDK_VERSION_STRING, "utf-8"));
-			getSupportList.setTimeout(INITIALIZATION_TIMEOUT_MS);
-			initTask = AsyncHttpClient.getDefaultInstance().executeJSONObject(getSupportList, new JSONObjectCallback() {
+		saveSupportList(createAllSupportList());
+		doSetupDeviceFinder(listener, filter);
+	}
+	private JSONArray createAllSupportList() {
+		JSONArray supportList = new JSONArray();
 
-				@Override
-				public void onCompleted(Exception e, AsyncHttpResponse source,
-						JSONObject result) {
-					Log.v(TAG, "init oncomplete called");
-					if (e == null) {
-						Log.v(TAG, "init oncomplete successfully");
-						if (result != null) {
-							try {
-								if (result.getBoolean("status")) {
-									saveSupportList(result.getJSONArray("support"));
-									doSetupDeviceFinder(listener, filter);
-								} else {
-									if (listener != null) {
-										listener.onInitializationFailed(new Exception("Please check app key/secret!"));
-									}
-								}
-							} catch (JSONException e1) {
-								e1.printStackTrace();
-								doSetupDeviceFinder(listener, filter);
-							}
-						}
-					} else { //network error or json transformation error
-						Log.v(TAG, "init oncomplete timeout");
-						e.printStackTrace();
-						doSetupDeviceFinder(listener, filter);
-					}
-				}
-				
-			});
-		} catch (Throwable e) {
-			doSetupDeviceFinder(listener, filter);
-		}
+		supportList.put("ezcast");
+		supportList.put("ezcastpro");
+		supportList.put("ezcastlite");
+		supportList.put("ezcastmusic");
+		supportList.put("ezcastcar");
+		supportList.put("mirascreen");
+		supportList.put("quattro");
+
+		supportList.put("chromecast");
+		supportList.put("airplay");
+		supportList.put("ezscreen");
+		supportList.put("dlna");
+
+		return supportList;
 	}
 	private void saveSupportList(JSONArray jsonArray) {
 		SharedPreferences sdkSettings = context.getSharedPreferences(PREF_NAME_EZCAST_SDK, Context.MODE_PRIVATE);
