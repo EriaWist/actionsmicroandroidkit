@@ -1,7 +1,6 @@
 package com.actionsmicro.androidkit.ezcast;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -28,17 +27,12 @@ import com.actionsmicro.filter.FilterInterface;
 import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.future.Future;
-import com.koushikdutta.async.http.AsyncHttpClient;
-import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
-import com.koushikdutta.async.http.AsyncHttpGet;
-import com.koushikdutta.async.http.AsyncHttpResponse;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -133,7 +127,7 @@ public class EzCastSdk {
 	}
 	private static Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 	private void doSetupDeviceFinder(final InitializationListener listener, final FilterInterface filter) {
-		setupDeviceFinder(getSupportListFromStore(), deviceFinder, filter);
+		setupDeviceFinder(createAllSupportList(), deviceFinder, filter);
 		finishUpInitialization(listener);
 		synchronized (deviceFinder) {
 			deviceFinder.notifyAll();
@@ -180,7 +174,7 @@ public class EzCastSdk {
 			throw new IllegalStateException("EzCastSdk is initializing!");
 		}
 		initializing = true;
-		fetchSupportListAndInit(listener, filter);
+		doSetupDeviceFinder(listener, filter);
 		fetchLocationAndLogAppInfo();
 		waitUntilInitTaskDone();
 	}
@@ -205,46 +199,21 @@ public class EzCastSdk {
 			}
 		}
 	}
-	private void fetchSupportListAndInit(
-			final InitializationListener listener, final FilterInterface filter) {
-		saveSupportList(createAllSupportList());
-		doSetupDeviceFinder(listener, filter);
-	}
-	private JSONArray createAllSupportList() {
-		JSONArray supportList = new JSONArray();
 
-		supportList.put("ezcast");
-		supportList.put("ezcastpro");
-		supportList.put("ezcastlite");
-		supportList.put("ezcastmusic");
-		supportList.put("ezcastcar");
-		supportList.put("mirascreen");
-		supportList.put("quattro");
-
-		supportList.put("chromecast");
-		supportList.put("airplay");
-		supportList.put("ezscreen");
-		supportList.put("dlna");
-
-		return supportList;
-	}
-	private void saveSupportList(JSONArray jsonArray) {
-		SharedPreferences sdkSettings = context.getSharedPreferences(PREF_NAME_EZCAST_SDK, Context.MODE_PRIVATE);
-	    SharedPreferences.Editor editor = sdkSettings.edit();
-	    editor.putString(PREF_KEY_SUPPORT_LIST, jsonArray.toString());
-	    editor.commit();
-	}
-	private List<String> getSupportListFromStore() {
-		SharedPreferences sdkSettings = context.getSharedPreferences(PREF_NAME_EZCAST_SDK, Context.MODE_PRIVATE);
-		String supportListString = sdkSettings.getString(PREF_KEY_SUPPORT_LIST, null);
-		if (supportListString != null) {
-			try {
-				return convertJsonArrayToList(supportListString);
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-		}
-		return Arrays.asList("ezcast", "ezscreen", "ezcastpro", "mirascreen", "quattro"); // default value
+	private List<String> createAllSupportList() {
+		return Arrays.asList(
+				"ezcast",
+				"ezcastpro",
+				"ezcastlite",
+				"ezcastmusic",
+				"ezcastcar",
+				"mirascreen",
+				"quattro",
+				"chromecast",
+				"airplay",
+				"ezscreen",
+				"dlna"
+		);
 	}
 	protected static List<String> convertJsonArrayToList(String supportListString)
 			throws JSONException {
