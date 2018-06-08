@@ -42,6 +42,11 @@ android {
         pickFirst 'META-INF/beans.xml'
     }
 }
+android {
+    lintOptions {
+        abortOnError false
+    }
+}
 
 repositories {
     flatDir {
@@ -88,3 +93,15 @@ dependencies {
 //    compile 'com.android.support:support-core-utils:25.3.1'
     compile(name: 'libvlc', ext: 'aar')
 }
+
+task makeJar(type: Copy) {
+    from('build/intermediates/bundles/release/')
+    into('build/libs/')
+    include('classes.jar')
+    rename ('classes.jar', 'ezcast_sdk.jar')
+}
+
+task clearJar(type: Delete) {
+    delete 'build/libs/ezcast_sdk.jar'
+}
+makeJar.dependsOn(clearJar, build)
