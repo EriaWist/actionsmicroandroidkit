@@ -24,7 +24,7 @@ import com.actionsmicro.androidkit.ezcast.imp.dlna.DlnaDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.FalconDeviceFinder;
 import com.actionsmicro.androidkit.ezcast.imp.googlecast.GoogleCastFinder;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
-import com.actionsmicro.filter.FilterInterface;
+import com.actionsmicro.androidkit.ezcast.filter.FilterInterface;
 import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.future.Future;

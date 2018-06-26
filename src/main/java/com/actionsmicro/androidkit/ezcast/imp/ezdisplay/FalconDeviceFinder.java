@@ -9,8 +9,8 @@ import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.falcon.Falcon;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 import com.actionsmicro.falcon.Falcon.SearchReultListener;
-import com.actionsmicro.filter.AndFilter;
-import com.actionsmicro.filter.FilterInterface;
+import com.actionsmicro.androidkit.ezcast.filter.AndFilter;
+import com.actionsmicro.androidkit.ezcast.filter.FilterInterface;
 
 public class FalconDeviceFinder extends DeviceFinderBase {
 

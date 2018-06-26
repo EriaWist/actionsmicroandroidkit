@@ -1,4 +1,4 @@
-package com.actionsmicro.filter;
+package com.actionsmicro.androidkit.ezcast.filter;
 
 import java.util.ArrayList;
 

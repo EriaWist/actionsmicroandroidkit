@@ -1,4 +1,4 @@
-package com.actionsmicro.filter;
+package com.actionsmicro.androidkit.ezcast.filter;
 
 /**
  * Created by laicc on 2015/10/30.
