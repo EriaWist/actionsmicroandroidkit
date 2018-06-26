@@ -53,6 +53,10 @@
 	public *;
 }
 
+-keep public class com.actionsmicro.androidkit.ezcast.filter.FilterInterface {
+	public *;
+}
+
 -keep class android.** {
   *;
 }
