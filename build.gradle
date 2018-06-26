@@ -28,7 +28,8 @@ android {
         }
 
         release {
-            consumerProguardFiles 'proguard-project.txt', 'proguard-google-api-client.txt' , 'proguard.txt'
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt', 'proguard-google-api-client.txt' , 'proguard.txt'
         }
     }
 

@@ -28,7 +28,9 @@
 -renamesourcefileattribute SourceFile
 -keepattributes Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,*Annotation*,EnclosingMethod
 
--keep class com.thetransactioncompany.** { *; } -dontwarn com.thetransactioncompany.**
+-keep class com.thetransactioncompany.** { *; }
+
+-dontwarn com.thetransactioncompany.**
 
 -dontwarn org.hamcrest.**
 
