@@ -262,6 +262,34 @@ try {
 }
 </pre>
         <p>
+        To send h264 image data to the device, client should call sendH264EncodedScreenData, the data to send is encoded h264 data.
+        (Please refer to SdkSample ScreenCapture.java & ScreenCastService.java)
+        </p>
+<pre class="prettyprint">
+@Override
+public void dataBufferAvailable(byte[] outData, int width, int height) {
+    try {
+        displayApi.sendH264EncodedScreenData(outData, width, height);
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+</pre>
+<pre class="prettyprint">
+@Override
+public void onOutputBufferAvailable(@NonNull MediaCodec mediaCodec, int index, @NonNull MediaCodec.BufferInfo bufferInfo) {
+    ByteBuffer encodedData = mediaCodec.getOutputBuffer(index);
+    encodedData.position(bufferInfo.offset);
+    encodedData.limit(bufferInfo.offset + bufferInfo.size);
+    byte[] outData = new byte[bufferInfo.size];
+    encodedData.get(outData);
+    //int nalType = ((int) outData[4]) & 0x1f;
+    if (dataCallback != null) {
+        dataCallback.dataBufferAvailable(outData, width, height);
+    }
+    mediaCodec.releaseOutputBuffer(index, System.nanoTime());
+}
+</pre>
+        <p>
         To stop displaying image, client can call <a href="../doc/com/actionsmicro/androidkit/ezcast/DisplayApi.html#stopDisplaying()">stopDisplaying</a>. Client should
         disconnect from DisplayApi when DisplayApi is no longer needed to release the
         resources obtained by the api instance.
