@@ -16,6 +16,8 @@ import com.actionsmicro.pigeon.MediaStreamingStateListener;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.actionsmicro.web.Utils;
 
+import org.eclipse.jetty.util.UrlEncoded;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -149,7 +151,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			String mediaUriString = simpleHttpFileServer.getServerUrl();
+			String mediaUriString = simpleHttpFileServer.getServerUrl() + "/LocalVideo?filename=" + UrlEncoded.encodeString(mediaUri.getLastPathSegment());
 			dataSource = new MediaStreamingHttpDataSource(mediaUriString, DEFAULT_USER_AGENT_STRING, mediaContentLength);
 		} else {
 			if (mediaPlayerStateListener != null) {
