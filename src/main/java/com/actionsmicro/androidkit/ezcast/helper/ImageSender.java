@@ -1,16 +1,16 @@
 package com.actionsmicro.androidkit.ezcast.helper;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.TimeUnit;
-
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.utils.Log;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Helper class to send image(Bitmap) to the device.
@@ -38,6 +38,7 @@ public class ImageSender {
 	public interface BitmapManager {
 		public boolean onProcessBitmapBegin(Bitmap bitmap);
 		public void onProcessBitmapEnd(Bitmap bitmap);
+		public boolean shouldSendImage();
 	}
 	protected static final String TAG = "ImageSender";
 	private ArrayBlockingQueue<Job> pendingJobs = new ArrayBlockingQueue<Job>(1);
@@ -108,7 +109,10 @@ public class ImageSender {
 							job.bitmap.compress(CompressFormat.JPEG, 70, getCompressionBuffer());
 							bitmapManager.onProcessBitmapEnd(job.bitmap);
 							Log.d(TAG, "jpeg size:" + getCompressionBuffer().size());
-							displayApi.sendJpegEncodedScreenData(new ByteArrayInputStream(getCompressionBuffer().toByteArray()), getCompressionBuffer().size());
+							if (bitmapManager.shouldSendImage()) {
+								displayApi.sendJpegEncodedScreenData(new ByteArrayInputStream(getCompressionBuffer().toByteArray()), getCompressionBuffer().size());
+							}
+
 						}
 					} else if (!shouldStop) {
 					}
