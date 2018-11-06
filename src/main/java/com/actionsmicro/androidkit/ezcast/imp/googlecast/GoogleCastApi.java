@@ -5,6 +5,7 @@ import android.content.Context;
 import com.actionsmicro.androidkit.ezcast.Api;
 import com.actionsmicro.androidkit.ezcast.ApiBuilder;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
+import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.utils.Log;
 import com.google.android.gms.cast.CastDevice;
@@ -12,7 +13,6 @@ import com.google.android.gms.cast.CastDevice;
 public class GoogleCastApi extends TrackableApi implements Api{
 
 	private static final String TAG = "GoogleCastApi";
-	protected CastDevice castDevice;
 	protected ConnectionManager connectionManager;
 	private EZCastOverGoogleCast googleCastClient;
 	protected synchronized EZCastOverGoogleCast getGoogleCastClient() {
@@ -21,18 +21,18 @@ public class GoogleCastApi extends TrackableApi implements Api{
 
 	protected Context context;
 	private ConnectionManager connectionManagerProxy;
+    private DeviceInfo device;
 
 	public <T> GoogleCastApi(ApiBuilder<T> apiBuilder) {
 		super(apiBuilder);
 		context = apiBuilder.getContext();
 		connectionManager = apiBuilder.getConnectionManager();
-		castDevice = ((GoogleCastDeviceInfo)apiBuilder.getDevice()).getCastDevice();		
+		device = apiBuilder.getDevice();
 	}
 
 	@Override
 	public synchronized void connect() {
-		googleCastClient = EZCastOverGoogleCast.createClient(context, castDevice, this, connectionManagerProxy = new ConnectionManager() {
-
+		googleCastClient = EZCastOverGoogleCast.createClient(context, device, this, connectionManagerProxy = new ConnectionManager() {
 			@Override
 			public void onConnectionFailed(Api api, Exception e) {
 				if (connectionManager != null) {

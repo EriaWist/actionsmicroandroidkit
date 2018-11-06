@@ -11,6 +11,7 @@ import android.os.StrictMode;
 
 import com.actionsmicro.BuildConfig;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
+import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
@@ -58,17 +59,19 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private ByteArrayOutputStream compressionBuffer;
 	private Context context;
 	private CastDevice castDevice;
+	private final DeviceInfo mDeviceInfo;
 	private TrackableApi trackableApi;
 	private static Map<CastDevice, EZCastOverGoogleCast> reg = new HashMap<CastDevice, EZCastOverGoogleCast>();
 	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>(); 
 
-	public EZCastOverGoogleCast(Context context, CastDevice castDevice, TrackableApi trackableApi) {
+	public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi) {
 		if (Build.VERSION.SDK_INT >= 24) {
 			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 			StrictMode.setThreadPolicy(policy);
 		}
 		this.context = context;
-		this.castDevice = castDevice;
+		mDeviceInfo = deviceInfo;
+		castDevice = ((GoogleCastDeviceInfo)deviceInfo).getCastDevice();
 		this.trackableApi = trackableApi;
 	}
 	private ArrayList<ConnectionManager> managers = new ArrayList<ConnectionManager>();
@@ -77,6 +80,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private RemoteMediaPlayer mRemoteMediaPlayer;
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 	private GoogleApiClient googleCastApiClient;
+
+
 
 	public void addConnectionManager(ConnectionManager listener) {
 		synchronized(managers) {
@@ -409,14 +414,15 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 	}
 	public static synchronized EZCastOverGoogleCast createClient(Context context,
-			CastDevice castDevice, TrackableApi trackableApi, ConnectionManager connectionManager) {
-		EZCastOverGoogleCast googleCastClient; 
+																 DeviceInfo deviceInfo, TrackableApi trackableApi, ConnectionManager connectionManager) {
+		EZCastOverGoogleCast googleCastClient;
+		CastDevice castDevice = ((GoogleCastDeviceInfo)deviceInfo).getCastDevice();
 		if (reg.containsKey(castDevice)) {
 			googleCastClient = reg.get(castDevice);
 			googleCastClient.addConnectionManager(connectionManager);
 			referenceCount.put(googleCastClient, referenceCount.get(googleCastClient) + 1);
 		} else {
-			googleCastClient = new EZCastOverGoogleCast(context, castDevice, trackableApi);
+			googleCastClient = new EZCastOverGoogleCast(context, deviceInfo, trackableApi);
 			googleCastClient.addConnectionManager(connectionManager);
 			googleCastClient.connect();		
 			referenceCount.put(googleCastClient, 1);
@@ -828,6 +834,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 		}, new LaunchOptions.Builder().setRelaunchIfRunning(false).build());
 	}
+	// TODO add remote app_id
 	private String getEzCastAppId() {
 		String castAppId = GoogleCastFinder.CAST_APP_ID;
 		if (BuildConfig.DEBUG) {
