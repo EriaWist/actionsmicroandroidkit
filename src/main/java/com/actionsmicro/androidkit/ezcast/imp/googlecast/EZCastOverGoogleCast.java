@@ -8,6 +8,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
+import android.support.annotation.NonNull;
+import android.view.Display;
+import android.view.SurfaceView;
+import android.view.WindowManager;
 
 import com.actionsmicro.BuildConfig;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
@@ -24,6 +28,7 @@ import com.google.android.gms.cast.Cast.ApplicationConnectionResult;
 import com.google.android.gms.cast.Cast.Listener;
 import com.google.android.gms.cast.Cast.MessageReceivedCallback;
 import com.google.android.gms.cast.CastDevice;
+import com.google.android.gms.cast.CastRemoteDisplay;
 import com.google.android.gms.cast.LaunchOptions;
 import com.google.android.gms.cast.MediaInfo;
 import com.google.android.gms.cast.MediaMetadata;
@@ -34,7 +39,9 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
+import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.ResultCallbacks;
 import com.google.android.gms.common.api.Status;
 
 import java.io.ByteArrayOutputStream;
@@ -62,9 +69,11 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private final DeviceInfo mDeviceInfo;
 	private TrackableApi trackableApi;
 	private static Map<CastDevice, EZCastOverGoogleCast> reg = new HashMap<CastDevice, EZCastOverGoogleCast>();
-	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>(); 
+	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>();
+    private ScreenPresentation mPresentation;
+    private SurfaceView mSurfaceView;
 
-	public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi) {
+    public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi) {
 		if (Build.VERSION.SDK_INT >= 24) {
 			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 			StrictMode.setThreadPolicy(policy);
@@ -134,9 +143,18 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					}
 				});
 
-		googleCastApiClient = new GoogleApiClient.Builder(context)
-		.addApi(Cast.API, apiOptionsBuilder.build())
-		.addConnectionCallbacks(new ConnectionCallbacks() {
+        CastRemoteDisplay.CastRemoteDisplayOptions.Builder remoteDisplayBuilder = new
+                CastRemoteDisplay.CastRemoteDisplayOptions.Builder(castDevice, new CastRemoteDisplay.CastRemoteDisplaySessionCallbacks() {
+            @Override
+            public void onRemoteDisplayEnded(Status status) {
+                android.util.Log.i(TAG, "Stop Casting because Remote Display session ended");
+            }
+        });
+
+        googleCastApiClient = new GoogleApiClient.Builder(context)
+                .addApi(Cast.API, apiOptionsBuilder.build())
+                .addApi(CastRemoteDisplay.API, remoteDisplayBuilder.build())
+                .addConnectionCallbacks(new ConnectionCallbacks() {
 
 			private boolean waitingForReconnect;
 
@@ -818,28 +836,74 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	private void launcheEZCastApp(final boolean startDisplaying) {
 
-		launcheApplication(getEzCastAppId(), new ResultCallback<Cast.ApplicationConnectionResult>() {
+	    if(mDeviceInfo.supportH264Streaming()){
+	    	connectToRemoteDisplayApi();
+        } else {
+            launcheApplication(getEzCastAppId(), new ResultCallback<Cast.ApplicationConnectionResult>() {
 
-			@Override
-			public void onResult(Cast.ApplicationConnectionResult result) {
-				if (result == null || result.getStatus().isSuccess()) {
-					if (startDisplaying) {
-						startDisplayingImp(null);
-					}
-				} else {
-					notifyConnectionManagerDidFailed(new Exception("Google Cast API: launcheApplication: onResult : " + result.getStatus())); //TODO create custom exception
-					teardown();
-				}
-			}
+                @Override
+                public void onResult(Cast.ApplicationConnectionResult result) {
+                    if (result == null || result.getStatus().isSuccess()) {
+                        if (startDisplaying) {
+                            startDisplayingImp(null);
+                        }
+                    } else {
+                        notifyConnectionManagerDidFailed(new Exception("Google Cast API: launcheApplication: onResult : " + result.getStatus())); //TODO create custom exception
+                        teardown();
+                    }
+                }
 
-		}, new LaunchOptions.Builder().setRelaunchIfRunning(false).build());
+            }, new LaunchOptions.Builder().setRelaunchIfRunning(false).build());
+        }
 	}
-	// TODO add remote app_id
+
+    private void connectToRemoteDisplayApi() {
+        PendingResult<CastRemoteDisplay.CastRemoteDisplaySessionResult> result =
+                CastRemoteDisplay.CastRemoteDisplayApi.startRemoteDisplay(googleCastApiClient, getEzCastAppId());
+        result.setResultCallback(new ResultCallbacks<CastRemoteDisplay.CastRemoteDisplaySessionResult>() {
+            @Override
+            public void onSuccess(@NonNull CastRemoteDisplay.CastRemoteDisplaySessionResult castRemoteDisplaySessionResult) {
+                Display remoteDisplay = castRemoteDisplaySessionResult.getPresentationDisplay();
+                createPresentation(remoteDisplay);
+//                CastingUtil.sendStartingImage(mContext);
+                android.util.Log.d(TAG, "Created presentation");
+            }
+
+            @Override
+            public void onFailure(@NonNull Status status) {
+                android.util.Log.i(TAG, "Stop Casting because startRemoteDisplay failed");
+//                deselectRoute();
+            }
+        });
+    }
+
+    private void createPresentation(Display display) {
+        dismissPresentation();
+        mPresentation = new ScreenPresentation(context, display);
+        try {
+            mPresentation.show();
+            mSurfaceView = mPresentation.getSurfaceView();
+        } catch (WindowManager.InvalidDisplayException ex) {
+            android.util.Log.e(TAG, "Unable to show presentation, display was removed.", ex);
+            dismissPresentation();
+        }
+    }
+
+	private void dismissPresentation() {
+		if (mPresentation != null) {
+			mPresentation.dismiss();
+			mPresentation = null;
+		}
+	}
+
 	private String getEzCastAppId() {
 		String castAppId = GoogleCastFinder.CAST_APP_ID;
 		if (BuildConfig.DEBUG) {
 			castAppId = GoogleCastFinder.CAST_DEV_APP_ID;
 		}
+		if(mDeviceInfo.supportH264Streaming()){
+		    castAppId = GoogleCastFinder.CAST_REMOTEDISPLAY_APPID;
+        }
 		return castAppId;
 	}
 
