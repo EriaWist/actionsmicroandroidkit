@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.StrictMode;
 import android.support.annotation.NonNull;
 import android.view.Display;
+import android.view.Surface;
 import android.view.SurfaceView;
 import android.view.WindowManager;
 
@@ -72,8 +73,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>();
     private ScreenPresentation mPresentation;
     private SurfaceView mSurfaceView;
+	private Surface mSurface;
+	private RtspDecoder mPlayer;
 
-    public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi) {
+	public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi) {
 		if (Build.VERSION.SDK_INT >= 24) {
 			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 			StrictMode.setThreadPolicy(policy);
@@ -943,5 +946,27 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
         	}
         }
     }
+
+	public void onReceivedData(byte[] video) {
+		mSurface = mSurfaceView.getHolder().getSurface();
+		if (mPlayer == null) {
+			mPlayer = new RtspDecoder(mSurface, 0);
+		}
+
+		if (video[4] == 0x67) {
+			byte[] tmp = new byte[15];
+			//把video中索引0开始的15个数字复制到tmp中索引为0的位置上
+			System.arraycopy(video, 0, tmp, 0, 15);
+			try {
+				mPlayer.initial(tmp);
+			} catch (Exception e) {
+				return;
+			}
+		}
+
+		if (mPlayer != null)
+			mPlayer.setVideoData(video);
+
+	}
 }
 
