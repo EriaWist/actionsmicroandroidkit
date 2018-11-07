@@ -11,7 +11,7 @@ import android.os.StrictMode;
 import android.support.annotation.NonNull;
 import android.view.Display;
 import android.view.Surface;
-import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.WindowManager;
 
 import com.actionsmicro.BuildConfig;
@@ -72,7 +72,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private static Map<CastDevice, EZCastOverGoogleCast> reg = new HashMap<CastDevice, EZCastOverGoogleCast>();
 	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>();
     private ScreenPresentation mPresentation;
-    private SurfaceView mSurfaceView;
+    private TextureView mSurfaceTextureView;
 	private Surface mSurface;
 	private RtspDecoder mPlayer;
 
@@ -899,7 +899,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
         mPresentation = new ScreenPresentation(context, display);
         try {
             mPresentation.show();
-            mSurfaceView = mPresentation.getSurfaceView();
+            mSurfaceTextureView = mPresentation.getTextureView();
         } catch (WindowManager.InvalidDisplayException ex) {
             android.util.Log.e(TAG, "Unable to show presentation, display was removed.", ex);
             dismissPresentation();
@@ -962,9 +962,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
     }
 
 	public void onReceivedData(byte[] video) {
-		mSurface = mSurfaceView.getHolder().getSurface();
 		if (mPlayer == null) {
-			mPlayer = new RtspDecoder(mSurface, 0);
+			mPlayer = new RtspDecoder(mSurfaceTextureView, 0);
 		}
 
 		if (video[4] == 0x67) {

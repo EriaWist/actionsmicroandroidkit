@@ -5,7 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.view.Display;
-import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
 import android.widget.ImageView;
 
@@ -17,7 +17,7 @@ import java.io.InputStream;
 public class ScreenPresentation extends CastPresentation {
 
     private ImageView mImageView;
-    private SurfaceView mSurfaceView;
+    private TextureView mTextureView;
 
     public ScreenPresentation(Context context, Display display) {
         super(context, display);
@@ -28,12 +28,12 @@ public class ScreenPresentation extends CastPresentation {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.screen_presentation_layout);
-        mSurfaceView = findViewById(R.id.surface_view);
+        mTextureView = findViewById(R.id.texture_view);
         mImageView = findViewById(R.id.image_view);
     }
 
-    public SurfaceView getSurfaceView() {
-        return mSurfaceView;
+    public TextureView getTextureView() {
+        return mTextureView;
     }
 
     public ImageView getImageView() {
@@ -48,12 +48,12 @@ public class ScreenPresentation extends CastPresentation {
 
     public void showImage() {
         mImageView.setVisibility(View.VISIBLE);
-        mSurfaceView.setVisibility(View.GONE);
+        mTextureView.setVisibility(View.GONE);
     }
 
     public void hideImage() {
         mImageView.setVisibility(View.GONE);
-        mSurfaceView.setVisibility(View.VISIBLE);
+        mTextureView.setVisibility(View.VISIBLE);
     }
 
 }

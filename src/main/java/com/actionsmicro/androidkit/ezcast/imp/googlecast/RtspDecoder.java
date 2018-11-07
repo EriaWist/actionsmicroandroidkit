@@ -1,10 +1,16 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
 import android.annotation.SuppressLint;
+import android.graphics.Matrix;
+import android.graphics.RectF;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.Log;
 import android.view.Surface;
+import android.view.TextureView;
+
+import org.jcodec.codecs.h264.H264Utils;
+import org.jcodec.codecs.h264.io.model.SeqParameterSet;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -12,6 +18,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 public class RtspDecoder {
+    private static final String TAG = "RtspDecoder";
+    private final TextureView surfaceTextureView;
     //处理音视频的编解码的类MediaCodec
     private MediaCodec video_decoder;
     //显示画面的Surface
@@ -33,9 +41,12 @@ public class RtspDecoder {
     private long deltaTime = 0;
     private long counterTime = System.currentTimeMillis();
     private boolean isRuning = false;
+    private float surfaceWidth = 1280;
+    private float surfaceHeight = 720;
 
-    public RtspDecoder(Surface surface, int playerState) {
-        this.surface = surface;
+    public RtspDecoder(TextureView surfaceTextureView, int playerState) {
+        this.surfaceTextureView = surfaceTextureView;
+        this.surface = new Surface(surfaceTextureView.getSurfaceTexture());
         this.state = playerState;
     }
 
@@ -70,36 +81,12 @@ public class RtspDecoder {
 
 
     public void initial(byte[] sps) throws IOException {
-        MediaFormat format = null;
-        boolean isVGA = true;
-        //使用sps数据格式判断是否是VGA
-        byte[] video_sps = {0, 0, 0, 1, 103, 100, 64, 41, -84, 44, -88, 10, 2, -1, -107};
-        for (int i = 0; i < sps.length; i++) {
-            if (video_sps[i] != sps[i]) {
-                //判断是否是VGA视频传输标准
-                isVGA = false;
-                break;
-            }
-        }
-        if (isVGA) {
-            format = MediaFormat.createVideoFormat("video/avc", 1280, 720);
-            byte[] header_pps = {0, 0, 0, 1, 104, -18, 56, -128};
-            format.setByteBuffer("csd-0", ByteBuffer.wrap(video_sps));
-            format.setByteBuffer("csd-1", ByteBuffer.wrap(header_pps));
-            format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 640 * 360);
-        } else {
-            format = MediaFormat.createVideoFormat("video/avc", 1280, 720);
-            byte[] header_sps = {0, 0, 0, 1, 103, 100, 64, 41, -84, 44, -88, 5, 0, 91, -112};
-            byte[] header_pps = {0, 0, 0, 1, 104, -18, 56, -128};
-            format.setByteBuffer("csd-0", ByteBuffer.wrap(header_sps));
-            format.setByteBuffer("csd-1", ByteBuffer.wrap(header_pps));
-            //      format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 1280 * 720);
-        }
         if (video_decoder != null) {
             video_decoder.stop();
             video_decoder.release();
             video_decoder = null;
         }
+        MediaFormat format = MediaFormat.createVideoFormat("video/avc", 1280, 720);
         video_decoder = MediaCodec.createDecoderByType("video/avc");
         if (video_decoder == null) {
             return;
@@ -113,6 +100,7 @@ public class RtspDecoder {
         deltaTime = 0;
         isRuning = true;
         runDecodeVideoThread();
+        updateTransformAccodingToSps(sps);
     }
 
     /**
@@ -198,5 +186,30 @@ public class RtspDecoder {
         };
 
         t.start();
+    }
+
+
+    private void updateTransformAccodingToSps(byte[] spsData) {
+        SeqParameterSet sps = SeqParameterSet.read(ByteBuffer.wrap(spsData, 1, spsData.length - 1));
+        int codedWidth = (sps.pic_width_in_mbs_minus1 + 1) << 4;
+        int codedHeight = H264Utils.getPicHeightInMbs(sps) << 4;
+
+        final int width = sps.frame_cropping_flag ? codedWidth
+                - ((sps.frame_crop_right_offset + sps.frame_crop_left_offset) << sps.chroma_format_idc.compWidth[1])
+                : codedWidth;
+        final int height = sps.frame_cropping_flag ? codedHeight
+                - ((sps.frame_crop_bottom_offset + sps.frame_crop_top_offset) << sps.chroma_format_idc.compHeight[1])
+                : codedHeight;
+        Log.v(TAG, "seqParameterSet width:" + width + ", height:" + height);
+        updateTransform(width, height);
+    }
+
+    private void updateTransform(int width, int height) {
+        final Matrix transform = new Matrix();
+        transform.setRectToRect(new RectF(0, 0, width, height), new RectF(0, 0, surfaceWidth, surfaceHeight), Matrix.ScaleToFit.CENTER);
+        transform.preScale((float) width / (float) surfaceWidth, (float) height / (float) surfaceHeight);
+        Log.v(TAG, "mirror view width:" + surfaceTextureView.getWidth() + ", height:" + surfaceTextureView.getHeight());
+        Log.v(TAG, "surfaceWidth:" + surfaceWidth + ", surfaceHeight:" + surfaceHeight);
+        surfaceTextureView.setTransform(transform);
     }
 }
