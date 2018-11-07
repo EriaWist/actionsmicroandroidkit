@@ -48,7 +48,6 @@ public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
-		Log.d("dddd", "send h264~~~~");
-		getGoogleCastClient().onReceivedData(contents);
+		getGoogleCastClient().sendH264EncodedScreenData(contents,width,height);
 	}
 }

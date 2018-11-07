@@ -1,13 +1,18 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.SurfaceView;
+import android.view.View;
 import android.widget.ImageView;
 
 import com.actionsmicro.R;
 import com.google.android.gms.cast.CastPresentation;
+
+import java.io.InputStream;
 
 public class ScreenPresentation extends CastPresentation {
 
@@ -24,7 +29,7 @@ public class ScreenPresentation extends CastPresentation {
 
         setContentView(R.layout.screen_presentation_layout);
         mSurfaceView = findViewById(R.id.surface_view);
-        mImageView = findViewById(R.id.background);
+        mImageView = findViewById(R.id.image_view);
     }
 
     public SurfaceView getSurfaceView() {
@@ -35,12 +40,20 @@ public class ScreenPresentation extends CastPresentation {
         return mImageView;
     }
 
-    public void showBackground() {
-//        mImageView.setVisibility(View.VISIBLE);
+    public void setImageView(InputStream stream) {
+        showImage();
+        Bitmap bmp = BitmapFactory.decodeStream(stream);
+        mImageView.setImageBitmap(bmp);
     }
 
-    public void hideBackkGround() {
-//        mImageView.setVisibility(View.GONE);
+    public void showImage() {
+        mImageView.setVisibility(View.VISIBLE);
+        mSurfaceView.setVisibility(View.GONE);
+    }
+
+    public void hideImage() {
+        mImageView.setVisibility(View.GONE);
+        mSurfaceView.setVisibility(View.VISIBLE);
     }
 
 }

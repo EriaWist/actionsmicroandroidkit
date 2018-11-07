@@ -82,13 +82,13 @@ public class RtspDecoder {
             }
         }
         if (isVGA) {
-            format = MediaFormat.createVideoFormat("video/avc", 1920, 1088);
+            format = MediaFormat.createVideoFormat("video/avc", 1280, 720);
             byte[] header_pps = {0, 0, 0, 1, 104, -18, 56, -128};
             format.setByteBuffer("csd-0", ByteBuffer.wrap(video_sps));
             format.setByteBuffer("csd-1", ByteBuffer.wrap(header_pps));
             format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 640 * 360);
         } else {
-            format = MediaFormat.createVideoFormat("video/avc", 1920, 1088);
+            format = MediaFormat.createVideoFormat("video/avc", 1280, 720);
             byte[] header_sps = {0, 0, 0, 1, 103, 100, 64, 41, -84, 44, -88, 5, 0, 91, -112};
             byte[] header_pps = {0, 0, 0, 1, 104, -18, 56, -128};
             format.setByteBuffer("csd-0", ByteBuffer.wrap(header_sps));

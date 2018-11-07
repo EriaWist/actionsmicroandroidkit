@@ -203,6 +203,13 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	public synchronized void sendJpegEncodedScreenData(InputStream input, long length) {
 //		Log.d(TAG,   ": try to sendJpegEncodedScreenData");
+
+		if(mPresentation !=null){
+			mPresentation.setImageView(input);
+			return;
+		}
+
+
 		if ((getState() == State.PLAYING && mIsStopping == false) || !isReadyToDisplay()) {
 			return;
 		}
@@ -237,7 +244,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			connectEzCastChannel();
 			createMjpegServer();
 			// { "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}
-			sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}", resultCallback);			
+			sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}", resultCallback);
 		}
 	}
 	private boolean isCurrentApplicationEzCast() {
@@ -253,6 +260,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		stopDisplayingImp(null);
 	}
 	private void stopDisplayingImp(final ResultCallback<Status> resultCallback) {
+		// TODO
 		Log.d(TAG,   ": stopDisplayingImp");
 		
 		sendMessage("{\"jsonrpc\": \"2.0\", \"method\": \"stopDisplay\"}", new ResultCallback<Status>() {
@@ -292,7 +300,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
-
+		if(mDeviceInfo.supportH264Streaming()){
+			onReceivedData(contents);
+		}
 	}
 
 	private ByteArrayOutputStream getCompressionBuffer() {
@@ -861,6 +871,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 
     private void connectToRemoteDisplayApi() {
+		if(mPresentation !=null){
+			Log.d("dddd", "already in presentation");
+			return;
+		}
         PendingResult<CastRemoteDisplay.CastRemoteDisplaySessionResult> result =
                 CastRemoteDisplay.CastRemoteDisplayApi.startRemoteDisplay(googleCastApiClient, getEzCastAppId());
         result.setResultCallback(new ResultCallbacks<CastRemoteDisplay.CastRemoteDisplaySessionResult>() {
@@ -954,6 +968,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 
 		if (video[4] == 0x67) {
+			mPresentation.hideImage();
 			byte[] tmp = new byte[15];
 			//把video中索引0开始的15个数字复制到tmp中索引为0的位置上
 			System.arraycopy(video, 0, tmp, 0, 15);
