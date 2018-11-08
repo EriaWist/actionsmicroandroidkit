@@ -28,9 +28,6 @@ public class RtspDecoder {
     private int state = 0;
     //视频数据
     private BlockingQueue<byte[]> video_data_Queue = new ArrayBlockingQueue<byte[]>(10000);
-    //音频数据
-    private BlockingQueue<byte[]> audio_data_Queue = new ArrayBlockingQueue<byte[]>(10000);
-
     private boolean isReady = false;
     private int fps = 0;
 
@@ -41,8 +38,8 @@ public class RtspDecoder {
     private long deltaTime = 0;
     private long counterTime = System.currentTimeMillis();
     private boolean isRuning = false;
-    private float surfaceWidth = 1280;
-    private float surfaceHeight = 720;
+    private int surfaceWidth = 1280;
+    private int surfaceHeight = 720;
 
     public RtspDecoder(TextureView surfaceTextureView, int playerState) {
         this.surfaceTextureView = surfaceTextureView;
@@ -52,27 +49,15 @@ public class RtspDecoder {
 
     public void stopRunning() {
         video_data_Queue.clear();
-        audio_data_Queue.clear();
     }
 
-    //添加视频数据
-    public void setVideoData(byte[] data) {
+    public void enqueVideoData(byte[] data) {
 
         try {
             video_data_Queue.put(data);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
-
-    //添加音频数据
-    public void setAudioData(byte[] data) {
-        try {
-            audio_data_Queue.put(data);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
     }
 
     public int getFPS() {
@@ -100,14 +85,10 @@ public class RtspDecoder {
         deltaTime = 0;
         isRuning = true;
         runDecodeVideoThread();
+
         updateTransformAccodingToSps(sps);
     }
 
-    /**
-     * @description 解码视频流数据
-     * @author ldm
-     * @time 2016/12/20
-     */
     private void runDecodeVideoThread() {
 
         Thread t = new Thread() {

@@ -882,7 +882,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
             public void onSuccess(@NonNull CastRemoteDisplay.CastRemoteDisplaySessionResult castRemoteDisplaySessionResult) {
                 Display remoteDisplay = castRemoteDisplaySessionResult.getPresentationDisplay();
                 createPresentation(remoteDisplay);
-//                CastingUtil.sendStartingImage(mContext);
                 android.util.Log.d(TAG, "Created presentation");
             }
 
@@ -961,25 +960,24 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
         }
     }
 
-	public void onReceivedData(byte[] video) {
+	public void onReceivedData(byte[] videoData) {
 		if (mPlayer == null) {
 			mPlayer = new RtspDecoder(mSurfaceTextureView, 0);
 		}
 
-		if (video[4] == 0x67) {
-			mPresentation.hideImage();
-			byte[] tmp = new byte[15];
-			//把video中索引0开始的15个数字复制到tmp中索引为0的位置上
-			System.arraycopy(video, 0, tmp, 0, 15);
+		if (videoData[4] == 0x67) {
 			try {
-				mPlayer.initial(tmp);
+				byte[] sps = new byte[videoData.length-4];
+				System.arraycopy(videoData, 4, sps, 0, videoData.length - 4);
+				mPlayer.initial(sps);
+				mPresentation.hideImage();
 			} catch (Exception e) {
 				return;
 			}
 		}
 
 		if (mPlayer != null)
-			mPlayer.setVideoData(video);
+			mPlayer.enqueVideoData(videoData);
 
 	}
 }
