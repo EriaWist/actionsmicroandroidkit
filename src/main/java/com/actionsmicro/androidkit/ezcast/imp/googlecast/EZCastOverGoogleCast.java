@@ -323,6 +323,31 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
 		if(mDeviceInfo.supportH264Streaming()){
+			if(mPresentation == null){
+				enqueueH264Data(contents);
+			}  else {
+				enqueueH264Data(contents);
+				dequeueH264Data();
+			}
+		}
+	}
+
+    private ArrayList<byte[]> h264Queue = new ArrayList<>();
+
+	private synchronized void enqueueH264Data(byte[] contents) {
+		// clear previous data after got codec data
+		if (contents[4] == 0x67) {
+			h264Queue.clear();
+		}
+		h264Queue.add(contents);
+	}
+
+	private synchronized void dequeueH264Data() {
+		if (h264Queue.size() == 0) {
+			return;
+		}
+		while (h264Queue.size() > 0) {
+			byte[] contents = h264Queue.remove(0);
 			onReceivedData(contents);
 		}
 	}
