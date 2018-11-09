@@ -3,6 +3,7 @@ package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 import android.annotation.SuppressLint;
 import android.graphics.Matrix;
 import android.graphics.RectF;
+import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.Log;
@@ -23,7 +24,7 @@ public class RtspDecoder {
     //处理音视频的编解码的类MediaCodec
     private MediaCodec video_decoder;
     //显示画面的Surface
-    private Surface surface;
+    private Surface mSurface;
     // 0: live, 1: playback, 2: local file
     private int state = 0;
     //视频数据
@@ -43,12 +44,42 @@ public class RtspDecoder {
 
     public RtspDecoder(TextureView surfaceTextureView, int playerState) {
         this.surfaceTextureView = surfaceTextureView;
-        this.surface = new Surface(surfaceTextureView.getSurfaceTexture());
+        surfaceTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+            @Override
+            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                mSurface = new Surface(surface);
+            }
+
+            @Override
+            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+
+            }
+
+            @Override
+            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                return false;
+            }
+
+            @Override
+            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+
+            }
+        });
+
         this.state = playerState;
     }
 
-    public void stopRunning() {
+    public void clearVideoData() {
         video_data_Queue.clear();
+    }
+
+    public void stop() {
+        try {
+            video_decoder.stop();
+            video_decoder.release();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void enqueVideoData(byte[] data) {
@@ -77,13 +108,14 @@ public class RtspDecoder {
             return;
         }
 
-        video_decoder.configure(format, surface, null, 0);
+        video_decoder.configure(format, mSurface, null, 0);
         video_decoder.start();
         inputBuffers = video_decoder.getInputBuffers();
         outputBuffers = video_decoder.getOutputBuffers();
         frameCount = 0;
         deltaTime = 0;
         isRuning = true;
+        clearVideoData();
         runDecodeVideoThread();
 
         updateTransformAccodingToSps(sps);
@@ -155,7 +187,7 @@ public class RtspDecoder {
 
                         //所有流数据解码完成，可以进行关闭等操作
                         if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                            Log.e("dddd", "BUFFER_FLAG_END_OF_STREAM");
+                            Log.e(TAG, "BUFFER_FLAG_END_OF_STREAM");
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
