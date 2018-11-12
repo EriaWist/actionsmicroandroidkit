@@ -20,12 +20,14 @@ import java.io.InputStream;
 public class ScreenPresentation extends CastPresentation {
 
     private static final String TAG = ScreenPresentation.class.getSimpleName();
+    private final Bitmap mAdvertiseImg;
     private ImageView mImageView;
     private TextureView mTextureView;
     private Handler mainHandler = new Handler(Looper.getMainLooper()) ;
 
-    public ScreenPresentation(Context context, Display display) {
+    public ScreenPresentation(Context context, Display display, Bitmap advertiseImg) {
         super(context, display);
+        mAdvertiseImg = advertiseImg;
     }
 
     @Override
@@ -35,6 +37,9 @@ public class ScreenPresentation extends CastPresentation {
         setContentView(R.layout.screen_presentation_layout);
         mTextureView = findViewById(R.id.texture_view);
         mImageView = findViewById(R.id.image_view);
+        if (mAdvertiseImg != null) {
+            mImageView.setImageBitmap(mAdvertiseImg);
+        }
     }
 
     public TextureView getTextureView() {

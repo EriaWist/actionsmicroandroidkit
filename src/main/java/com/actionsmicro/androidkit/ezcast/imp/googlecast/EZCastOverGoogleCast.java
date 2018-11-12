@@ -3,6 +3,7 @@ package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.graphics.YuvImage;
 import android.net.Uri;
@@ -58,6 +59,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private static final double VOLUME_INCREMENT = 0.1;
+	private final Bitmap mAdvertiseImg;
 	private EZCastChannel ezcastChannel;
 	private SimpleMotionJpegHttpServer simpleMotionJpegHttpServer;
 	private String TAG = "EZCastOverGoogleCast";
@@ -74,7 +76,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private RtspDecoder mPlayer;
     private boolean isSurfaceReady = false;
 
-    public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi) {
+    public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi, Bitmap advertiseImg) {
 		if (Build.VERSION.SDK_INT >= 24) {
 			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 			StrictMode.setThreadPolicy(policy);
@@ -82,6 +84,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		this.context = context;
 		mDeviceInfo = deviceInfo;
 		castDevice = ((GoogleCastDeviceInfo)deviceInfo).getCastDevice();
+		mAdvertiseImg = advertiseImg;
 		this.trackableApi = trackableApi;
 	}
 	private ArrayList<ConnectionManager> managers = new ArrayList<ConnectionManager>();
@@ -478,7 +481,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 	}
 	public static synchronized EZCastOverGoogleCast createClient(Context context,
-																 DeviceInfo deviceInfo, TrackableApi trackableApi, ConnectionManager connectionManager) {
+																 DeviceInfo deviceInfo, TrackableApi trackableApi, ConnectionManager connectionManager, Bitmap advertiseImg) {
 		EZCastOverGoogleCast googleCastClient;
 		CastDevice castDevice = ((GoogleCastDeviceInfo)deviceInfo).getCastDevice();
 		if (reg.containsKey(castDevice)) {
@@ -486,7 +489,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			googleCastClient.addConnectionManager(connectionManager);
 			referenceCount.put(googleCastClient, referenceCount.get(googleCastClient) + 1);
 		} else {
-			googleCastClient = new EZCastOverGoogleCast(context, deviceInfo, trackableApi);
+			googleCastClient = new EZCastOverGoogleCast(context, deviceInfo, trackableApi, advertiseImg);
 			googleCastClient.addConnectionManager(connectionManager);
 			googleCastClient.connect();		
 			referenceCount.put(googleCastClient, 1);
@@ -914,7 +917,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
     private void createPresentation(Display display) {
         dismissPresentation();
-        mPresentation = new ScreenPresentation(context, display);
+		mPresentation = new ScreenPresentation(context, display, mAdvertiseImg);
         try {
             mPresentation.show();
             mSurfaceTextureView = mPresentation.getTextureView();
@@ -940,8 +943,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 				}
 			});
-			dequeueH264Data();
-
         } catch (WindowManager.InvalidDisplayException ex) {
             Log.e(TAG, "Unable to show presentation, display was removed.", ex);
             dismissPresentation();

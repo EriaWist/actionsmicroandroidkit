@@ -72,6 +72,7 @@ public class RtspDecoder {
 
     public void stop() {
         try {
+            isRuning = false;
             if(video_decoder !=null){
                 video_decoder.stop();
                 video_decoder.release();

@@ -1,6 +1,8 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
 import com.actionsmicro.androidkit.ezcast.Api;
 import com.actionsmicro.androidkit.ezcast.ApiBuilder;
@@ -8,13 +10,16 @@ import com.actionsmicro.androidkit.ezcast.ConnectionManager;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.utils.Log;
-import com.google.android.gms.cast.CastDevice;
+
+import java.io.InputStream;
 
 public class GoogleCastApi extends TrackableApi implements Api{
 
 	private static final String TAG = "GoogleCastApi";
 	protected ConnectionManager connectionManager;
 	private EZCastOverGoogleCast googleCastClient;
+	private Bitmap mAdvertiseImage;
+
 	protected synchronized EZCastOverGoogleCast getGoogleCastClient() {
 		return googleCastClient;
 	}
@@ -40,13 +45,17 @@ public class GoogleCastApi extends TrackableApi implements Api{
 				}
 			}
 			
-		});
+		}, mAdvertiseImage);
 		if (googleCastClient == null) {
 			Log.d(TAG, "googleCastClient is null");
 		} else {
 			onCreateGoogleCastClient(googleCastClient);
 		}
 		super.connect();
+	}
+
+	public void setAdvertiseImage(InputStream stream){
+		mAdvertiseImage = BitmapFactory.decodeStream(stream);
 	}
 
 	protected void onCreateGoogleCastClient(EZCastOverGoogleCast googleCastClient) {
