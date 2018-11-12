@@ -4,20 +4,25 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Display;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.ImageView;
 
 import com.actionsmicro.R;
+import com.actionsmicro.utils.Log;
 import com.google.android.gms.cast.CastPresentation;
 
 import java.io.InputStream;
 
 public class ScreenPresentation extends CastPresentation {
 
+    private static final String TAG = ScreenPresentation.class.getSimpleName();
     private ImageView mImageView;
     private TextureView mTextureView;
+    private Handler mainHandler = new Handler(Looper.getMainLooper()) ;
 
     public ScreenPresentation(Context context, Display display) {
         super(context, display);
@@ -47,13 +52,35 @@ public class ScreenPresentation extends CastPresentation {
     }
 
     public void showImage() {
-        mImageView.setVisibility(View.VISIBLE);
-        mTextureView.setVisibility(View.GONE);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mImageView.setVisibility(View.VISIBLE);
+                mTextureView.setVisibility(View.GONE);
+            }
+        });
+
     }
 
     public void hideImage() {
-        mImageView.setVisibility(View.GONE);
-        mTextureView.setVisibility(View.VISIBLE);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mImageView.setVisibility(View.GONE);
+                mTextureView.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
+    private void runOnUiThread(Runnable runnable) {
+        if (runnable != null) {
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                runnable.run();
+            } else {
+                if (!mainHandler.post(runnable)) {
+                    Log.e(TAG, "Cannot post runnable:"+runnable);
+                }
+            }
+        }
+    }
 }

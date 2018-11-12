@@ -21,13 +21,8 @@ import java.util.concurrent.BlockingQueue;
 public class RtspDecoder {
     private static final String TAG = "RtspDecoder";
     private final TextureView surfaceTextureView;
-    //处理音视频的编解码的类MediaCodec
     private MediaCodec video_decoder;
-    //显示画面的Surface
     private Surface mSurface;
-    // 0: live, 1: playback, 2: local file
-    private int state = 0;
-    //视频数据
     private BlockingQueue<byte[]> video_data_Queue = new ArrayBlockingQueue<byte[]>(10000);
     private boolean isReady = false;
     private int fps = 0;
@@ -42,31 +37,33 @@ public class RtspDecoder {
     private int surfaceWidth = 1280;
     private int surfaceHeight = 720;
 
-    public RtspDecoder(TextureView surfaceTextureView, int playerState) {
+    public RtspDecoder(TextureView surfaceTextureView, final TextureView.SurfaceTextureListener listener) {
         this.surfaceTextureView = surfaceTextureView;
         surfaceTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
             public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                Log.d(TAG,"onSurfaceTextureAvailable");
                 mSurface = new Surface(surface);
+                listener.onSurfaceTextureAvailable(surface,width,height);
             }
 
             @Override
             public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-
+                listener.onSurfaceTextureSizeChanged(surface,width,height);
             }
 
             @Override
             public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                Log.d(TAG,"onSurfaceTextureDestroyed");
+                listener.onSurfaceTextureDestroyed(surface);
                 return false;
             }
 
             @Override
             public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-
+                listener.onSurfaceTextureUpdated(surface);
             }
         });
-
-        this.state = playerState;
     }
 
     public void clearVideoData() {
@@ -75,8 +72,11 @@ public class RtspDecoder {
 
     public void stop() {
         try {
-            video_decoder.stop();
-            video_decoder.release();
+            if(video_decoder !=null){
+                video_decoder.stop();
+                video_decoder.release();
+                video_decoder = null;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -146,17 +146,9 @@ public class RtspDecoder {
                                 byte[] data;
                                 data = video_data_Queue.take();
                                 buffer.put(data);
-                                if (state == 0) {
-                                    video_decoder.queueInputBuffer(inIndex, 0, data.length, 66, 0);
-                                } else {
-                                    video_decoder.queueInputBuffer(inIndex, 0, data.length, 33, 0);
-                                }
+                                video_decoder.queueInputBuffer(inIndex, 0, data.length, 66, 0);
                             } else {
-                                if (state == 0) {
-                                    video_decoder.queueInputBuffer(inIndex, 0, 0, 66, 0);
-                                } else {
-                                    video_decoder.queueInputBuffer(inIndex, 0, 0, 33, 0);
-                                }
+                                video_decoder.queueInputBuffer(inIndex, 0, 0, 66, 0);
                             }
                         } else {
                             video_decoder.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
@@ -185,7 +177,6 @@ public class RtspDecoder {
                                 break;
                         }
 
-                        //所有流数据解码完成，可以进行关闭等操作
                         if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                             Log.e(TAG, "BUFFER_FLAG_END_OF_STREAM");
                         }

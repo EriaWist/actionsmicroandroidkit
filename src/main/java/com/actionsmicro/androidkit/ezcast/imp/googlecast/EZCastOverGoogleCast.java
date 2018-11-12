@@ -3,17 +3,15 @@ package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.graphics.SurfaceTexture;
 import android.graphics.YuvImage;
-import android.icu.text.LocaleDisplayNames;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
-import android.support.annotation.NonNull;
 import android.view.Display;
 import android.view.Surface;
 import android.view.TextureView;
-import android.view.View;
 import android.view.WindowManager;
 
 import com.actionsmicro.BuildConfig;
@@ -32,7 +30,6 @@ import com.google.android.gms.cast.Cast.Listener;
 import com.google.android.gms.cast.Cast.MessageReceivedCallback;
 import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.cast.CastRemoteDisplay;
-import com.google.android.gms.cast.CastRemoteDisplayClient;
 import com.google.android.gms.cast.LaunchOptions;
 import com.google.android.gms.cast.MediaInfo;
 import com.google.android.gms.cast.MediaMetadata;
@@ -45,8 +42,6 @@ import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -76,10 +71,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>();
     private ScreenPresentation mPresentation;
     private TextureView mSurfaceTextureView;
-	private Surface mSurface;
 	private RtspDecoder mPlayer;
+    private boolean isSurfaceReady = false;
 
-	public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi) {
+    public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi) {
 		if (Build.VERSION.SDK_INT >= 24) {
 			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 			StrictMode.setThreadPolicy(policy);
@@ -153,7 +148,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
                 CastRemoteDisplay.CastRemoteDisplayOptions.Builder(castDevice, new CastRemoteDisplay.CastRemoteDisplaySessionCallbacks() {
             @Override
             public void onRemoteDisplayEnded(Status status) {
-                android.util.Log.i(TAG, "Stop Casting because Remote Display session ended");
+                Log.d(TAG, "Stop Casting because Remote Display session ended");
             }
         });
 
@@ -229,7 +224,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 	@Override
 	public void startDisplaying() {
-		if (getState() == State.PLAYING && mIsStopping == false) {
+		if ((getState() == State.PLAYING && mIsStopping == false)) {
 			return;
 		}
 
@@ -262,15 +257,14 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			trackableApi.stopTrackingWifiDisplay();
 		}
 		isDisplaying = false;
-		stopDisplayingImp(null, null);
+		stopDisplayingImp(null);
 	}
 
 	private boolean isSupportH264Streaming(){
 		return mDeviceInfo.supportH264Streaming();
 	}
 
-	// FIXME handle swtich appid
-	private void stopDisplayingImp(final ResultCallback<Status> resultCallback, OnCompleteListener<Void> remoteDisplayCallback) {
+	private void stopDisplayingImp(final ResultCallback<Status> resultCallback) {
 		Log.d(TAG,   ": stopDisplayingImp");
 		if(!isSupportH264Streaming()){
 			sendMessage("{\"jsonrpc\": \"2.0\", \"method\": \"stopDisplay\"}", new ResultCallback<Status>() {
@@ -290,16 +284,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 			});
 		} else {
-			if(remoteDisplayCallback !=null){
-				if(mPresentation != null && mPresentation.isShowing()) {
-					CastRemoteDisplayClient client = CastRemoteDisplay.getClient(context);
-					Task<Void> result = client.stopRemoteDisplay();
-					result.addOnCompleteListener(remoteDisplayCallback);
-				} else {
-					remoteDisplayCallback.onComplete(null);
-				}
-
-			}
+			dismissPresentation();
+			stopApplication(currentApplication, resultCallback);
 		}
 	}
 
@@ -323,7 +309,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
 		if(mDeviceInfo.supportH264Streaming()){
-			if(mPresentation == null){
+			if(!isSurfaceReady){
 				enqueueH264Data(contents);
 			}  else {
 				enqueueH264Data(contents);
@@ -343,7 +329,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 
 	private synchronized void dequeueH264Data() {
-		if (h264Queue.size() == 0) {
+		if (h264Queue.size() == 0 || !isSurfaceReady) {
 			return;
 		}
 		while (h264Queue.size() > 0) {
@@ -363,7 +349,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		Log.d(TAG,   ": teardown");
 		stopStreamPositionTimer();
 		if (googleCastApiClient != null) {
-			stopDisplayingImp(null, null);
+			stopDisplayingImp(null);
 			stopCurrentApplication(new ResultCallback<Status>() {
 
 				@Override
@@ -656,15 +642,10 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		stopDisplayingImp(new ResultCallback<Status>() {
 			@Override
 			public void onResult(Status result) {
-				launchMediaPlayer(context, url, userAgentString, title);
-			}
-
-		}, new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(@NonNull Task<Void> task) {
 				dismissPresentation();
 				launchMediaPlayer(context, url, userAgentString, title);
 			}
+
 		});
 		return true;
 	}
@@ -786,7 +767,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 						@Override
 						public void onStatusUpdated() {
 							MediaStatus mediaStatus = mRemoteMediaPlayer.getMediaStatus();
-							if (mediaStatus != null) {
+							// ignore wierd behavior that still receive playing stat after stopped
+							if (mediaStatus != null && currentApplication.getAppId().equals(getEzCastMediaPlayerId())) {
 								Log.d(TAG,  ": onStatusUpdated:" + mediaStatus.getPlayerState() +
 										" duration:" + mRemoteMediaPlayer.getStreamDuration() + 
 										" position:"+ mRemoteMediaPlayer.getApproximateStreamPosition());
@@ -936,11 +918,32 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
         try {
             mPresentation.show();
             mSurfaceTextureView = mPresentation.getTextureView();
-			if (mPlayer == null) {
-				mPlayer = new RtspDecoder(mSurfaceTextureView, 0);
-			}
+			mPlayer = new RtspDecoder(mSurfaceTextureView, new TextureView.SurfaceTextureListener() {
+				@Override
+				public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+					isSurfaceReady = true;
+					dequeueH264Data();
+				}
+
+				@Override
+				public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+
+				}
+
+				@Override
+				public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+					return false;
+				}
+
+				@Override
+				public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+
+				}
+			});
+			dequeueH264Data();
+
         } catch (WindowManager.InvalidDisplayException ex) {
-            android.util.Log.e(TAG, "Unable to show presentation, display was removed.", ex);
+            Log.e(TAG, "Unable to show presentation, display was removed.", ex);
             dismissPresentation();
         }
     }
@@ -955,6 +958,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			mPresentation.dismiss();
 			mPresentation = null;
 		}
+
+		isSurfaceReady = false;
 	}
 
 	private String getEzCastAppId() {
@@ -1013,7 +1018,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 				mPlayer.initial(sps);
 				mPresentation.hideImage();
 			} catch (Exception e) {
-				Log.e("ddddd", "init fail", e);
+				Log.e(TAG, "init fail", e);
 				return;
 			}
 		}
