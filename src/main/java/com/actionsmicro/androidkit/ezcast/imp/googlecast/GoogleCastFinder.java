@@ -64,7 +64,8 @@ public class GoogleCastFinder extends DeviceFinderBase {
 				public void onRouteAdded (MediaRouter router, MediaRouter.RouteInfo route) {
 					Log.d(TAG, "onRouteAdded:"+route.getName());
 					GoogleCastDeviceInfo device = new GoogleCastDeviceInfo(route);
-					if(device.getCastDevice().isOnLocalNetwork()){
+					String modelName = device.getCastDevice().getModelName();
+					if(device.getCastDevice().isOnLocalNetwork() && "Chromecast".equals(modelName)){
 						getDeviceFinderProxy().notifyListeneroOnDeviceAdded(device);
 					}
 				}
