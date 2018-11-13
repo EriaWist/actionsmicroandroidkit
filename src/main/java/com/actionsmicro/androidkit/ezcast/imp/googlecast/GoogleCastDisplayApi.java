@@ -7,6 +7,7 @@ import android.graphics.YuvImage;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.DisplayApiBuilder;
 import com.actionsmicro.graphics.YuvImageToJpegHelper;
+import com.actionsmicro.utils.Log;
 
 public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 
@@ -47,6 +48,6 @@ public class GoogleCastDisplayApi extends GoogleCastApi implements DisplayApi {
 
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
-
+		getGoogleCastClient().sendH264EncodedScreenData(contents,width,height);
 	}
 }
