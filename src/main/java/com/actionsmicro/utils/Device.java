@@ -28,6 +28,7 @@ public class Device {
 	private static final String TAG = "Device";
 
 	public static final String APP_UNIQUEID_PREF_KEY = "com.actionsmicro.appuuid";
+	public static final String APP_UNIQUE_IDENTIFIER_PREF_KEY = "com.actionsmicro.unique_identifier";
 	public static final String DEFAULT_WIFIAP_ADDRESS = "192.168.43.1";
 
 	static public int getDeviceNaturlOrientation(Activity activity) {
@@ -40,13 +41,13 @@ public class Device {
 		DisplayMetrics dm = new DisplayMetrics();
 		windowManager.getDefaultDisplay().getMetrics(dm);
 		Log.d(TAG, "dm.widthPixels:"+dm.widthPixels+", dm.heightPixels:"+dm.heightPixels);
-		if( (((lRotation == Surface.ROTATION_0) ||(lRotation == Surface.ROTATION_180)) &&   
+		if( (((lRotation == Surface.ROTATION_0) ||(lRotation == Surface.ROTATION_180)) &&
 				(cfg.orientation == Configuration.ORIENTATION_LANDSCAPE)) ||
-				(((lRotation == Surface.ROTATION_90) ||(lRotation == Surface.ROTATION_270)) &&    
+				(((lRotation == Surface.ROTATION_90) ||(lRotation == Surface.ROTATION_270)) &&
 						(cfg.orientation == Configuration.ORIENTATION_PORTRAIT))){
 
 			return Configuration.ORIENTATION_LANDSCAPE;
-		}     
+		}
 
 		return Configuration.ORIENTATION_PORTRAIT;
 	}
@@ -120,6 +121,11 @@ public class Device {
 		String uuid = getUUID(context, preferenceKey);
 		return "EZCastScreen-" + uuid.substring(uuid.length()-3);
 	}
+	// T6686: used for set_device_description
+	public static String getAppUniqueIdentifier(Context context){
+		return getUUID(context,APP_UNIQUE_IDENTIFIER_PREF_KEY);
+	}
+
 	public static String getUUID(Context context, String preferenceKey) {
 		String uuidString = PreferenceManager.getDefaultSharedPreferences(context).getString(preferenceKey, ""); 
 		if (uuidString.isEmpty()) {
