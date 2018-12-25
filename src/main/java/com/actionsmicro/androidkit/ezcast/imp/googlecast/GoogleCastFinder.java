@@ -64,10 +64,7 @@ public class GoogleCastFinder extends DeviceFinderBase {
 				public void onRouteAdded (MediaRouter router, MediaRouter.RouteInfo route) {
 					Log.d(TAG, "onRouteAdded:"+route.getName());
 					GoogleCastDeviceInfo device = new GoogleCastDeviceInfo(route);
-					String modelName = device.getCastDevice().getModelName();
-					if(device.getCastDevice().isOnLocalNetwork() && "Chromecast".equals(modelName)){
-						getDeviceFinderProxy().notifyListeneroOnDeviceAdded(device);
-					}
+					notifiyDeviceAddIfNeed(device);
 				}
 				@Override
 				public void onRouteRemoved (MediaRouter router, MediaRouter.RouteInfo route) {
@@ -78,7 +75,12 @@ public class GoogleCastFinder extends DeviceFinderBase {
 				public void onRouteChanged(MediaRouter router, RouteInfo route) {
 					Log.d(TAG, "onRouteChanged:"+route.getName());
 					GoogleCastDeviceInfo device = new GoogleCastDeviceInfo(route);
-					if(device.getCastDevice().isOnLocalNetwork()){
+					notifiyDeviceAddIfNeed(device);
+				}
+
+				private void notifiyDeviceAddIfNeed(GoogleCastDeviceInfo device) {
+					String modelName = device.getCastDevice().getModelName();
+					if (device.getCastDevice().isOnLocalNetwork() && "Chromecast".equals(modelName)) {
 						getDeviceFinderProxy().notifyListeneroOnDeviceAdded(device);
 					}
 				}
