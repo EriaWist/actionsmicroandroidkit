@@ -1114,7 +1114,7 @@ crypto_hash_sha512_init_(crypto_hash_sha512_state_ *state) {
     return 0;
 }
 
-inline void
+static inline void
 be64enc(void *pp, uint64_t x) {
     uint8_t *p = (uint8_t *) pp;
 
@@ -1137,7 +1137,7 @@ be64enc_vect(unsigned char *dst, const uint64_t *src, size_t len) {
     }
 }
 
-inline uint64_t
+static inline uint64_t
 be64dec(const void *pp) {
     const uint8_t *p = (uint8_t const *) pp;
 
