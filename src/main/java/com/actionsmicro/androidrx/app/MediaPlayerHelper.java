@@ -23,7 +23,7 @@ import org.videolan.libvlc.Media;
 
 import java.util.ArrayList;
 
-public class MediaPlayerHelper implements IVLCVout.Callback, IVLCVout.OnNewVideoLayoutListener{
+public class MediaPlayerHelper implements IVLCVout.Callback{
 	private static final String TAG = "MediaPlayerHelper";
 	private ViewGroup container;
 	private PlayerListener playerListener;
@@ -31,6 +31,17 @@ public class MediaPlayerHelper implements IVLCVout.Callback, IVLCVout.OnNewVideo
 	protected MediaPlayer mediaPlayer;
 	private Context mCtx;
 	private View.OnLayoutChangeListener mOnLayoutChangeListener;
+	private IVLCVout.OnNewVideoLayoutListener mOnNewVideoLayoutListener = new IVLCVout.OnNewVideoLayoutListener(){
+
+		@Override
+		public void onNewVideoLayout(IVLCVout vout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
+			mSurface.setBackgroundColor(Color.TRANSPARENT);
+			// store video size
+			mVideoWidth = width;
+			mVideoHeight = height;
+			setSize(mVideoWidth, mVideoHeight);
+		}
+	};
 
 	public interface PlayerListener {
 		public void onDurationChange(int seconds);
@@ -292,7 +303,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback, IVLCVout.OnNewVideo
 			//options.add("--subsdec-encoding <encoding>");
 			options.add("--aout=opensles");
 			options.add("--audio-time-stretch"); // time stretching
-			options.add("--vout=android-display");
+			options.add("--vout=android_display,none");
 			options.add("-vvv"); // verbosity
 
 			libvlc = new LibVLC(mCtx,options);
@@ -343,17 +354,6 @@ public class MediaPlayerHelper implements IVLCVout.Callback, IVLCVout.OnNewVideo
 				vout.attachViews();
 			}
 		}
-	}
-
-	@Override
-	public void onNewVideoLayout(IVLCVout vout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
-		if (width * height == 0)
-			return;
-		mSurface.setBackgroundColor(Color.TRANSPARENT);
-		// store video size
-		mVideoWidth = width;
-		mVideoHeight = height;
-		setSize(mVideoWidth, mVideoHeight);
 	}
 
 	@Override
