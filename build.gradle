@@ -25,10 +25,11 @@ android {
     buildTypes {
         debug {
             minifyEnabled false
+            // open jniDebuggable while debuggin jni code
+//            jniDebuggable true
         }
-
         release {
-            consumerProguardFiles 'proguard-project.txt', 'proguard-google-api-client.txt' , 'proguard.txt'
+            consumerProguardFiles 'proguard-project.txt', 'proguard-google-api-client.txt', 'proguard.txt'
         }
     }
 
@@ -41,6 +42,12 @@ android {
         exclude 'LICENSE.txt'
         pickFirst 'META-INF/beans.xml'
     }
+    // open below to trigge ndk build with android studio
+//    externalNativeBuild {
+//        ndkBuild {
+//            path "src/main/jni/Android.mk"
+//        }
+//    }
 }
 
 repositories {
@@ -51,7 +58,7 @@ repositories {
 
 dependencies {
     compile 'com.google.code.gson:gson:2.2.4'
-    compile (name:'aiurjsproxy', ext:'aar')
+    compile(name: 'aiurjsproxy', ext: 'aar')
     compile files('libs/cling-core-2.0.1.jar')
     compile files('libs/cling-support-2.0.1.jar')
     compile files('libs/commons-net-3.3.jar')
@@ -80,11 +87,11 @@ dependencies {
     compile files('libs/seamless-util-1.1.0.jar')
     compile files('libs/seamless-xml-1.1.0.jar')
     compile files('libs/slf4j-jdk14-1.7.7.jar')
-    compile 'com.android.support:appcompat-v7:' + rootProject.supportLibVersion;
-    compile 'com.android.support:mediarouter-v7:' + rootProject.supportLibVersion;
+    compile 'com.android.support:appcompat-v7:' + rootProject.supportLibVersion
+    compile 'com.android.support:mediarouter-v7:' + rootProject.supportLibVersion
     compile 'com.google.android.gms:play-services-analytics:' + rootProject.googleAnalyticsVersion
     compile 'com.google.android.gms:play-services-cast-framework:' + rootProject.googleCastFrameworkVersion
     compile 'com.android.support:multidex:1.0.3'
-//    compile 'com.android.support:support-core-utils:' + rootProject.supportLibVersion;
+    //    compile 'com.android.support:support-core-utils:' + rootProject.supportLibVersion;
     compile(name: 'libvlc', ext: 'aar')
 }

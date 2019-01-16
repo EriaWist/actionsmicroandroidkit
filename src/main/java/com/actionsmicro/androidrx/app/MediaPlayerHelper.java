@@ -23,8 +23,7 @@ import org.videolan.libvlc.Media;
 
 import java.util.ArrayList;
 
-public class MediaPlayerHelper implements IVLCVout.Callback{
-
+public class MediaPlayerHelper implements IVLCVout.Callback, IVLCVout.OnNewVideoLayoutListener{
 	private static final String TAG = "MediaPlayerHelper";
 	private ViewGroup container;
 	private PlayerListener playerListener;
@@ -293,6 +292,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback{
 			//options.add("--subsdec-encoding <encoding>");
 			options.add("--aout=opensles");
 			options.add("--audio-time-stretch"); // time stretching
+			options.add("--vout=android-display");
 			options.add("-vvv"); // verbosity
 
 			libvlc = new LibVLC(mCtx,options);
@@ -346,7 +346,7 @@ public class MediaPlayerHelper implements IVLCVout.Callback{
 	}
 
 	@Override
-	public void onNewLayout(IVLCVout vout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
+	public void onNewVideoLayout(IVLCVout vout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
 		if (width * height == 0)
 			return;
 		mSurface.setBackgroundColor(Color.TRANSPARENT);
@@ -365,11 +365,6 @@ public class MediaPlayerHelper implements IVLCVout.Callback{
 	public void onSurfacesDestroyed(IVLCVout vout) {
 		vout.removeCallback(this);
 		vout.detachViews();
-	}
-
-	@Override
-	public void onHardwareAccelerationError(IVLCVout ivlcVout) {
-		Log.e(TAG, "Error with hardware acceleration");
 	}
 
 	private void setSize(int width, int height) {
