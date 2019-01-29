@@ -227,7 +227,6 @@ public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 	private RxFunction currentFunc = null;
 	private Long startAt;
 	public void startFunction(RxFunction func) {
-		sendAndroidRxInfo();
 		currentFunc = func;
 		startAt = TimeUnit.MILLISECONDS.toSeconds(SystemClock.elapsedRealtime());
 	}
@@ -258,10 +257,6 @@ public class AndroidRxSchemaServer /*extends NanoHTTPD*/ {
 		SharedPreferences prefs;
 		prefs = context.getSharedPreferences(ANDROIDRX_SCHEMA_PREFERENCE_KEY, 0);
 		return prefs.getLong(func.toString(), 0);
-	}
-	private void sendAndroidRxInfo() {
-		String url = "http://cloud.ezcast.com/dongleinfo_rx.php?" + "&type=android";
-		Utils.sendDataToServer(url, schemaJSONString);
 	}
 
 }

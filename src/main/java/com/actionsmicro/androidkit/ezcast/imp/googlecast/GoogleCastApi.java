@@ -1,38 +1,43 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
 import com.actionsmicro.androidkit.ezcast.Api;
 import com.actionsmicro.androidkit.ezcast.ApiBuilder;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
+import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
 import com.actionsmicro.utils.Log;
-import com.google.android.gms.cast.CastDevice;
+
+import java.io.InputStream;
 
 public class GoogleCastApi extends TrackableApi implements Api{
 
 	private static final String TAG = "GoogleCastApi";
-	protected CastDevice castDevice;
 	protected ConnectionManager connectionManager;
 	private EZCastOverGoogleCast googleCastClient;
+	private Bitmap mAdvertiseImage;
+
 	protected synchronized EZCastOverGoogleCast getGoogleCastClient() {
 		return googleCastClient;
 	}
 
 	protected Context context;
 	private ConnectionManager connectionManagerProxy;
+    private DeviceInfo device;
 
 	public <T> GoogleCastApi(ApiBuilder<T> apiBuilder) {
 		super(apiBuilder);
 		context = apiBuilder.getContext();
 		connectionManager = apiBuilder.getConnectionManager();
-		castDevice = ((GoogleCastDeviceInfo)apiBuilder.getDevice()).getCastDevice();		
+		device = apiBuilder.getDevice();
 	}
 
 	@Override
 	public synchronized void connect() {
-		googleCastClient = EZCastOverGoogleCast.createClient(context, castDevice, this, connectionManagerProxy = new ConnectionManager() {
-
+		googleCastClient = EZCastOverGoogleCast.createClient(context, device, this, connectionManagerProxy = new ConnectionManager() {
 			@Override
 			public void onConnectionFailed(Api api, Exception e) {
 				if (connectionManager != null) {
@@ -40,13 +45,17 @@ public class GoogleCastApi extends TrackableApi implements Api{
 				}
 			}
 			
-		});
+		}, mAdvertiseImage);
 		if (googleCastClient == null) {
 			Log.d(TAG, "googleCastClient is null");
 		} else {
 			onCreateGoogleCastClient(googleCastClient);
 		}
 		super.connect();
+	}
+
+	public void setAdvertiseImage(InputStream stream){
+		mAdvertiseImage = BitmapFactory.decodeStream(stream);
 	}
 
 	protected void onCreateGoogleCastClient(EZCastOverGoogleCast googleCastClient) {

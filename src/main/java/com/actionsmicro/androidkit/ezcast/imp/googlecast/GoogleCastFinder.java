@@ -18,14 +18,16 @@ import com.google.android.gms.cast.CastMediaControlIntent;
 public class GoogleCastFinder extends DeviceFinderBase {
 
 	public static final String CAST_APP_ID = "E3A71BDC"; //TODO move to app
+	public static final String CAST_REMOTEDISPLAY_APPID = "F5836052";
 	public static final String CAST_MEDIA_PLAYER_ID = "D3D8AEDC";
 	public static final String CAST_DEV_APP_ID = "E3A71BDC";//"B8CFAD80";
 	private MediaRouter mediaRouter;
 	private Callback callback;
 	private MediaRouteSelector mediaSelector = new MediaRouteSelector.Builder()
-	.addControlCategory(CastMediaControlIntent.categoryForCast(CAST_APP_ID))
- 	.addControlCategory(CastMediaControlIntent.categoryForRemotePlayback())
-	.build();
+			.addControlCategory(CastMediaControlIntent.categoryForCast(CAST_APP_ID))
+			.addControlCategory(CastMediaControlIntent.categoryForCast(CAST_REMOTEDISPLAY_APPID))
+			.addControlCategory(CastMediaControlIntent.categoryForRemotePlayback())
+			.build();
 	protected String TAG = "GoogleCastFinder";
 	public GoogleCastFinder(DeviceFinder deviceFinderProxy) {
 		super(deviceFinderProxy);
@@ -61,7 +63,8 @@ public class GoogleCastFinder extends DeviceFinderBase {
 				@Override
 				public void onRouteAdded (MediaRouter router, MediaRouter.RouteInfo route) {
 					Log.d(TAG, "onRouteAdded:"+route.getName());
-					getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new GoogleCastDeviceInfo(route));
+					GoogleCastDeviceInfo device = new GoogleCastDeviceInfo(route);
+					notifiyDeviceAddIfNeed(device);
 				}
 				@Override
 				public void onRouteRemoved (MediaRouter router, MediaRouter.RouteInfo route) {
@@ -71,7 +74,15 @@ public class GoogleCastFinder extends DeviceFinderBase {
 				@Override
 				public void onRouteChanged(MediaRouter router, RouteInfo route) {
 					Log.d(TAG, "onRouteChanged:"+route.getName());
-					getDeviceFinderProxy().notifyListeneroOnDeviceAdded(new GoogleCastDeviceInfo(route));
+					GoogleCastDeviceInfo device = new GoogleCastDeviceInfo(route);
+					notifiyDeviceAddIfNeed(device);
+				}
+
+				private void notifiyDeviceAddIfNeed(GoogleCastDeviceInfo device) {
+					String modelName = device.getCastDevice().getModelName();
+					if (device.getCastDevice().isOnLocalNetwork() && "Chromecast".equals(modelName)) {
+						getDeviceFinderProxy().notifyListeneroOnDeviceAdded(device);
+					}
 				}
 
 			}, MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN | MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY);
