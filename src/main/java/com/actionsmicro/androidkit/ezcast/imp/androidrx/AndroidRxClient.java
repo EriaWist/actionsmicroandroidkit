@@ -4,8 +4,10 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.YuvImage;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.StrictMode;
 import android.util.Base64;
 
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
@@ -86,6 +88,10 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 	}
 
 	public AndroidRxClient(Context context, InetAddress ipAddress, int port, String deviceOS) {
+		if (Build.VERSION.SDK_INT >= 24) {
+			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+			StrictMode.setThreadPolicy(policy);
+		}
 		this.context = context;
 		this.ipAddress = ipAddress;
 		this.port = port;

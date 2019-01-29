@@ -1,12 +1,17 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
+import android.support.annotation.NonNull;
+import android.view.Display;
+
 import com.actionsmicro.utils.Log;
 import com.google.android.gms.cast.ApplicationMetadata;
 import com.google.android.gms.cast.Cast;
+import com.google.android.gms.cast.CastRemoteDisplay;
 import com.google.android.gms.cast.LaunchOptions;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.ResultCallbacks;
 import com.google.android.gms.common.api.Status;
 
 public class GoogleCastApp {
@@ -23,8 +28,14 @@ public class GoogleCastApp {
 	public boolean isApplicationStarted() {
 		return applicationStarted;
 	}
+
+	public interface RemoteDisplayListener {
+		void onConnectSuccessed(Display display);
+		void onConnectFailed(Status status);
+	}
+
 	
-	public void launcheApplication(final ResultCallback<Cast.ApplicationConnectionResult> resultCallback, LaunchOptions launchOptions) {
+	public void launcheApplication(final ResultCallback<Cast.ApplicationConnectionResult> resultCallback, LaunchOptions launchOptions, final RemoteDisplayListener remoteDisplayListener) {
 		if (googleCastApiClient != null && !applicationStarted) {
 			try {
 				Log.d(TAG, "launching application("+castAppId);
@@ -40,7 +51,12 @@ public class GoogleCastApp {
 									String sessionId = result.getSessionId();
 									String applicationStatus = result.getApplicationStatus();
 									boolean wasLaunched = result.getWasLaunched();
-									applicationStarted = true;					
+									applicationStarted = true;
+
+									// Don't start remote display again when it was already launched before
+									if (wasLaunched && GoogleCastFinder.CAST_REMOTEDISPLAY_APPID.equals(castAppId)) {
+										startRemoteDisplay(remoteDisplayListener);
+									}
 								} else {
 								}
 								if (resultCallback != null) {
@@ -85,5 +101,23 @@ public class GoogleCastApp {
 
 	public String getAppId() {
 		return castAppId;
+	}
+
+	private void startRemoteDisplay(final RemoteDisplayListener listener) {
+		PendingResult<CastRemoteDisplay.CastRemoteDisplaySessionResult> result =
+				CastRemoteDisplay.CastRemoteDisplayApi.startRemoteDisplay(googleCastApiClient, getAppId());
+		result.setResultCallback(new ResultCallbacks<CastRemoteDisplay.CastRemoteDisplaySessionResult>() {
+			@Override
+			public void onSuccess(@NonNull CastRemoteDisplay.CastRemoteDisplaySessionResult castRemoteDisplaySessionResult) {
+				Display remoteDisplay = castRemoteDisplaySessionResult.getPresentationDisplay();
+				listener.onConnectSuccessed(remoteDisplay);
+			}
+
+			@Override
+			public void onFailure(@NonNull Status status) {
+				Log.i(TAG, "Stop Casting because startRemoteDisplay failed");
+				listener.onConnectFailed(status);
+			}
+		});
 	}
 }

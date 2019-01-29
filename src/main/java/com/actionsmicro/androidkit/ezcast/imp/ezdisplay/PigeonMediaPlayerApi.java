@@ -16,11 +16,13 @@ import com.actionsmicro.pigeon.MediaStreamingStateListener;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.actionsmicro.web.Utils;
 
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 
 public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 	private MediaStreaming mediaStreaming;
@@ -149,7 +151,8 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			String mediaUriString = simpleHttpFileServer.getServerUrl();
+
+			String mediaUriString = simpleHttpFileServer.getServerUrl() + "/LocalVideo?filename=" + URLEncoder.encode(mediaUri.getLastPathSegment(), "UTF-8");
 			dataSource = new MediaStreamingHttpDataSource(mediaUriString, DEFAULT_USER_AGENT_STRING, mediaContentLength);
 		} else {
 			if (mediaPlayerStateListener != null) {

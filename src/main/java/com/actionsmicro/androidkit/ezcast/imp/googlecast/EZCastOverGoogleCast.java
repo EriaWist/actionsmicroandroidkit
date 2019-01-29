@@ -3,14 +3,21 @@ package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.SurfaceTexture;
 import android.graphics.YuvImage;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
+import android.view.Display;
+import android.view.Surface;
+import android.view.TextureView;
+import android.view.WindowManager;
 
 import com.actionsmicro.BuildConfig;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
+import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
@@ -23,6 +30,7 @@ import com.google.android.gms.cast.Cast.ApplicationConnectionResult;
 import com.google.android.gms.cast.Cast.Listener;
 import com.google.android.gms.cast.Cast.MessageReceivedCallback;
 import com.google.android.gms.cast.CastDevice;
+import com.google.android.gms.cast.CastRemoteDisplay;
 import com.google.android.gms.cast.LaunchOptions;
 import com.google.android.gms.cast.MediaInfo;
 import com.google.android.gms.cast.MediaMetadata;
@@ -51,6 +59,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private static final double VOLUME_INCREMENT = 0.1;
+	private final Bitmap mAdvertiseImg;
 	private EZCastChannel ezcastChannel;
 	private SimpleMotionJpegHttpServer simpleMotionJpegHttpServer;
 	private String TAG = "EZCastOverGoogleCast";
@@ -58,17 +67,24 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private ByteArrayOutputStream compressionBuffer;
 	private Context context;
 	private CastDevice castDevice;
+	private final DeviceInfo mDeviceInfo;
 	private TrackableApi trackableApi;
 	private static Map<CastDevice, EZCastOverGoogleCast> reg = new HashMap<CastDevice, EZCastOverGoogleCast>();
-	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>(); 
+	private static HashMap<EZCastOverGoogleCast, Integer> referenceCount = new HashMap<EZCastOverGoogleCast, Integer>();
+    private ScreenPresentation mPresentation;
+    private TextureView mSurfaceTextureView;
+	private RtspDecoder mPlayer;
+    private boolean isSurfaceReady = false;
 
-	public EZCastOverGoogleCast(Context context, CastDevice castDevice, TrackableApi trackableApi) {
+    public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi, Bitmap advertiseImg) {
 		if (Build.VERSION.SDK_INT >= 24) {
 			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 			StrictMode.setThreadPolicy(policy);
 		}
 		this.context = context;
-		this.castDevice = castDevice;
+		mDeviceInfo = deviceInfo;
+		castDevice = ((GoogleCastDeviceInfo)deviceInfo).getCastDevice();
+		mAdvertiseImg = advertiseImg;
 		this.trackableApi = trackableApi;
 	}
 	private ArrayList<ConnectionManager> managers = new ArrayList<ConnectionManager>();
@@ -77,6 +93,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	private RemoteMediaPlayer mRemoteMediaPlayer;
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 	private GoogleApiClient googleCastApiClient;
+
+
 
 	public void addConnectionManager(ConnectionManager listener) {
 		synchronized(managers) {
@@ -129,9 +147,18 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					}
 				});
 
-		googleCastApiClient = new GoogleApiClient.Builder(context)
-		.addApi(Cast.API, apiOptionsBuilder.build())
-		.addConnectionCallbacks(new ConnectionCallbacks() {
+        CastRemoteDisplay.CastRemoteDisplayOptions.Builder remoteDisplayBuilder = new
+                CastRemoteDisplay.CastRemoteDisplayOptions.Builder(castDevice, new CastRemoteDisplay.CastRemoteDisplaySessionCallbacks() {
+            @Override
+            public void onRemoteDisplayEnded(Status status) {
+                Log.d(TAG, "Stop Casting because Remote Display session ended");
+            }
+        });
+
+        googleCastApiClient = new GoogleApiClient.Builder(context)
+                .addApi(Cast.API, apiOptionsBuilder.build())
+                .addApi(CastRemoteDisplay.API, remoteDisplayBuilder.build())
+                .addConnectionCallbacks(new ConnectionCallbacks() {
 
 			private boolean waitingForReconnect;
 
@@ -177,6 +204,13 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	public synchronized void sendJpegEncodedScreenData(InputStream input, long length) {
 //		Log.d(TAG,   ": try to sendJpegEncodedScreenData");
+
+		if(mPresentation !=null){
+			mPresentation.setImageView(input);
+			return;
+		}
+
+
 		if ((getState() == State.PLAYING && mIsStopping == false) || !isReadyToDisplay()) {
 			return;
 		}
@@ -193,7 +227,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 	@Override
 	public void startDisplaying() {
-		if (getState() == State.PLAYING && mIsStopping == false) {
+		if ((getState() == State.PLAYING && mIsStopping == false)) {
 			return;
 		}
 
@@ -207,11 +241,13 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	}
 	private void startDisplayingImp(ResultCallback<Status> resultCallback) {
 		Log.d(TAG,   ": startDisplayingImp");
-		if (simpleMotionJpegHttpServer == null || ezcastChannel == null) {
-			connectEzCastChannel();
-			createMjpegServer();
-			// { "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}
-			sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}", resultCallback);			
+		if(!isSupportH264Streaming()){
+			if (simpleMotionJpegHttpServer == null || ezcastChannel == null) {
+				connectEzCastChannel();
+				createMjpegServer();
+				// { "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}
+				sendMessage("{ \"method\": \"display\", \"params\": {\"url\" : \""+simpleMotionJpegHttpServer.getServerUrl()+"\"}, \"id\": null}", resultCallback);
+			}
 		}
 	}
 	private boolean isCurrentApplicationEzCast() {
@@ -226,25 +262,34 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		isDisplaying = false;
 		stopDisplayingImp(null);
 	}
+
+	private boolean isSupportH264Streaming(){
+		return mDeviceInfo.supportH264Streaming();
+	}
+
 	private void stopDisplayingImp(final ResultCallback<Status> resultCallback) {
 		Log.d(TAG,   ": stopDisplayingImp");
-		
-		sendMessage("{\"jsonrpc\": \"2.0\", \"method\": \"stopDisplay\"}", new ResultCallback<Status>() {
+		if(!isSupportH264Streaming()){
+			sendMessage("{\"jsonrpc\": \"2.0\", \"method\": \"stopDisplay\"}", new ResultCallback<Status>() {
 
-			@Override
-			public void onResult(Status result) {
-				try {
-					disconnectEzCastChannel();
-				} catch (IOException e) {
-					e.printStackTrace();
+				@Override
+				public void onResult(Status result) {
+					try {
+						disconnectEzCastChannel();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					releaserMjpegServer();
+					if (resultCallback != null) {
+						resultCallback.onResult(result);
+					}
 				}
-				releaserMjpegServer();
-				if (resultCallback != null) {
-					resultCallback.onResult(result);
-				}
-			}
-			
-		});
+
+			});
+		} else {
+			dismissPresentation();
+			stopApplication(currentApplication, resultCallback);
+		}
 	}
 
 	@Override
@@ -266,7 +311,34 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 	@Override
 	public void sendH264EncodedScreenData(byte[] contents, int width, int height) throws Exception {
+		if(mDeviceInfo.supportH264Streaming()){
+			if(!isSurfaceReady){
+				enqueueH264Data(contents);
+			}  else {
+				enqueueH264Data(contents);
+				dequeueH264Data();
+			}
+		}
+	}
 
+    private ArrayList<byte[]> h264Queue = new ArrayList<>();
+
+	private synchronized void enqueueH264Data(byte[] contents) {
+		// clear previous data after got codec data
+		if (contents[4] == 0x67) {
+			h264Queue.clear();
+		}
+		h264Queue.add(contents);
+	}
+
+	private synchronized void dequeueH264Data() {
+		if (h264Queue.size() == 0 || !isSurfaceReady) {
+			return;
+		}
+		while (h264Queue.size() > 0) {
+			byte[] contents = h264Queue.remove(0);
+			onReceivedData(contents);
+		}
 	}
 
 	private ByteArrayOutputStream getCompressionBuffer() {
@@ -409,14 +481,15 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 	}
 	public static synchronized EZCastOverGoogleCast createClient(Context context,
-			CastDevice castDevice, TrackableApi trackableApi, ConnectionManager connectionManager) {
-		EZCastOverGoogleCast googleCastClient; 
+																 DeviceInfo deviceInfo, TrackableApi trackableApi, ConnectionManager connectionManager, Bitmap advertiseImg) {
+		EZCastOverGoogleCast googleCastClient;
+		CastDevice castDevice = ((GoogleCastDeviceInfo)deviceInfo).getCastDevice();
 		if (reg.containsKey(castDevice)) {
 			googleCastClient = reg.get(castDevice);
 			googleCastClient.addConnectionManager(connectionManager);
 			referenceCount.put(googleCastClient, referenceCount.get(googleCastClient) + 1);
 		} else {
-			googleCastClient = new EZCastOverGoogleCast(context, castDevice, trackableApi);
+			googleCastClient = new EZCastOverGoogleCast(context, deviceInfo, trackableApi, advertiseImg);
 			googleCastClient.addConnectionManager(connectionManager);
 			googleCastClient.connect();		
 			referenceCount.put(googleCastClient, 1);
@@ -570,9 +643,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 	public boolean play(final Context context, final String url, final String userAgentString, Long mediaContentLength, final String title) throws Exception {
 		Log.d(TAG, "play "+url);
 		stopDisplayingImp(new ResultCallback<Status>() {
-
 			@Override
 			public void onResult(Status result) {
+				dismissPresentation();
 				launchMediaPlayer(context, url, userAgentString, title);
 			}
 
@@ -675,7 +748,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 				}
 			}
 
-		}, new LaunchOptions.Builder().setRelaunchIfRunning(true).build());
+		}, new LaunchOptions.Builder().setRelaunchIfRunning(true).build(), null);
 	}
 	private void stopHttpFileServer() {
 		if (simpleHttpFileServer != null) {
@@ -697,7 +770,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 						@Override
 						public void onStatusUpdated() {
 							MediaStatus mediaStatus = mRemoteMediaPlayer.getMediaStatus();
-							if (mediaStatus != null) {
+							// ignore wierd behavior that still receive playing stat after stopped
+							if (mediaStatus != null && currentApplication.getAppId().equals(getEzCastMediaPlayerId())) {
 								Log.d(TAG,  ": onStatusUpdated:" + mediaStatus.getPlayerState() +
 										" duration:" + mRemoteMediaPlayer.getStreamDuration() + 
 										" position:"+ mRemoteMediaPlayer.getApproximateStreamPosition());
@@ -764,7 +838,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			mSeekbarTimer = null;
 		}
 	}
-	private void launcheApplication(final String castAppId, final ResultCallback<Cast.ApplicationConnectionResult> resultCallback, final LaunchOptions options) {
+	private void launcheApplication(final String castAppId, final ResultCallback<Cast.ApplicationConnectionResult> resultCallback, final LaunchOptions options, final GoogleCastApp.RemoteDisplayListener remoteDisplayListener) {
 		Runnable launchApp = new Runnable() {
 
 			@Override
@@ -789,8 +863,8 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 									}
 									finishPendingTask(runnable);
 								}
-							}, options);
-						}				
+							}, options, remoteDisplayListener);
+						}
 					});
 				} else {
 					appToBeLaunched.launcheApplication(new ResultCallback<Cast.ApplicationConnectionResult>() {
@@ -804,14 +878,14 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 							}
 							finishPendingTask(runnable);
 						}
-					}, options);
+					}, options, remoteDisplayListener);
+
 				}
 			}
 		};
 		executeOrSchedule("launchApp", launchApp);		
 	}
 	private void launcheEZCastApp(final boolean startDisplaying) {
-
 		launcheApplication(getEzCastAppId(), new ResultCallback<Cast.ApplicationConnectionResult>() {
 
 			@Override
@@ -826,13 +900,77 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 				}
 			}
 
-		}, new LaunchOptions.Builder().setRelaunchIfRunning(false).build());
+		}, new LaunchOptions.Builder().setRelaunchIfRunning(false).build(), new GoogleCastApp.RemoteDisplayListener() {
+			@Override
+			public void onConnectSuccessed(Display display) {
+				createPresentation(display);
+				Log.d(TAG, "Created presentation");
+			}
+
+			@Override
+			public void onConnectFailed(Status status) {
+				Log.d(TAG, "Created presentation");
+
+			}
+		});
 	}
+
+    private void createPresentation(Display display) {
+        dismissPresentation();
+		mPresentation = new ScreenPresentation(context, display, mAdvertiseImg);
+        try {
+            mPresentation.show();
+            mSurfaceTextureView = mPresentation.getTextureView();
+			mPlayer = new RtspDecoder(mSurfaceTextureView, new TextureView.SurfaceTextureListener() {
+				@Override
+				public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+					isSurfaceReady = true;
+					dequeueH264Data();
+				}
+
+				@Override
+				public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+
+				}
+
+				@Override
+				public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+					return false;
+				}
+
+				@Override
+				public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+
+				}
+			});
+        } catch (WindowManager.InvalidDisplayException ex) {
+            Log.e(TAG, "Unable to show presentation, display was removed.", ex);
+            dismissPresentation();
+        }
+    }
+
+	private void dismissPresentation() {
+		if (mPlayer != null) {
+			mPlayer.stop();
+			mPlayer = null;
+		}
+
+		if (mPresentation != null) {
+			mPresentation.dismiss();
+			mPresentation = null;
+		}
+
+		isSurfaceReady = false;
+	}
+
 	private String getEzCastAppId() {
 		String castAppId = GoogleCastFinder.CAST_APP_ID;
 		if (BuildConfig.DEBUG) {
 			castAppId = GoogleCastFinder.CAST_DEV_APP_ID;
 		}
+		if(mDeviceInfo.supportH264Streaming()){
+		    castAppId = GoogleCastFinder.CAST_REMOTEDISPLAY_APPID;
+        }
 		return castAppId;
 	}
 
@@ -872,5 +1010,23 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
         	}
         }
     }
+
+	public void onReceivedData(byte[] videoData) {
+		if (videoData[4] == 0x67) {
+			try {
+				byte[] sps = new byte[videoData.length-4];
+				System.arraycopy(videoData, 4, sps, 0, videoData.length - 4);
+				mPlayer.initial(sps);
+				mPresentation.hideImage();
+			} catch (Exception e) {
+				Log.e(TAG, "init fail", e);
+				return;
+			}
+		}
+
+		if (mPlayer != null)
+			mPlayer.enqueVideoData(videoData);
+
+	}
 }
 
