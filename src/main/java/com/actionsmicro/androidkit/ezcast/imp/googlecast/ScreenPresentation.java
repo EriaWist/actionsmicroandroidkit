@@ -25,9 +25,17 @@ public class ScreenPresentation extends CastPresentation {
     private TextureView mTextureView;
     private Handler mainHandler = new Handler(Looper.getMainLooper()) ;
 
-    public ScreenPresentation(Context context, Display display, Bitmap advertiseImg) {
+    public interface BackPressedHandler{
+        public void onBackPressed();
+    }
+
+    private BackPressedHandler mBackPressedHandler;
+
+    public ScreenPresentation(Context context, Display display, Bitmap advertiseImg, BackPressedHandler backPressedHandler) {
         super(context, display);
         mAdvertiseImg = advertiseImg;
+        mBackPressedHandler = backPressedHandler;
+        setCancelable(false);
     }
 
     @Override
@@ -77,6 +85,15 @@ public class ScreenPresentation extends CastPresentation {
         });
     }
 
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        if(mBackPressedHandler !=null){
+            mBackPressedHandler.onBackPressed();
+        }
+    }
+
     private void runOnUiThread(Runnable runnable) {
         if (runnable != null) {
             if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -88,4 +105,5 @@ public class ScreenPresentation extends CastPresentation {
             }
         }
     }
+
 }

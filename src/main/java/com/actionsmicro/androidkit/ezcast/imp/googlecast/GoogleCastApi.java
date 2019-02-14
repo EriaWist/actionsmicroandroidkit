@@ -9,6 +9,7 @@ import com.actionsmicro.androidkit.ezcast.ApiBuilder;
 import com.actionsmicro.androidkit.ezcast.ConnectionManager;
 import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
+import com.actionsmicro.androidkit.ezcast.imp.googlecast.ScreenPresentation.BackPressedHandler;
 import com.actionsmicro.utils.Log;
 
 import java.io.InputStream;
@@ -19,6 +20,7 @@ public class GoogleCastApi extends TrackableApi implements Api{
 	protected ConnectionManager connectionManager;
 	private EZCastOverGoogleCast googleCastClient;
 	private Bitmap mAdvertiseImage;
+	private BackPressedHandler mBackPressedHandler;
 
 	protected synchronized EZCastOverGoogleCast getGoogleCastClient() {
 		return googleCastClient;
@@ -45,7 +47,7 @@ public class GoogleCastApi extends TrackableApi implements Api{
 				}
 			}
 			
-		}, mAdvertiseImage);
+		}, mAdvertiseImage,mBackPressedHandler);
 		if (googleCastClient == null) {
 			Log.d(TAG, "googleCastClient is null");
 		} else {
@@ -56,6 +58,10 @@ public class GoogleCastApi extends TrackableApi implements Api{
 
 	public void setAdvertiseImage(InputStream stream){
 		mAdvertiseImage = BitmapFactory.decodeStream(stream);
+	}
+
+	public void setBackPressedHandler(BackPressedHandler backPressedHandler){
+		mBackPressedHandler= backPressedHandler;
 	}
 
 	protected void onCreateGoogleCastClient(EZCastOverGoogleCast googleCastClient) {

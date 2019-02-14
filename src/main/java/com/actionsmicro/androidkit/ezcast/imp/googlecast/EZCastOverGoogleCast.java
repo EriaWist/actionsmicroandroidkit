@@ -11,7 +11,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.view.Display;
-import android.view.Surface;
 import android.view.TextureView;
 import android.view.WindowManager;
 
@@ -21,6 +20,7 @@ import com.actionsmicro.androidkit.ezcast.DeviceInfo;
 import com.actionsmicro.androidkit.ezcast.DisplayApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.TrackableApi;
+import com.actionsmicro.androidkit.ezcast.imp.googlecast.ScreenPresentation.BackPressedHandler;
 import com.actionsmicro.graphics.YuvImageToJpegHelper;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
@@ -75,8 +75,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
     private TextureView mSurfaceTextureView;
 	private RtspDecoder mPlayer;
     private boolean isSurfaceReady = false;
+    private BackPressedHandler mBackPressedHandler;
 
-    public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi, Bitmap advertiseImg) {
+    public EZCastOverGoogleCast(Context context,DeviceInfo deviceInfo , TrackableApi trackableApi, Bitmap advertiseImg, BackPressedHandler backPressedHandler) {
 		if (Build.VERSION.SDK_INT >= 24) {
 			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 			StrictMode.setThreadPolicy(policy);
@@ -85,6 +86,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		mDeviceInfo = deviceInfo;
 		castDevice = ((GoogleCastDeviceInfo)deviceInfo).getCastDevice();
 		mAdvertiseImg = advertiseImg;
+		mBackPressedHandler = backPressedHandler;
 		this.trackableApi = trackableApi;
 	}
 	private ArrayList<ConnectionManager> managers = new ArrayList<ConnectionManager>();
@@ -481,7 +483,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		}
 	}
 	public static synchronized EZCastOverGoogleCast createClient(Context context,
-																 DeviceInfo deviceInfo, TrackableApi trackableApi, ConnectionManager connectionManager, Bitmap advertiseImg) {
+																 DeviceInfo deviceInfo, TrackableApi trackableApi, ConnectionManager connectionManager, Bitmap advertiseImg, BackPressedHandler backPressedHandler) {
 		EZCastOverGoogleCast googleCastClient;
 		CastDevice castDevice = ((GoogleCastDeviceInfo)deviceInfo).getCastDevice();
 		if (reg.containsKey(castDevice)) {
@@ -489,7 +491,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			googleCastClient.addConnectionManager(connectionManager);
 			referenceCount.put(googleCastClient, referenceCount.get(googleCastClient) + 1);
 		} else {
-			googleCastClient = new EZCastOverGoogleCast(context, deviceInfo, trackableApi, advertiseImg);
+			googleCastClient = new EZCastOverGoogleCast(context, deviceInfo, trackableApi, advertiseImg, backPressedHandler);
 			googleCastClient.addConnectionManager(connectionManager);
 			googleCastClient.connect();		
 			referenceCount.put(googleCastClient, 1);
@@ -879,13 +881,15 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 							finishPendingTask(runnable);
 						}
 					}, options, remoteDisplayListener);
-
 				}
 			}
 		};
 		executeOrSchedule("launchApp", launchApp);		
 	}
 	private void launcheEZCastApp(final boolean startDisplaying) {
+		if(currentApplication != null && currentApplication.getAppId() == getEzCastAppId() && currentApplication.isApplicationStarted()){
+			return;
+		}
 		launcheApplication(getEzCastAppId(), new ResultCallback<Cast.ApplicationConnectionResult>() {
 
 			@Override
@@ -900,7 +904,9 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 				}
 			}
 
-		}, new LaunchOptions.Builder().setRelaunchIfRunning(false).build(), new GoogleCastApp.RemoteDisplayListener() {
+			// https://github.com/ConnectSDK/Connect-SDK-Android-Google-Cast/blob/master/src/com/connectsdk/service/CastService.java
+			// use true to avoid Relaunch 2005 issue
+		}, new LaunchOptions.Builder().setRelaunchIfRunning(true).build(), new GoogleCastApp.RemoteDisplayListener() {
 			@Override
 			public void onConnectSuccessed(Display display) {
 				createPresentation(display);
@@ -909,7 +915,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
 			@Override
 			public void onConnectFailed(Status status) {
-				Log.d(TAG, "Created presentation");
+				Log.d(TAG, "launcheEZCastApp onConnectFailed");
 
 			}
 		});
@@ -917,7 +923,12 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 
     private void createPresentation(Display display) {
         dismissPresentation();
-		mPresentation = new ScreenPresentation(context, display, mAdvertiseImg);
+		mPresentation = new ScreenPresentation(context, display, mAdvertiseImg, new ScreenPresentation.BackPressedHandler() {
+			@Override
+			public void onBackPressed() {
+				mBackPressedHandler.onBackPressed();
+			}
+		});
         try {
             mPresentation.show();
             mSurfaceTextureView = mPresentation.getTextureView();
@@ -950,6 +961,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
     }
 
 	private void dismissPresentation() {
+		isSurfaceReady = false;
 		if (mPlayer != null) {
 			mPlayer.stop();
 			mPlayer = null;
@@ -959,8 +971,6 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 			mPresentation.dismiss();
 			mPresentation = null;
 		}
-
-		isSurfaceReady = false;
 	}
 
 	private String getEzCastAppId() {
