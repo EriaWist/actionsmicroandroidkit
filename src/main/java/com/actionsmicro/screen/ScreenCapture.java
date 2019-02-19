@@ -54,6 +54,10 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         this.mediaFormatI = mediaFormatI;
     }
 
+    public void setMediaCallback(MediaCodec.Callback mediaCallback) {
+        this.mediaCallback = mediaCallback;
+    }
+
     public interface DataCallback {
         void dataBufferAvailable(byte[] outData, int width, int height);
     }
@@ -61,6 +65,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         MediaFormat getMediaFormat();
     }
     private MediaFormatI mediaFormatI;
+    private MediaCodec.Callback mediaCallback;
     private DataCallback dataCallback;
     public void setDataCallback(DataCallback dataCallback) {
         this.dataCallback = dataCallback;
@@ -97,10 +102,16 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         mMediaCodec.setCallback(new MediaCodec.Callback() {
             @Override
             public void onInputBufferAvailable(@NonNull MediaCodec mediaCodec, int i) {
+                if (mediaCallback != null) {
+                    mediaCallback.onInputBufferAvailable(mediaCodec, i);
+                }
             }
 
             @Override
             public void onOutputBufferAvailable(@NonNull MediaCodec mediaCodec, int index, @NonNull MediaCodec.BufferInfo bufferInfo) {
+                if (mediaCallback != null) {
+                    mediaCallback.onOutputBufferAvailable(mediaCodec, index,bufferInfo);
+                }
                 ByteBuffer encodedData = mediaCodec.getOutputBuffer(index);
                 encodedData.position(bufferInfo.offset);
                 encodedData.limit(bufferInfo.offset + bufferInfo.size);
@@ -115,12 +126,16 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
 
             @Override
             public void onError(@NonNull MediaCodec mediaCodec, @NonNull MediaCodec.CodecException e) {
-
+                if (mediaCallback != null) {
+                    mediaCallback.onError(mediaCodec, e);
+                }
             }
 
             @Override
             public void onOutputFormatChanged(@NonNull MediaCodec mediaCodec, @NonNull MediaFormat mediaFormat) {
-
+                if (mediaCallback != null) {
+                    mediaCallback.onOutputFormatChanged(mediaCodec, mediaFormat);
+                }
             }
         });
         mMediaFormat = getMediaFormat();
