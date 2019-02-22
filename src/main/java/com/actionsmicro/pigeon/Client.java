@@ -42,7 +42,11 @@ public class Client {
 	protected static final int EZ_DISPLAY_HEADER_SIZE = 32;
 	protected static final int PICO_PIC_FORMAT_CMD = 2;
 	private static final int PICO_HEARTBEAT = 4;
-	
+	private byte[] mSps;
+	private byte[] mIFrame;
+	private int mIframeW;
+	private int mIframeH;
+
 	/**
 	 * OnExceptionListener defines interface for asynchronous mode clients to handle exception thrown in working thread.
 	 *
@@ -339,6 +343,7 @@ public class Client {
     public void sendH264ImageBytesToServer(final byte[] h264Data,
                                             final int width, final int height) throws IOException {
         synchronized (this) {
+        	storeH264DataIfNeeded(h264Data,width,height);
             Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
             Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
             BufferedOutputStream socketStream = null;
@@ -350,7 +355,18 @@ public class Client {
             Log.d(TAG, "sentImageToServer("+serverAddress+":"+portNumber+") done.");
         }
     }
-	
+
+	private void storeH264DataIfNeeded(byte[] h264Data, int width, int height) {
+		int nalType = ((int) h264Data[4]) & 0x1f;
+		if(nalType == 5){
+			mIFrame = h264Data;
+			mIframeW = width;
+			mIframeH = height;
+		} else if(nalType == 7){
+			mSps = h264Data;
+		}
+	}
+
 	private void sendAudioBytesToServer(final byte[] audioData) throws IOException {
 		synchronized (this) {
 			Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
@@ -631,6 +647,9 @@ public class Client {
 	public void resendLastImage() throws IOException, IllegalArgumentException {
 		if (imgCompressionBuffer != null && imgCompressedBufferWidth != 0 && imgCompressedBufferHeight != 0) {
 			sendCompressedBufferToServer(imgCompressedBufferWidth, imgCompressedBufferHeight);
+		} else if (mSps != null && mIFrame != null) {
+			sendH264ImageBytesToServer(mSps, 0, 0);
+			sendH264ImageBytesToServer(mIFrame, mIframeW, mIframeH);
 		}
 	}
 	public enum RequestResult {
