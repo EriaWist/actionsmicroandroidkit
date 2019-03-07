@@ -12,25 +12,25 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
-public class PlayListMedia{
+public abstract class PlayListMedia{
 
 	public interface PlayListMediaDelegate {
         void videoSourcesFound(String src, String page, String title, String thumbnail, String sid, String sourceType);
 		void playListFound(String jsonResponse);
 		void onMediaError(PlayListInfoItem playListInfoItem,String errorCode, String errorDescription);
     }
-	private PlayListMediaDelegate mPlayListMediaDelegate;
+	protected PlayListMediaDelegate mPlayListMediaDelegate;
 
-	private ArrayList<PlayListMedia> mList;
-	private PlayListInfoItem mPlayListInfoItem;
+	protected ArrayList<PlayListMedia> mList;
+	protected PlayListInfoItem mPlayListInfoItem;
 
 	public PlayListInfoItem getPlayListInfoItem() {
 		return mPlayListInfoItem;
 	}
 
-	private int mCurrent = 0;
+	protected int mCurrent = 0;
 
-	private Context mContext;
+	protected Context mContext;
 
 	public PlayListMedia(Context context, PlayListInfoItem item, PlayListMediaDelegate playListMediaDelegate) {
 		this.mContext = context;
@@ -60,7 +60,7 @@ public class PlayListMedia{
 					index = "(" + (i + 1) + "-" + jsonArray.length() + ")";
 				}
 				PlayListInfoItem playListInfoItem = new PlayListInfoItem(index, page, url, title, image, sourceType);
-				PlayListMedia playListMedia = new PlayListMedia(mContext, playListInfoItem, playListMediaDelegate);
+				PlayListMedia playListMedia = PlayListMediaFactory.createPlayListMedia(mContext, playListInfoItem, playListMediaDelegate);
 				mList.add(playListMedia);
 			}
 		} catch (JSONException e) {
@@ -72,24 +72,7 @@ public class PlayListMedia{
 		play(mCurrent);
 	}
 
-	public void play(int index) {
-		if (hasList()) {
-			PlayListMedia item = mList.get(mCurrent);
-			if (item.hasList()) {
-				item.play(index);
-			} else {
-				if (index >= 0 && index < mList.size()) {
-					mCurrent = index;
-					PlayListMedia playListMedia = mList.get(mCurrent);
-					playListMedia.play();
-				}
-			}
-		} else {
-			if (index != 0)
-				return;
-			playImp();
-		}
-	}
+	public abstract void play(int index);
 
 	public void play(String index) {
 		int peek = PlayListUtils.peekCurrent(index);
@@ -196,16 +179,8 @@ public class PlayListMedia{
 		}
 	}
 
-	public void playListWithinPlayList(JSONObject playListJson) {
-		if (mList == null) {
-			mList = new ArrayList<PlayListMedia>();
-		}
-		String index = mPlayListInfoItem.getIndex();
-		PlayListMedia newList = new PlayListMedia(mContext, playListJson, mPlayListMediaDelegate, index);
-		mList.add(newList);
-		PlayListMedia playListMedia = mList.get(mCurrent);
-		playListMedia.play();
-	}
+	public abstract void playListWithinPlayList(JSONObject playListJson);
+
 	public boolean hasNext() {
 		if (hasList()) {
 			PlayListMedia playListMedia = mList.get(mCurrent);
@@ -246,7 +221,7 @@ public class PlayListMedia{
 			return mPlayListInfoItem.getIndex();
 		}
 	}
-	private void playImp() {
+	protected void playImp() {
 
 		Handler h = new Handler(mContext.getMainLooper());
 		h.post(new Runnable() {
@@ -265,6 +240,7 @@ public class PlayListMedia{
 						JSONObject jsonObj = null;
 						try {
 							jsonObj = new JSONObject(jsonResponse);
+							// TODO
 							playListWithinPlayList(jsonObj);
 							mPlayListMediaDelegate.playListFound(jsonResponse);
 						} catch (JSONException e) {
