@@ -14,6 +14,10 @@ import java.util.ArrayList;
 
 public abstract class PlayListMedia{
 
+	public enum TYPE {
+		TYPE_NEST, TYPE_FLAT
+	}
+
 	public interface PlayListMediaDelegate {
         void videoSourcesFound(String src, String page, String title, String thumbnail, String sid, String sourceType);
 		void playListFound(String jsonResponse);
@@ -37,7 +41,7 @@ public abstract class PlayListMedia{
 		this.mPlayListInfoItem = item;
 		this.mPlayListMediaDelegate = playListMediaDelegate;
 	}
-	public PlayListMedia(Context context, JSONObject playListJson, PlayListMediaDelegate playListMediaDelegate, String parentTitle) {
+	public PlayListMedia(Context context, JSONObject playListJson, PlayListMediaDelegate playListMediaDelegate, String parentTitle, TYPE type) {
 		mContext = context;
 		mList = new ArrayList<PlayListMedia>();
 		this.mPlayListMediaDelegate = playListMediaDelegate;
@@ -60,7 +64,7 @@ public abstract class PlayListMedia{
 					index = "(" + (i + 1) + "-" + jsonArray.length() + ")";
 				}
 				PlayListInfoItem playListInfoItem = new PlayListInfoItem(index, page, url, title, image, sourceType);
-				PlayListMedia playListMedia = PlayListMediaFactory.createPlayListMedia(mContext, playListInfoItem, playListMediaDelegate);
+				PlayListMedia playListMedia = PlayListMediaFactory.createPlayListMedia(mContext, playListInfoItem, playListMediaDelegate, type);
 				mList.add(playListMedia);
 			}
 		} catch (JSONException e) {

@@ -6,13 +6,13 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
-public class PlayListMediaNest extends PlayListMedia {
-    public PlayListMediaNest(Context context, PlayListInfoItem item, PlayListMediaDelegate playListMediaDelegate) {
+public class PlayListMediaFlat extends PlayListMedia {
+    public PlayListMediaFlat(Context context, PlayListInfoItem item, PlayListMediaDelegate playListMediaDelegate) {
         super(context, item, playListMediaDelegate);
     }
 
-    public PlayListMediaNest(Context context, JSONObject playListJson, PlayListMediaDelegate playListMediaDelegate, String parentTitle) {
-        super(context, playListJson, playListMediaDelegate, parentTitle, TYPE.TYPE_NEST);
+    public PlayListMediaFlat(Context context, JSONObject playListJson, PlayListMediaDelegate playListMediaDelegate, String parentTitle) {
+        super(context, playListJson, playListMediaDelegate, parentTitle, TYPE.TYPE_FLAT);
     }
 
     @Override
@@ -41,7 +41,7 @@ public class PlayListMediaNest extends PlayListMedia {
             mList = new ArrayList<PlayListMedia>();
         }
         String index = mPlayListInfoItem.getIndex();
-        PlayListMedia newList = PlayListMediaFactory.createPlayListMedia(mContext, playListJson, mPlayListMediaDelegate, index, TYPE.TYPE_NEST);
+        PlayListMedia newList = PlayListMediaFactory.createPlayListMedia(mContext, playListJson, mPlayListMediaDelegate, index,TYPE.TYPE_FLAT);
         mList.add(newList);
         PlayListMedia playListMedia = mList.get(mCurrent);
         playListMedia.play();
