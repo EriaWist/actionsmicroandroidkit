@@ -102,43 +102,9 @@ public abstract class PlayListMedia{
 
 	}
 
-	public void next() {
-		if (mList != null && !mList.isEmpty()) {
-			PlayListMedia playListMedia = mList.get(mCurrent);
-			if (playListMedia.hasNext()) {
-				playListMedia.next();
-			} else {
-				mCurrent++;
-				if (mCurrent == mList.size()) {
-					mCurrent = mList.size() - 1;
-					return;
-				}
-				playListMedia = mList.get(mCurrent);
-				playListMedia.play();
-			}
-		} else {
-			play(mCurrent + 1);
-		}
-	}
+	public abstract void next();
 
-	public void previous() {
-		if (mList != null && !mList.isEmpty()) {
-			PlayListMedia playListMedia = mList.get(mCurrent);
-			if (playListMedia.hasPrevious()) {
-				playListMedia.previous();
-			} else {
-				mCurrent--;
-				if (mCurrent < 0) {
-					mCurrent = 0;
-					return;
-				}
-				playListMedia = mList.get(mCurrent);
-				playListMedia.play();
-			}
-		} else {
-			play(mCurrent - 1);
-		}
-	}
+	public abstract void previous();
 
 	public int getCurrentPlaying() {
 		if (hasList()) {
@@ -225,46 +191,9 @@ public abstract class PlayListMedia{
 			return mPlayListInfoItem.getIndex();
 		}
 	}
-	protected void playImp() {
+	protected abstract void playImp();
 
-		Handler h = new Handler(mContext.getMainLooper());
-		h.post(new Runnable() {
-			@Override
-			public void run() {
-
-				WebVideoSourceHelper webVideoSourceHelper = WebVideoSourceHelper.getInstance(mContext.getApplicationContext());
-				webVideoSourceHelper.setListener(new WebVideoSourceHelper.Listener() {
-					@Override
-					public void onVideoFound(String src, String page, String title, String thumbnail, String sid, String soucesType) {
-						mPlayListMediaDelegate.videoSourcesFound(src, page, title, thumbnail, sid, soucesType);
-					}
-
-					@Override
-					public void onPlaylistFound(String jsonResponse) {
-						JSONObject jsonObj = null;
-						try {
-							jsonObj = new JSONObject(jsonResponse);
-							// TODO
-							playListWithinPlayList(jsonObj);
-							mPlayListMediaDelegate.playListFound(jsonResponse);
-						} catch (JSONException e) {
-							e.printStackTrace();
-						}
-					}
-
-					@Override
-					public void onMediaError(String errorcode, String errorDescription) {
-						mPlayListMediaDelegate.onMediaError(mPlayListInfoItem,errorcode,errorDescription);
-					}
-				});
-
-				webVideoSourceHelper.start(mPlayListInfoItem.getUrl(), getTitleString(mPlayListInfoItem.getTitle()),
-						mPlayListInfoItem.getImage(), mPlayListInfoItem.getSourceType());
-
-			}
-		});
-	}
-	private String getTitleString(String title) {
+	protected String getTitleString(String title) {
 		return title + " " + mPlayListInfoItem.getIndex();
 	}
 
