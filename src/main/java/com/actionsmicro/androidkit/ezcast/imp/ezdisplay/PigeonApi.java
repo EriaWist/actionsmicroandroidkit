@@ -8,6 +8,7 @@ import com.actionsmicro.falcon.Falcon;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.Client.OnExceptionListener;
+import com.actionsmicro.pigeon.MultiRegionsDisplay;
 import com.actionsmicro.pigeon.Pigeon;
 
 public class PigeonApi extends TrackableApi implements Api, OnExceptionListener {
@@ -56,6 +57,18 @@ public class PigeonApi extends TrackableApi implements Api, OnExceptionListener 
 		if (connectionManager != null) {
 			connectionManager.onConnectionFailed(this, e);
 		}
+	}
+
+	public int getPosition() {
+		if (pigeonClient instanceof MultiRegionsDisplay)
+			return ((MultiRegionsDisplay) pigeonClient).getPosition();
+		return 0;
+	}
+
+	public int getSplitCount() {
+		if (pigeonClient instanceof MultiRegionsDisplay)
+			return ((MultiRegionsDisplay) pigeonClient).getNumberOfRegions();
+		return 0;
 	}
 
 }
