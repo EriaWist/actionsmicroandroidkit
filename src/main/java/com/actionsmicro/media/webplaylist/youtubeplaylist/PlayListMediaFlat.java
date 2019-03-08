@@ -71,7 +71,6 @@ public class PlayListMediaFlat extends PlayListMedia {
                         JSONObject jsonObj = null;
                         try {
                             jsonObj = new JSONObject(jsonResponse);
-                            // TODO
                             playListWithinPlayList(jsonObj);
                             mPlayListMediaDelegate.playListFound(jsonResponse);
                         } catch (JSONException e) {
