@@ -63,7 +63,8 @@ public abstract class PlayListMedia{
 				} else {
 					index = "(" + (i + 1) + "-" + jsonArray.length() + ")";
 				}
-				PlayListInfoItem playListInfoItem = new PlayListInfoItem(index, page, url, title, image, sourceType);
+				String src = playItem.optString("src","");
+				PlayListInfoItem playListInfoItem = new PlayListInfoItem(index, page, url, title, image, sourceType, src);
 				PlayListMedia playListMedia = PlayListMediaFactory.createPlayListMedia(mContext, playListInfoItem, playListMediaDelegate, type);
 				mList.add(playListMedia);
 			}
