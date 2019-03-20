@@ -85,7 +85,7 @@ public class PlayListMediaNest extends PlayListMedia {
                 });
 
                 webVideoSourceHelper.start(mPlayListInfoItem.getPage(), getTitleString(mPlayListInfoItem.getTitle()),
-                        mPlayListInfoItem.getImage(), mPlayListInfoItem.getSourceType(), mPlayListInfoItem.getSrc());
+                        mPlayListInfoItem.getImage(), mPlayListInfoItem.getSourceType(), mPlayListInfoItem.getSrc(), mPlayListInfoItem.getUrl());
 
             }
         });
