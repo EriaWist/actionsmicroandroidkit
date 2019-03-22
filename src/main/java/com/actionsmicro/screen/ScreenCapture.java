@@ -83,6 +83,15 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
 
     }
 
+    public ScreenCapture(Context context, Intent intent, MediaFormatI mediaFormatI) {
+        this.resultCode = intent.getIntExtra(RESULT_CODE_KEY, -10001);
+        this.resultIntent = intent.getParcelableExtra(RESULT_INTENT_KEY);
+        this.mediaFormatI = mediaFormatI;
+
+        init(context);
+
+    }
+
 
     private void init(Context context) {
         mDisplayManager = (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
