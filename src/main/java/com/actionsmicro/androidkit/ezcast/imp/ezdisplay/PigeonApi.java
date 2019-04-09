@@ -11,7 +11,7 @@ import com.actionsmicro.pigeon.Client.OnExceptionListener;
 import com.actionsmicro.pigeon.MultiRegionsDisplay;
 import com.actionsmicro.pigeon.Pigeon;
 
-public class PigeonApi extends TrackableApi implements Api, OnExceptionListener {
+public class PigeonApi extends TrackableApi implements Api, SplitScreenInterface, OnExceptionListener {
 
 	protected Client pigeonClient;
 	protected ConnectionManager connectionManager;
@@ -59,12 +59,14 @@ public class PigeonApi extends TrackableApi implements Api, OnExceptionListener 
 		}
 	}
 
+	@Override
 	public int getPosition() {
 		if (pigeonClient instanceof MultiRegionsDisplay)
 			return ((MultiRegionsDisplay) pigeonClient).getPosition();
 		return 0;
 	}
 
+	@Override
 	public int getSplitCount() {
 		if (pigeonClient instanceof MultiRegionsDisplay)
 			return ((MultiRegionsDisplay) pigeonClient).getNumberOfRegions();
