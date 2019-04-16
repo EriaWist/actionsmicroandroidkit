@@ -50,10 +50,6 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         this.displayListener = displayListener;
     }
 
-    public void setMediaFormatI(MediaFormatI mediaFormatI) {
-        this.mediaFormatI = mediaFormatI;
-    }
-
     public void setMediaCallback(MediaCodec.Callback mediaCallback) {
         this.mediaCallback = mediaCallback;
     }
@@ -87,6 +83,27 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         this.resultCode = intent.getIntExtra(RESULT_CODE_KEY, -10001);
         this.resultIntent = intent.getParcelableExtra(RESULT_INTENT_KEY);
         this.mediaFormatI = mediaFormatI;
+
+        init(context);
+
+    }
+
+    public ScreenCapture(Context context, Intent intent, int width, int height) {
+        this.resultCode = intent.getIntExtra(RESULT_CODE_KEY, -10001);
+        this.resultIntent = intent.getParcelableExtra(RESULT_INTENT_KEY);
+        this.width = width;
+        this.height = height;
+
+        init(context);
+
+    }
+
+    public ScreenCapture(Context context, Intent intent, int width, int height, MediaFormatI mediaFormatI) {
+        this.resultCode = intent.getIntExtra(RESULT_CODE_KEY, -10001);
+        this.resultIntent = intent.getParcelableExtra(RESULT_INTENT_KEY);
+        this.mediaFormatI = mediaFormatI;
+        this.width = width;
+        this.height = height;
 
         init(context);
 
@@ -197,6 +214,14 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
                     }
                 }, null);
         mDisplayManager.registerDisplayListener(this, null);
+    }
+
+    public void resizeVirtualDisplay(int width, int height, int densityDpi) { //TODO need test
+        this.width = width;
+        this.height = height;
+        if (mVirtualDisplay != null) {
+            mVirtualDisplay.resize(width, height, densityDpi);
+        }
     }
 
     public synchronized void stopScreenCapture() {
