@@ -1015,7 +1015,7 @@ public class Falcon {
 	private static final int IPMSG_ANSENTRY 	= 0x0003;
     private static final int IPMSG_SENDDATA 	= 0x0022;
     private static final int IMAGE_PACKET_HEADER_SIZE = 16;
-	private static final int MAX_LOOKUP_INTERVAL = 6;
+	private static final int MAX_LOOKUP_INTERVAL = 2;
     private static final int EZ_DISPLAY_QUERY_HEADER_SIZE = 24;
     private static final int PICO_QUERY_CMD = 1;
 	
