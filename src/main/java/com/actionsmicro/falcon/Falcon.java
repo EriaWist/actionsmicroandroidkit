@@ -461,7 +461,9 @@ public class Falcon {
 			return ((int) Long.parseLong(serviceString, 16));
 		}
 		public boolean supportClientMode() {
-			return (getServiceFlags() & SERVICE_CLIENT_MODE) != 0;
+			return true;
+			//20190423 Henry: deprecate this service bit
+			//return (getServiceFlags() & SERVICE_CLIENT_MODE) != 0;
 		}
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
