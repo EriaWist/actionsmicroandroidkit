@@ -283,7 +283,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         if (displayListener != null) {
             displayListener.onDisplayChanged(displayId);
         }
-        if ("ScreenCapture".equals(display.getName()) && display.getState() == android.view.Display.STATE_OFF) {
+        if (VIRTUAL_DISPLAY_NAME.equals(display.getName()) && display.getState() == android.view.Display.STATE_OFF) {
             stopScreenCapture();
             releaseResource();
         }
