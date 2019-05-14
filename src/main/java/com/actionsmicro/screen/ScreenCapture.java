@@ -44,6 +44,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
 
     private Intent resultIntent;
     private int resultCode;
+    private boolean restart = false;
 
     private DisplayManager.DisplayListener displayListener;
     public void setDisplayListener(DisplayManager.DisplayListener displayListener) {
@@ -110,7 +111,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     }
 
 
-    private void init(Context context) {
+    private void init(final Context context) {
         mDisplayManager = (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
         mMediaProjectionManager = (MediaProjectionManager) context.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
@@ -190,7 +191,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
                 new VirtualDisplay.Callback() {
                     @Override
                     public void onPaused() {
-                        if (virtualDisplayCallback != null) {
+                        if (virtualDisplayCallback != null && !restart) {
                             virtualDisplayCallback.onPaused();
                         }
                         super.onPaused();
@@ -198,7 +199,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
 
                     @Override
                     public void onResumed() {
-                        if (virtualDisplayCallback != null) {
+                        if (virtualDisplayCallback != null && !restart) {
                             virtualDisplayCallback.onResumed();
                         }
                         super.onResumed();
@@ -207,21 +208,25 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
                     @Override
                     public void onStopped() {
                         super.onStopped();
-                        if (virtualDisplayCallback != null) {
-                            virtualDisplayCallback.onStopped();
-                        }
                         releaseResource();
+                        if (restart) {
+                            restart = false;
+                            init(context);
+                        } else {
+                            if (virtualDisplayCallback != null) {
+                                virtualDisplayCallback.onStopped();
+                            }
+                        }
                     }
                 }, null);
         mDisplayManager.registerDisplayListener(this, null);
     }
 
-    public void resizeVirtualDisplay(int width, int height, int densityDpi) { //TODO need test
+    public void restart(int width, int height) {
+        restart = true;
         this.width = width;
         this.height = height;
-        if (mVirtualDisplay != null) {
-            mVirtualDisplay.resize(width, height, densityDpi);
-        }
+        stopScreenCapture();
     }
 
     public synchronized void stopScreenCapture() {
