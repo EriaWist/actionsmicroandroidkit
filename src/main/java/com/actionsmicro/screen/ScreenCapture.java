@@ -293,4 +293,12 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
             releaseResource();
         }
     }
+    public void startFloatingSignal(Context context) {
+        Intent signalFloatingWindow = new Intent(context, FloatSignalWindow.class);
+        context.startService(signalFloatingWindow);
+    }
+    public void stopFloatingSignal(Context context) {
+        Intent signalFloatingWindow = new Intent(context, FloatSignalWindow.class);
+        context.stopService(signalFloatingWindow);
+    }
 }
