@@ -2178,6 +2178,7 @@ public class EZScreenHelper implements PlayerListener {
 		return gaTracker != null && mAnalyticsListener!= null && mAnalyticsListener.allowTrack();
 	}
 
+	// TODO change to measurement protocol
 	private void trackScreenHit(String screenName) {
 		if(!allowTrack()){
 			return;
@@ -2188,6 +2189,7 @@ public class EZScreenHelper implements PlayerListener {
 		}
 	}
 
+	// TODO change to measurement protocol
 	private void trackScreenHit(String screenName, int customDimensionIndex, String dimension) {
 		if(!allowTrack()){
 			return;

@@ -1,27 +1,22 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * Copyright (C) 2019 Actions Microelectronics
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package com.brsanthu.googleanalytics.internal;
 
-import static com.brsanthu.googleanalytics.internal.GaUtils.isEmpty;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.actionsmicro.utils.Log;
 import com.brsanthu.googleanalytics.GoogleAnalytics;
 import com.brsanthu.googleanalytics.GoogleAnalyticsConfig;
 import com.brsanthu.googleanalytics.GoogleAnalyticsExecutor;
@@ -43,6 +38,15 @@ import com.brsanthu.googleanalytics.request.SocialHit;
 import com.brsanthu.googleanalytics.request.TimingHit;
 import com.brsanthu.googleanalytics.request.TransactionHit;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+
+import static com.brsanthu.googleanalytics.internal.GaUtils.isEmpty;
+
 /**
  * This is the main class of this library that accepts the requests from clients and sends the events to Google
  * Analytics (GA).
@@ -57,7 +61,7 @@ import com.brsanthu.googleanalytics.request.TransactionHit;
  * all resources. Once close method is called, this instance cannot be reused so create new instance if required.
  */
 public class GoogleAnalyticsImpl implements GoogleAnalytics, GoogleAnalyticsExecutor {
-    protected static final Logger logger = LoggerFactory.getLogger(GoogleAnalyticsImpl.class);
+    private static final String TAG =  "GoogleAnalyticsImpl";
 
     protected final GoogleAnalyticsConfig config;
     protected final DefaultRequest defaultRequest;
@@ -106,7 +110,7 @@ public class GoogleAnalyticsImpl implements GoogleAnalytics, GoogleAnalyticsExec
             }
 
         } catch (Exception e) {
-            logger.warn("Exception while sending the Google Analytics tracker request " + gaReq, e);
+            Log.e(TAG, "Exception while sending the Google Analytics tracker request " + gaReq, e);
         }
 
         return response;
@@ -147,7 +151,7 @@ public class GoogleAnalyticsImpl implements GoogleAnalytics, GoogleAnalyticsExec
                 // others will not post it even if multiple threads were to wait at sync block at same time
                 // https://en.wikipedia.org/wiki/Double-checked_locking
                 if (isSubmitBatch(force)) {
-                    logger.debug("Submitting a batch of " + currentBatch.size() + " requests to GA");
+                    Log.d(TAG, "Submitting a batch of " + currentBatch.size() + " requests to GA");
                     httpClient.postBatch(new HttpBatchRequest().setUrl(config.getBatchUrl()).setRequests(currentBatch));
                     currentBatch.clear();
                 }
@@ -214,7 +218,7 @@ public class GoogleAnalyticsImpl implements GoogleAnalytics, GoogleAnalyticsExec
      * Processes the custom dimensions and adds the values to list of parameters, which would be posted to GA.
      *
      * @param request
-     * @param postParms
+     * @param req
      */
     protected void processCustomDimensionParameters(GoogleAnalyticsRequest<?> request, HttpRequest req) {
         Map<String, String> customDimParms = new HashMap<String, String>();
@@ -236,7 +240,7 @@ public class GoogleAnalyticsImpl implements GoogleAnalytics, GoogleAnalyticsExec
      * Processes the custom metrics and adds the values to list of parameters, which would be posted to GA.
      *
      * @param request
-     * @param postParms
+     * @param req
      */
     protected void processCustomMetricParameters(GoogleAnalyticsRequest<?> request, HttpRequest req) {
         Map<String, String> customMetricParms = new HashMap<String, String>();

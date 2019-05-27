@@ -1,11 +1,26 @@
+/*
+ * Copyright (C) 2019 Actions Microelectronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.brsanthu.googleanalytics.discovery;
 
 import static com.brsanthu.googleanalytics.internal.GaUtils.appendSystemProperty;
 import static com.brsanthu.googleanalytics.internal.GaUtils.isEmpty;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.actionsmicro.utils.Log;
 import com.brsanthu.googleanalytics.GoogleAnalyticsConfig;
 import com.brsanthu.googleanalytics.request.DefaultRequest;
 
@@ -22,14 +37,18 @@ import com.brsanthu.googleanalytics.request.DefaultRequest;
  */
 public class DefaultRequestParameterDiscoverer implements RequestParameterDiscoverer {
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultRequestParameterDiscoverer.class);
+    private static final String TAG =  "DefaultRequestParameterDiscoverer";
     public static final DefaultRequestParameterDiscoverer INSTANCE = new DefaultRequestParameterDiscoverer();
 
     @Override
     public DefaultRequest discoverParameters(GoogleAnalyticsConfig config, DefaultRequest request) {
         try {
             if (isEmpty(config.getUserAgent())) {
-                config.setUserAgent(getUserAgentString());
+                if(!isEmpty(System.getProperty("http.agent"))){
+                    config.setUserAgent(System.getProperty("http.agent"));
+                } else {
+                    config.setUserAgent(getUserAgentString());
+                }
             }
 
             if (isEmpty(request.userLanguage())) {
@@ -45,7 +64,7 @@ public class DefaultRequestParameterDiscoverer implements RequestParameterDiscov
             }
 
         } catch (Exception e) {
-            logger.warn("Exception while deriving the System properties for request " + request, e);
+            Log.e(TAG, "Exception while deriving the System properties for request " + request, e);
         }
 
         return request;
