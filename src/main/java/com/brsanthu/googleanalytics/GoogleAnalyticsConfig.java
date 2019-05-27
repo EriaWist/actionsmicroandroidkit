@@ -10,7 +10,6 @@
  */
 package com.brsanthu.googleanalytics;
 
-import com.brsanthu.googleanalytics.discovery.AwtRequestParameterDiscoverer;
 import com.brsanthu.googleanalytics.discovery.DefaultRequestParameterDiscoverer;
 import com.brsanthu.googleanalytics.discovery.RequestParameterDiscoverer;
 import com.brsanthu.googleanalytics.internal.GoogleAnalyticsImpl;
@@ -55,21 +54,6 @@ public class GoogleAnalyticsConfig {
 
     public RequestParameterDiscoverer getRequestParameterDiscoverer() {
         return requestParameterDiscoverer;
-    }
-
-    /**
-     * Sets the appropriate request parameter discoverer. Default is {@link DefaultRequestParameterDiscoverer} but can
-     * be changed to {@link AwtRequestParameterDiscoverer} if you want to use Toolkit to derive the screen resolution
-     * etc.
-     *
-     * Please make sure you also enable the discovery using {@link #setDiscoverRequestParameters(boolean)}
-     *
-     * @param requestParameterDiscoverer can be null and is so, parameters will not be discovered.
-     * @return
-     */
-    public GoogleAnalyticsConfig setRequestParameterDiscoverer(RequestParameterDiscoverer requestParameterDiscoverer) {
-        this.requestParameterDiscoverer = requestParameterDiscoverer;
-        return this;
     }
 
     public boolean isGatherStats() {
