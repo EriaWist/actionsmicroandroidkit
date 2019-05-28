@@ -57,8 +57,6 @@ public class AMHttplClientImpl implements HttpClient {
                     } else {
                         Log.e(TAG, "Exception while sending the Google Analytics tracker request " + req, e);
                     }
-                } finally {
-                    client.close();
                 }
                 return resp;
             }
