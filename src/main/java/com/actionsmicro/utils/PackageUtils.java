@@ -1,6 +1,7 @@
 package com.actionsmicro.utils;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 
 public class PackageUtils {
@@ -12,5 +13,11 @@ public class PackageUtils {
 			e.printStackTrace();
 		}
 		return appVersion;
+	}
+
+	public static String getApplicationName(Context context) {
+		ApplicationInfo applicationInfo = context.getApplicationInfo();
+		int stringId = applicationInfo.labelRes;
+		return stringId == 0 ? applicationInfo.nonLocalizedLabel.toString() : context.getString(stringId);
 	}
 }

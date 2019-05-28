@@ -10,16 +10,18 @@ import com.brsanthu.googleanalytics.request.DefaultRequest;
 
 public class AMGaTracker {
 
-    private static DefaultRequest newDefaultRequest(Context context){
+    private static DefaultRequest newDefaultRequest(Context context) {
         DisplayMetrics displayMetrics = Resources.getSystem().getDisplayMetrics();
         return new DefaultRequest().applicationId(context.getPackageName())
                 .applicationVersion(PackageUtils.getAppVersion(context))
-                .screenResolution(displayMetrics.widthPixels+"x"+displayMetrics.heightPixels)
+                .screenResolution(displayMetrics.widthPixels + "x" + displayMetrics.heightPixels)
                 .protocolVersion("1");
     }
 
-    public static GoogleAnalytics newInstance(Context context, String trackingid) {
-        return GoogleAnalytics.builder().withDefaultRequest(newDefaultRequest(context).trackingId(trackingid)
+    public static GoogleAnalytics newInstance(Context context, String trackingId, String appName) {
+        return GoogleAnalytics.builder().withDefaultRequest(newDefaultRequest(context)
+                .trackingId(trackingId)
+                .applicationName(appName)
         ).build();
     }
 }
