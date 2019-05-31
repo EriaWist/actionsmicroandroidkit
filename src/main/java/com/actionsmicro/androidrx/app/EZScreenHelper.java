@@ -2182,7 +2182,7 @@ public class EZScreenHelper implements PlayerListener {
 			return;
 		}
 		if (gaTracker != null) {
-			gaTracker.screenView().screenName(screenName).send();
+			gaTracker.screenView().screenName(screenName).sendAsync();
 		}
 	}
 
@@ -2191,7 +2191,7 @@ public class EZScreenHelper implements PlayerListener {
 			return;
 		}
 		if (gaTracker != null) {
-			gaTracker.screenView().screenName(screenName).customDimension(customDimensionIndex,dimension).send();
+			gaTracker.screenView().screenName(screenName).customDimension(customDimensionIndex,dimension).sendAsync();
 		}
 	}
 
