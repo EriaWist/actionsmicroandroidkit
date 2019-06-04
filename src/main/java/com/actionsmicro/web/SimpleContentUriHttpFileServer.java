@@ -181,12 +181,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 		if (contentUri.getScheme().equals(ContentResolver.SCHEME_CONTENT)) {
 			in = context.getContentResolver().openInputStream(contentUri);
 		}  else if (contentUri.getScheme().equalsIgnoreCase("file"))  {
-			in = new FileInputStream(new File(contentUri.getPath())) {
-                @Override
-                public int available() throws IOException {
-                    return (int) dataLen;
-                }
-            };
+			in = new FileInputStream(new File(contentUri.getPath()));
 		}
 		if (in != null) {
 			in.skip(startFrom);

@@ -552,7 +552,6 @@ public abstract class NanoHTTPD {
      * HTTP response. Return one of these from serve().
      */
     public static class Response {
-        public static final long UINT_MAX_VALUE = 4294967296l;
         /**
          * HTTP status code after processing, e.g. "200 OK", HTTP_OK
          */
@@ -588,12 +587,12 @@ public abstract class NanoHTTPD {
         /**
          * Basic constructor.
          */
+
         public Response(Status status, String mimeType, InputStream data) {
             this.status = status;
             this.mimeType = mimeType;
             this.data = data;
         }
-
         /**
          * Convenience method that makes an InputStream out of given text.
          */
@@ -675,12 +674,16 @@ public abstract class NanoHTTPD {
         }
 
         private void sendAsFixedLength(OutputStream outputStream, PrintWriter pw) throws IOException {
-            long pending = data != null ? data.available() : 0; // This is to support partial sends, see serveFile()
-            if(pending < 0) {
-                pending += UINT_MAX_VALUE;
-            }
+            long pending = 0;
 
-            pw.print("Content-Length: "+pending+"\r\n");
+            if (data != null) {
+                if (data instanceof FileInputStream) {
+                    pending = ((FileInputStream) data).getChannel().size();
+                } else {
+                    pending = data.available();
+                }
+            }
+            pw.print("Content-Length: " + pending + "\r\n");
 
             pw.print("\r\n");
             pw.flush();
