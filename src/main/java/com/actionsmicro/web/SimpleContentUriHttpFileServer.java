@@ -149,22 +149,17 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 //                        }
 //                    };
                     InputStream in = getInputStream(startFrom, dataLen);
-                    
-                    
-                    res = createResponse(Response.Status.PARTIAL_CONTENT, mime, in);
+
+
+					res = createResponse(Response.Status.PARTIAL_CONTENT, mime, in, dataLen);
                     res.addHeader("Content-Length", "" + getContentLengthForByteRangeResponse(fileLen, dataLen));
                     res.addHeader("Content-Range", "bytes " + startFrom + "-" + endAt + "/" + fileLen);
 //                    res.addHeader("ETag", etag);
                 }
             } else {
-//                if (etag.equals(header.get("if-none-match")))
-//                    res = createResponse(Response.Status.NOT_MODIFIED, mime, "");
-//                else {
-            	InputStream in = getInputStream(0, fileLen);
-                    res = createResponse(Response.Status.OK, mime, in);
-                    res.addHeader("Content-Length", "" + fileLen);
-//                    res.addHeader("ETag", etag);
-//                }
+				InputStream in = getInputStream(0, fileLen);
+				res = createResponse(Response.Status.OK, mime, in, fileLen);
+				res.addHeader("Content-Length", "" + fileLen);
             }
         } catch (IOException ioe) {
             res = createResponse(Response.Status.FORBIDDEN, NanoHTTPD.MIME_PLAINTEXT, "FORBIDDEN: Reading file failed.");
@@ -181,12 +176,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 		if (contentUri.getScheme().equals(ContentResolver.SCHEME_CONTENT)) {
 			in = context.getContentResolver().openInputStream(contentUri);
 		}  else if (contentUri.getScheme().equalsIgnoreCase("file"))  {
-			in = new FileInputStream(new File(contentUri.getPath())) {
-                @Override
-                public int available() throws IOException {
-                    return (int) dataLen;
-                }
-            };
+			in = new FileInputStream(new File(contentUri.getPath()));
 		}
 		if (in != null) {
 			in.skip(startFrom);
@@ -204,18 +194,15 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 	}
 
 	private Response createResponse(Response.Status status, String mimeType, String message) {
-        Response res = new Response(status, mimeType, message);
+        Response res = newFixedLengthResponse(status,mimeType,message);;
 		if (mEnableChunk) {
 			res.setChunkedTransfer(true);
 		}
 		res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
-	private Response createResponse(Response.Status status, String mimeType, InputStream message) {
-        Response res = new Response(status, mimeType, message);
-		if (mEnableChunk) {
-			res.setChunkedTransfer(true);
-		}
+	private Response createResponse(Response.Status status, String mimeType, InputStream message, long contentLength) {
+		Response res = mEnableChunk ? newChunkedResponse(status, mimeType, message) : newFixedLengthResponse(status, mimeType, message, contentLength);
 		res.addHeader("Accept-Ranges", "bytes");
         return res;
     }
