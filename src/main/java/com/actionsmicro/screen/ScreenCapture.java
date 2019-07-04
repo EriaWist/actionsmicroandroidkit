@@ -47,6 +47,8 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     private boolean restart = false;
 
     private DisplayManager.DisplayListener displayListener;
+    private MediaProjection.Callback mProjectionCallback;
+
     public void setDisplayListener(DisplayManager.DisplayListener displayListener) {
         this.displayListener = displayListener;
     }
@@ -58,16 +60,21 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     public interface DataCallback {
         void dataBufferAvailable(byte[] outData, int width, int height);
     }
+
     public interface MediaFormatI {
         MediaFormat getMediaFormat();
     }
+
     private MediaFormatI mediaFormatI;
     private MediaCodec.Callback mediaCallback;
     private DataCallback dataCallback;
+
     public void setDataCallback(DataCallback dataCallback) {
         this.dataCallback = dataCallback;
     }
+
     private VirtualDisplay.Callback virtualDisplayCallback;
+
     public void setVirtualCallback(VirtualDisplay.Callback virtualDisplayCallback) {
         this.virtualDisplayCallback = virtualDisplayCallback;
     }
@@ -84,6 +91,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         this.resultCode = intent.getIntExtra(RESULT_CODE_KEY, -10001);
         this.resultIntent = intent.getParcelableExtra(RESULT_INTENT_KEY);
         this.mediaFormatI = mediaFormatI;
+
 
         init(context);
 
@@ -137,7 +145,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
             @Override
             public void onOutputBufferAvailable(@NonNull MediaCodec mediaCodec, int index, @NonNull MediaCodec.BufferInfo bufferInfo) {
                 if (mediaCallback != null) {
-                    mediaCallback.onOutputBufferAvailable(mediaCodec, index,bufferInfo);
+                    mediaCallback.onOutputBufferAvailable(mediaCodec, index, bufferInfo);
                 }
                 ByteBuffer encodedData = mediaCodec.getOutputBuffer(index);
                 encodedData.position(bufferInfo.offset);
@@ -184,41 +192,31 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
             e.printStackTrace();
         }
 
+        if (mProjectionCallback != null && mMediaProjection != null) {
+            mMediaProjection.unregisterCallback(mProjectionCallback);
+        }
         mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, resultIntent);
 
         mVirtualDisplay = mMediaProjection.createVirtualDisplay(VIRTUAL_DISPLAY_NAME, width, height, screenDensity,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY | DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC, mSurface,
-                new VirtualDisplay.Callback() {
-                    @Override
-                    public void onPaused() {
-                        if (virtualDisplayCallback != null && !restart) {
-                            virtualDisplayCallback.onPaused();
-                        }
-                        super.onPaused();
-                    }
+                null, null);
 
-                    @Override
-                    public void onResumed() {
-                        if (virtualDisplayCallback != null && !restart) {
-                            virtualDisplayCallback.onResumed();
-                        }
-                        super.onResumed();
+        mProjectionCallback = new MediaProjection.Callback() {
+            @Override
+            public void onStop() {
+                super.onStop();
+                releaseResource();
+                if (restart) {
+                    restart = false;
+                    init(context);
+                } else {
+                    if (virtualDisplayCallback != null) {
+                        virtualDisplayCallback.onStopped();
                     }
-
-                    @Override
-                    public void onStopped() {
-                        super.onStopped();
-                        releaseResource();
-                        if (restart) {
-                            restart = false;
-                            init(context);
-                        } else {
-                            if (virtualDisplayCallback != null) {
-                                virtualDisplayCallback.onStopped();
-                            }
-                        }
-                    }
-                }, null);
+                }
+            }
+        };
+        mMediaProjection.registerCallback(mProjectionCallback, null);
         mDisplayManager.registerDisplayListener(this, null);
     }
 
@@ -236,6 +234,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
             mVirtualDisplay = null;
         }
         tearDownMediaProjection();
+
     }
 
     private MediaFormat getMediaFormat() {
@@ -262,6 +261,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
             mMediaProjection = null;
         }
     }
+
     private void releaseResource() {
         mMediaCodec.stop();
         mMediaCodec.release();
@@ -269,16 +269,16 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     }
 
     @Override
-    public void onDisplayAdded(int i) {
+    public void onDisplayAdded(int displayId) {
         if (displayListener != null) {
-            displayListener.onDisplayAdded(i);
+            displayListener.onDisplayAdded(displayId);
         }
     }
 
     @Override
-    public void onDisplayRemoved(int i) {
+    public void onDisplayRemoved(int displayId) {
         if (displayListener != null) {
-            displayListener.onDisplayRemoved(i);
+            displayListener.onDisplayRemoved(displayId);
         }
     }
 
@@ -288,15 +288,25 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         if (displayListener != null) {
             displayListener.onDisplayChanged(displayId);
         }
-        if (VIRTUAL_DISPLAY_NAME.equals(display.getName()) && display.getState() == android.view.Display.STATE_OFF) {
-            stopScreenCapture();
-            releaseResource();
+        if (VIRTUAL_DISPLAY_NAME.equals(display.getName())) {
+            if (display.getState() == android.view.Display.STATE_ON) {
+                if (virtualDisplayCallback != null) {
+                    virtualDisplayCallback.onResumed();
+                }
+
+            } else if (display.getState() == android.view.Display.STATE_OFF) {
+                stopScreenCapture();
+                releaseResource();
+            }
+
         }
     }
+
     public void startFloatingSignal(Context context) {
         Intent signalFloatingWindow = new Intent(context, FloatSignalWindow.class);
         context.startService(signalFloatingWindow);
     }
+
     public void stopFloatingSignal(Context context) {
         Intent signalFloatingWindow = new Intent(context, FloatSignalWindow.class);
         context.stopService(signalFloatingWindow);
