@@ -76,4 +76,19 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	 * @since 2.7
 	 */
 	public abstract boolean supportImageToH264();
+
+
+	/**
+	 * To get device's capability, ex: bluetooth_device/audio_decoders/mediastreaming
+	 * @return Device's capbility which wrapped in JSON format
+	 * @since 2.9
+	 */
+	public abstract String getCapability();
+
+	/**
+	 * To set deivices's capability by device's response
+	 * @param capability
+	 * @since 2.9
+	 */
+	public abstract void setCapability(String capability);
 }

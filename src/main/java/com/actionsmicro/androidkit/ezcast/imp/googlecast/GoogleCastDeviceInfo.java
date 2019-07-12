@@ -165,6 +165,16 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	}
 
 	@Override
+	public String getCapability() {
+		return null;
+	}
+
+	@Override
+	public void setCapability(String capability) {
+
+	}
+
+	@Override
     protected AudioApi createAudioApi(AudioApiBuilder displayApiBuilder) {
         // TODO Auto-generated method stub
         return null;

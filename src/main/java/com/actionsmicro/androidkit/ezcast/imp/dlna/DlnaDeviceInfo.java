@@ -184,6 +184,16 @@ public class DlnaDeviceInfo extends DeviceInfo {
 		return false;
 	}
 
+	@Override
+	public String getCapability() {
+		return null;
+	}
+
+	@Override
+	public void setCapability(String capability) {
+
+	}
+
 	public String getManufacturer() {
 		try {
 			String manufacturer = device.getDetails().getManufacturerDetails().getManufacturer();

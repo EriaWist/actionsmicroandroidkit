@@ -24,6 +24,7 @@ import java.net.InetAddress;
 public class PigeonDeviceInfo extends DeviceInfo {
 
 	private ProjectorInfo projectorInfo;
+	private String capability = "";
 
 	public ProjectorInfo getProjectorInfo() {
 		return projectorInfo;
@@ -33,6 +34,7 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	}
 	public PigeonDeviceInfo(Parcel in) {
 		this.projectorInfo = ProjectorInfo.CREATOR.createFromParcel(in);
+		this.capability = in.readString();
 	}
 	public static final Parcelable.Creator<PigeonDeviceInfo> CREATOR = new Parcelable.Creator<PigeonDeviceInfo>() {
 		public PigeonDeviceInfo createFromParcel(Parcel in) {
@@ -51,6 +53,7 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	@Override
 	public void writeToParcel(Parcel dest, int flags) {
 		projectorInfo.writeToParcel(dest, flags);
+		dest.writeString(capability);
 	}
 	@Override
 	public boolean supportsHttpStreaming() {
@@ -130,6 +133,16 @@ public class PigeonDeviceInfo extends DeviceInfo {
 	@Override
 	public boolean supportImageToH264() {
 		return true;
+	}
+
+	@Override
+	public String getCapability() {
+		return capability;
+	}
+
+	@Override
+	public void setCapability(String capability) {
+		this.capability = capability;
 	}
 
 	@Override
