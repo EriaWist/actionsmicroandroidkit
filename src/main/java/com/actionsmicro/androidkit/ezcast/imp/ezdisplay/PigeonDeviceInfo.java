@@ -133,10 +133,9 @@ public class PigeonDeviceInfo extends DeviceInfo {
         if (!isAuthorized()) {
             return null;
         }
-        if (isMediaStreamingV2()) {
-            // TODO new V2 by capability
-            return new PigeonMediaPlayerApi(mediaPlayerApiBuilder);
-        }
+//        if (isMediaStreamingV2()) {
+//            return new PigeonMediaPlayerApi2(mediaPlayerApiBuilder);
+//        }
         return new PigeonMediaPlayerApi(mediaPlayerApiBuilder);
     }
 
@@ -211,7 +210,7 @@ public class PigeonDeviceInfo extends DeviceInfo {
 
     private boolean isAuthorized() {
         boolean isAuthorized;
-        Client tempClient = Pigeon.createPigeonClient(projectorInfo.getOsVerion(), projectorInfo.getAddress().getHostAddress(), Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER);
+        Client tempClient = Pigeon.createPigeonClient(projectorInfo.getOsVerion(), projectorInfo);
         isAuthorized = tempClient.canSendStream();
         Pigeon.releasePigeonClient(tempClient);
         return isAuthorized;

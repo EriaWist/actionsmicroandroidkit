@@ -216,6 +216,11 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		return true;
 	}
 
+	public boolean playPlayList(Context context, String playlist) {
+		return false;
+	}
+
+
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 
 	private void stopHttpFileServer() {
