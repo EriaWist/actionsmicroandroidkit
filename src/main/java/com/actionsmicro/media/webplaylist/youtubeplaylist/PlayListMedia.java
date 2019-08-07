@@ -22,6 +22,7 @@ public abstract class PlayListMedia{
         void videoSourcesFound(String src, String page, String title, String thumbnail, String sid, String sourceType);
 		void playListFound(String jsonResponse);
 		void onMediaError(PlayListInfoItem playListInfoItem,String errorCode, String errorDescription);
+		void onMediaFound(String videoObj);
     }
 	protected PlayListMediaDelegate mPlayListMediaDelegate;
 
