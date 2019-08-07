@@ -91,4 +91,12 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	 * @since 2.9
 	 */
 	public abstract void setCapability(String capability);
+
+	/**
+	 * To determine whether the device supports avsplit.
+	 * @return Whether the device supports avsplit.
+	 * @since 2.9
+	 */
+	public abstract boolean supportAVSplit();
+
 }

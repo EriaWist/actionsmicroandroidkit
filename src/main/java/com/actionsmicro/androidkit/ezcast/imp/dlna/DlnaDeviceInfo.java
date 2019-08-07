@@ -194,6 +194,11 @@ public class DlnaDeviceInfo extends DeviceInfo {
 
 	}
 
+	@Override
+	public boolean supportAVSplit() {
+		return false;
+	}
+
 	public String getManufacturer() {
 		try {
 			String manufacturer = device.getDetails().getManufacturerDetails().getManufacturer();
