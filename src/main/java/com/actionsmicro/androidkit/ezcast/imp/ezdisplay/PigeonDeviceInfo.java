@@ -28,7 +28,7 @@ import java.net.InetAddress;
 public class PigeonDeviceInfo extends DeviceInfo {
 
     private ProjectorInfo projectorInfo;
-    private String capability = "";
+    private String capability;
 
     public ProjectorInfo getProjectorInfo() {
         return projectorInfo;
@@ -36,11 +36,12 @@ public class PigeonDeviceInfo extends DeviceInfo {
 
     public PigeonDeviceInfo(ProjectorInfo projectorInfo) {
         this.projectorInfo = projectorInfo;
+        this.capability = projectorInfo.getCapability();
     }
 
     public PigeonDeviceInfo(Parcel in) {
         this.projectorInfo = ProjectorInfo.CREATOR.createFromParcel(in);
-        this.capability = in.readString();
+        this.capability = projectorInfo.getCapability();
     }
 
     public static final Parcelable.Creator<PigeonDeviceInfo> CREATOR = new Parcelable.Creator<PigeonDeviceInfo>() {
@@ -61,7 +62,6 @@ public class PigeonDeviceInfo extends DeviceInfo {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         projectorInfo.writeToParcel(dest, flags);
-        dest.writeString(capability);
     }
 
     @Override
@@ -139,7 +139,7 @@ public class PigeonDeviceInfo extends DeviceInfo {
         return new PigeonMediaPlayerApi(mediaPlayerApiBuilder);
     }
 
-    private boolean isMediaStreamingV2() {
+    public boolean isMediaStreamingV2() {
         if (capability != null) {
             try {
                 JSONObject capabilityObj = new JSONObject(capability);
