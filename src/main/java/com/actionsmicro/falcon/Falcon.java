@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.actionsmicro.falcon.Falcon.ProjectorInfo.SERVICE_APP_HTTP_STREAMING;
 import static com.actionsmicro.falcon.Falcon.ProjectorInfo.SERVICE_EZENCODEPRO;
@@ -124,6 +125,7 @@ public class Falcon {
 		private String mRealKey = "";
 		private String mCapability = "";
 		private HashMap<String, String> keyValuePairs = new HashMap<String, String>();
+		private AtomicInteger mRpcID = new AtomicInteger(0);
 		/**
 		 * Return the version of the device.
 		 * @return The protocol version of the device.
@@ -212,6 +214,10 @@ public class Falcon {
 			return mCapability;
 		}
 
+		public AtomicInteger getRpcID(){
+			return mRpcID;
+		}
+
 		public static final Parcelable.Creator<ProjectorInfo> CREATOR
 		= new Parcelable.Creator<ProjectorInfo>() {
 			public ProjectorInfo createFromParcel(Parcel in) {
@@ -241,6 +247,7 @@ public class Falcon {
 			dest.writeSerializable(keyValuePairs);
 			dest.writeString(mRealKey);
 			dest.writeString(mCapability);
+			dest.writeInt(mRpcID.get());
 		}
 		protected ProjectorInfo() {
 			
@@ -260,6 +267,7 @@ public class Falcon {
 			keyValuePairs = (HashMap<String, String>) in.readSerializable();
 			mRealKey = in.readString();
 			mCapability = in.readString();
+			mRpcID = new AtomicInteger(in.readInt());
 	    }
 		public boolean supportsMediaStreaming() {
 			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING && Integer.valueOf(osVerion) > 1;
@@ -491,6 +499,7 @@ public class Falcon {
 		public void disconnectRemoteControl() {
 			mRealKey = "";
 			mCapability = "";
+			mRpcID.set(0);
 			Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
 		}
 		/**
