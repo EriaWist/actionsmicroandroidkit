@@ -1,4 +1,6 @@
-package com.actionsmicro.pigeon;
+package com.actionsmicro.pigeon.mediastreaming;
+
+import com.actionsmicro.pigeon.MediaStreaming;
 
 public interface IMediaStreaming2 extends MediaStreaming {
     void playPlayList(String playlist);

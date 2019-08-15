@@ -6,6 +6,8 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.falcon.Falcon;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
+import com.actionsmicro.pigeon.mediastreaming.IMediaStreaming2;
+import com.actionsmicro.pigeon.mediastreaming.MediaStreaming2;
 import com.actionsmicro.utils.Log;
 import com.google.gson.Gson;
 
@@ -13,7 +15,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
-    private ProjectorInfo.MessageListener mMessageListener;
     // TODO change to jrpc mediastreaming when capability set
     private IMediaStreaming2 mMediaStreaming = new IMediaStreaming2() {
         @Override
@@ -119,129 +120,15 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
         super(projectorInfo.getAddress().getHostAddress(), Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER, Build.MODEL);
         mProjectorInfo = projectorInfo;
         mDeviceInfo = new PigeonDeviceInfo(projectorInfo);
-        mProjectorInfo.addMessageListener(mMessageListener = new ProjectorInfo.MessageListener() {
-            @Override
-            public void onReceiveMessage(ProjectorInfo projector, String message) {
-                Log.d("dddd", projector.getName() + " msg = " + message);
-            }
-
-            @Override
-            public void onException(ProjectorInfo projector, Exception e) {
-
-            }
-
-            @Override
-            public void onDisconnect(ProjectorInfo projector) {
-
-            }
-        });
-
 
         if (isMediaStreamingV2()) {
-            mMediaStreaming = new IMediaStreaming2() {
-                @Override
-
-                public void playPlayList(String playlist) {
-                    Log.d("dddd", "playPlayList");
-
-                }
-
-                @Override
-                public void next() {
-                    Log.d("dddd", "next");
-                }
-
-                @Override
-                public void previous() {
-                    Log.d("dddd", "previous");
-                }
-
-                @Override
-                public String getCurrentMedia() {
-                    return null;
-                }
-
-                @Override
-                public String getCurrentPlaylist() {
-                    return null;
-                }
-
-                @Override
-                public void startMediaStreaming(DataSource dataSource) {
-                    ClientV2P.super.startMediaStreaming(dataSource);
-                }
-
-                @Override
-                public int getDuration() {
-                    return ClientV2P.super.getDuration();
-                }
-
-                @Override
-                public int getTime() {
-                    return ClientV2P.super.getTime();
-                }
-
-                @Override
-                public int seekTo(int position) {
-                    return ClientV2P.super.seekTo(position);
-                }
-
-                @Override
-                public int pauseMediaStreaming() {
-                    return ClientV2P.super.pauseMediaStreaming();
-                }
-
-                @Override
-                public int resumeMediaStreaming() {
-                    return ClientV2P.super.resumeMediaStreaming();
-                }
-
-                @Override
-                public int increaseVolume() {
-                    return ClientV2P.super.increaseVolume();
-                }
-
-                @Override
-                public int decreaseVolume() {
-                    return ClientV2P.super.decreaseVolume();
-                }
-
-                @Override
-                public void stopMediaStreaming() {
-                    ClientV2P.super.stopMediaStreaming();
-                }
-
-                @Override
-                public void sendStreamingContents(byte[] contents, int length) {
-                    ClientV2P.super.sendStreamingContents(contents, length);
-                }
-
-                @Override
-                public void sendStreamingContentsUdp(byte[] contents, int length) {
-                    ClientV2P.super.sendStreamingContentsUdp(contents, length);
-                }
-
-                @Override
-                public void sendEofPacket() {
-                    ClientV2P.super.sendEofPacket();
-                }
-
-                @Override
-                public void resetPlayer() {
-                    ClientV2P.super.resetPlayer();
-                }
-
-                @Override
-                public MediaPlayerApi.State getPlayerState() {
-                    return ClientV2P.super.getPlayerState();
-                }
-            };
+            mMediaStreaming = new MediaStreaming2(mProjectorInfo);
         }
 
     }
 
     private boolean isMediaStreamingV2() {
-        return true;
+        return false;
 //        return mDeviceInfo.isMediaStreamingV2();
     }
 
@@ -319,7 +206,7 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     protected void handleException(Exception e) {
         Log.e("dddd", "handleException", e);
         super.handleException(e);
-        mProjectorInfo.removeMessageListener(mMessageListener);
+//        mProjectorInfo.removeMessageListener(mMessageListener);
     }
 
     @Override

@@ -10,7 +10,7 @@ import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
 import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
-import com.actionsmicro.pigeon.IMediaStreaming2;
+import com.actionsmicro.pigeon.mediastreaming.IMediaStreaming2;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.pigeon.MediaStreamingHttpDataSource;
 import com.actionsmicro.pigeon.MediaStreamingStateListener;

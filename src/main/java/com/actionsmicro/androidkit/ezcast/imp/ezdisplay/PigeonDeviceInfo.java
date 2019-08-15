@@ -24,6 +24,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.InetAddress;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PigeonDeviceInfo extends DeviceInfo {
 
@@ -214,5 +215,9 @@ public class PigeonDeviceInfo extends DeviceInfo {
         isAuthorized = tempClient.canSendStream();
         Pigeon.releasePigeonClient(tempClient);
         return isAuthorized;
+    }
+
+    public AtomicInteger getRPCID(){
+        return projectorInfo.getRpcID();
     }
 }
