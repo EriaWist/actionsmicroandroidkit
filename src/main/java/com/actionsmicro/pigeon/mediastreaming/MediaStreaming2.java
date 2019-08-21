@@ -206,7 +206,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                         int currentIndex = ((Long) params.get("currentIndex")).intValue();
 
                         if (mMediaApi != null && mMediaStateListener != null) {
-                            mCurrentPlayList.getMediaPlayListListener().onMediaChanged(new VideoMediaItem(videoObj.getSrc(), videoObj.getPage(), videoObj.getTitle(), String.valueOf(currentIndex), videoObj.getImage(), "", ""), currentIndex);
+                            mCurrentPlayList.getMediaPlayListListener().onMediaChanged(new VideoMediaItem(videoObj.getSrc(), videoObj.getPage(), videoObj.getTitle(), String.valueOf(currentIndex), videoObj.getImage(), "", "stream"), currentIndex);
                             mMediaStateListener.mediaPlayerDurationIsReady(mMediaApi, mDuration);
                         }
 
@@ -221,6 +221,9 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                         switch (state) {
                             case "Idle":
                                 mCurrentState = MediaPlayerApi.State.IDLE;
+                                if (mMediaApi != null && mMediaStateListener != null) {
+                                    mCurrentPlayList.getMediaPlayListListener().onListEnded();
+                                }
                                 break;
                             case "Ended":
                                 mCurrentState = MediaPlayerApi.State.ENDED;
