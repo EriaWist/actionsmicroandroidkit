@@ -134,9 +134,6 @@ public class PigeonDeviceInfo extends DeviceInfo {
         if (!isAuthorized()) {
             return null;
         }
-//        if (isMediaStreamingV2()) {
-//            return new PigeonMediaPlayerApi2(mediaPlayerApiBuilder);
-//        }
         return new PigeonMediaPlayerApi(mediaPlayerApiBuilder);
     }
 
@@ -144,7 +141,6 @@ public class PigeonDeviceInfo extends DeviceInfo {
         if (capability != null) {
             try {
                 JSONObject capabilityObj = new JSONObject(capability);
-                Log.d("dddd", "json " + capabilityObj.toString());
                 JSONObject mediastreamingObj = capabilityObj.getJSONObject("mediastreaming");
                 if (mediastreamingObj != null) {
                     int version = mediastreamingObj.optInt("version", 1);
@@ -192,7 +188,6 @@ public class PigeonDeviceInfo extends DeviceInfo {
         if (capability != null) {
             try {
                 JSONObject capabilityObj = new JSONObject(capability);
-                Log.d("dddd", "json " + capabilityObj.toString());
                 JSONObject mediastreamingObj = capabilityObj.getJSONObject("mediastreaming");
                 if (mediastreamingObj != null) {
                     return mediastreamingObj.optBoolean("support_avsplit", false);

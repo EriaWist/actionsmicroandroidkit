@@ -1,11 +1,11 @@
 package com.actionsmicro.media.playlist;
 
 
+import com.actionsmicro.media.control.MediaPlayListListener;
 import com.actionsmicro.media.videoobj.VideoObj;
 
 import java.util.List;
 
-// POJO
 public class PlayList {
     private String id;
     private List<VideoObj> playlist;
@@ -29,4 +29,17 @@ public class PlayList {
     }
 
 
+    private transient MediaPlayListListener mediaPlayListListener;
+
+    public void setMediaPlayListListener(MediaPlayListListener mediaPlayListListener) {
+        this.mediaPlayListListener = mediaPlayListListener;
+    }
+
+    public MediaPlayListListener getMediaPlayListListener() {
+        return mediaPlayListListener;
+    }
+
+    public void setStart_index(int start_index) {
+        this.start_index = start_index;
+    }
 }

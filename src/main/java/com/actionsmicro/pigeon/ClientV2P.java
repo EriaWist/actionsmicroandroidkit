@@ -1,11 +1,13 @@
 package com.actionsmicro.pigeon;
 
+import android.content.Context;
 import android.os.Build;
 
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.falcon.Falcon;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
+import com.actionsmicro.media.playlist.PlayList;
 import com.actionsmicro.pigeon.mediastreaming.IMediaStreaming2;
 import com.actionsmicro.pigeon.mediastreaming.MediaStreaming2;
 import com.actionsmicro.utils.Log;
@@ -15,10 +17,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
-    // TODO change to jrpc mediastreaming when capability set
+    private static final String TAG = "ClientV2";
+
     private IMediaStreaming2 mMediaStreaming = new IMediaStreaming2() {
         @Override
-        public void playPlayList(String playlist) {
+        public void playPlayList(Context context, PlayList playlist) {
             // V2 don't have this function
         }
 
@@ -40,6 +43,11 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
         @Override
         public String getCurrentPlaylist() {
             return null;
+        }
+
+        @Override
+        public void setMediaStreamingStateListener(MediaPlayerApi api, MediaPlayerApi.MediaPlayerStateListener mediaPlayerStateListener) {
+
         }
 
         @Override
@@ -128,8 +136,7 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     }
 
     private boolean isMediaStreamingV2() {
-        return false;
-//        return mDeviceInfo.isMediaStreamingV2();
+        return mDeviceInfo.isMediaStreamingV2();
     }
 
     @Override
@@ -210,15 +217,9 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     }
 
     @Override
-    public void playPlayList(String playlist) {
-        Gson gson = new Gson();
-        try {
-            JSONObject jsonPlayList = new JSONObject(playlist);
-            Log.d("dddd", jsonPlayList.toString());
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        mMediaStreaming.playPlayList(playlist);
+    public void playPlayList(Context context, PlayList playlist) {
+        Log.d("dddd", new Gson().toJson(playlist));
+        mMediaStreaming.playPlayList(context, playlist);
     }
 
     @Override
@@ -239,6 +240,11 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     @Override
     public String getCurrentPlaylist() {
         return null;
+    }
+
+    @Override
+    public void setMediaStreamingStateListener(MediaPlayerApi api, MediaPlayerApi.MediaPlayerStateListener mediaPlayerStateListener) {
+        mMediaStreaming.setMediaStreamingStateListener(api, mediaPlayerStateListener);
     }
 
 }
