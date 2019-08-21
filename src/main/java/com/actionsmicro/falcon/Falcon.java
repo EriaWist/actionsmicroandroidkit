@@ -615,7 +615,20 @@ public class Falcon {
 								} else if (headerSize == 4) {
 									int payloadSize = header.getInt();
 									final ByteBuffer payload = ByteBuffer.allocate(payloadSize);
-									inputStream.read(payload.array(), 0, payload.capacity());
+									payload.order(ByteOrder.LITTLE_ENDIAN);
+
+									if (payloadSize > 0) {
+										int readBytes = 0;
+										int len = payload.array().length;
+										while(readBytes < len) {
+											int read = inputStream.read(payload.array(), readBytes, len - readBytes);
+											if (read == -1) {
+												break;
+											}
+											readBytes += read;
+										}
+									}
+
 									Log.d(TAG, "Receive TCP packet. Payload size:" + payloadSize);
 									final String receiveString = new String(payload.array(), REMOTE_CONTROL_MESSGAE_CHARSET);
 									processRemoteControlMessage(projectorInfo, receiveString);
