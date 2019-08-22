@@ -5,6 +5,7 @@ import android.os.Handler;
 
 import com.actionsmicro.androidaiurjsproxy.helper.WebVideoSourceHelper;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -81,6 +82,25 @@ public class PlayListMediaFlat extends PlayListMedia {
                     @Override
                     public void onMediaError(String errorcode, String errorDescription) {
                         mPlayListMediaDelegate.onMediaError(mPlayListInfoItem,errorcode,errorDescription);
+                    }
+
+                    @Override
+                    public void onMediaFound(String videoObj) {
+                        // wrap video?
+                        try {
+                            JSONObject jsonObj = null;
+                            jsonObj = new JSONObject(videoObj);
+                            JSONArray playList = jsonObj.getJSONArray("playlist");
+                            if(playList.length() > 1){
+                                // expand videoobj to array
+                                playListWithinPlayList(jsonObj);
+                                mPlayListMediaDelegate.playListFound(videoObj);
+                            } else{
+                                mPlayListMediaDelegate.onMediaFound(videoObj);
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
                     }
                 });
 

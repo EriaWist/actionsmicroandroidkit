@@ -5,14 +5,18 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 
+import com.actionsmicro.androidaiurjsproxy.helper.WebVideoSourceHelper;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApiBuilder;
+import com.actionsmicro.media.playlist.PlayList;
 import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreaming.DataSource;
+import com.actionsmicro.pigeon.mediastreaming.IMediaStreaming2;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.pigeon.MediaStreamingHttpDataSource;
 import com.actionsmicro.pigeon.MediaStreamingStateListener;
+import com.actionsmicro.pigeon.mediastreaming.MediaStreaming2;
 import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.actionsmicro.web.Utils;
 
@@ -215,6 +219,28 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 
 		return true;
 	}
+
+	public boolean playPlayList(Context context, PlayList playlist) {
+		if (mediaStreaming instanceof IMediaStreaming2) {
+			((IMediaStreaming2) mediaStreaming).setMediaStreamingStateListener(this, mediaPlayerStateListener);
+			((IMediaStreaming2) mediaStreaming).playPlayList(context, playlist);
+		}
+		return true;
+	}
+
+	public void next(){
+		if (mediaStreaming instanceof IMediaStreaming2) {
+			((IMediaStreaming2) mediaStreaming).next();
+		}
+	}
+
+	public void previous(){
+		if (mediaStreaming instanceof IMediaStreaming2) {
+			((IMediaStreaming2) mediaStreaming).previous();
+		}
+	}
+
+
 
 	private SimpleContentUriHttpFileServer simpleHttpFileServer;
 

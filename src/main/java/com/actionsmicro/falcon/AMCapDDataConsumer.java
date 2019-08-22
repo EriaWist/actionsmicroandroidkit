@@ -23,6 +23,7 @@ import com.actionsmicro.pigeon.Pigeon;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Screen;
 
+// TODO remove unused legacy code
 public class AMCapDDataConsumer extends DataConsumer {
 
 	static private final String TAG = "AMCapDDataConsumer";

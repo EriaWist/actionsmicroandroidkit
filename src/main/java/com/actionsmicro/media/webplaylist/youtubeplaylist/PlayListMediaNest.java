@@ -10,6 +10,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
+// TODO deprecate nested playlist
 public class PlayListMediaNest extends PlayListMedia {
     public PlayListMediaNest(Context context, PlayListInfoItem item, PlayListMediaDelegate playListMediaDelegate) {
         super(context, item, playListMediaDelegate);
@@ -81,6 +82,11 @@ public class PlayListMediaNest extends PlayListMedia {
                     @Override
                     public void onMediaError(String errorcode, String errorDescription) {
                         mPlayListMediaDelegate.onMediaError(mPlayListInfoItem,errorcode,errorDescription);
+                    }
+
+                    @Override
+                    public void onMediaFound(String s) {
+
                     }
                 });
 

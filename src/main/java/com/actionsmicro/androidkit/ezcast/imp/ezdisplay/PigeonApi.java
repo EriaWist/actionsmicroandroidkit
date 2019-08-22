@@ -26,7 +26,7 @@ public class PigeonApi extends TrackableApi implements Api, SplitScreenInterface
 	@Override
 	public void connect() {
 		if (pigeonClient == null) {
-			pigeonClient = Pigeon.createPigeonClient(projectorInfo.getOsVerion(), projectorInfo.getAddress().getHostAddress(), Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER);
+			pigeonClient = Pigeon.createPigeonClient(projectorInfo.getOsVerion(), projectorInfo);
 			pigeonClient.addOnExceptionListener(this);
 			this.onPigeonClientCreated(pigeonClient);
 			super.connect();

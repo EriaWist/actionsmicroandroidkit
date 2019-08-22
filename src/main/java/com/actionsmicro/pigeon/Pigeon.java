@@ -4,6 +4,8 @@ import java.util.HashMap;
 
 import android.os.Build;
 
+import com.actionsmicro.falcon.Falcon;
+
 public class Pigeon {
 	private static class Triode {
 		private String version;
@@ -54,6 +56,29 @@ public class Pigeon {
 	}
 	private static HashMap<Client, Integer> referenceCount = new HashMap<Client, Integer>(); 
 	private static HashMap<Triode, Client> clients = new HashMap<Triode, Client>();
+	public static Client createPigeonClient(final String version, final Falcon.ProjectorInfo projectorInfo){
+		final Triode triode = new Triode(version, projectorInfo.getAddress().getHostAddress(),Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER);
+		Client pigeon = clients.get(triode);
+		if (pigeon == null) {
+			if (version != null) {
+				if (version.equals("2")) {
+					pigeon = new ClientV2P(projectorInfo);
+				} else {
+					pigeon = new Client(projectorInfo.getAddress().getHostAddress(), Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER);
+				}
+			}
+			if (pigeon == null) {
+				pigeon = new Client(projectorInfo.getAddress().getHostAddress(), Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER);
+			}
+			clients.put(new Triode(pigeon.getVersion(), pigeon.getServerAddress(), pigeon.getPortNumber()), pigeon);
+			//clients.put(triode, pigeon);
+			referenceCount.put(pigeon, 1);
+		} else {
+			referenceCount.put(pigeon, referenceCount.get(pigeon) + 1);
+		}
+		return pigeon;
+	}
+
 	public static Client createPigeonClient(final String version, final String serverAddress, int portNumber) {
 		final Triode triode = new Triode(version, serverAddress, portNumber);
 		Client pigeon = clients.get(triode);

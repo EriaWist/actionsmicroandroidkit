@@ -84,7 +84,28 @@ public interface MediaPlayerApi extends Api {
 		 * Player is paused.
 		 * @since 2.1
 		 */
-		PAUSED
+		PAUSED,
+		/**
+		 * Player is idle.
+		 * @since 2.9
+		 */
+		IDLE,
+		/**
+		 * Player is ended.
+		 * @since 2.9
+		 */
+		ENDED,
+		/**
+		 * Player is buffering.
+		 * @since 2.9
+		 */
+		BUFFERING,
+		/**
+		 * Player is processing.
+		 * @since 2.9
+		 */
+		PROCESSING
+
 	};
 	/**
 	 * Cause of mediaPlayerDidStop().
