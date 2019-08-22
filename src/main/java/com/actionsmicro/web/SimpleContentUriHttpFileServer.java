@@ -79,8 +79,24 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
     public Response serve(IHTTPSession session) {
 		Map<String, String> header = session.getHeaders();
 		Log.d(TAG, "serve: "+session.getMethod()+" range:"+header.get("range"));
+		if(session.getUri().equals("/LocalVideo")){
+			String file = session.getParms().get("filename");
+			Uri mediaUri = null;
+			try {
+				mediaUri = Uri.parse(file);
+				if (mediaUri.getScheme() == null) {
+					mediaUri = mediaUri.buildUpon().scheme("file").build();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				mediaUri = Uri.fromFile(new File(file));
+			}
+			contentUri = mediaUri;
+		}
         return serveFile(Collections.unmodifiableMap(header));
 	}
+
+
 	private long getContentLength() {
 		if (contentLength == -1) {
 			if (contentUri.getScheme().equals(ContentResolver.SCHEME_CONTENT)) {
