@@ -1,17 +1,23 @@
 package com.actionsmicro.pigeon.mediastreaming;
 
+import android.content.ContentResolver;
 import android.content.Context;
+import android.net.Uri;
 
 import com.actionsmicro.androidaiurjsproxy.helper.WebVideoSourceHelper;
 import com.actionsmicro.androidkit.ezcast.MediaPlayerApi;
 import com.actionsmicro.falcon.Falcon;
+import com.actionsmicro.media.item.MusicMediaItem;
 import com.actionsmicro.media.item.VideoMediaItem;
 import com.actionsmicro.media.playlist.PlayList;
 import com.actionsmicro.media.videoobj.VideoObj;
 import com.actionsmicro.pigeon.MediaStreaming;
+import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.utils.CipherUtil;
 import com.actionsmicro.utils.Log;
+import com.actionsmicro.utils.TetheringUtil;
 import com.actionsmicro.utils.Utils;
+import com.actionsmicro.web.SimpleContentUriHttpFileServer;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Message;
@@ -24,6 +30,8 @@ import com.thetransactioncompany.jsonrpc2.server.MessageContext;
 import com.thetransactioncompany.jsonrpc2.server.NotificationHandler;
 import com.thetransactioncompany.jsonrpc2.server.RequestHandler;
 
+import java.io.File;
+import java.net.URLEncoder;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,6 +53,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     private MediaPlayerApi mMediaApi;
     private MediaPlayerApi.State mCurrentState = MediaPlayerApi.State.IDLE;
     private Gson gson = new Gson();
+    private SimpleContentUriHttpFileServer simpleHttpFileServer;
 
     public interface RPCAPI {
         // JRPC_REQUEST_METHOD
@@ -87,37 +96,46 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
     private Falcon.ProjectorInfo mProjectorInfo;
     private Falcon.ProjectorInfo.MessageListener mMessageListener;
+    private Object stopLock = new Object();
+    private Thread receivingThread;
 
     public MediaStreaming2(Falcon.ProjectorInfo projectorInfo) {
         mProjectorInfo = projectorInfo;
-        mProjectorInfo.addMessageListener(mMessageListener = new Falcon.ProjectorInfo.MessageListener() {
+        receivingThread = new Thread(){
             @Override
-            public void onReceiveMessage(Falcon.ProjectorInfo projector, String message) {
-                if (message.startsWith("JSONRPC")) {
-                    String jsonstring = parseMessageString(message);
+            public void run() {
+                mProjectorInfo.addMessageListener(new Falcon.ProjectorInfo.MessageListener() {
+                    @Override
+                    public void onReceiveMessage(Falcon.ProjectorInfo projector, String message) {
+                        if (message.startsWith("JSONRPC")) {
+                            String jsonstring = parseMessageString(message);
 
-                    if (3 == mJsonRPCVer && !getRealKey().isEmpty()) {
-                        jsonstring = CipherUtil.DecryptAES(jsonstring, getRealKey(), ALGORITHM_AES_CBC);
+                            if (3 == mJsonRPCVer && !getRealKey().isEmpty()) {
+                                jsonstring = CipherUtil.DecryptAES(jsonstring, getRealKey(), ALGORITHM_AES_CBC);
+                            }
+                            Log.d(TAG, "decrypt string " + jsonstring);
+                            handleReceiveJSON(jsonstring);
+                        }
                     }
-                    Log.d(TAG, "decrypt string " + jsonstring);
-                    handleReceiveJSON(jsonstring);
-                }
-            }
 
-            @Override
-            public void onException(Falcon.ProjectorInfo projector, Exception e) {
-                Log.e(TAG, "onException", e);
-            }
+                    @Override
+                    public void onException(Falcon.ProjectorInfo projector, Exception e) {
+                        Log.e(TAG, "onException", e);
+                    }
 
-            @Override
-            public void onDisconnect(Falcon.ProjectorInfo projector) {
-                Log.d(TAG, "onDisconnect");
+                    @Override
+                    public void onDisconnect(Falcon.ProjectorInfo projector) {
+                        Log.d(TAG, "onDisconnect");
+                        stopHttpFileServer();
+                    }
+                });
+                registerRPC();
             }
-        });
-        registerRPC();
+        };
+        receivingThread.start();
+
+
     }
-
-
     private void registerRPC() {
         dispatcher.register(new RequestHandler() {
             private long elapsetime;
@@ -204,9 +222,14 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                         mDuration = ((Long) params.get("duration")).intValue();
                         VideoObj videoObj = gson.fromJson(params.get("video").toString(), VideoObj.class);
                         int currentIndex = ((Long) params.get("currentIndex")).intValue();
-
                         if (mMediaApi != null && mMediaStateListener != null) {
-                            mCurrentPlayList.getMediaPlayListListener().onMediaChanged(new VideoMediaItem(videoObj.getSrc(), videoObj.getPage(), videoObj.getTitle(), String.valueOf(currentIndex), videoObj.getImage(), "", "stream"), currentIndex);
+                            if (videoObj.isAudio()) {
+                                mCurrentPlayList.getMediaPlayListListener().onMediaChanged(new MusicMediaItem(videoObj.getIndex(), videoObj.getMediaId(), videoObj.getMediaName(), videoObj.getArtistName(),
+                                        videoObj.getAlbumName(), videoObj.getAlbumId(), videoObj.getDuration(), videoObj.getData()), currentIndex);
+                            } else {
+                                mCurrentPlayList.getMediaPlayListListener().onMediaChanged(new VideoMediaItem(videoObj.getSrc(), videoObj.getPage(), videoObj.getTitle(), String.valueOf(currentIndex), videoObj.getImage(),
+                                        "", "stream"), currentIndex);
+                            }
                             mMediaStateListener.mediaPlayerDurationIsReady(mMediaApi, mDuration);
                         }
 
@@ -307,6 +330,8 @@ public class MediaStreaming2 implements IMediaStreaming2 {
             } else if (message instanceof JSONRPC2Notification) {
                 dispatcher.process((JSONRPC2Notification) message, null);
             } else if (message instanceof JSONRPC2Response) {
+                JSONRPC2Response resp= (JSONRPC2Response)message;
+                Log.d("ddddd", "id " + resp.getID());
 //                        mResponseHandler.process((JSONRPC2Response) message, mResponseMap);
             }
         } catch (JSONRPC2ParseException e) {
@@ -319,21 +344,68 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     }
 
     @Override
-    public void playPlayList(Context context, PlayList playlist) {
+    public void playPlayList(Context context, PlayList playlist) throws Exception {
+        stopHttpFileServer();
         mCurrentPlayList = playlist;
         Log.d(TAG, "playPlayList");
         if (mMediaSoucehelper == null) {
             mMediaSoucehelper = WebVideoSourceHelper.getInstance(context);
         }
-
+        PlayList transformedPlaylist = transformPlayListIfNeed(context, playlist);
         final HashMap<String, Object> params = new HashMap<>();
-        params.put("playlist", jsonToMap(gson.toJson(playlist)));
+        params.put("playlist", jsonToMap(gson.toJson(transformedPlaylist)));
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_PLAYLIST, params, generateRpcId());
 
 
         sendJSONRPC(req.toString());
         // init httpserver for local media?
         mContext = context;
+    }
+
+    private PlayList transformPlayListIfNeed(Context context, PlayList playlist) throws Exception {
+        PlayList result = playlist;
+        int index = result.getStart_index();
+        VideoObj currentVideoObj = result.getPlaylist().get(index);
+        String mediaUrl = currentVideoObj.getSrc();
+
+        if (mediaUrl == null || mediaUrl.startsWith("http") || mediaUrl.startsWith("rtsp") || mediaUrl.startsWith("mms")) {
+            return result;
+        } else if (MediaStreamingFileDataSource.supportsFileExt(com.actionsmicro.utils.Utils.getFileExtension(mediaUrl).toLowerCase())
+                || mediaUrl.startsWith(ContentResolver.SCHEME_CONTENT)) {
+            Uri mediaUri = buildLocalUri(mediaUrl);
+
+            if (TetheringUtil.isUsbTethered(context)) {
+                // USB Tether's ip is 192.168.42.129, reference:Tethering.java from aosp
+                // private static final String USB_NEAR_IFACE_ADDR      = "192.168.42.129";
+                simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, "192.168.42.129", 0);
+            } else {
+                simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
+            }
+            simpleHttpFileServer.start();
+
+            for (int i = 0; i < result.getPlaylist().size(); i++) {
+                VideoObj v = result.getPlaylist().get(i);
+
+                Uri uri = buildLocalUri(v.getSrc());
+                String mediaUriString = simpleHttpFileServer.getServerUrl() + "/LocalVideo?filename=" + URLEncoder.encode(uri.getPath(), "UTF-8");
+                v.setSrc(mediaUriString);
+            }
+        }
+        return result;
+    }
+
+    private Uri buildLocalUri(String mediaUrl) {
+        Uri mediaUri = null;
+        try {
+            mediaUri = Uri.parse(mediaUrl);
+            if (mediaUri.getScheme() == null) {
+                mediaUri = mediaUri.buildUpon().scheme("file").build();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            mediaUri = Uri.fromFile(new File(mediaUrl));
+        }
+        return mediaUri;
     }
 
     private Map<String, Object> jsonToMap(String playlist) {
@@ -449,7 +521,23 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     public void stopMediaStreaming() {
         Log.d(TAG, "stopMediaStreaming");
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_STOP, generateRpcId());
-        sendJSONRPC(req.toString());
+        new Thread(){
+            @Override
+            public void run() {
+                sendJSONRPC(req.toString());
+            }
+        }.start();
+
+//        try {
+//            synchronized (stopLock){
+//                Log.d("dddd", "wait stop");
+//                stopLock.wait();
+//                Log.d("dddd", "stop return");
+//            }
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+
     }
 
     @Override
@@ -511,7 +599,6 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         final String[] parameters = receiveString.split(":");
         if (parameters.length >= 3) {
             mJsonRPCVer = Integer.valueOf(parameters[1]);
-//            mJsonRPCVerStr = String.format("%d.0", mJsonRPCVer);
             return Utils.concatStringsWithSeparator(Arrays.asList(Arrays.copyOfRange(parameters, 2, parameters.length)), ":");
         }
         return null;
@@ -519,5 +606,12 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
     private String getRealKey() {
         return mProjectorInfo == null ? "" : mProjectorInfo.getRealKey();
+    }
+
+    private void stopHttpFileServer() {
+        if (simpleHttpFileServer != null) {
+            simpleHttpFileServer.stop();
+            simpleHttpFileServer = null;
+        }
     }
 }

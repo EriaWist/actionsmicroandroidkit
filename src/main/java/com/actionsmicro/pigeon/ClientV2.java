@@ -406,14 +406,6 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	
 	private static final int STREAM_FORMAT_EZSTREAM = 6;
 
-	public DataSource getCurrentDataSource() {
-		return currentDataSource;
-	}
-
-	public void setCurrentDataSource(DataSource currentDataSource) {
-		this.currentDataSource = currentDataSource;
-	}
-
 	private DataSource currentDataSource;
 	private boolean isStreamingMedia;
 	private int intResponse;

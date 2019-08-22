@@ -7,7 +7,7 @@ import com.actionsmicro.media.playlist.PlayList;
 import com.actionsmicro.pigeon.MediaStreaming;
 
 public interface IMediaStreaming2 extends MediaStreaming {
-    void playPlayList(Context context, PlayList playlist);
+    void playPlayList(Context context, PlayList playlist) throws Exception;
 
     void next();
 
