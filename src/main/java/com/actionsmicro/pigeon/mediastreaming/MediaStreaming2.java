@@ -10,6 +10,7 @@ import com.actionsmicro.falcon.Falcon;
 import com.actionsmicro.media.item.MusicMediaItem;
 import com.actionsmicro.media.item.VideoMediaItem;
 import com.actionsmicro.media.playlist.PlayList;
+import com.actionsmicro.media.videoobj.Caption;
 import com.actionsmicro.media.videoobj.VideoObj;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
@@ -34,6 +35,7 @@ import java.io.File;
 import java.net.URLEncoder;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.actionsmicro.utils.CipherUtil.ALGORITHM_AES_CBC;
@@ -54,6 +56,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     private MediaPlayerApi.State mCurrentState = MediaPlayerApi.State.IDLE;
     private Gson gson = new Gson();
     private SimpleContentUriHttpFileServer simpleHttpFileServer;
+    private SimpleContentUriHttpFileServer subtitlHttpFileServer;
 
     public interface RPCAPI {
         // JRPC_REQUEST_METHOD
@@ -373,10 +376,25 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         } else if (MediaStreamingFileDataSource.supportsFileExt(com.actionsmicro.utils.Utils.getFileExtension(mediaUrl).toLowerCase())
                 || mediaUrl.startsWith(ContentResolver.SCHEME_CONTENT)) {
             Uri mediaUri = buildLocalUri(mediaUrl);
+            List<Caption> captionList = currentVideoObj.getCaptions();
+
+            if(captionList !=null && captionList.size() > 0){
+                Caption caption = captionList.get(0);
+                String subtitlePath = caption.getUrl();
+                Uri subtitleUri = buildLocalUri(subtitlePath);
+
+                if (TetheringUtil.isUsbTethered(context)) {
+                    subtitlHttpFileServer = new SimpleContentUriHttpFileServer(context, subtitleUri, "192.168.42.129", 0);
+                } else {
+                    subtitlHttpFileServer = new SimpleContentUriHttpFileServer(context, subtitleUri, 0);
+                }
+                subtitlHttpFileServer.start();
+
+                String subTitleUrlPath = subtitlHttpFileServer.getServerUrl() + "/SubTitle?filename=" + URLEncoder.encode(subtitleUri.getPath(), "UTF-8");
+                caption.setUrl(subTitleUrlPath);
+            }
 
             if (TetheringUtil.isUsbTethered(context)) {
-                // USB Tether's ip is 192.168.42.129, reference:Tethering.java from aosp
-                // private static final String USB_NEAR_IFACE_ADDR      = "192.168.42.129";
                 simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, "192.168.42.129", 0);
             } else {
                 simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
@@ -612,6 +630,11 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         if (simpleHttpFileServer != null) {
             simpleHttpFileServer.stop();
             simpleHttpFileServer = null;
+        }
+
+        if(subtitlHttpFileServer != null){
+            subtitlHttpFileServer.stop();
+            subtitlHttpFileServer = null;
         }
     }
 }

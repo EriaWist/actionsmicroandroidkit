@@ -16,14 +16,16 @@ public class VideoObj {
     private String header;
     private String type;
     // for MusicMediaItem
-    public String index;
-    public long mediaId;
-    public String mediaName;
-    public String artistName;
-    public String albumName;
-    public long albumId;
-    public int duration;
-    public String data;
+    private String index;
+    private long mediaId;
+    private String mediaName;
+    private String artistName;
+    private String albumName;
+    private long albumId;
+    private int duration;
+    private String data;
+    // for Local video sub title
+    private List<Caption> captions;
 
     public List<String> getCutlist() {
         return cutlist;
@@ -111,5 +113,13 @@ public class VideoObj {
 
     public String getData() {
         return data;
+    }
+
+    public List<Caption> getCaptions() {
+        return captions;
+    }
+
+    public void setCaptions(List<Caption> captions) {
+        this.captions = captions;
     }
 }
