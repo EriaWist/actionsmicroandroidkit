@@ -57,6 +57,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     private Gson gson = new Gson();
     private SimpleContentUriHttpFileServer simpleHttpFileServer;
     private SimpleContentUriHttpFileServer subtitlHttpFileServer;
+    private long stopReqId;
 
     public interface RPCAPI {
         // JRPC_REQUEST_METHOD
@@ -104,12 +105,14 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
     public MediaStreaming2(Falcon.ProjectorInfo projectorInfo) {
         mProjectorInfo = projectorInfo;
-        receivingThread = new Thread(){
+        receivingThread = new Thread() {
             @Override
             public void run() {
+                Log.d("dddd", "receivingThread thread " + Thread.currentThread());
                 mProjectorInfo.addMessageListener(new Falcon.ProjectorInfo.MessageListener() {
                     @Override
                     public void onReceiveMessage(Falcon.ProjectorInfo projector, String message) {
+                        Log.d("dddd", "onReceiveMessage thread " + Thread.currentThread());
                         if (message.startsWith("JSONRPC")) {
                             String jsonstring = parseMessageString(message);
 
@@ -136,9 +139,8 @@ public class MediaStreaming2 implements IMediaStreaming2 {
             }
         };
         receivingThread.start();
-
-
     }
+
     private void registerRPC() {
         dispatcher.register(new RequestHandler() {
             private long elapsetime;
@@ -247,9 +249,14 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                         switch (state) {
                             case "Idle":
                                 mCurrentState = MediaPlayerApi.State.IDLE;
+                                synchronized (stopLock) {
+                                    Log.d("ddddd", "notifyAll ");
+                                    stopLock.notifyAll();
+                                }
                                 if (mMediaApi != null && mMediaStateListener != null) {
                                     mCurrentPlayList.getMediaPlayListListener().onListEnded();
                                 }
+
                                 break;
                             case "Ended":
                                 mCurrentState = MediaPlayerApi.State.ENDED;
@@ -333,9 +340,16 @@ public class MediaStreaming2 implements IMediaStreaming2 {
             } else if (message instanceof JSONRPC2Notification) {
                 dispatcher.process((JSONRPC2Notification) message, null);
             } else if (message instanceof JSONRPC2Response) {
-                JSONRPC2Response resp= (JSONRPC2Response)message;
+                JSONRPC2Response resp = (JSONRPC2Response) message;
                 Log.d("ddddd", "id " + resp.getID());
-//                        mResponseHandler.process((JSONRPC2Response) message, mResponseMap);
+                long respId = Long.valueOf(resp.getID().toString());
+                if (respId == stopReqId) {
+                    synchronized (stopLock) {
+                        Log.d("ddddd", "notifyAll " + resp.getID());
+                        stopLock.notifyAll();
+
+                    }
+                }
             }
         } catch (JSONRPC2ParseException e) {
             Log.e(TAG, "JSONRPC2ParseException", e);
@@ -358,10 +372,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         final HashMap<String, Object> params = new HashMap<>();
         params.put("playlist", jsonToMap(gson.toJson(transformedPlaylist)));
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_PLAYLIST, params, generateRpcId());
-
-
         sendJSONRPC(req.toString());
-        // init httpserver for local media?
         mContext = context;
     }
 
@@ -378,7 +389,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
             Uri mediaUri = buildLocalUri(mediaUrl);
             List<Caption> captionList = currentVideoObj.getCaptions();
 
-            if(captionList !=null && captionList.size() > 0){
+            if (captionList != null && captionList.size() > 0) {
                 Caption caption = captionList.get(0);
                 String subtitlePath = caption.getUrl();
                 Uri subtitleUri = buildLocalUri(subtitlePath);
@@ -537,25 +548,24 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
     @Override
     public void stopMediaStreaming() {
-        Log.d(TAG, "stopMediaStreaming");
+        Log.d("dddd", "stopMediaStreaming myLooper " + Thread.currentThread());
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_STOP, generateRpcId());
-        new Thread(){
+        stopReqId = Long.valueOf(req.getID().toString());
+        new Thread(new Runnable() {
             @Override
             public void run() {
                 sendJSONRPC(req.toString());
             }
-        }.start();
-
-//        try {
-//            synchronized (stopLock){
-//                Log.d("dddd", "wait stop");
-//                stopLock.wait();
-//                Log.d("dddd", "stop return");
-//            }
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-
+        }).start();
+        try {
+            synchronized (stopLock) {
+                Log.d("dddd", "wait stop");
+                stopLock.wait(5000);
+                Log.d("dddd", "stop return");
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -632,7 +642,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
             simpleHttpFileServer = null;
         }
 
-        if(subtitlHttpFileServer != null){
+        if (subtitlHttpFileServer != null) {
             subtitlHttpFileServer.stop();
             subtitlHttpFileServer = null;
         }
