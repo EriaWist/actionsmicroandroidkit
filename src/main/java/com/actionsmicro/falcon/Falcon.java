@@ -1383,16 +1383,9 @@ public class Falcon {
 				
 			});
 		} else if(receiveString.startsWith("JSONRPC")){//dispatch JSON message
-
 			projectorInfo.processJSONMsg(receiveString);
-			mainThreadHandler.post(new Runnable() {
-
-				@Override
-				public void run() {
-					dispatchMessage(projectorInfo, receiveString);
-				}
-				
-			});
+			// avoid post msg in main handler for JRPC to avoid deadlock issue
+			dispatchMessage(projectorInfo, receiveString);
 		}
 	}
 

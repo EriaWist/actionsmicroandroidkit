@@ -11,10 +11,6 @@ import com.actionsmicro.media.playlist.PlayList;
 import com.actionsmicro.pigeon.mediastreaming.IMediaStreaming2;
 import com.actionsmicro.pigeon.mediastreaming.MediaStreaming2;
 import com.actionsmicro.utils.Log;
-import com.google.gson.Gson;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     private static final String TAG = "ClientV2";
@@ -217,8 +213,7 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     }
 
     @Override
-    public void playPlayList(Context context, PlayList playlist) {
-        Log.d("dddd", new Gson().toJson(playlist));
+    public void playPlayList(Context context, PlayList playlist) throws Exception {
         mMediaStreaming.playPlayList(context, playlist);
     }
 

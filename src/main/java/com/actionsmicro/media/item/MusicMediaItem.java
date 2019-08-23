@@ -82,7 +82,36 @@ public class MusicMediaItem extends MediaItem {
         }
     };
 
+
+    public String getIndex() {
+        return mIndex;
+    }
+
+    public long getMediaId() {
+        return mMediaId;
+    }
+
+    public String getMediaName() {
+        return mMediaName;
+    }
+
     public String getArtistName() {
         return mArtistName;
+    }
+
+    public String getAlbumName() {
+        return mAlbumName;
+    }
+
+    public long getAlbumId() {
+        return mAlbumId;
+    }
+
+    public int getDuration() {
+        return mDuration;
+    }
+
+    public String getData() {
+        return mData;
     }
 }
