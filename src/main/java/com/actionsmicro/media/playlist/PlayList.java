@@ -42,4 +42,8 @@ public class PlayList {
     public void setStart_index(int start_index) {
         this.start_index = start_index;
     }
+
+    public void setPlaylist(List<VideoObj> playlist) {
+        this.playlist = playlist;
+    }
 }
