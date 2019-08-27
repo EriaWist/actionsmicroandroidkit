@@ -47,6 +47,11 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
         }
 
         @Override
+        public boolean playAt(int position) {
+            return false;
+        }
+
+        @Override
         public void startMediaStreaming(DataSource dataSource) {
             ClientV2P.super.startMediaStreaming(dataSource);
         }
@@ -242,4 +247,8 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
         mMediaStreaming.setMediaStreamingStateListener(api, mediaPlayerStateListener);
     }
 
+    @Override
+    public boolean playAt(int position) {
+        return mMediaStreaming.playAt(position);
+    }
 }

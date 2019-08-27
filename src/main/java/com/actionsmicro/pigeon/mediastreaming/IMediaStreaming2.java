@@ -18,4 +18,6 @@ public interface IMediaStreaming2 extends MediaStreaming {
     String getCurrentPlaylist();
 
     void setMediaStreamingStateListener(MediaPlayerApi api, MediaPlayerApi.MediaPlayerStateListener mediaPlayerStateListener);
+
+    boolean playAt(int position);
 }
