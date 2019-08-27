@@ -279,4 +279,11 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 		}
 		return ret;
 	}
+
+	public boolean playAt(int position) {
+		if (mediaStreaming instanceof IMediaStreaming2) {
+			((IMediaStreaming2) mediaStreaming).playAt(position);
+		}
+		return true;
+	}
 }

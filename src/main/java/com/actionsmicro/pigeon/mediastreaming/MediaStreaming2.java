@@ -526,6 +526,16 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     }
 
     @Override
+    public boolean playAt(int position) {
+        Log.d(TAG, "playAt");
+        final HashMap<String, Object> params = new HashMap<>();
+        params.put("videoIndex", position);
+        JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_PLAYAT, params,generateRpcId());
+        sendJSONRPC(req.toString());
+        return true;
+    }
+
+    @Override
     public void startMediaStreaming(MediaStreaming.DataSource dataSource) {
         // TODO check is deprecated or use play instead
         Log.d(TAG, "startMediaStreaming");
