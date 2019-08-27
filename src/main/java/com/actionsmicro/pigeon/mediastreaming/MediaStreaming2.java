@@ -45,6 +45,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     private static final String TAG = "MediaStreaming2";
     private static final int COMMAND_JSONRPC = 6;
     private static final int COMMAND_JSONRPC_ENCRYPT = 7;
+    public static final int DEFAULT_WAIT_TIMEOUT = 5000;
     private Dispatcher dispatcher = new Dispatcher();
     private Context mContext;
     private int mDuration;
@@ -220,6 +221,19 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                 switch (notification.getMethod()) {
                     case RPCAPI.RPC_NOTIFICATION_ONPLAYLISTUPDATE:
                         Log.d(TAG, "RPC_NOTIFICATION_ONPLAYLISTUPDATE");
+                        if (!isLocalMedia()) {
+                            Object playlistObj = params.get("playlist");
+                            if (null != playlistObj) {
+                                PlayList playlist = gson.fromJson(playlistObj.toString(), PlayList.class);
+                                String playlistStr = gson.toJson(playlist);
+                                Log.d("dddd", playlistStr);
+                                mCurrentPlayList.setPlaylist(playlist.getPlaylist());
+                                mCurrentPlayList.setStart_index(playlist.getStart_index());
+                                if (mMediaApi != null && mMediaStateListener != null) {
+                                    mCurrentPlayList.getMediaPlayListListener().onPlayListChanged(mCurrentPlayList);
+                                }
+                            }
+                        }
                         return;
 
                     case RPCAPI.RPC_NOTIFICATION_ONPLAY:
@@ -250,7 +264,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                             case "Idle":
                                 mCurrentState = MediaPlayerApi.State.IDLE;
                                 synchronized (stopLock) {
-                                    Log.d("ddddd", "notifyAll ");
+                                    Log.d("ddddd", "notifyAll");
                                     stopLock.notifyAll();
                                 }
                                 if (mMediaApi != null && mMediaStateListener != null) {
@@ -264,6 +278,9 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                                 break;
                             case "Playing":
                                 mCurrentState = MediaPlayerApi.State.PLAYING;
+                                if (mMediaApi != null && mMediaStateListener != null) {
+                                    mMediaStateListener.mediaPlayerDidStart(mMediaApi);
+                                }
                                 break;
                             case "Paused":
                                 mCurrentState = MediaPlayerApi.State.PAUSED;
@@ -505,8 +522,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
     @Override
     public int seekTo(int position) {
-        // TODO
-        Log.d(TAG, "playPlayList");
+        Log.d(TAG, "seekto");
         final HashMap<String, Object> params = new HashMap<>();
         params.put("position", position);
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_SEEKTO, params, generateRpcId());
@@ -551,6 +567,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         Log.d("dddd", "stopMediaStreaming myLooper " + Thread.currentThread());
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_STOP, generateRpcId());
         stopReqId = Long.valueOf(req.getID().toString());
+        Log.d("dddd", "stopReqId " + stopReqId);
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -560,7 +577,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         try {
             synchronized (stopLock) {
                 Log.d("dddd", "wait stop");
-                stopLock.wait(5000);
+                stopLock.wait(DEFAULT_WAIT_TIMEOUT);
                 Log.d("dddd", "stop return");
             }
         } catch (InterruptedException e) {
@@ -598,19 +615,24 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     }
 
 
-    private synchronized void sendJSONRPC(String json) {
-        if (mProjectorInfo != null && json != null) {
-            String realKey = mProjectorInfo.getRealKey();
-            String content = json;
-            if (!realKey.isEmpty()) {
-                Log.d(TAG, "before encrypt: " + content);
-                content = CipherUtil.EncryptAES(content, realKey, ALGORITHM_AES_CBC);
-                Log.d(TAG, "after encrypt: " + content);
-                String decryptAES = CipherUtil.DecryptAES(content, realKey, ALGORITHM_AES_CBC);
-                Log.d(TAG, "after decrypt: " + decryptAES);
+    private void sendJSONRPC(String json) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (mProjectorInfo != null && json != null) {
+                    String realKey = mProjectorInfo.getRealKey();
+                    String content = json;
+                    if (!realKey.isEmpty()) {
+                        Log.d(TAG, "before encrypt: " + content);
+                        content = CipherUtil.EncryptAES(content, realKey, ALGORITHM_AES_CBC);
+                        Log.d(TAG, "after encrypt: " + content);
+                        String decryptAES = CipherUtil.DecryptAES(content, realKey, ALGORITHM_AES_CBC);
+                        Log.d(TAG, "after decrypt: " + decryptAES);
+                    }
+                    mProjectorInfo.sendJSONRPC(getEncryptCommand(), content);
+                }
             }
-            mProjectorInfo.sendJSONRPC(getEncryptCommand(), content);
-        }
+        }).start();
     }
 
 
@@ -646,5 +668,10 @@ public class MediaStreaming2 implements IMediaStreaming2 {
             subtitlHttpFileServer.stop();
             subtitlHttpFileServer = null;
         }
+    }
+
+
+    private boolean isLocalMedia() {
+        return simpleHttpFileServer != null;
     }
 }
