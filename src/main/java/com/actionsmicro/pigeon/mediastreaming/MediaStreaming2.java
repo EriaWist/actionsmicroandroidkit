@@ -58,7 +58,15 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     private Gson gson = new Gson();
     private SimpleContentUriHttpFileServer simpleHttpFileServer;
     private SimpleContentUriHttpFileServer subtitlHttpFileServer;
-    private long stopReqId;
+    private Object stopLock = new Object();
+    private Object resumeLock = new Object();
+    private Object pauseLock = new Object();
+    protected ResponseHandler mResponseHandler;
+    protected final HashMap<Long, String> mResponseMap = new HashMap<>();
+
+    public interface ResponseHandler {
+        void process(JSONRPC2Response resp, HashMap<Long, String> waitResponseMap);
+    }
 
     public interface RPCAPI {
         // JRPC_REQUEST_METHOD
@@ -101,7 +109,6 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
     private Falcon.ProjectorInfo mProjectorInfo;
     private Falcon.ProjectorInfo.MessageListener mMessageListener;
-    private Object stopLock = new Object();
     private Thread receivingThread;
 
     public MediaStreaming2(Falcon.ProjectorInfo projectorInfo) {
@@ -109,11 +116,9 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         receivingThread = new Thread() {
             @Override
             public void run() {
-                Log.d("dddd", "receivingThread thread " + Thread.currentThread());
                 mProjectorInfo.addMessageListener(new Falcon.ProjectorInfo.MessageListener() {
                     @Override
                     public void onReceiveMessage(Falcon.ProjectorInfo projector, String message) {
-                        Log.d("dddd", "onReceiveMessage thread " + Thread.currentThread());
                         if (message.startsWith("JSONRPC")) {
                             String jsonstring = parseMessageString(message);
 
@@ -225,8 +230,6 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                             Object playlistObj = params.get("playlist");
                             if (null != playlistObj) {
                                 PlayList playlist = gson.fromJson(playlistObj.toString(), PlayList.class);
-                                String playlistStr = gson.toJson(playlist);
-                                Log.d("dddd", playlistStr);
                                 mCurrentPlayList.setPlaylist(playlist.getPlaylist());
                                 mCurrentPlayList.setStart_index(playlist.getStart_index());
                                 if (mMediaApi != null && mMediaStateListener != null) {
@@ -264,7 +267,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                             case "Idle":
                                 mCurrentState = MediaPlayerApi.State.IDLE;
                                 synchronized (stopLock) {
-                                    Log.d("ddddd", "notifyAll");
+                                    Log.d(TAG, "stoplock notifyAll");
                                     stopLock.notifyAll();
                                 }
                                 if (mMediaApi != null && mMediaStateListener != null) {
@@ -347,6 +350,34 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
             }
         });
+
+        mResponseHandler = new ResponseHandler() {
+            @Override
+            public void process(JSONRPC2Response resp, HashMap<Long, String> waitResponseMap) {
+                String method = mResponseMap.remove(Long.valueOf(resp.getID().toString()));
+                if (method == null) {
+                    return;
+                }
+
+                Log.d(TAG, "Response method " + method);
+                switch (method) {
+                    case RPCAPI.RPC_METHOD_STOP:
+                        synchronized (stopLock) {
+                            stopLock.notifyAll();
+                        }
+                        break;
+                    case RPCAPI.RPC_METHOD_PAUSE:
+                        synchronized (pauseLock) {
+                            pauseLock.notifyAll();
+                        }
+                        break;
+                    case RPCAPI.RPC_METHOD_PLAY:
+                        synchronized (resumeLock) {
+                            resumeLock.notifyAll();
+                        }
+                }
+            }
+        };
     }
 
     private void handleReceiveJSON(String msg) {
@@ -358,15 +389,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                 dispatcher.process((JSONRPC2Notification) message, null);
             } else if (message instanceof JSONRPC2Response) {
                 JSONRPC2Response resp = (JSONRPC2Response) message;
-                Log.d("ddddd", "id " + resp.getID());
-                long respId = Long.valueOf(resp.getID().toString());
-                if (respId == stopReqId) {
-                    synchronized (stopLock) {
-                        Log.d("ddddd", "notifyAll " + resp.getID());
-                        stopLock.notifyAll();
-
-                    }
-                }
+                mResponseHandler.process((JSONRPC2Response) message, mResponseMap);
             }
         } catch (JSONRPC2ParseException e) {
             Log.e(TAG, "JSONRPC2ParseException", e);
@@ -534,7 +557,15 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     public int pauseMediaStreaming() {
         Log.d(TAG, "pauseMediaStreaming");
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_PAUSE, generateRpcId());
+        mResponseMap.put(Long.valueOf(req.getID().toString()), req.getMethod());
         sendJSONRPC(req.toString());
+        try {
+            synchronized (pauseLock) {
+                pauseLock.wait(DEFAULT_WAIT_TIMEOUT);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         return 0;
     }
 
@@ -542,7 +573,15 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     public int resumeMediaStreaming() {
         Log.d(TAG, "resumeMediaStreaming");
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_PLAY, generateRpcId());
+        mResponseMap.put(Long.valueOf(req.getID().toString()), req.getMethod());
         sendJSONRPC(req.toString());
+        try {
+            synchronized (resumeLock) {
+                resumeLock.wait(DEFAULT_WAIT_TIMEOUT);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         return 0;
     }
 
@@ -564,21 +603,13 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
     @Override
     public void stopMediaStreaming() {
-        Log.d("dddd", "stopMediaStreaming myLooper " + Thread.currentThread());
+        Log.d("dddd", "stopMediaStreaming");
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_STOP, generateRpcId());
-        stopReqId = Long.valueOf(req.getID().toString());
-        Log.d("dddd", "stopReqId " + stopReqId);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                sendJSONRPC(req.toString());
-            }
-        }).start();
+        mResponseMap.put(Long.valueOf(req.getID().toString()), req.getMethod());
+        sendJSONRPC(req.toString());
         try {
             synchronized (stopLock) {
-                Log.d("dddd", "wait stop");
                 stopLock.wait(DEFAULT_WAIT_TIMEOUT);
-                Log.d("dddd", "stop return");
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
