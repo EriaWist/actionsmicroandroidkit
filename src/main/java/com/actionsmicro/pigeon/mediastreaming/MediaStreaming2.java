@@ -40,7 +40,7 @@ import java.util.Map;
 
 import static com.actionsmicro.utils.CipherUtil.ALGORITHM_AES_CBC;
 
-public class MediaStreaming2 implements IMediaStreaming2 {
+public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
 
     private static final String TAG = "MediaStreaming2";
     private static final int COMMAND_JSONRPC = 6;
@@ -57,7 +57,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
     private MediaPlayerApi.State mCurrentState = MediaPlayerApi.State.IDLE;
     private Gson gson = new Gson();
     private SimpleContentUriHttpFileServer simpleHttpFileServer;
-    private SimpleContentUriHttpFileServer subtitlHttpFileServer;
+    private SimpleContentUriHttpFileServer subtitleHttpFileServer;
     private Object stopLock = new Object();
     private Object resumeLock = new Object();
     private Object pauseLock = new Object();
@@ -116,7 +116,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         receivingThread = new Thread() {
             @Override
             public void run() {
-                mProjectorInfo.addMessageListener(new Falcon.ProjectorInfo.MessageListener() {
+                mProjectorInfo.addMessageListener(mMessageListener = new Falcon.ProjectorInfo.MessageListener() {
                     @Override
                     public void onReceiveMessage(Falcon.ProjectorInfo projector, String message) {
                         if (message.startsWith("JSONRPC")) {
@@ -138,7 +138,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                     @Override
                     public void onDisconnect(Falcon.ProjectorInfo projector) {
                         Log.d(TAG, "onDisconnect");
-                        stopHttpFileServer();
+                        onClientStop();
                     }
                 });
                 registerRPC();
@@ -435,13 +435,13 @@ public class MediaStreaming2 implements IMediaStreaming2 {
                 Uri subtitleUri = buildLocalUri(subtitlePath);
 
                 if (TetheringUtil.isUsbTethered(context)) {
-                    subtitlHttpFileServer = new SimpleContentUriHttpFileServer(context, subtitleUri, "192.168.42.129", 0);
+                    subtitleHttpFileServer = new SimpleContentUriHttpFileServer(context, subtitleUri, "192.168.42.129", 0);
                 } else {
-                    subtitlHttpFileServer = new SimpleContentUriHttpFileServer(context, subtitleUri, 0);
+                    subtitleHttpFileServer = new SimpleContentUriHttpFileServer(context, subtitleUri, 0);
                 }
-                subtitlHttpFileServer.start();
+                subtitleHttpFileServer.start();
 
-                String subTitleUrlPath = subtitlHttpFileServer.getServerUrl() + "/SubTitle?filename=" + URLEncoder.encode(subtitleUri.getPath(), "UTF-8");
+                String subTitleUrlPath = subtitleHttpFileServer.getServerUrl() + "/SubTitle?filename=" + URLEncoder.encode(subtitleUri.getPath(), "UTF-8");
                 caption.setUrl(subTitleUrlPath);
             }
 
@@ -530,7 +530,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
         Log.d(TAG, "playAt");
         final HashMap<String, Object> params = new HashMap<>();
         params.put("videoIndex", position);
-        JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_PLAYAT, params,generateRpcId());
+        JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_PLAYAT, params, generateRpcId());
         sendJSONRPC(req.toString());
         return true;
     }
@@ -613,7 +613,7 @@ public class MediaStreaming2 implements IMediaStreaming2 {
 
     @Override
     public void stopMediaStreaming() {
-        Log.d("dddd", "stopMediaStreaming");
+        Log.d(TAG, "stopMediaStreaming");
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_STOP, generateRpcId());
         mResponseMap.put(Long.valueOf(req.getID().toString()), req.getMethod());
         sendJSONRPC(req.toString());
@@ -705,14 +705,25 @@ public class MediaStreaming2 implements IMediaStreaming2 {
             simpleHttpFileServer = null;
         }
 
-        if (subtitlHttpFileServer != null) {
-            subtitlHttpFileServer.stop();
-            subtitlHttpFileServer = null;
+        if (subtitleHttpFileServer != null) {
+            subtitleHttpFileServer.stop();
+            subtitleHttpFileServer = null;
         }
     }
 
 
     private boolean isLocalMedia() {
         return simpleHttpFileServer != null;
+    }
+
+    @Override
+    public void onClientStop() {
+        Log.d(TAG, "onClientStop");
+        cleanup();
+    }
+
+    private void cleanup() {
+        mProjectorInfo.removeMessageListener(mMessageListener);
+        stopHttpFileServer();
     }
 }

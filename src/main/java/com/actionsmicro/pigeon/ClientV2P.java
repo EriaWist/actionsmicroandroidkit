@@ -8,6 +8,7 @@ import com.actionsmicro.androidkit.ezcast.imp.ezdisplay.PigeonDeviceInfo;
 import com.actionsmicro.falcon.Falcon;
 import com.actionsmicro.falcon.Falcon.ProjectorInfo;
 import com.actionsmicro.media.playlist.PlayList;
+import com.actionsmicro.pigeon.mediastreaming.ClientHandler;
 import com.actionsmicro.pigeon.mediastreaming.IMediaStreaming2;
 import com.actionsmicro.pigeon.mediastreaming.MediaStreaming2;
 import com.actionsmicro.utils.Log;
@@ -212,9 +213,8 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
 
     @Override
     protected void handleException(Exception e) {
-        Log.e("dddd", "handleException", e);
+        Log.e(TAG, "handleException", e);
         super.handleException(e);
-//        mProjectorInfo.removeMessageListener(mMessageListener);
     }
 
     @Override
@@ -250,5 +250,13 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     @Override
     public boolean playAt(int position) {
         return mMediaStreaming.playAt(position);
+    }
+
+    @Override
+    protected void stop() {
+        if(mMediaStreaming instanceof ClientHandler){
+            ((ClientHandler)mMediaStreaming).onClientStop();
+        }
+        super.stop();
     }
 }
