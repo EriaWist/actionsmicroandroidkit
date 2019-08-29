@@ -23,7 +23,7 @@ public class PlayListHelper {
                 MediaItem item = list.get(i);
                 JSONObject videoObj = new JSONObject();
                 String src = item.getSource();
-                String type = "audio";
+                String type = (item instanceof MusicMediaItem) ? "audio" : "video";
                 String title = item.getTitle();
                 String image = item.getImage();
 
