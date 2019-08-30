@@ -153,7 +153,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 				e.printStackTrace();
 			}
 
-			String mediaUriString = simpleHttpFileServer.getServerUrl() + "/LocalVideo?filename=" + URLEncoder.encode(mediaUri.getPath(), "UTF-8");
+			String mediaUriString = simpleHttpFileServer.getServerUrl() + "/LocalVideo?filename=" + URLEncoder.encode(mediaUri.toString(), "UTF-8");
 			dataSource = new MediaStreamingHttpDataSource(mediaUriString, DEFAULT_USER_AGENT_STRING, mediaContentLength);
 		} else {
 			if (mediaPlayerStateListener != null) {

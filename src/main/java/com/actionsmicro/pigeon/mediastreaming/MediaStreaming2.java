@@ -441,7 +441,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                 }
                 subtitleHttpFileServer.start();
 
-                String subTitleUrlPath = subtitleHttpFileServer.getServerUrl() + "/SubTitle?filename=" + URLEncoder.encode(subtitleUri.getPath(), "UTF-8");
+                String subTitleUrlPath = subtitleHttpFileServer.getServerUrl() + "/SubTitle?filename=" + URLEncoder.encode(subtitleUri.toString(), "UTF-8");
                 caption.setUrl(subTitleUrlPath);
             }
 
@@ -456,7 +456,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                 VideoObj v = result.getPlaylist().get(i);
 
                 Uri uri = buildLocalUri(v.getSrc());
-                String mediaUriString = simpleHttpFileServer.getServerUrl() + "/LocalVideo?filename=" + URLEncoder.encode(uri.getPath(), "UTF-8");
+                String mediaUriString = simpleHttpFileServer.getServerUrl() + "/LocalVideo?filename=" + URLEncoder.encode(uri.toString(), "UTF-8");
                 v.setSrc(mediaUriString);
             }
         }
