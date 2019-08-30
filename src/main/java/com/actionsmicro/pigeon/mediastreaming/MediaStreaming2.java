@@ -252,6 +252,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                                 mCurrentPlayList.getMediaPlayListListener().onMediaChanged(new VideoMediaItem(videoObj.getSrc(), videoObj.getPage(), videoObj.getTitle(), String.valueOf(currentIndex), videoObj.getImage(),
                                         "", "stream"), currentIndex);
                             }
+                            mMediaStateListener.mediaPlayerDidStart(mMediaApi);
                             mMediaStateListener.mediaPlayerDurationIsReady(mMediaApi, mDuration);
                         }
 
@@ -281,9 +282,6 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                                 break;
                             case "Playing":
                                 mCurrentState = MediaPlayerApi.State.PLAYING;
-                                if (mMediaApi != null && mMediaStateListener != null) {
-                                    mMediaStateListener.mediaPlayerDidStart(mMediaApi);
-                                }
                                 break;
                             case "Paused":
                                 mCurrentState = MediaPlayerApi.State.PAUSED;
