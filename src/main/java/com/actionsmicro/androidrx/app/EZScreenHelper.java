@@ -1830,19 +1830,20 @@ public class EZScreenHelper implements PlayerListener {
 			} else {
 				isExpired = currentDate.getTime() > expireDate.getTime();
 			}
-			if (!isExpired) {
-				Log.d(TAG, "Airplay not expire,init airplay");
-				new Thread(new Runnable() {
-
-					@Override
-					public void run() {
-						initAirplay();
-					}
-
-				}).start();
-			} else {
-				Log.d(TAG, "Airplay auth date expired or not connected yet");
-			}
+			// disable airplay module since it's not work on arm64-v8a
+//			if (!isExpired) {
+//				Log.d(TAG, "Airplay not expire,init airplay");
+//				new Thread(new Runnable() {
+//
+//					@Override
+//					public void run() {
+//						initAirplay();
+//					}
+//
+//				}).start();
+//			} else {
+//				Log.d(TAG, "Airplay auth date expired or not connected yet");
+//			}
 
 		}
 		createNetworkThread();
@@ -1989,17 +1990,18 @@ public class EZScreenHelper implements PlayerListener {
 		saveAirplayExpiredDate(expireDate);
 
 		isExpired = false;
-		if ((!airplayInitialized || !needToLoadAirPlay())) {
-			Log.d(TAG, "ezcast connected and init airplay");
-			new Thread(new Runnable() {
-
-				@Override
-				public void run() {
-					initAirplay();
-				}
-
-			}).start();
-		}
+		// disable airplay module since it's not work on arm64-v8a
+//		if ((!airplayInitialized || !needToLoadAirPlay())) {
+//			Log.d(TAG, "ezcast connected and init airplay");
+//			new Thread(new Runnable() {
+//
+//				@Override
+//				public void run() {
+//					initAirplay();
+//				}
+//
+//			}).start();
+//		}
 
 	}
 
