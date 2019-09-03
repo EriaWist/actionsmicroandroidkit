@@ -90,8 +90,8 @@ public class PlayListMediaFlat extends PlayListMedia {
                         try {
                             JSONObject jsonObj = null;
                             jsonObj = new JSONObject(videoObj);
-                            JSONArray playList = jsonObj.getJSONArray("playlist");
-                            if(playList.length() > 1){
+                            JSONArray playList = jsonObj.optJSONArray("playlist");
+                            if (playList != null && playList.length() > 1) {
                                 // expand videoobj to array
                                 playListWithinPlayList(jsonObj);
                                 mPlayListMediaDelegate.playListFound(videoObj);
