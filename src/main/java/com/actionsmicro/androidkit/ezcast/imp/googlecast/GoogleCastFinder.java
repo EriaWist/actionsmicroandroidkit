@@ -80,7 +80,7 @@ public class GoogleCastFinder extends DeviceFinderBase {
 
 				private void notifiyDeviceAddIfNeed(GoogleCastDeviceInfo device) {
 					String modelName = device.getCastDevice().getModelName();
-					if (device.getCastDevice().isOnLocalNetwork() && !"EZCast".equals(modelName)) {
+					if (device.getCastDevice().isOnLocalNetwork() && (modelName != null && modelName.startsWith("Chromecast"))) {
 						getDeviceFinderProxy().notifyListeneroOnDeviceAdded(device);
 					}
 				}
