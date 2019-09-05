@@ -4,33 +4,30 @@ import android.content.Context;
 import android.os.Handler;
 
 import com.actionsmicro.androidaiurjsproxy.helper.WebVideoSourceHelper;
+import com.actionsmicro.media.playlist.PlayList;
+import com.actionsmicro.media.videoobj.VideoObj;
+import com.actionsmicro.utils.Log;
+import com.google.gson.Gson;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class PlayListMediaFlat extends PlayListMedia {
-    public PlayListMediaFlat(Context context, PlayListInfoItem item, PlayListMediaDelegate playListMediaDelegate) {
-        super(context, item, playListMediaDelegate);
-    }
 
-    public PlayListMediaFlat(Context context, JSONObject playListJson, PlayListMediaDelegate playListMediaDelegate, String parentTitle) {
-        super(context, playListJson, playListMediaDelegate, parentTitle, TYPE.TYPE_FLAT);
+    public PlayListMediaFlat(Context context, PlayList playList, PlayListMediaDelegate playListMediaDelegate) {
+        super(context, playList, playListMediaDelegate);
     }
 
     @Override
     public void play(int index) {
         if (hasList()) {
-            PlayListMedia item = mList.get(mCurrent);
-            if (item.hasList()) {
-                item.play(index);
-            } else {
-                if (index >= 0 && index < mList.size()) {
-                    mCurrent = index;
-                    playImp();
-                }
+            if (index >= 0 && index < getListSize()) {
+                mCurrent = index;
+                playImp();
             }
         } else {
             if (index != 0)
@@ -41,20 +38,17 @@ public class PlayListMediaFlat extends PlayListMedia {
 
     @Override
     public void playListWithinPlayList(JSONObject playListJson) {
-        if (mList == null) {
-            mList = new ArrayList<PlayListMedia>();
-        }
-        String index = mPlayListInfoItem.getIndex();
-        PlayListMedia newList = PlayListMediaFactory.createPlayListMedia(mContext, playListJson, mPlayListMediaDelegate, index,TYPE.TYPE_FLAT);
-
-        mList.remove(mCurrent);
-        mList.addAll(mCurrent, newList.mList);
+        PlayList playList = new Gson().fromJson(playListJson.toString(), PlayList.class);
+        List<VideoObj> newVideoList = playList.getPlaylist();
+        List<VideoObj> currentVideoList = mPlaylist.getPlaylist();
+        currentVideoList.remove(mCurrent);
+        currentVideoList.addAll(mCurrent, newVideoList);
         playImp();
     }
 
     @Override
     protected void playImp() {
-        mPlayListInfoItem = mList.get(mCurrent).mPlayListInfoItem;
+        VideoObj video = mPlaylist.getPlaylist().get(mCurrent);
         Handler h = new Handler(mContext.getMainLooper());
         h.post(new Runnable() {
             @Override
@@ -81,12 +75,11 @@ public class PlayListMediaFlat extends PlayListMedia {
 
                     @Override
                     public void onMediaError(String errorcode, String errorDescription) {
-                        mPlayListMediaDelegate.onMediaError(mPlayListInfoItem,errorcode,errorDescription);
+                        mPlayListMediaDelegate.onMediaError(PlayListMediaFlat.this, errorcode, errorDescription);
                     }
 
                     @Override
                     public void onMediaFound(String videoObj) {
-                        // wrap video?
                         try {
                             JSONObject jsonObj = null;
                             jsonObj = new JSONObject(videoObj);
@@ -95,7 +88,7 @@ public class PlayListMediaFlat extends PlayListMedia {
                                 // expand videoobj to array
                                 playListWithinPlayList(jsonObj);
                                 mPlayListMediaDelegate.playListFound(videoObj);
-                            } else{
+                            } else {
                                 mPlayListMediaDelegate.onMediaFound(videoObj);
                             }
                         } catch (JSONException e) {
@@ -104,8 +97,8 @@ public class PlayListMediaFlat extends PlayListMedia {
                     }
                 });
 
-                webVideoSourceHelper.start(mPlayListInfoItem.getPage(), getTitleString(mPlayListInfoItem.getTitle()),
-                        mPlayListInfoItem.getImage(), mPlayListInfoItem.getSourceType(), mPlayListInfoItem.getSrc(), mPlayListInfoItem.getUrl());
+                webVideoSourceHelper.start(video.getPage(), video.getTitle(),
+                        video.getImage(), video.getType() == null ? "html" : video.getType(), video.getSrc(), video.getPage());
 
             }
         });
@@ -113,39 +106,19 @@ public class PlayListMediaFlat extends PlayListMedia {
 
     @Override
     public void next() {
-        if (mList != null && !mList.isEmpty()) {
-            PlayListMedia playListMedia = mList.get(mCurrent);
-            if (playListMedia.hasNext()) {
-                playListMedia.next();
-            } else {
-                mCurrent++;
-                if (mCurrent == mList.size()) {
-                    mCurrent = mList.size() - 1;
-                    return;
-                }
-                playImp();
-            }
-        } else {
-            play(mCurrent + 1);
+        if (hasNext()) {
+            mCurrent++;
+            playImp();
         }
     }
 
     @Override
     public void previous() {
-        if (mList != null && !mList.isEmpty()) {
-            PlayListMedia playListMedia = mList.get(mCurrent);
-            if (playListMedia.hasPrevious()) {
-                playListMedia.previous();
-            } else {
-                mCurrent--;
-                if (mCurrent < 0) {
-                    mCurrent = 0;
-                    return;
-                }
-                playImp();
-            }
-        } else {
-            play(mCurrent - 1);
+        if (hasPrevious()) {
+            mCurrent--;
+            playImp();
         }
     }
+
+
 }
