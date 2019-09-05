@@ -129,12 +129,21 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     public ClientV2P(ProjectorInfo projectorInfo) {
         super(projectorInfo.getAddress().getHostAddress(), Falcon.EZ_WIFI_DISPLAY_PORT_NUMBER, Build.MODEL);
         mProjectorInfo = projectorInfo;
-        mDeviceInfo = new PigeonDeviceInfo(projectorInfo);
+        mProjectorInfo.setCapabilityListener(new ProjectorInfo.CapabilityListener() {
+            @Override
+            public void onCapabilitySet() {
+                bulidMediaStreaming();
+            }
+        });
 
+        bulidMediaStreaming();
+    }
+
+    private void bulidMediaStreaming() {
+        mDeviceInfo = new PigeonDeviceInfo(mProjectorInfo);
         if (isMediaStreamingV2()) {
             mMediaStreaming = new MediaStreaming2(mProjectorInfo);
         }
-
     }
 
     private boolean isMediaStreamingV2() {

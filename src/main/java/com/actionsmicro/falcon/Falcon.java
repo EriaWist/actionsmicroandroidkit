@@ -126,6 +126,15 @@ public class Falcon {
 		private String mCapability = "";
 		private HashMap<String, String> keyValuePairs = new HashMap<String, String>();
 		private AtomicInteger mRpcID = new AtomicInteger(0);
+		private CapabilityListener mCapabilityListener;
+
+		public void setCapabilityListener(CapabilityListener mCapabilityListener) {
+			this.mCapabilityListener = mCapabilityListener;
+		}
+
+		public interface CapabilityListener{
+			void onCapabilitySet();
+		}
 		/**
 		 * Return the version of the device.
 		 * @return The protocol version of the device.
@@ -454,6 +463,10 @@ public class Falcon {
 						mRealKey = CipherUtil.DecryptAES(key, mPredefinedKey, ALGORITHM_AES_CBC);
 					}
 					mCapability = jsonObject.optString("capability", "");
+
+					if (!mCapability.isEmpty() && mCapabilityListener != null) {
+						mCapabilityListener.onCapabilitySet();
+					}
 				}
 			} catch (JSONRPC2ParseException e) {
 				Log.d(TAG, e.getMessage());
