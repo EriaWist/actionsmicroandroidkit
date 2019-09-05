@@ -82,3 +82,9 @@
 -keepclassmembers class com.actionsmicro.analytics.Record { *; }
 -keepclassmembers class com.actionsmicro.analytics.Usage { *; }
 -keepclassmembers class com.actionsmicro.analytics.usage.** { *; }
+# for PlayList
+-keepclassmembers class com.actionsmicro.media.playlist.PlayList { *; }
+-keepclassmembers class com.actionsmicro.media.videoobj.AudioCodec { *; }
+-keepclassmembers class com.actionsmicro.media.videoobj.Caption { *; }
+-keepclassmembers class com.actionsmicro.media.videoobj.VideoCodec { *; }
+-keepclassmembers class com.actionsmicro.media.videoobj.VideoObj { *; }
