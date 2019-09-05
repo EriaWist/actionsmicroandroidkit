@@ -12,7 +12,6 @@ import java.util.ArrayList;
 public interface MediaControlInterface {
     void play();
     void play(int position);
-    void play(String index);
     void playPlaylist(String playlist);
     void stop();
     boolean pause();
