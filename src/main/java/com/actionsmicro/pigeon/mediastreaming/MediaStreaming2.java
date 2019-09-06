@@ -209,6 +209,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
         });
 
         dispatcher.register(new NotificationHandler() {
+            private MediaPlayerApi.State lastState = mCurrentState;
             @Override
             public String[] handledNotifications() {
                 return new String[]{
@@ -252,7 +253,6 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                                 mCurrentPlayList.getMediaPlayListListener().onMediaChanged(new VideoMediaItem(videoObj.getSrc(), videoObj.getPage(), videoObj.getTitle(), String.valueOf(currentIndex), videoObj.getImage(),
                                         "", "stream"), currentIndex);
                             }
-                            mMediaStateListener.mediaPlayerDidStart(mMediaApi);
                             mMediaStateListener.mediaPlayerDurationIsReady(mMediaApi, mDuration);
                         }
 
@@ -281,7 +281,11 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
 
                                 break;
                             case "Playing":
+                                lastState = mCurrentState;
                                 mCurrentState = MediaPlayerApi.State.PLAYING;
+                                if (mMediaApi != null && mMediaStateListener != null && (lastState == MediaPlayerApi.State.PROCESSING || lastState == MediaPlayerApi.State.IDLE)) {
+                                    mMediaStateListener.mediaPlayerDidStart(mMediaApi);
+                                }
                                 break;
                             case "Paused":
                                 mCurrentState = MediaPlayerApi.State.PAUSED;
