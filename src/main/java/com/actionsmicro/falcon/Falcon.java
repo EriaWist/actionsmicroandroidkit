@@ -127,9 +127,14 @@ public class Falcon {
 		private HashMap<String, String> keyValuePairs = new HashMap<String, String>();
 		private AtomicInteger mRpcID = new AtomicInteger(0);
 		private CapabilityListener mCapabilityListener;
+		private boolean isDisconnnected;
 
 		public void setCapabilityListener(CapabilityListener mCapabilityListener) {
 			this.mCapabilityListener = mCapabilityListener;
+		}
+
+		public boolean isDisconnnected() {
+			return isDisconnnected;
 		}
 
 		public interface CapabilityListener{
@@ -513,6 +518,7 @@ public class Falcon {
 			mRealKey = "";
 			mCapability = "";
 			mRpcID.set(0);
+			isDisconnnected = true;
 			Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
 		}
 		/**
@@ -614,10 +620,11 @@ public class Falcon {
 				socketsToRemoteControls.put(ipAddress, socketToRemoteControl);
 				final InputStream inputStream = socketToRemoteControl.getInputStream();
 				RemoteControlReceiverThread remoteControlReceiver = new RemoteControlReceiverThread(new Runnable() {
+					private ProjectorInfo projectorInfo;
 					@Override
 					public void run() {
 						try {
-							final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
+							projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
 							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
 							while (true) {
 								final ByteBuffer header = ByteBuffer.allocate(4);
@@ -648,10 +655,14 @@ public class Falcon {
 								}
 							}
 						} catch (Exception e) {
-							dispatchExceptionOnMain(ipAddress, e);
+							if(!projectorInfo.isDisconnnected()){
+								dispatchExceptionOnMain(ipAddress, e);
+							}
 						} finally {
 							closeSocketToRemoteControl(ipAddress, portNumber);
-							dispatchOnDisconnect(ipAddress);
+							if(!projectorInfo.isDisconnnected()){
+								dispatchOnDisconnect(ipAddress);
+							}
 						}
 					}
 
