@@ -461,7 +461,7 @@ public class Falcon {
 			JSONRPC2Response response = null;
 			try {
 				response = JSONRPC2Response.parse(parseMessageString(receiveString));
-				if (setDeviceDescriptionId.equals(response.getID())) {
+				if (setDeviceDescriptionId != null && setDeviceDescriptionId.equals(response.getID())) {
 					JSONObject jsonObject = new JSONObject(response.getResult().toString());
 					String key = jsonObject.optString("key");
 					if (!key.isEmpty()) {
