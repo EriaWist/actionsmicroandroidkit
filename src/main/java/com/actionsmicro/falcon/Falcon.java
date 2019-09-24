@@ -137,6 +137,11 @@ public class Falcon {
 			return isDisconnnected;
 		}
 
+		public void updateCapability(ProjectorInfo projectorInfo) {
+			mCapability = projectorInfo.getCapability();
+			mRealKey = projectorInfo.getRealKey();
+		}
+
 		public interface CapabilityListener{
 			void onCapabilitySet();
 		}
@@ -469,6 +474,7 @@ public class Falcon {
 					}
 					mCapability = jsonObject.optString("capability", "");
 
+					Falcon.getInstance().updateProjector(this);
 					if (!mCapability.isEmpty() && mCapabilityListener != null) {
 						mCapabilityListener.onCapabilitySet();
 					}
@@ -1446,6 +1452,15 @@ public class Falcon {
 		}
 		synchronized (tempProjectors) {
 			tempProjectors.remove(projectorInfo);
+		}
+	}
+
+	public void updateProjector(ProjectorInfo projectorInfo){
+		for (int i = 0; i < projectors.size(); i++) {
+			ProjectorInfo projector = projectors.get(i);
+			if(projectorInfo.equals(projector)){
+				projector.updateCapability(projectorInfo);
+			}
 		}
 	}
 	private void handleWifiDisplayMessage(final DatagramPacket recvPacket) {
