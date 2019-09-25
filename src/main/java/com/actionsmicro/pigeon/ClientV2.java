@@ -405,7 +405,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 	private static final int AV_SIZE_INT64 = 8;
 	
 	private static final int STREAM_FORMAT_EZSTREAM = 6;
-	
+
 	private DataSource currentDataSource;
 	private boolean isStreamingMedia;
 	private int intResponse;

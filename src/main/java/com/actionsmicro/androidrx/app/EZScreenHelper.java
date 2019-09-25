@@ -51,8 +51,7 @@ import com.actionsmicro.utils.Utils;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.ConnectionCallback;
 import com.actionsmicro.web.SimpleMotionJpegOverHttpClient.JpegCallback;
-import com.google.android.gms.analytics.HitBuilders;
-import com.google.android.gms.analytics.Tracker;
+import com.brsanthu.googleanalytics.GoogleAnalytics;
 import com.thetransactioncompany.jsonrpc2.JSONRPC2Notification;
 import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
 import com.yutel.silver.vo.AirplayState;
@@ -149,13 +148,13 @@ public class EZScreenHelper implements PlayerListener {
 	private InitializationListener initializationListener;
 	private AndroidRxSchemaServer androidRxSchemaServer;
 	private ViewGroup musicView;
-	private Tracker gaTracker;
+	private GoogleAnalytics gaTracker;
 
-	public Tracker getGaTracker() {
+	public GoogleAnalytics getGaTracker() {
 		return gaTracker;
 	}
 
-	public void setGaTracker(Tracker tracker) {
+	public void setGaTracker(GoogleAnalytics tracker) {
 		this.gaTracker = tracker;
 	}
 
@@ -1831,19 +1830,20 @@ public class EZScreenHelper implements PlayerListener {
 			} else {
 				isExpired = currentDate.getTime() > expireDate.getTime();
 			}
-			if (!isExpired) {
-				Log.d(TAG, "Airplay not expire,init airplay");
-				new Thread(new Runnable() {
-
-					@Override
-					public void run() {
-						initAirplay();
-					}
-
-				}).start();
-			} else {
-				Log.d(TAG, "Airplay auth date expired or not connected yet");
-			}
+			// disable airplay module since it's not work on arm64-v8a
+//			if (!isExpired) {
+//				Log.d(TAG, "Airplay not expire,init airplay");
+//				new Thread(new Runnable() {
+//
+//					@Override
+//					public void run() {
+//						initAirplay();
+//					}
+//
+//				}).start();
+//			} else {
+//				Log.d(TAG, "Airplay auth date expired or not connected yet");
+//			}
 
 		}
 		createNetworkThread();
@@ -1990,17 +1990,18 @@ public class EZScreenHelper implements PlayerListener {
 		saveAirplayExpiredDate(expireDate);
 
 		isExpired = false;
-		if ((!airplayInitialized || !needToLoadAirPlay())) {
-			Log.d(TAG, "ezcast connected and init airplay");
-			new Thread(new Runnable() {
-
-				@Override
-				public void run() {
-					initAirplay();
-				}
-
-			}).start();
-		}
+		// disable airplay module since it's not work on arm64-v8a
+//		if ((!airplayInitialized || !needToLoadAirPlay())) {
+//			Log.d(TAG, "ezcast connected and init airplay");
+//			new Thread(new Runnable() {
+//
+//				@Override
+//				public void run() {
+//					initAirplay();
+//				}
+//
+//			}).start();
+//		}
 
 	}
 
@@ -2183,8 +2184,7 @@ public class EZScreenHelper implements PlayerListener {
 			return;
 		}
 		if (gaTracker != null) {
-			gaTracker.setScreenName(screenName);
-			gaTracker.send(new HitBuilders.AppViewBuilder().build());
+			gaTracker.screenView().screenName(screenName).sendAsync();
 		}
 	}
 
@@ -2193,8 +2193,7 @@ public class EZScreenHelper implements PlayerListener {
 			return;
 		}
 		if (gaTracker != null) {
-			gaTracker.setScreenName(screenName);
-			gaTracker.send(new HitBuilders.AppViewBuilder().setCustomDimension(customDimensionIndex, dimension).build());
+			gaTracker.screenView().screenName(screenName).customDimension(customDimensionIndex,dimension).sendAsync();
 		}
 	}
 

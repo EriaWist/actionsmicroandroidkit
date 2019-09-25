@@ -215,6 +215,11 @@ public class RtspDecoder {
         transform.preScale((float) width / (float) surfaceWidth, (float) height / (float) surfaceHeight);
         Log.v(TAG, "mirror view width:" + surfaceTextureView.getWidth() + ", height:" + surfaceTextureView.getHeight());
         Log.v(TAG, "surfaceWidth:" + surfaceWidth + ", surfaceHeight:" + surfaceHeight);
-        surfaceTextureView.setTransform(transform);
+        surfaceTextureView.post(new Runnable() {
+            @Override
+            public void run() {
+                surfaceTextureView.setTransform(transform);
+            }
+        });
     }
 }

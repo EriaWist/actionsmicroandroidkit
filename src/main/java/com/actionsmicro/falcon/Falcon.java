@@ -7,8 +7,15 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import com.actionsmicro.falcon.Falcon.ProjectorInfo.MessageListener;
+import com.actionsmicro.utils.CipherUtil;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Utils;
+import com.thetransactioncompany.jsonrpc2.JSONRPC2ParseException;
+import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
+import com.thetransactioncompany.jsonrpc2.JSONRPC2Response;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,10 +43,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.actionsmicro.falcon.Falcon.ProjectorInfo.SERVICE_APP_HTTP_STREAMING;
 import static com.actionsmicro.falcon.Falcon.ProjectorInfo.SERVICE_EZENCODEPRO;
 import static com.actionsmicro.falcon.Falcon.ProjectorInfo.SERVICE_MEDIA_STREAM_AUDIO;
+import static com.actionsmicro.utils.CipherUtil.ALGORITHM_AES_CBC;
 
 
 /**
@@ -112,7 +121,30 @@ public class Falcon {
 		private String vendor;
 		private boolean isFraud;
 		private int discoveryVersion;
+		private static String mPredefinedKey = "AM2feY5ysJAA4oAM";
+		private String mRealKey = "";
+		private String mCapability = "";
 		private HashMap<String, String> keyValuePairs = new HashMap<String, String>();
+		private AtomicInteger mRpcID = new AtomicInteger(0);
+		private CapabilityListener mCapabilityListener;
+		private boolean isDisconnnected;
+
+		public void setCapabilityListener(CapabilityListener mCapabilityListener) {
+			this.mCapabilityListener = mCapabilityListener;
+		}
+
+		public boolean isDisconnnected() {
+			return isDisconnnected;
+		}
+
+		public void updateCapability(ProjectorInfo projectorInfo) {
+			mCapability = projectorInfo.getCapability();
+			mRealKey = projectorInfo.getRealKey();
+		}
+
+		public interface CapabilityListener{
+			void onCapabilitySet();
+		}
 		/**
 		 * Return the version of the device.
 		 * @return The protocol version of the device.
@@ -192,6 +224,19 @@ public class Falcon {
 		public final boolean hasNoPasscode() {
 			return passcode == null || passcode.length() == 0;
 		}
+
+		public String getRealKey() {
+			return mRealKey;
+		}
+
+		public String getCapability() {
+			return mCapability;
+		}
+
+		public AtomicInteger getRpcID(){
+			return mRpcID;
+		}
+
 		public static final Parcelable.Creator<ProjectorInfo> CREATOR
 		= new Parcelable.Creator<ProjectorInfo>() {
 			public ProjectorInfo createFromParcel(Parcel in) {
@@ -219,6 +264,9 @@ public class Falcon {
 			dest.writeString(vendor);
 			dest.writeInt(discoveryVersion);
 			dest.writeSerializable(keyValuePairs);
+			dest.writeString(mRealKey);
+			dest.writeString(mCapability);
+			dest.writeInt(mRpcID.get());
 		}
 		protected ProjectorInfo() {
 			
@@ -236,6 +284,9 @@ public class Falcon {
 			vendor = in.readString();
 			discoveryVersion = in.readInt();
 			keyValuePairs = (HashMap<String, String>) in.readSerializable();
+			mRealKey = in.readString();
+			mCapability = in.readString();
+			mRpcID = new AtomicInteger(in.readInt());
 	    }
 		public boolean supportsMediaStreaming() {
 			return (service & SERVICE_MEDIA_STREAMING) == SERVICE_MEDIA_STREAMING && Integer.valueOf(osVerion) > 1;
@@ -326,8 +377,20 @@ public class Falcon {
 		public void sendJSONRPC(final String command){
 			sendJSONRPC(COMMAND_JSONRPC, command);
 		}
-		
+
+		private static final String RPC_SET_DEVICE_DESCRIPTION = "common.set_device_description";
+		private Object setDeviceDescriptionId ;
+
+
 		public void sendJSONRPC(final int commandCode , final String command){
+			if(command.contains(RPC_SET_DEVICE_DESCRIPTION)){
+				try {
+					JSONRPC2Request request = JSONRPC2Request.parse(command);
+					setDeviceDescriptionId = request.getID();
+				} catch (JSONRPC2ParseException e) {
+					e.printStackTrace();
+				}
+			}
 			new Thread(new Runnable() {
 
 				@Override
@@ -397,6 +460,33 @@ public class Falcon {
 				}
 			}
 		}
+
+		public void processJSONMsg(String receiveString) {
+
+			JSONRPC2Response response = null;
+			try {
+				response = JSONRPC2Response.parse(parseMessageString(receiveString));
+				if (setDeviceDescriptionId != null && setDeviceDescriptionId.equals(response.getID())) {
+					JSONObject jsonObject = new JSONObject(response.getResult().toString());
+					String key = jsonObject.optString("key");
+					if (!key.isEmpty()) {
+						mRealKey = CipherUtil.DecryptAES(key, mPredefinedKey, ALGORITHM_AES_CBC);
+					}
+					mCapability = jsonObject.optString("capability", "");
+
+					Falcon.getInstance().updateProjector(this);
+					if (!mCapability.isEmpty() && mCapabilityListener != null) {
+						mCapabilityListener.onCapabilitySet();
+					}
+				}
+			} catch (JSONRPC2ParseException e) {
+				Log.d(TAG, e.getMessage());
+			} catch (JSONException e) {
+				Log.d(TAG, e.getMessage());
+			}
+
+		}
+
 		/**
 		 * Implement this interface if you want to receive message from the device.
 		 * 
@@ -431,6 +521,10 @@ public class Falcon {
 			return new DatagramSocket();
 		}		
 		public void disconnectRemoteControl() {
+			mRealKey = "";
+			mCapability = "";
+			mRpcID.set(0);
+			isDisconnnected = true;
 			Falcon.getInstance().closeSocketToRemoteControl(ipAddress, remoteControlPortNumber);
 		}
 		/**
@@ -461,7 +555,9 @@ public class Falcon {
 			return ((int) Long.parseLong(serviceString, 16));
 		}
 		public boolean supportClientMode() {
-			return (getServiceFlags() & SERVICE_CLIENT_MODE) != 0;
+			return true;
+			//20190423 Henry: deprecate this service bit
+			//return (getServiceFlags() & SERVICE_CLIENT_MODE) != 0;
 		}
 	}
 	private ArrayList<SearchReultListener> listeners = new ArrayList<SearchReultListener>();
@@ -530,10 +626,11 @@ public class Falcon {
 				socketsToRemoteControls.put(ipAddress, socketToRemoteControl);
 				final InputStream inputStream = socketToRemoteControl.getInputStream();
 				RemoteControlReceiverThread remoteControlReceiver = new RemoteControlReceiverThread(new Runnable() {
+					private ProjectorInfo projectorInfo;
 					@Override
 					public void run() {
 						try {
-							final ProjectorInfo projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
+							projectorInfo = createProjectorWithAddressIfNeeded(ipAddress);
 							projectorInfo.remoteControlPortNumber = EZ_REMOTE_CONTROL_PORT_NUMBER;
 							while (true) {
 								final ByteBuffer header = ByteBuffer.allocate(4);
@@ -544,17 +641,34 @@ public class Falcon {
 								} else if (headerSize == 4) {
 									int payloadSize = header.getInt();
 									final ByteBuffer payload = ByteBuffer.allocate(payloadSize);
-									inputStream.read(payload.array(), 0, payload.capacity());
+									payload.order(ByteOrder.LITTLE_ENDIAN);
+
+									if (payloadSize > 0) {
+										int readBytes = 0;
+										int len = payload.array().length;
+										while(readBytes < len) {
+											int read = inputStream.read(payload.array(), readBytes, len - readBytes);
+											if (read == -1) {
+												break;
+											}
+											readBytes += read;
+										}
+									}
+
 									Log.d(TAG, "Receive TCP packet. Payload size:" + payloadSize);
 									final String receiveString = new String(payload.array(), REMOTE_CONTROL_MESSGAE_CHARSET);
 									processRemoteControlMessage(projectorInfo, receiveString);
 								}
 							}
 						} catch (Exception e) {
-							dispatchExceptionOnMain(ipAddress, e);
+							if(!projectorInfo.isDisconnnected()){
+								dispatchExceptionOnMain(ipAddress, e);
+							}
 						} finally {
 							closeSocketToRemoteControl(ipAddress, portNumber);
-							dispatchOnDisconnect(ipAddress);
+							if(!projectorInfo.isDisconnnected()){
+								dispatchOnDisconnect(ipAddress);
+							}
 						}
 					}
 
@@ -1015,7 +1129,7 @@ public class Falcon {
 	private static final int IPMSG_ANSENTRY 	= 0x0003;
     private static final int IPMSG_SENDDATA 	= 0x0022;
     private static final int IMAGE_PACKET_HEADER_SIZE = 16;
-	private static final int MAX_LOOKUP_INTERVAL = 6;
+	private static final int MAX_LOOKUP_INTERVAL = 2;
     private static final int EZ_DISPLAY_QUERY_HEADER_SIZE = 24;
     private static final int PICO_QUERY_CMD = 1;
 	
@@ -1299,16 +1413,12 @@ public class Falcon {
 				
 			});
 		} else if(receiveString.startsWith("JSONRPC")){//dispatch JSON message
-			mainThreadHandler.post(new Runnable() {
-
-				@Override
-				public void run() {
-					dispatchMessage(projectorInfo, receiveString);
-				}
-				
-			});
+			projectorInfo.processJSONMsg(receiveString);
+			// avoid post msg in main handler for JRPC to avoid deadlock issue
+			dispatchMessage(projectorInfo, receiveString);
 		}
 	}
+
 	private boolean isDirectConnenctedIpAddress(InetAddress address) {
 		if (address != null) {
 			if (address.getHostAddress().equals("192.168.111.1") ||
@@ -1342,6 +1452,15 @@ public class Falcon {
 		}
 		synchronized (tempProjectors) {
 			tempProjectors.remove(projectorInfo);
+		}
+	}
+
+	public void updateProjector(ProjectorInfo projectorInfo){
+		for (int i = 0; i < projectors.size(); i++) {
+			ProjectorInfo projector = projectors.get(i);
+			if(projectorInfo.equals(projector)){
+				projector.updateCapability(projectorInfo);
+			}
 		}
 	}
 	private void handleWifiDisplayMessage(final DatagramPacket recvPacket) {
