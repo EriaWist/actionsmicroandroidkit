@@ -288,7 +288,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                             case "Playing":
                                 lastState = mCurrentState;
                                 mCurrentState = MediaPlayerApi.State.PLAYING;
-                                if (mMediaApi != null && mMediaStateListener != null && (lastState == MediaPlayerApi.State.PROCESSING || lastState == MediaPlayerApi.State.IDLE)) {
+                                if (mMediaApi != null && mMediaStateListener != null && (lastState == MediaPlayerApi.State.PROCESSING || lastState == MediaPlayerApi.State.IDLE || lastState == MediaPlayerApi.State.ENDED)) {
                                     mMediaStateListener.mediaPlayerDidStart(mMediaApi);
                                 }
                                 break;
