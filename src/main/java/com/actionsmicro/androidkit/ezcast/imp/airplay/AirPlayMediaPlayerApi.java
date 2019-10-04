@@ -172,7 +172,7 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 	private static final int mappingAirPlayError(int errorCode) {
 		switch(errorCode) {
 		case -11828:
-			return AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED;
+			return AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSUPPORTED;
 		case -1004:
 			return AV_RESULT_ERROR_GENERIC;
 		default:

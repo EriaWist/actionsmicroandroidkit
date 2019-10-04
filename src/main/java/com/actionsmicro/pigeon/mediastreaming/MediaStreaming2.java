@@ -335,8 +335,8 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                             case "AV_RESULT_ERROR_START_OCCUPIED_ALREADY_STREAMING":
                                 errCode = MediaPlayerApi.AV_RESULT_ERROR_START_OCCUPIED_ALREADY_STREAMING;
                                 break;
-                            case "AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED":
-                                errCode = MediaPlayerApi.AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED;
+                            case "AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSUPPORTED":
+                                errCode = MediaPlayerApi.AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSUPPORTED;
                                 break;
                             case "AV_RESULT_ERROR_STOP_ABORTED":
                                 errCode = MediaPlayerApi.AV_RESULT_ERROR_STOP_ABORTED;
