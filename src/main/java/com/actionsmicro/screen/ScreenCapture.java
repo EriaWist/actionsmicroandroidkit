@@ -263,9 +263,11 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         }
     }
     private void releaseResource() {
-        mMediaCodec.stop();
-        mMediaCodec.release();
-        mMediaCodec = null;
+        if (mMediaProjection != null){
+            mMediaCodec.stop();
+            mMediaCodec.release();
+            mMediaCodec = null;
+        }
     }
 
     @Override
