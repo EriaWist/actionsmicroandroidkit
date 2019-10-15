@@ -420,7 +420,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 					break;
 				case MEDIA_ERR_DECODE:
 				case MEDIA_ERR_SRC_NOT_SUPPORTED:
-					errorCode = AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED;
+					errorCode = AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSUPPORTED;
 					break;
 				}
 				return errorCode;
@@ -710,7 +710,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		} else if (null == mMirrorClientSocket) {
 			enqueueH264Data(contents);
 		} else {
-			sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
+			sendMirrorData(contents);
 		}
 	}
 
@@ -975,14 +975,18 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 		}
 		while (h264Queue.size() > 0) {
 			byte[] contents = h264Queue.remove(0);
-			byte nalByte = contents[4];
-			int nalType = nalByte & 0x1f;
-			Log.d(TAG,"dequeueH264Data nalType = " + nalType);
-			if(nalType == 7) {
-				sendMirrorData(PACKET_TYPE_CODEC, contents);
-			} else{
-				sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
-			}
+			sendMirrorData(contents);
+		}
+	}
+
+	private void sendMirrorData(byte[] contents) {
+		byte nalByte = contents[4];
+		int nalType = nalByte & 0x1f;
+		Log.d(TAG, "nalType = " + nalType);
+		if (nalType == 7) {
+			sendMirrorData(PACKET_TYPE_CODEC, contents);
+		} else {
+			sendMirrorData(PACKET_TYPE_VIDEO_BITSTREAM, contents);
 		}
 	}
 

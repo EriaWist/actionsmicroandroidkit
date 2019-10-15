@@ -63,6 +63,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
     private Object pauseLock = new Object();
     protected ResponseHandler mResponseHandler;
     protected final HashMap<Long, String> mResponseMap = new HashMap<>();
+    private boolean isStopped = false;
 
     public interface ResponseHandler {
         void process(JSONRPC2Response resp, HashMap<Long, String> waitResponseMap);
@@ -112,6 +113,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
     private Thread receivingThread;
 
     public MediaStreaming2(Falcon.ProjectorInfo projectorInfo) {
+        isStopped = false;
         mProjectorInfo = projectorInfo;
         receivingThread = new Thread() {
             @Override
@@ -198,6 +200,9 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                     public void onMediaFound(String s) {
                         Log.d(TAG, "onMediaFound" + s);
                         Log.d(TAG, "elaspse time " + (System.currentTimeMillis() - elapsetime));
+                        if(isStopped){
+                            return;
+                        }
                         final HashMap<String, Object> resParams = new HashMap<>();
                         resParams.put("video", jsonToMap(s));
                         JSONRPC2Response rpcResponse = new JSONRPC2Response(resParams, id);
@@ -283,7 +288,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                             case "Playing":
                                 lastState = mCurrentState;
                                 mCurrentState = MediaPlayerApi.State.PLAYING;
-                                if (mMediaApi != null && mMediaStateListener != null && (lastState == MediaPlayerApi.State.PROCESSING || lastState == MediaPlayerApi.State.IDLE)) {
+                                if (mMediaApi != null && mMediaStateListener != null && (lastState == MediaPlayerApi.State.PROCESSING || lastState == MediaPlayerApi.State.IDLE || lastState == MediaPlayerApi.State.ENDED)) {
                                     mMediaStateListener.mediaPlayerDidStart(mMediaApi);
                                 }
                                 break;
@@ -330,8 +335,8 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                             case "AV_RESULT_ERROR_START_OCCUPIED_ALREADY_STREAMING":
                                 errCode = MediaPlayerApi.AV_RESULT_ERROR_START_OCCUPIED_ALREADY_STREAMING;
                                 break;
-                            case "AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED":
-                                errCode = MediaPlayerApi.AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED;
+                            case "AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSUPPORTED":
+                                errCode = MediaPlayerApi.AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSUPPORTED;
                                 break;
                             case "AV_RESULT_ERROR_STOP_ABORTED":
                                 errCode = MediaPlayerApi.AV_RESULT_ERROR_STOP_ABORTED;
@@ -725,7 +730,9 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
     }
 
     private void cleanup() {
+        mProjectorInfo.setCapabilityListener(null);
         mProjectorInfo.removeMessageListener(mMessageListener);
+        isStopped = true;
         stopHttpFileServer();
     }
 }

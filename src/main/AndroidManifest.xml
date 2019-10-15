@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <application>
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
         <service
             android:name="com.actionsmicro.screen.FloatSignalWindow"
             android:exported="false">

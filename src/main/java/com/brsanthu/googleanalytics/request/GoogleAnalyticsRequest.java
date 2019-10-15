@@ -16,16 +16,53 @@
 
 package com.brsanthu.googleanalytics.request;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.Future;
-import java.util.function.Supplier;
-
 import com.brsanthu.googleanalytics.GoogleAnalyticsExecutor;
 import com.brsanthu.googleanalytics.internal.Constants;
 import com.brsanthu.googleanalytics.internal.GaUtils;
 
-import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Future;
+
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.ADWORDS_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.ANONYMIZE_IP;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.APPLICATION_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.APPLICATION_INSTALLER_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.APPLICATION_NAME;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.APPLICATION_VERSION;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CACHE_BUSTER;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CAMPAIGN_CONTENT;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CAMPAIGN_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CAMPAIGN_KEYWORD;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CAMPAIGN_MEDIUM;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CAMPAIGN_NAME;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CAMPAIGN_SOURCE;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CLIENT_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.CONTENT_DESCRIPTION;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.DATA_SOURCE;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.DISPLAY_ADS_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.DOCUMENT_ENCODING;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.DOCUMENT_HOST_NAME;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.DOCUMENT_PATH;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.DOCUMENT_REFERRER;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.DOCUMENT_TITLE;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.DOCUMENT_URL;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.EXPERIMENT_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.EXPERIMENT_VARIANT;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.FLASH_VERSION;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.HIT_TYPE;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.JAVA_ENABLED;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.NON_INTERACTION_HIT;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.OTA_VENDOR;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.PROTOCOL_VERSION;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.QUEUE_TIME;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.SCREEN_COLORS;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.SCREEN_RESOLUTION;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.SESSION_CONTROL;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.TRACKING_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.USER_ID;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.USER_LANGUAGE;
+import static com.brsanthu.googleanalytics.request.GoogleAnalyticsParameter.VIEWPORT_SIZE;
 
 /**
  * Base GA Tracking Request containing the standard and custom parameter values.
@@ -1836,20 +1873,19 @@ public class GoogleAnalyticsRequest<T> {
         return getString(GoogleAnalyticsParameter.GEOID);
     }
 
+    //
     public GoogleAnalyticsResponse send() {
-        return execute(() -> delegateExecutor.post(this));
-    }
-
-    public Future<GoogleAnalyticsResponse> sendAsync() {
-        return execute(() -> delegateExecutor.postAsync(this));
-    }
-
-    private <E> E execute(Supplier<E> call) {
         if (delegateExecutor == null) {
             throw new RuntimeException("GoogleAnalyticsExecutor is null");
         }
+        return delegateExecutor.post(this);
+    }
 
-        return call.get();
+    public Future<GoogleAnalyticsResponse> sendAsync() {
+        if (delegateExecutor == null) {
+            throw new RuntimeException("GoogleAnalyticsExecutor is null");
+        }
+        return delegateExecutor.postAsync(this);
     }
 
     public GoogleAnalyticsRequest<T> setExecutor(GoogleAnalyticsExecutor delegateExecutor) {

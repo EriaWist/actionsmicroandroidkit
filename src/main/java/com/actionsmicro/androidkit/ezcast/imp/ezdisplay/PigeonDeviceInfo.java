@@ -138,7 +138,7 @@ public class PigeonDeviceInfo extends DeviceInfo {
     }
 
     public boolean isMediaStreamingV2() {
-        if (capability != null) {
+        if (capability != null && !capability.isEmpty()) {
             try {
                 JSONObject capabilityObj = new JSONObject(capability);
                 JSONObject mediastreamingObj = capabilityObj.getJSONObject("mediastreaming");

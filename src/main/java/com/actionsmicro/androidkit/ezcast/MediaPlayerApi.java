@@ -37,7 +37,7 @@ public interface MediaPlayerApi extends Api {
 	 * Invalid format error.
 	 * @since 2.1
 	 */
-	public static final int AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSOPPORTED = 5;
+	public static final int AV_RESULT_ERROR_STOP_FILE_FORMAT_UNSUPPORTED = 5;
 	/**
 	 * Indicates current playback session is aborted by the device.
 	 * @since 2.1
