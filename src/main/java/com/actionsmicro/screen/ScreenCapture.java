@@ -48,6 +48,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
 
     private DisplayManager.DisplayListener displayListener;
     private MediaProjection.Callback mProjectionCallback;
+    private boolean hasCodecData;
 
     public void setDisplayListener(DisplayManager.DisplayListener displayListener) {
         this.displayListener = displayListener;
@@ -152,8 +153,12 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
                 encodedData.limit(bufferInfo.offset + bufferInfo.size);
                 byte[] outData = new byte[bufferInfo.size];
                 encodedData.get(outData);
-                //int nalType = ((int) outData[4]) & 0x1f;
-                if (dataCallback != null) {
+                int nalType = ((int) outData[4]) & 0x1f;
+                if(nalType == 7){
+                    hasCodecData = true;
+                }
+
+                if (dataCallback != null && hasCodecData) {
                     dataCallback.dataBufferAvailable(outData, width, height);
                 }
                 mediaCodec.releaseOutputBuffer(index, System.nanoTime());
@@ -221,6 +226,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     }
 
     public void restart(int width, int height) {
+        hasCodecData = false;
         restart = true;
         this.width = width;
         this.height = height;
