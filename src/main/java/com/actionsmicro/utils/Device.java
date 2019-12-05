@@ -4,11 +4,14 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.content.res.Resources;
+import android.graphics.Point;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
 
@@ -192,4 +195,30 @@ public class Device {
 
 		return ipString;
     }
+
+	public static void getCurrentDisplaySize(Context context, Point point) {
+		final WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+		final Display display = wm.getDefaultDisplay();
+		display.getRealSize(point);
+	}
+
+	public static int getNavigationBarHeight(Context context) {
+		Resources resources = context.getResources();
+		int id = resources.getIdentifier(
+				resources.getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT ? "navigation_bar_height" : "navigation_bar_height_landscape",
+				"dimen", "android");
+		if (id > 0) {
+			return resources.getDimensionPixelSize(id);
+		}
+		return 0;
+	}
+
+	public static int getStatusBarHeight(Context context) {
+		int result = 0;
+		int resourceId = context.getResources().getIdentifier("status_bar_height", "dimen", "android");
+		if (resourceId > 0) {
+			result = context.getResources().getDimensionPixelSize(resourceId);
+		}
+		return result;
+	}
 }
