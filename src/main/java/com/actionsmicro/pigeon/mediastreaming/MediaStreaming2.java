@@ -250,6 +250,8 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                         mDuration = ((Long) params.get("duration")).intValue();
                         VideoObj videoObj = gson.fromJson(params.get("video").toString(), VideoObj.class);
                         int currentIndex = ((Long) params.get("currentIndex")).intValue();
+                        String originPage = mCurrentPlayList.getPlaylist().get(currentIndex).getPage();
+                        videoObj.setPage(originPage);
                         if (mMediaApi != null && mMediaStateListener != null) {
                             if (videoObj.isAudio()) {
                                 mCurrentPlayList.getMediaPlayListListener().onMediaChanged(new MusicMediaItem(videoObj.getIndex(), videoObj.getMediaId(), videoObj.getMediaName(), videoObj.getArtistName(),
