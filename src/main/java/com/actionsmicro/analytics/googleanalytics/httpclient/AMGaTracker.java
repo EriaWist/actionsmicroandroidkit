@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.util.DisplayMetrics;
 
+import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.PackageUtils;
 import com.brsanthu.googleanalytics.GoogleAnalytics;
 import com.brsanthu.googleanalytics.request.DefaultRequest;
@@ -22,6 +23,7 @@ public class AMGaTracker {
         return GoogleAnalytics.builder().withDefaultRequest(newDefaultRequest(context)
                 .trackingId(trackingId)
                 .applicationName(appName)
+                .clientId(Device.getAppUniqueIdentifier(context))
         ).build();
     }
 }
