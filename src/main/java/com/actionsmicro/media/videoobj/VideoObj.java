@@ -74,6 +74,10 @@ public class VideoObj {
         return page;
     }
 
+    public void setPage(String page) {
+        this.page = page;
+    }
+
     public String getType() {
         return type;
     }

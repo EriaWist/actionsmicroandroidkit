@@ -91,7 +91,11 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 				e.printStackTrace();
 				mediaUri = Uri.fromFile(new File(file));
 			}
-			contentUri = mediaUri;
+
+			if (!contentUri.toString().equals(mediaUri.toString())) {
+				contentUri = mediaUri;
+				contentLength = -1;
+			}
 		}
         return serveFile(Collections.unmodifiableMap(header));
 	}
@@ -167,7 +171,7 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
                     InputStream in = getInputStream(startFrom, dataLen);
 
 
-					res = createResponse(Response.Status.PARTIAL_CONTENT, mime, in, dataLen);
+					res = createResponse(Response.Status.PARTIAL_CONTENT, mime, in, fileLen);
                     res.addHeader("Content-Length", "" + getContentLengthForByteRangeResponse(fileLen, dataLen));
                     res.addHeader("Content-Range", "bytes " + startFrom + "-" + endAt + "/" + fileLen);
 //                    res.addHeader("ETag", etag);
