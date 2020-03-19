@@ -61,7 +61,12 @@ public class ScreenPresentation extends CastPresentation {
     public void setImageView(InputStream stream) {
         showImage();
         Bitmap bmp = BitmapFactory.decodeStream(stream);
-        mImageView.setImageBitmap(bmp);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mImageView.setImageBitmap(bmp);
+            }
+        });
     }
 
     public void showImage() {
