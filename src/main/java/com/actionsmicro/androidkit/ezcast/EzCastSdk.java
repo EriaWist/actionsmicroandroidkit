@@ -404,9 +404,10 @@ public class EzCastSdk {
 				});
 			}
 		}
-		if (supportList.contains("airplay")) {
-			deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
-		}
+		// don't discover Airplay device due to  we don't supoort it now
+//		if (supportList.contains("airplay")) {
+//			deviceFinder.addDeviceFinderImp(new AirPlayDeviceFinder(deviceFinder));
+//		}
 		if (supportList.contains("ezscreen")) {
 			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
 		}
