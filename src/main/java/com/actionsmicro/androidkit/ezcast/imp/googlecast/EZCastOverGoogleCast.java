@@ -137,8 +137,15 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					public void onApplicationStatusChanged () {
 						if (googleCastApiClient != null) {
 							try {
+								String status = Cast.CastApi.getApplicationStatus(googleCastApiClient);
 								Log.d(TAG, ": onApplicationStatusChanged: "
-										+ Cast.CastApi.getApplicationStatus(googleCastApiClient));
+										+ status);
+								if(status!= null && status.isEmpty()){
+									if(currentApplication != null && currentApplication.getAppId().equals(getEzCastMediaPlayerId())){
+										notifyConnectionManagerDidFailed(new Exception("Stopped by projector." ));
+										teardown();
+									}
+								}
 							} catch (IllegalStateException e) {
 							}
 						}
