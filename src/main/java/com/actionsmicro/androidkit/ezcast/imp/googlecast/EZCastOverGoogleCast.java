@@ -137,8 +137,15 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					public void onApplicationStatusChanged () {
 						if (googleCastApiClient != null) {
 							try {
+								String status = Cast.CastApi.getApplicationStatus(googleCastApiClient);
 								Log.d(TAG, ": onApplicationStatusChanged: "
-										+ Cast.CastApi.getApplicationStatus(googleCastApiClient));
+										+ status);
+								if(status!= null && status.isEmpty()){
+									if(currentApplication != null && currentApplication.getAppId().equals(getEzCastMediaPlayerId())){
+										notifyConnectionManagerDidFailed(new Exception("Stopped by projector." ));
+										teardown();
+									}
+								}
 							} catch (IllegalStateException e) {
 							}
 						}
@@ -379,8 +386,13 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 		currentApplication = null;
 	}
 	private List<Runnable> pendingTasks = new ArrayList<Runnable>();
+	boolean needStop = false;
 	public void stopApplication(final GoogleCastApp application,
 			final ResultCallback<Status> resultCallback) {
+		if(mIsStopping){
+			needStop =true;
+			return;
+		}
 		Log.d(TAG, "stopApplication:"+(application!=null?application.getAppId():application));
 		if (application != null) {
 			final String appId = application.getAppId();
@@ -611,8 +623,13 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 								handleMediaPlayerStop(Cause.USER);
 								if (trackableApi != null) {
 									trackableApi.commitMediaUsageTracking();
-								}						
+								}
+								if(needStop){
+									needStop = false;
+									stopDisplaying();
+								}
 								finishPendingTask(runnable);
+
 							}
 							
 						});

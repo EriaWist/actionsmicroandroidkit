@@ -26,7 +26,7 @@ import org.json.JSONObject;
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PigeonDeviceInfo extends DeviceInfo {
+public class PigeonDeviceInfo extends DeviceInfo implements AMCertificate{
 
     private ProjectorInfo projectorInfo;
     private String capability;
@@ -214,5 +214,19 @@ public class PigeonDeviceInfo extends DeviceInfo {
 
     public AtomicInteger getRPCID(){
         return projectorInfo.getRpcID();
+    }
+
+    @Override
+    public String getCertificateWebRoot() {
+        String webRoot = "";
+        if (capability != null) {
+            try {
+                JSONObject capabilityObj = new JSONObject(capability);
+                webRoot = capabilityObj.optString("certificate_webroot","");
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        return webRoot;
     }
 }
