@@ -20,6 +20,10 @@ import java.util.ArrayList;
  */
 
 public class XmlDecodeUtil {
+
+    private static final String SCOPE_NAME = "onvif://www.onvif.org/name/";
+    private static final String SCOPE_HARDWARE = "onvif://www.onvif.org/hardware/";
+    private static final String SCOPE_LOCATION = "onvif://www.onvif.org/location/";
     /**
      * 获取设备信息
      */
@@ -43,6 +47,20 @@ public class XmlDecodeUtil {
                     }
                     if (parser.getName().equals("MessageID")) {
                         device.setUuid(parser.nextText());
+                    }
+
+                    if(parser.getName().equals("Scopes")){
+                        String addrs = parser.nextText();
+                        String[] strs = addrs.split(" ");
+                        for(String str:strs){
+                            if(str.startsWith(SCOPE_NAME)){
+                                device.setName(str.substring(SCOPE_NAME.length()));
+                            } else if(str.startsWith(SCOPE_HARDWARE)) {
+                                device.setHardware(str.substring(SCOPE_HARDWARE.length()));
+                            } else if(str.startsWith(SCOPE_LOCATION)) {
+                                device.setLocation(str.substring(SCOPE_LOCATION.length()));
+                            }
+                        }
                     }
                     break;
                 case XmlPullParser.END_TAG:

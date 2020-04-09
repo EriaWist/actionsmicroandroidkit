@@ -10,6 +10,10 @@ import java.util.ArrayList;
 
 public class Device {
 
+    // Device info
+    private String name;
+    private String hardware;
+    private String location;
     /**
      * 用户名/密码
      */
@@ -219,6 +223,30 @@ public class Device {
                 ", profiles=" + profiles +
                 ", imageSetting=" + imageSetting +
                 '}';
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getHardware() {
+        return hardware;
+    }
+
+    public void setHardware(String hardware) {
+        this.hardware = hardware;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 }
 
