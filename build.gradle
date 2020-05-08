@@ -99,4 +99,5 @@ dependencies {
     compile 'com.android.support:multidex:1.0.3'
     //    compile 'com.android.support:support-core-utils:' + rootProject.supportLibVersion;
     compile(name: 'libvlc', ext: 'aar')
+    implementation 'com.squareup.okhttp3:okhttp:3.8.1'
 }
