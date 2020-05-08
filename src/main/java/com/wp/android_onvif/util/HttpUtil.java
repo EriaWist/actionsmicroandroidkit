@@ -51,6 +51,7 @@ public class HttpUtil {
         urlConn.setInstanceFollowRedirects(true);
         // 配置请求Content-Type,application/soap+xml
         urlConn.setRequestProperty("Content-Type", "application/soap+xml");
+        urlConn.setConnectTimeout(3000);
         // 开始连接
         urlConn.connect();
         // 发送请求数据
