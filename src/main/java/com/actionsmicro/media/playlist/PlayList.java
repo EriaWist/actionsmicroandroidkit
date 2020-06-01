@@ -3,6 +3,7 @@ package com.actionsmicro.media.playlist;
 
 import com.actionsmicro.media.control.MediaPlayListListener;
 import com.actionsmicro.media.videoobj.VideoObj;
+import com.google.gson.annotations.Expose;
 
 import java.util.List;
 
@@ -11,6 +12,9 @@ public class PlayList {
     private List<VideoObj> playlist;
     private int start_index;
     private String error;
+
+    @Expose(serialize = false, deserialize = false)
+    private String rawJson;
 
     public String getId() {
         return id;
@@ -45,5 +49,13 @@ public class PlayList {
 
     public void setPlaylist(List<VideoObj> playlist) {
         this.playlist = playlist;
+    }
+
+    public String getRawJson() {
+        return rawJson;
+    }
+
+    public void setRawJson(String rawJson) {
+        this.rawJson = rawJson;
     }
 }
