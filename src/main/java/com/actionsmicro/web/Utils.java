@@ -64,7 +64,6 @@ public class Utils {
 				conn = (HttpURLConnection) url.openConnection();
 			}
 
-			conn = (HttpURLConnection) url.openConnection();
 			conn.setReadTimeout(READ_TIME_OUT);
 			conn.setConnectTimeout(SOCKET_OPERATION_TIMEOUT);
 			conn.setDoInput(true);
