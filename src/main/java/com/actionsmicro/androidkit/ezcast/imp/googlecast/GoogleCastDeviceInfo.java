@@ -2,7 +2,7 @@ package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.v7.media.MediaRouter.RouteInfo;
+import androidx.mediarouter.media.MediaRouter.RouteInfo;
 
 import com.actionsmicro.androidkit.ezcast.AudioApi;
 import com.actionsmicro.androidkit.ezcast.AudioApiBuilder;
