@@ -3,11 +3,11 @@ package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 import java.util.ArrayList;
 import java.util.List;
 
-import android.support.v7.media.MediaControlIntent;
-import android.support.v7.media.MediaRouteSelector;
-import android.support.v7.media.MediaRouter;
-import android.support.v7.media.MediaRouter.Callback;
-import android.support.v7.media.MediaRouter.RouteInfo;
+import androidx.mediarouter.media.MediaControlIntent;
+import androidx.mediarouter.media.MediaRouteSelector;
+import androidx.mediarouter.media.MediaRouter;
+import androidx.mediarouter.media.MediaRouter.Callback;
+import androidx.mediarouter.media.MediaRouter.RouteInfo;
 
 import com.actionsmicro.androidkit.ezcast.DeviceFinder;
 import com.actionsmicro.androidkit.ezcast.DeviceFinderBase;
