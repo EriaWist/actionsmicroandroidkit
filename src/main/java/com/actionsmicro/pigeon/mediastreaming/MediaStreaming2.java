@@ -365,7 +365,12 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
         mResponseHandler = new ResponseHandler() {
             @Override
             public void process(JSONRPC2Response resp, HashMap<Long, String> waitResponseMap) {
-                String method = mResponseMap.remove(Long.valueOf(resp.getID().toString()));
+                Object id = resp.getID();
+                // workaround when receive JSONRPC2Response without id
+                if(id == null){
+                    return;
+                }
+                String method = mResponseMap.remove(Long.valueOf(id.toString()));
                 if (method == null) {
                     return;
                 }
