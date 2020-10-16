@@ -10,14 +10,15 @@ import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import android.util.DisplayMetrics;
 import android.view.Surface;
 import android.view.WindowManager;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 /**
  * Created by Actions on 2018/3/9.
@@ -271,6 +272,9 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     }
 
     public void restart(int width, int height) {
+        if(width == this.width && height == this.height){
+            return;
+        }
         hasCodecData = false;
         restart = true;
         this.width = width;
