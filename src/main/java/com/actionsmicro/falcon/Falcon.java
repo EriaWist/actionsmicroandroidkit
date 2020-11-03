@@ -743,12 +743,12 @@ public class Falcon {
 		synchronized (messageListeners) {
 			Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
 			if (listeners == null) {
-				Log.d(TAG, "Create MessageListener container for " + projectorInfo.getAddress().getHostAddress());			
+				Log.d(TAG, "Create MessageListener container for " + projectorInfo.getAddress().getHostAddress());
 				listeners = new HashSet<MessageListener>();
 				messageListeners.put(projectorInfo.getAddress(), listeners);
 			}
 			if (listeners != null) {
-				Log.d(TAG, "Add MessageListener to container");			
+				Log.d(TAG, "Add MessageListener to container");
 				listeners.add(listener);
 			}
 		}
@@ -761,20 +761,24 @@ public class Falcon {
 			}
 		}
 	}
+
 	private void dispatchMessage(ProjectorInfo projectorInfo, String message) {
 		if (message != null) {
 			Log.d(TAG, "dispatchMessage:" + message);
+			Set<MessageListener> listenersCopy = null;
 			synchronized (messageListeners) {
 				Set<MessageListener> listeners = messageListeners.get(projectorInfo.getAddress());
 				if (listeners != null) {
-					listeners = new HashSet<MessageListener>(listeners);
-					for (final MessageListener listener : listeners) {
-						Log.d(TAG, "send to " + listener);
-						listener.onReceiveMessage(projectorInfo, message);
-					}
-				} else {
-					Log.d(TAG, "no listener for " + projectorInfo.getAddress().getHostAddress());				
+					listenersCopy = new HashSet<MessageListener>(listeners);
 				}
+			}
+			if (listenersCopy != null) {
+				for (final MessageListener listener : listenersCopy) {
+					Log.d(TAG, "send to " + listener);
+					listener.onReceiveMessage(projectorInfo, message);
+				}
+			} else {
+				Log.d(TAG, "no listener for " + projectorInfo.getAddress().getHostAddress());
 			}
 		}
 	}
@@ -1488,7 +1492,7 @@ public class Falcon {
 					listener.onException(projector, e);
 				}
 			} else {
-				Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());				
+				Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());
 			}
 		}
 	}
@@ -1502,7 +1506,7 @@ public class Falcon {
 					listener.onDisconnect(projector);
 				}
 			} else {
-				Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());				
+				Log.d(TAG, "no listener for " + projector.getAddress().getHostAddress());
 			}
 		}
 	}

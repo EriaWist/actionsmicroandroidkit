@@ -1,6 +1,6 @@
 package com.actionsmicro.androidkit.ezcast.imp.googlecast;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.view.Display;
 
 import com.actionsmicro.utils.Log;

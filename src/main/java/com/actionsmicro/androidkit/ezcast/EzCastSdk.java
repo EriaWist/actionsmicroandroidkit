@@ -360,14 +360,12 @@ public class EzCastSdk {
 		if (currentDevice == null) {
 			connectionCount = 1;
 			currentDevice = device;
-			logDeviceInfo(device);
 		} else if (currentDevice.compareTo(device) == 0) {
 			connectionCount ++;
 		} else {
 			Log.e(TAG, "Connect to another device while connecting to one device already. Probably leak!");
 			connectionCount = 1;
 			currentDevice = device;
-			logDeviceInfo(device);
 		}
 	}
 	private void logDeviceInfo(DeviceInfo device) {

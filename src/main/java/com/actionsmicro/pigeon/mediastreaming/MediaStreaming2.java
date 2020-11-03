@@ -237,6 +237,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                             if (null != playlistObj) {
                                 PlayList playlist = gson.fromJson(playlistObj.toString(), PlayList.class);
                                 mCurrentPlayList.setPlaylist(playlist.getPlaylist());
+                                mCurrentPlayList.setRawJson(playlistObj.toString());
                                 mCurrentPlayList.setStart_index(playlist.getStart_index());
                                 if (mMediaApi != null && mMediaStateListener != null) {
                                     mCurrentPlayList.getMediaPlayListListener().onPlayListChanged(mCurrentPlayList);
@@ -364,7 +365,12 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
         mResponseHandler = new ResponseHandler() {
             @Override
             public void process(JSONRPC2Response resp, HashMap<Long, String> waitResponseMap) {
-                String method = mResponseMap.remove(Long.valueOf(resp.getID().toString()));
+                Object id = resp.getID();
+                // workaround when receive JSONRPC2Response without id
+                if(id == null){
+                    return;
+                }
+                String method = mResponseMap.remove(Long.valueOf(id.toString()));
                 if (method == null) {
                     return;
                 }
@@ -420,7 +426,12 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
         }
         PlayList transformedPlaylist = transformPlayListIfNeed(context, playlist);
         final HashMap<String, Object> params = new HashMap<>();
-        params.put("playlist", jsonToMap(gson.toJson(transformedPlaylist)));
+        if(playlist.getRawJson() != null){
+            params.put("playlist", jsonToMap(playlist.getRawJson()));
+        } else{
+            params.put("playlist", jsonToMap(gson.toJson(transformedPlaylist)));
+        }
+
         JSONRPC2Request req = new JSONRPC2Request(RPCAPI.RPC_METHOD_PLAYLIST, params, generateRpcId());
         sendJSONRPC(req.toString());
         mContext = context;
