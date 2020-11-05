@@ -20,6 +20,7 @@ import com.actionsmicro.pigeon.Client;
 import com.actionsmicro.pigeon.Pigeon;
 import com.actionsmicro.utils.Log;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -191,6 +192,27 @@ public class PigeonDeviceInfo extends DeviceInfo implements AMCertificate{
                 JSONObject mediastreamingObj = capabilityObj.getJSONObject("mediastreaming");
                 if (mediastreamingObj != null) {
                     return mediastreamingObj.optBoolean("support_avsplit", false);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean supportAACELD() {
+        if (capability != null) {
+            try {
+                JSONObject capabilityObj = new JSONObject(capability);
+                JSONArray audio_decoders = capabilityObj.optJSONArray("audio_decoders");
+                if (audio_decoders != null) {
+                    for (int i = 0; i < audio_decoders.length(); i++) {
+                        String decoder = audio_decoders.getString(i);
+                        if (decoder.equals("airplay_aac_eld")) {
+                            return true;
+                        }
+                    }
                 }
             } catch (JSONException e) {
                 e.printStackTrace();

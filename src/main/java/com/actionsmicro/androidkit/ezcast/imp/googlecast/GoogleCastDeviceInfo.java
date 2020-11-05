@@ -180,6 +180,11 @@ public class GoogleCastDeviceInfo extends DeviceInfo {
 	}
 
 	@Override
+	public boolean supportAACELD() {
+		return false;
+	}
+
+	@Override
     protected AudioApi createAudioApi(AudioApiBuilder displayApiBuilder) {
         // TODO Auto-generated method stub
         return null;

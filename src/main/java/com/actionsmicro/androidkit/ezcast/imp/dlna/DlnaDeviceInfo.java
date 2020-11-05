@@ -199,6 +199,11 @@ public class DlnaDeviceInfo extends DeviceInfo {
 		return false;
 	}
 
+	@Override
+	public boolean supportAACELD() {
+		return false;
+	}
+
 	public String getManufacturer() {
 		try {
 			String manufacturer = device.getDetails().getManufacturerDetails().getManufacturer();
