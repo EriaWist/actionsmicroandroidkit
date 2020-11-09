@@ -14,7 +14,7 @@ import android.media.MediaFormat;
 import android.os.Build;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-public class NativeAacEldDecoder implements IAacEldEncoder {
+public class NativeAacEldDecoder implements IAacEldDecoder {
 	private static final int SMAPLE_RATE = 44100;
 	private static final int NUMBER_OF_CHANNEL = 2;
 	private static final int NUMBER_OF_FRAME = 480;

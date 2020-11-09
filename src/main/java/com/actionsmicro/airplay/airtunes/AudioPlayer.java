@@ -40,7 +40,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 	private UDPListener udpListener;
 	private PureAudioBuffer pureAudioBuffer;
 	private Thread decoderThread;
-	private IAacEldEncoder decoder;
+	private IAacEldDecoder decoder;
 	private Thread playerThread;
 	private boolean decoderThreadShouldStop;
 	private boolean playerThreadShouldStop;
@@ -83,7 +83,7 @@ public class AudioPlayer implements vavi.apps.shairport.AudioPlayer {
 		if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR1) {
 			decoder = new NativeAacEldDecoder();
 		} else {
-			decoder = new AndroidAacEldEncoder();
+			decoder = new AndroidAacEldDecoder();
 		}
 		decoder.init();
     	decoder.start();

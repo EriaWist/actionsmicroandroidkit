@@ -39,6 +39,7 @@ public class Client {
 	protected static final int STREAM_FORMAT_JEPG = 1;
 	protected static final int STREAM_FORMAT_PCM = 5;
     protected static final int STREAM_FORMAT_PIC_H264 = 7;
+	protected static final int STREAM_FORMAT_AAC_ELD = 8;
 	protected static final int EZ_DISPLAY_HEADER_SIZE = 32;
 	protected static final int PICO_PIC_FORMAT_CMD = 2;
 	private static final int PICO_HEARTBEAT = 4;
@@ -367,17 +368,30 @@ public class Client {
 		}
 	}
 
-	private void sendAudioBytesToServer(final byte[] audioData) throws IOException {
+	private void sendPCMAudioDataToServer(final byte[] audioData, int offset, int length) throws IOException {
 		synchronized (this) {
 			Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
 			Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
 			BufferedOutputStream socketStream = null;
-			Log.d(TAG, "try to sentAudioToServer("+serverAddress+":"+portNumber+")");	
+			Log.d(TAG, "try to sentPCMAudioToServer("+serverAddress+":"+portNumber+")");
 			socketStream = new BufferedOutputStream(socketToServer.getOutputStream(), SOCKET_OUTPUT_STREAM_BUFFER_SIZE);
-			socketStream.write(createPacketHeaderForSendingAudio(audioData.length).array());
-			socketStream.write(audioData);
+			socketStream.write(createPacketHeaderForSendingAudio(length, PICO_PIC_FORMAT_CMD).array());
+			socketStream.write(audioData, offset, length);
 			socketStream.flush();
-			Log.d(TAG, "sentAudioToServer("+serverAddress+":"+portNumber+") done.");
+			Log.d(TAG, "sentPCMAudioToServer("+serverAddress+":"+portNumber+") done.");
+		}
+	}
+
+	private void sendAACAudioDataToServer(final ByteBuffer dataBuffer, int size) throws IOException {
+		synchronized (this) {
+			Log.d(TAG, "try to connect to ("+serverAddress+":"+portNumber+")");
+			Socket socketToServer = createSocketToServer(DEFAULT_SOCKET_TIMEOUT);
+			OutputStream socketStream = socketToServer.getOutputStream();
+			Log.d(TAG, "try to sentAACAudioToServer("+serverAddress+":"+portNumber+")");
+			socketStream.write(createPacketHeaderForSendingAudio(size, STREAM_FORMAT_AAC_ELD).array());
+			socketStream.write(dataBuffer.array(), 0, size);
+			socketStream.flush();
+			Log.d(TAG, "sentAACAudioToServer("+serverAddress+":"+portNumber+") done.");
 		}
 	}
 	
@@ -461,7 +475,7 @@ public class Client {
 		}
 	}
 	
-	public void sendAudioStreamToServer(InputStream inputStream) throws IOException, IllegalArgumentException {
+	public void sendAudioStreamToServer(InputStream inputStream,int offset, int length) throws IOException, IllegalArgumentException {
 		if (canSendStream()) {
 			synchronized (this) {
 				final ByteArrayOutputStream compressionBuffer = getAudioCompressionBuffer();
@@ -472,7 +486,15 @@ public class Client {
 					compressionBuffer.write(buffer, 0, sizeRead);
 				}
 				final byte audioBytes[] = compressionBuffer.toByteArray();
-				sendAudioBytesToServer(audioBytes);
+				sendPCMAudioDataToServer(audioBytes, offset, length);
+			}
+		}
+	}
+
+	public void sendAACAudioToServer(ByteBuffer dataBuffer, int size) throws IOException, IllegalArgumentException {
+		if (canSendStream()) {
+			synchronized (this) {
+				sendAACAudioDataToServer(dataBuffer, size);
 			}
 		}
 	}
@@ -558,7 +580,7 @@ public class Client {
         return header;
     }
 
-	private ByteBuffer createPacketHeaderForSendingAudio(int size) {
+	private ByteBuffer createPacketHeaderForSendingAudio(int size, int streamFormat) {
 		ByteBuffer header = ByteBuffer.allocate(EZ_DISPLAY_HEADER_SIZE);
 		header.order(ByteOrder.LITTLE_ENDIAN);	
 		// Sequence
@@ -571,7 +593,7 @@ public class Client {
 		header.put((byte) 16);
 		header.put((byte) 0); // reserve0
 		header.put((byte) 0); // reserve1
-		header.putInt(STREAM_FORMAT_PCM); //jpeg == 1;
+		header.putInt(streamFormat);
 		header.putInt(0);
 		header.putInt(0);
 		header.putInt(size);
