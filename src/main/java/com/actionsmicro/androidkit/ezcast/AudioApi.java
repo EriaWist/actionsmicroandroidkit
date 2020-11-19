@@ -2,16 +2,13 @@ package com.actionsmicro.androidkit.ezcast;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 public interface AudioApi extends Api {
 
-    /**
-     * Play PCM data on the device.
-     * @param input InputStream which wraps the PCM data.
-     * @throws Exception
-     * @since 2.3
-     */
-    public void sendAudioEncodedData(InputStream inputStream)
+    public void sendAudioEncodedData(InputStream inputStream,int offset , int length)
     		throws IllegalArgumentException, IOException;
 
+
+    public void sendAACAudioEncodedData(ByteBuffer dataBuffer, int size) throws IllegalArgumentException, IOException;
 }
