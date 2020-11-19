@@ -99,4 +99,11 @@ public abstract class DeviceInfo implements Parcelable, Comparable<DeviceInfo> {
 	 */
 	public abstract boolean supportAVSplit();
 
+	/**
+	 * To determine whether the device supports aaceld.
+	 * @return Whether the device supports aaceld.
+	 * @since 2.13
+	 */
+	public abstract boolean supportAACELD();
+
 }

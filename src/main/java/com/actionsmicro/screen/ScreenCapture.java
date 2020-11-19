@@ -14,6 +14,8 @@ import android.util.DisplayMetrics;
 import android.view.Surface;
 import android.view.WindowManager;
 
+import com.actionsmicro.audio.AudioCapture;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -30,6 +32,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     public static final String RESULT_CODE_KEY = "actions.service.result.code.key";
     public static final String RESULT_INTENT_KEY = "actions.service.result.intent.key";
     public static final String VIRTUAL_DISPLAY_NAME = "SCREENCAST_VIRTUAL";
+    private boolean needCaptureAudio = false;
 
     private Surface mSurface;
     private MediaProjection mMediaProjection;
@@ -50,6 +53,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     private DisplayManager.DisplayListener displayListener;
     private MediaProjection.Callback mProjectionCallback;
     private boolean hasCodecData;
+    private AudioCapture mAudioCapture;
 
     public void setDisplayListener(DisplayManager.DisplayListener displayListener) {
         this.displayListener = displayListener;
@@ -57,6 +61,10 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
 
     public void setMediaCallback(MediaCodec.Callback mediaCallback) {
         this.mediaCallback = mediaCallback;
+    }
+
+    public void setAudioDataCallback(AudioCapture.AudioDataCallback audioDataCallback) {
+        this.audioDataCallback = audioDataCallback;
     }
 
     public interface DataCallback {
@@ -70,6 +78,7 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     private MediaFormatI mediaFormatI;
     private MediaCodec.Callback mediaCallback;
     private DataCallback dataCallback;
+    private AudioCapture.AudioDataCallback audioDataCallback;
 
     public void setDataCallback(DataCallback dataCallback) {
         this.dataCallback = dataCallback;
@@ -120,6 +129,16 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
 
     }
 
+    public ScreenCapture(Context context, Intent intent, int width, int height, MediaFormatI mediaFormatI, boolean needCaptureAudio) {
+        this.resultCode = intent.getIntExtra(RESULT_CODE_KEY, -10001);
+        this.resultIntent = intent.getParcelableExtra(RESULT_INTENT_KEY);
+        this.mediaFormatI = mediaFormatI;
+        this.width = width;
+        this.height = height;
+        this.needCaptureAudio = needCaptureAudio;
+
+        init(context);
+    }
 
     private void init(final Context context) {
         mDisplayManager = (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
@@ -269,6 +288,18 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         }
 
         mDisplayManager.registerDisplayListener(this, null);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && needCaptureAudio) {
+            mAudioCapture = new AudioCapture(mMediaProjection, new AudioCapture.AudioDataCallback() {
+                @Override
+                public void onAudioDataAvailable(ByteBuffer dataBuffer, int size) {
+                    if(audioDataCallback != null){
+                        audioDataCallback.onAudioDataAvailable(dataBuffer, size);
+                    }
+                }
+            });
+            mAudioCapture.startRecording();
+        }
     }
 
     public void restart(int width, int height) {
@@ -287,6 +318,11 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         if (mVirtualDisplay != null) {
             mVirtualDisplay.release();
             mVirtualDisplay = null;
+        }
+
+        if(mAudioCapture != null){
+            mAudioCapture.release();
+            mAudioCapture = null;
         }
         tearDownMediaProjection();
 
@@ -369,4 +405,5 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         Intent signalFloatingWindow = new Intent(context, FloatSignalWindow.class);
         context.stopService(signalFloatingWindow);
     }
+
 }
