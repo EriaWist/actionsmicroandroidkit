@@ -100,4 +100,7 @@ dependencies {
     //    compile 'com.android.support:support-core-utils:28.0.0';
     compile(name: 'libvlc', ext: 'aar')
     implementation 'com.squareup.okhttp3:okhttp:3.8.1'
+    implementation ('com.actionsmicro.amlib:mediacodec:0.0.1@aar') {
+        transitive true
+    }
 }
