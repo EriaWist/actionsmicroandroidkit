@@ -1,5 +1,12 @@
 apply plugin: 'com.android.library'
 
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+    maven { url 'http://4thline.org/m2' }
+}
+
 android {
     compileSdkVersion rootProject.compileSdkVersion
     buildToolsVersion rootProject.buildToolsVersion
@@ -55,17 +62,9 @@ android {
 //    }
 }
 
-repositories {
-    flatDir {
-        dirs 'libs'
-    }
-}
-
 dependencies {
     api 'com.google.code.gson:gson:2.2.4'
     compile(name: 'aiurjsproxy', ext: 'aar')
-    compile files('libs/cling-core-2.0.1.jar')
-    compile files('libs/cling-support-2.0.1.jar')
     compile files('libs/commons-net-3.3.jar')
     compile files('libs/dd-plist.jar')
     compile files('libs/hamcrest-core-1.1.jar')
@@ -88,9 +87,6 @@ dependencies {
     compile files('libs/jsonrpc2-base-1.34.4.jar')
     compile files('libs/jsonrpc2-client-1.14.4.jar')
     compile files('libs/jsonrpc2-server-1.10.1.jar')
-    compile files('libs/seamless-http-1.1.0.jar')
-    compile files('libs/seamless-util-1.1.0.jar')
-    compile files('libs/seamless-xml-1.1.0.jar')
     compile files('libs/slf4j-jdk14-1.7.7.jar')
     api 'androidx.appcompat:appcompat:' + rootProject.jetpackLibVersion
     api 'androidx.mediarouter:mediarouter:' + rootProject.jetpackLibVersion
@@ -103,4 +99,9 @@ dependencies {
     implementation ('com.actionsmicro.amlib:mediacodec:0.0.1@aar') {
         transitive true
     }
+
+    // Cling
+    api 'org.fourthline.cling:cling-support:2.1.2-SNAPSHOT'
+    api 'org.fourthline.cling:cling-core:2.1.2-SNAPSHOT'
+    //Other dependencies required by Cling
 }
