@@ -1,40 +1,24 @@
 package com.actionsmicro.web;
 
-import android.net.Uri;
-
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.UUID;
 
-import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
 
-import com.actionsmicro.utils.InputStreamKnownSizeBody;
 import com.actionsmicro.utils.Log;
 
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
@@ -58,7 +42,7 @@ public class Utils {
 				trustAllHosts();
 				HttpsURLConnection https = (HttpsURLConnection) url
 						.openConnection();
-				https.setHostnameVerifier(DO_NOT_VERIFY);
+				https.setHostnameVerifier(new CertifiedHostNameVerier(server));
 				conn = https;
 			} else {
 				conn = (HttpURLConnection) url.openConnection();
@@ -157,9 +141,4 @@ public class Utils {
 
 	}
 
-	public static final HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
-		public boolean verify(String hostname, SSLSession session) {
-			return true;
-		}
-	};
 }

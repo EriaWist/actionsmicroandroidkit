@@ -1,7 +1,9 @@
 package com.actionsmicro.helper;
 
+import com.actionsmicro.utils.Log;
 import com.koushikdutta.async.http.AsyncHttpClient;
 
+import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
@@ -13,7 +15,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 public class SSLHelper {
-    public static void trustSSL(AsyncHttpClient asyncHttpClient) {
+    public static void trustSSL(AsyncHttpClient asyncHttpClient, URL url) {
         SSLContext sslContext = null;
         TrustManager[] trustManagers = null;
         try {
@@ -38,7 +40,10 @@ public class SSLHelper {
         asyncHttpClient.getSSLSocketMiddleware().setHostnameVerifier(new HostnameVerifier() {
             @Override
             public boolean verify(String s, SSLSession sslSession) {
-                return true;
+                if(url.getHost().contains(s)){
+                    return true;
+                }
+                return false;
             }
         });
     }
