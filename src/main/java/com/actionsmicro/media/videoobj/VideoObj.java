@@ -1,6 +1,8 @@
 package com.actionsmicro.media.videoobj;
 
 
+import org.json.JSONObject;
+
 import java.util.List;
 
 // POJO
@@ -13,7 +15,7 @@ public class VideoObj {
     private List<VideoCodec> video;
     private List<AudioCodec> audio;
     private List<String> cutlist;
-    private String header;
+    private JSONObject header;
     private String type;
     // for MusicMediaItem
     private String index;
@@ -31,7 +33,7 @@ public class VideoObj {
         return cutlist;
     }
 
-    public String getHeader() {
+    public JSONObject getHeader() {
         return header;
     }
 
