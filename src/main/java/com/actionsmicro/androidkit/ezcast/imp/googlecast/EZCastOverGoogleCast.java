@@ -744,7 +744,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 										Log.d(TAG, "pending resolution:" + resolution);
 									}
 									if (mediaPlayerStateListener != null) {
-										mediaPlayerStateListener.mediaPlayerDidFailed(EZCastOverGoogleCast.this, AV_RESULT_ERROR_GENERIC); //TODO do code conversion 
+										mediaPlayerStateListener.mediaPlayerDidFailed(EZCastOverGoogleCast.this, AV_RESULT_ERROR_GENERIC,""); //TODO do code conversion
 									}
 									if (trackableApi != null) {
 										trackableApi.setMediaUsageResultCode(String.valueOf(status.getStatusCode()), AV_RESULT_ERROR_GENERIC);
@@ -761,7 +761,7 @@ public class EZCastOverGoogleCast implements DisplayApi, MediaPlayerApi {
 					}
 				} else {
 					if (mediaPlayerStateListener != null) {
-						mediaPlayerStateListener.mediaPlayerDidFailed(EZCastOverGoogleCast.this, AV_RESULT_ERROR_START_INIT_FAILED);
+						mediaPlayerStateListener.mediaPlayerDidFailed(EZCastOverGoogleCast.this, AV_RESULT_ERROR_START_INIT_FAILED,"");
 					}
 					launcheEZCastApp(isDisplaying);
 				}

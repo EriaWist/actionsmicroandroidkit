@@ -118,7 +118,7 @@ public class AirPlayMediaPlayerApi extends AirPlayApi implements MediaPlayerApi 
 			public void onVideoError(int errorCode) {
 				setMediaUsageResultCode(String.valueOf(errorCode), mappingAirPlayError(errorCode));
 				if (mediaPlayerStateListener != null) {
-					mediaPlayerStateListener.mediaPlayerDidFailed(AirPlayMediaPlayerApi.this, mappingAirPlayError(errorCode));
+					mediaPlayerStateListener.mediaPlayerDidFailed(AirPlayMediaPlayerApi.this, mappingAirPlayError(errorCode), "");
 				}
 			}
 		});

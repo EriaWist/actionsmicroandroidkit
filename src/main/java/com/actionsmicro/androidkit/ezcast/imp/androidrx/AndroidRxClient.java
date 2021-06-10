@@ -386,7 +386,7 @@ public class AndroidRxClient implements DisplayApi, MediaPlayerApi {
 					Log.d(TAG, EZCASTPLAYER_ONERROR+":"+errorCode);
 					currentState = State.STOPPED;
 					if (mediaPlayerStateListener != null) {
-						mediaPlayerStateListener.mediaPlayerDidFailed(AndroidRxClient.this, errorCode);
+						mediaPlayerStateListener.mediaPlayerDidFailed(AndroidRxClient.this, errorCode,"");
 					}
 				} else if (EZCASTPLAYER_ONPLAY.equals(notification.getMethod())) {
 					Log.d(TAG, EZCASTPLAYER_ONPLAY+":");

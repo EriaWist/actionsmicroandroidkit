@@ -33,8 +33,8 @@ public class AndroidRxMediaPlayerApi extends AndroidRxApi implements
 
 				@Override
 				public void mediaPlayerDidFailed(MediaPlayerApi api,
-						int resultCode) {
-					mediaPlayerStateListener.mediaPlayerDidFailed(AndroidRxMediaPlayerApi.this, resultCode);
+						int resultCode, String videoObj) {
+					mediaPlayerStateListener.mediaPlayerDidFailed(AndroidRxMediaPlayerApi.this, resultCode,"");
 				}
 
 				@Override

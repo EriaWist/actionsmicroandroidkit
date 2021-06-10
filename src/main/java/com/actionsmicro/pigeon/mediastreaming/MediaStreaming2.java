@@ -321,6 +321,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
 
                     case RPCAPI.RPC_NOTIFICATION_ONERROR:
                         Log.d(TAG, "RPC_NOTIFICATION_ONERROR");
+                        String video = params.get("video").toString();
                         String error = params.get("error").toString();
 
                         Log.d(TAG, "error " + error);
@@ -350,7 +351,7 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                                 break;
                         }
                         if (mMediaApi != null && mMediaStateListener != null) {
-                            mMediaStateListener.mediaPlayerDidFailed(mMediaApi, errCode);
+                            mMediaStateListener.mediaPlayerDidFailed(mMediaApi, errCode, video);
                         }
                         return;
 

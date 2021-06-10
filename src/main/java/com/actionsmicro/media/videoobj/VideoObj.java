@@ -8,6 +8,8 @@ import java.util.List;
 // POJO
 public class VideoObj {
     private int code;
+    private String ercode;
+    private String remark;
     private String title;
     private String image;
     private String src;
@@ -54,6 +56,14 @@ public class VideoObj {
 
     public int getCode() {
         return code;
+    }
+
+    public String getErcode() {
+        return ercode;
+    }
+
+    public String getRemark() {
+        return remark;
     }
 
     public String getTitle() {
