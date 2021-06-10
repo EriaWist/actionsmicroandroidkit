@@ -145,7 +145,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 							if (transportStatus != null && transportStatus.getValue().equals("ERROR_OCCURRED")) {
 								if (mediaPlayerStateListener != null) {
 									// TODO mapping error
-									mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC);
+									mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC,"");
 								}
 							}
 						}
@@ -367,7 +367,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 				Log.e(TAG+".SetAVTransportURI", defaultMsg);
 				if (mediaPlayerStateListener != null) {
 					// TODO mapping error
-					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC);
+					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC,"");
 				}
 			}
 			@Override
@@ -393,7 +393,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 				Log.e(TAG, defaultMsg);
 				if (mediaPlayerStateListener != null) {
 					// TODO mapping error
-					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC);
+					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC,"");
 				}
 			}
 		});
@@ -464,7 +464,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 					UpnpResponse arg1, String arg2) {
 				if (mediaPlayerStateListener != null) {
 					// TODO mapping error
-					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC);
+					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC,"");
 				}
 			}
 			
@@ -478,7 +478,7 @@ public class DlnaMediaPlayerApi extends DlnaApi implements MediaPlayerApi {
 					UpnpResponse arg1, String arg2) {
 				if (mediaPlayerStateListener != null) {
 					// TODO mapping error
-					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC);
+					mediaPlayerStateListener.mediaPlayerDidFailed(DlnaMediaPlayerApi.this, AV_RESULT_ERROR_GENERIC,"");
 				}
 			}
 

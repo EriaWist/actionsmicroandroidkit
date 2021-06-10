@@ -187,7 +187,7 @@ public class PigeonMediaPlayerApi extends PigeonApi implements MediaPlayerApi {
 					setMediaUsageResultCode(resultString, resultCode);
 					commitMediaUsageTracking();
 					if (mediaPlayerStateListener != null) {
-						mediaPlayerStateListener.mediaPlayerDidFailed(PigeonMediaPlayerApi.this, resultCode);
+						mediaPlayerStateListener.mediaPlayerDidFailed(PigeonMediaPlayerApi.this, resultCode,"");
 					}
 				}
 

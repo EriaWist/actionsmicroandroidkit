@@ -213,9 +213,12 @@ public interface MediaPlayerApi extends Api {
 		 * Called when media is failed to be played.
 		 * @param api The media player API object.
 		 * @param resultCode Error code of failure. E.g. {@link #AV_RESULT_ERROR_GENERIC} and so on.
-		 * @since 2.1
+		 * @param videoObj VideoObj is JSONObject which contains error msg, put empty string when
+		 *                 you don't have VideoObj
+		 * @since 2.14
 		 */
-		public abstract void mediaPlayerDidFailed(MediaPlayerApi api, int resultCode);
+
+		public abstract void mediaPlayerDidFailed(MediaPlayerApi api, int resultCode, String videoObj);
 		/**
 		 * Called when current position of playback is changed.
 		 * @param api The media player API object.
