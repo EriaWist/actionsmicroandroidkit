@@ -180,6 +180,8 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
             }
 
             private void getMediaSouce(String video, Object id) {
+                // TODO test code, should not commit
+//                video = "{\"url\":\"https://www.youtube.com/watch?v=123131\",\"option\":{\"video\":{\"vcodec\":\"h264\",\"max\":1080,\"fps\":30},\"audio\":{\"acodec\":\"aac\"},\"basic\":{\"vcodec\":\"h264\",\"max\":1080,\"fps\":30,\"acodec\":\"aac\"}}}";
                 mMediaSoucehelper.getMediaSourceViaFw(video, new WebVideoSourceHelper.Listener() {
                     @Override
                     public void onVideoFound(String s, String s1, String s2, String s3, String s4, String s5) {
