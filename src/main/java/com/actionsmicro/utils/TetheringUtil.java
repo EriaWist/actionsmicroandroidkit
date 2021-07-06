@@ -68,6 +68,15 @@ public class TetheringUtil {
                         tetherSettings = new Intent();
                         tetherSettings.setClassName("com.android.settings", "com.android.settings.Settings$WirelessSettingsActivity");
                     }
+                } else if (Build.MANUFACTURER.equalsIgnoreCase("HUAWEI")) {
+                    tetherSettings.setClassName("com.android.settings", "com.android.settings.TetherSettings");
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        Intent tetherIntent = new Intent();
+                        tetherIntent.setClassName("com.android.settings", "com.android.settings.Settings$TetherSettingsActivity");
+                        if (tetherIntent.resolveActivity(pm) != null) {
+                            tetherSettings = tetherIntent;
+                        }
+                    }
                 } else {
                     tetherSettings.setClassName("com.android.settings", "com.android.settings.TetherSettings");
                 }
