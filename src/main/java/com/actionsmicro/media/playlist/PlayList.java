@@ -5,13 +5,15 @@ import com.actionsmicro.media.control.MediaPlayListListener;
 import com.actionsmicro.media.videoobj.VideoObj;
 import com.google.gson.annotations.Expose;
 
+import org.json.JSONObject;
+
 import java.util.List;
 
 public class PlayList {
     private String id;
     private List<VideoObj> playlist;
     private int start_index;
-    private String error;
+    private JSONObject error;
 
     @Expose(serialize = false, deserialize = false)
     private String rawJson;
@@ -28,7 +30,7 @@ public class PlayList {
         return start_index;
     }
 
-    public String getError() {
+    public JSONObject getError() {
         return error;
     }
 
