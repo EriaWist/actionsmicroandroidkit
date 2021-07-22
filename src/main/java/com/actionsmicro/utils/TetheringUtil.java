@@ -64,7 +64,13 @@ public class TetheringUtil {
                 } else if (Build.MANUFACTURER.equalsIgnoreCase("xiaomi")) {
                     tetherSettings.setClassName("com.android.settings", "com.android.settings.TetherSettings");
                     String miUIVersion = getMiUIVersion();
-                    if (!miUIVersion.isEmpty() && miUIVersion.compareTo(MIUI_10_RELEASE_DATE) >= 0) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        Intent tetherIntent = new Intent();
+                        tetherIntent.setClassName("com.android.settings", "com.android.settings.Settings$TetherSettingsActivity");
+                        if (tetherIntent.resolveActivity(pm) != null) {
+                            tetherSettings = tetherIntent;
+                        }
+                    } else if (!miUIVersion.isEmpty() && miUIVersion.compareTo(MIUI_10_RELEASE_DATE) >= 0) {
                         tetherSettings = new Intent();
                         tetherSettings.setClassName("com.android.settings", "com.android.settings.Settings$WirelessSettingsActivity");
                     }
@@ -227,9 +233,9 @@ public class TetheringUtil {
             Class<?> c = Class.forName("android.os.SystemProperties");
             Method get = c.getMethod("get", String.class);
             String miuicode = (String) get.invoke(c, "ro.miui.version.code_time");
-            if(miuicode != null && !miuicode.isEmpty()){
+            if (miuicode != null && !miuicode.isEmpty()) {
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd");
-                miui = sdf.format(Long.parseLong(miuicode)*1000L);
+                miui = sdf.format(Long.parseLong(miuicode) * 1000L);
             }
 
         } catch (InvocationTargetException ite) {
