@@ -10,6 +10,7 @@ import android.webkit.MimeTypeMap;
 import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.Reachability;
+import com.actionsmicro.utils.TetheringUtil;
 import com.actionsmicro.utils.Utils;
 
 import java.io.File;
@@ -251,4 +252,17 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 		}
         return mime;
     }
+
+	public static SimpleContentUriHttpFileServer buildServer(Context context, Uri url) {
+		String vpn = Device.getVPNIP();
+		if(!vpn.isEmpty()){
+			return new SimpleContentUriHttpFileServer(context, url, vpn, 0);
+		} else if (TetheringUtil.isUsbTethered(context)) {
+			// USB Tether's ip is 192.168.42.129, reference:Tethering.java from aosp
+			// private static final String USB_NEAR_IFACE_ADDR      = "192.168.42.129";
+			return new SimpleContentUriHttpFileServer(context, url, "192.168.42.129", 0);
+		} else {
+			return new SimpleContentUriHttpFileServer(context, url, 0);
+		}
+	}
 }

@@ -15,6 +15,7 @@ import com.actionsmicro.media.videoobj.VideoObj;
 import com.actionsmicro.pigeon.MediaStreaming;
 import com.actionsmicro.pigeon.MediaStreamingFileDataSource;
 import com.actionsmicro.utils.CipherUtil;
+import com.actionsmicro.utils.Device;
 import com.actionsmicro.utils.Log;
 import com.actionsmicro.utils.TetheringUtil;
 import com.actionsmicro.utils.Utils;
@@ -458,22 +459,14 @@ public class MediaStreaming2 implements IMediaStreaming2, ClientHandler {
                 String subtitlePath = caption.getUrl();
                 Uri subtitleUri = buildLocalUri(subtitlePath);
 
-                if (TetheringUtil.isUsbTethered(context)) {
-                    subtitleHttpFileServer = new SimpleContentUriHttpFileServer(context, subtitleUri, "192.168.42.129", 0);
-                } else {
-                    subtitleHttpFileServer = new SimpleContentUriHttpFileServer(context, subtitleUri, 0);
-                }
+                subtitleHttpFileServer = SimpleContentUriHttpFileServer.buildServer(context, subtitleUri);
                 subtitleHttpFileServer.start();
 
                 String subTitleUrlPath = subtitleHttpFileServer.getServerUrl() + "/SubTitle?filename=" + URLEncoder.encode(subtitleUri.toString(), "UTF-8");
                 caption.setUrl(subTitleUrlPath);
             }
 
-            if (TetheringUtil.isUsbTethered(context)) {
-                simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, "192.168.42.129", 0);
-            } else {
-                simpleHttpFileServer = new SimpleContentUriHttpFileServer(context, mediaUri, 0);
-            }
+            simpleHttpFileServer = SimpleContentUriHttpFileServer.buildServer(context,mediaUri);
             simpleHttpFileServer.start();
 
             for (int i = 0; i < result.getPlaylist().size(); i++) {
