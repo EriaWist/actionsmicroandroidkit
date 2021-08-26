@@ -18,7 +18,10 @@ import android.view.WindowManager;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -173,6 +176,33 @@ public class Device {
 		return DEFAULT_WIFIAP_ADDRESS;
 	}
 
+	public static String getVPNIP() {
+		String iface = "";
+		try {
+			for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+				if (networkInterface.isUp())
+					iface = networkInterface.getName();
+				if (iface.contains("tun") || iface.contains("ppp") || iface.contains("pptp")) {
+					for (Enumeration<InetAddress> enumIpAddr = networkInterface.getInetAddresses(); enumIpAddr
+							.hasMoreElements(); ) {
+						InetAddress inetAddress = enumIpAddr.nextElement();
+						if (!inetAddress.isLoopbackAddress()
+								&& (inetAddress.getAddress().length == 4)) {
+							Log.d(TAG, inetAddress.getHostAddress());
+							return inetAddress.getHostAddress();
+						}
+					}
+					return "";
+				}
+			}
+		} catch (SocketException e1) {
+			e1.printStackTrace();
+		}
+
+		return "";
+	}
+
+
 	public static String getHostIpAddress(Context context, boolean useIPv4) {
 		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
@@ -185,7 +215,10 @@ public class Device {
 				(ip >> 16 & 0xff),
 				(ip >> 24 & 0xff));
 
-		if (Reachability.isWifiApEnabled(context)) {
+		String vpnIP = getVPNIP();
+		if (!vpnIP.isEmpty()) {
+			return vpnIP;
+		} else if (Reachability.isWifiApEnabled(context)) {
 			ipString = getWifiApIpAddress();
 		} else {
 			if (ipString.equals("0.0.0.0")) {
