@@ -298,7 +298,8 @@ public class EzCastSdk {
 				} catch (Throwable t) {
 					Log.e(TAG, t.getLocalizedMessage());					
 				} finally {
-					tracker.log(new AppInfo(context, fetchedlocation, SDK_VERSION_STRING));
+					// log is no longer needed
+//					tracker.log(new AppInfo(context, fetchedlocation, SDK_VERSION_STRING));
 				}
 			}
 		}.start();
