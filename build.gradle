@@ -1,10 +1,10 @@
 apply plugin: 'com.android.library'
 
 repositories {
-    flatDir {
-        dirs 'libs'
+    maven {
+        url 'http://4thline.org/m2'
+        allowInsecureProtocol = true
     }
-    maven { url 'http://4thline.org/m2' }
 }
 
 android {
@@ -63,31 +63,32 @@ android {
 }
 
 dependencies {
+    implementation project(':actionsmicroandroidkit:aiurjsproxy')
+    implementation project(':actionsmicroandroidkit:libvlc')
     api 'com.google.code.gson:gson:2.2.4'
-    compile(name: 'aiurjsproxy', ext: 'aar')
-    compile files('libs/commons-net-3.3.jar')
-    compile files('libs/dd-plist.jar')
-    compile files('libs/hamcrest-core-1.1.jar')
-    compile files('libs/hamcrest-library-1.1.jar')
-    compile files('libs/httpmime-4.0.3.jar')
-    compile files('libs/jald.jar')
-    compile files('libs/javax.servlet-3.0.jar')
-    compile files('libs/jetty-client-8.1.16.v20140903.jar')
-    compile files('libs/jetty-continuation-8.1.16.v20140903.jar')
-    compile files('libs/jetty-http-8.1.16.v20140903.jar')
-    compile files('libs/jetty-io-8.1.16.v20140903.jar')
-    compile files('libs/jetty-jmx-8.1.16.v20140903.jar')
-    compile files('libs/jetty-security-8.1.16.v20140903.jar')
-    compile files('libs/jetty-server-8.1.16.v20140903.jar')
-    compile files('libs/jetty-servlet-8.1.16.v20140903.jar')
-    compile files('libs/jetty-util-8.1.16.v20140903.jar')
-    compile files('libs/jmock-2.5.1.jar')
-    compile files('libs/jmock-junit3-2.5.1.jar')
-    compile files('libs/json-smart-1.2.jar')
-    compile files('libs/jsonrpc2-base-1.34.4.jar')
-    compile files('libs/jsonrpc2-client-1.14.4.jar')
-    compile files('libs/jsonrpc2-server-1.10.1.jar')
-    compile files('libs/slf4j-jdk14-1.7.7.jar')
+    api files('libs/commons-net-3.3.jar')
+    api files('libs/dd-plist.jar')
+    api files('libs/hamcrest-core-1.1.jar')
+    api files('libs/hamcrest-library-1.1.jar')
+    api files('libs/httpmime-4.0.3.jar')
+    api files('libs/jald.jar')
+    api files('libs/javax.servlet-3.0.jar')
+    api files('libs/jetty-client-8.1.16.v20140903.jar')
+    api files('libs/jetty-continuation-8.1.16.v20140903.jar')
+    api files('libs/jetty-http-8.1.16.v20140903.jar')
+    api files('libs/jetty-io-8.1.16.v20140903.jar')
+    api files('libs/jetty-jmx-8.1.16.v20140903.jar')
+    api files('libs/jetty-security-8.1.16.v20140903.jar')
+    api files('libs/jetty-server-8.1.16.v20140903.jar')
+    api files('libs/jetty-servlet-8.1.16.v20140903.jar')
+    api files('libs/jetty-util-8.1.16.v20140903.jar')
+    api files('libs/jmock-2.5.1.jar')
+    api files('libs/jmock-junit3-2.5.1.jar')
+    api files('libs/json-smart-1.2.jar')
+    api files('libs/jsonrpc2-base-1.34.4.jar')
+    api files('libs/jsonrpc2-client-1.14.4.jar')
+    api files('libs/jsonrpc2-server-1.10.1.jar')
+    api files('libs/slf4j-jdk14-1.7.7.jar')
     api 'androidx.appcompat:appcompat:' + rootProject.jetpackLibVersion
     // update MediaRouter lib to 1.2.2 to avoid crash issue, refer T10432
     api 'androidx.mediarouter:mediarouter:1.2.2'
@@ -95,7 +96,6 @@ dependencies {
     api 'com.google.android.gms:play-services-cast-framework:' + rootProject.googleCastFrameworkVersion
     api 'androidx.multidex:multidex:2.0.0'
     //    compile 'com.android.support:support-core-utils:28.0.0';
-    compile(name: 'libvlc', ext: 'aar')
     implementation 'com.squareup.okhttp3:okhttp:3.8.1'
     implementation ('com.actionsmicro.amlib:mediacodec:0.0.1@aar') {
         transitive true
