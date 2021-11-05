@@ -4,3 +4,5 @@ gen/
 local.properties
 build
 actionsMicroAndroidKit.iml
+.idea
+.gradle
