@@ -63,6 +63,8 @@ android {
 }
 
 dependencies {
+    implementation project(':actionsmicroandroidkit:aiurjsproxy')
+    implementation project(':actionsmicroandroidkit:libvlc')
     api 'com.google.code.gson:gson:2.2.4'
     api files('libs/commons-net-3.3.jar')
     api files('libs/dd-plist.jar')
