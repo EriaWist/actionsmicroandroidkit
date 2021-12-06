@@ -1026,8 +1026,8 @@ public class Falcon {
 		receivingThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-				synchronized(Thread.currentThread()) {
-					Thread.currentThread().notify();
+				synchronized(receivingThread) {
+					receivingThread.notify();
 				}
 				if (broadcastSocket != null) {
 					try {
@@ -1063,10 +1063,11 @@ public class Falcon {
 				}
 			}
 		});
+
 		receivingThread.start();
 		synchronized(receivingThread) {
 			try {
-				receivingThread.wait();
+				receivingThread.wait(3000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -1158,8 +1159,6 @@ public class Falcon {
 		return generateCommand(username, hostname, IPMSG_NOOPERATION);
 	}
 	private void sendLookupCommand() {
-		Log.d(TAG, "sendLookupCommand");	
-		
 		Thread commandThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
