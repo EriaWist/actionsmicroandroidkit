@@ -186,15 +186,25 @@ public class Client {
 		cleanUp(true);	
 		bitmapManager = null;
 		onExceptionListener = null;
-		onExceptionObservable.deleteObservers();
-		onExceptionObservable = null;
-		exceptionListeners.clear();
-		exceptionListeners = null;
+		if (onExceptionObservable != null) {
+			onExceptionObservable.deleteObservers();
+			onExceptionObservable = null;
+		}
+		if (exceptionListeners != null) {
+			exceptionListeners.clear();
+			exceptionListeners = null;
+		}
+
 		onNotificationListener = null;
-		onNotificationObservable.deleteObservers();
-		onNotificationObservable = null;
-		notificationListeners.clear();
-		notificationListeners = null;
+		if (onNotificationObservable != null) {
+			onNotificationObservable.deleteObservers();
+			onNotificationObservable = null;
+		}
+
+		if(notificationListeners != null){
+			notificationListeners.clear();
+			notificationListeners = null;
+		}
 	}
 	private void cleanUp(boolean stop) {
 		if (imgCompressionBuffer != null) {
