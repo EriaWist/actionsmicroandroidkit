@@ -14,7 +14,7 @@ import com.actionsmicro.pigeon.mediastreaming.MediaStreaming2;
 import com.actionsmicro.utils.Log;
 
 public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
-    private static final String TAG = "ClientV2";
+    private static final String TAG = "ClientV2P";
 
     private IMediaStreaming2 mMediaStreaming = new IMediaStreaming2() {
         @Override
@@ -193,6 +193,16 @@ public class ClientV2P extends ClientV2 implements IMediaStreaming2 {
     @Override
     public void stopMediaStreaming() {
         mMediaStreaming.stopMediaStreaming();
+    }
+
+    @Override
+    protected boolean shouldSendHeartbeat() {
+        if(mMediaStreaming == null) {
+            Log.d(TAG, "mediaStreaming is released, should not send heartbeat anymore");
+            shouldStop = true;
+            return false;
+        }
+        return true;
     }
 
     @Override
