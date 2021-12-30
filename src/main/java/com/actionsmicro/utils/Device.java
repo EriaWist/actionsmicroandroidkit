@@ -8,6 +8,7 @@ import android.content.res.Resources;
 import android.graphics.Point;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
@@ -36,6 +37,7 @@ public class Device {
 	public static final String APP_UNIQUEID_PREF_KEY = "com.actionsmicro.appuuid";
 	public static final String APP_UNIQUE_IDENTIFIER_PREF_KEY = "com.actionsmicro.unique_identifier";
 	public static final String DEFAULT_WIFIAP_ADDRESS = "192.168.43.1";
+	public static final String DEFAULT_USB_NEAR_IFACE_ADDR = "192.168.42.129";
 
 	static public int getDeviceNaturlOrientation(Activity activity) {
 
@@ -174,6 +176,32 @@ public class Device {
 			Log.e(TAG, ex.toString());
 		}
 		return DEFAULT_WIFIAP_ADDRESS;
+	}
+
+	public static String getTetheringIpAddress() {
+		if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+			return DEFAULT_USB_NEAR_IFACE_ADDR;
+		}
+		try {
+			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
+					.hasMoreElements();) {
+				NetworkInterface intf = en.nextElement();
+				if (intf.getName().startsWith("rndis") || intf.getName().startsWith("usb")) {
+					for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr
+							.hasMoreElements();) {
+						InetAddress inetAddress = enumIpAddr.nextElement();
+						if (!inetAddress.isLoopbackAddress()
+								&& (inetAddress.getAddress().length == 4)) {
+							Log.d(TAG, inetAddress.getHostAddress());
+							return inetAddress.getHostAddress();
+						}
+					}
+				}
+			}
+		} catch (SocketException ex) {
+			Log.e(TAG, ex.toString());
+		}
+		return DEFAULT_USB_NEAR_IFACE_ADDR;
 	}
 
 	public static String getVPNIP() {

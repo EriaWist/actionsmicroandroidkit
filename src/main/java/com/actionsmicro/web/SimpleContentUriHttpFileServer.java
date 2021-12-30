@@ -260,7 +260,8 @@ public class SimpleContentUriHttpFileServer extends NanoHTTPD {
 		} else if (TetheringUtil.isUsbTethered(context)) {
 			// USB Tether's ip is 192.168.42.129, reference:Tethering.java from aosp
 			// private static final String USB_NEAR_IFACE_ADDR      = "192.168.42.129";
-			return new SimpleContentUriHttpFileServer(context, url, "192.168.42.129", 0);
+			String tetheringIP = Device.getTetheringIpAddress();
+			return new SimpleContentUriHttpFileServer(context, url, tetheringIP, 0);
 		} else {
 			return new SimpleContentUriHttpFileServer(context, url, 0);
 		}
