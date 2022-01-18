@@ -175,7 +175,7 @@ public class EzCastSdk {
 		}
 		initializing = true;
 		doSetupDeviceFinder(listener, filter);
-		fetchLocationAndLogAppInfo();
+//		fetchLocationAndLogAppInfo();
 		waitUntilInitTaskDone();
 	}
 	private void waitUntilInitTaskDone() {
@@ -231,6 +231,7 @@ public class EzCastSdk {
 			listener.onInitialized(EzCastSdk.this);
 		}
 	}
+	// TODO: no longer need since we don't use schemapush anymore
 	private void fetchLocationAndLogAppInfo() {
 		new Thread() {
 			Location fetchedlocation;
