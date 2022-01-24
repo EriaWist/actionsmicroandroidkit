@@ -344,7 +344,7 @@ public class ClientV2 extends Client implements MultiRegionsDisplay, MediaStream
 		
 		try {
 			synchronized (requestReceivedNotificaiton) {			
-				requestReceivedNotificaiton.wait(5000);
+				requestReceivedNotificaiton.wait();
 				Log.d(TAG, "requestReceivedNotificaiton wait returns");
 			}
 		} catch (InterruptedException e) {
