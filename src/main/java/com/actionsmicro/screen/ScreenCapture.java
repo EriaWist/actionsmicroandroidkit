@@ -169,7 +169,6 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
                 if (outData.length >= 5) {
                     int nalType = ((int) outData[4]) & 0x1f;
                     if (nalType == 7) {
-                        Log.d("gggg", "nalTypeg " + nalType);
                         restart = false;
                     }
                     dataCallback.dataBufferAvailable(outData, width, height);
