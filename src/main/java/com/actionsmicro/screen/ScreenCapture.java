@@ -343,12 +343,16 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     }
 
     private MediaFormat getMediaFormat() {
+        MediaFormat mediaFormat;
         if (mediaFormatI != null) {
-            return mediaFormatI.getMediaFormat();
+            mediaFormat = mediaFormatI.getMediaFormat();
         } else {
-            MediaFormat mediaFormat = getMediaFormat(960000 * 4, 24, 1);
-            return mediaFormat;
+            mediaFormat = getMediaFormat(960000 * 4, 24, 1);
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            mediaFormat.setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, 60);
+        }
+        return mediaFormat;
     }
 
     private MediaFormat getMediaFormat(int bitRate, int framerate, int iFrameInterval) {
