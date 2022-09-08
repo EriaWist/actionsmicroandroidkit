@@ -180,16 +180,16 @@ public class AudioCapture {
                                         byte[] pcmBuffer3 = new byte[len];
 
                                         for (int i = left; i < right; i++) {
-                                            float samplef1 = pcmBuffer[i] / 128.0f;
-                                            float samplef2 = pcmBuffer2[i] / 128.0f;
+                                            float samplef1 = pcmBuffer[i];
+                                            float samplef2 = pcmBuffer2[i];
                                             float mixed = samplef1 + samplef2;
                                             // mixed *= 0.8;
                                             // hard clipping
-                                            if (mixed > 1.0f) mixed = 1.0f;
+                                            if (mixed > 128.0f) mixed = 128.0f;
 
-                                            if (mixed < -1.0f) mixed = -1.0f;
+                                            if (mixed < -128.0f) mixed = -128.0f;
 
-                                            byte outputSample = (byte) (mixed * 128.0f);
+                                            byte outputSample = (byte) (mixed);
                                             pcmBuffer3[i - left] = outputSample;
                                         }
                                         inputBuffer.put(pcmBuffer3, 0, len);
@@ -204,6 +204,13 @@ public class AudioCapture {
                                         // only media
                                         int left = pos1;
                                         len = ret;
+                                        if (testPCMFile != null && ret > 0) {
+                                            try {
+                                                testPCMFile.write(pcmBuffer, pos1, ret);
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
                                         pos1 += len;
                                         inputBuffer.put(pcmBuffer, left, len);
                                     }
