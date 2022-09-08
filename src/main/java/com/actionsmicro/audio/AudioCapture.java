@@ -40,6 +40,8 @@ public class AudioCapture {
     private final AudioDataCallback mAudioDataCallBack;
     private final boolean DUMP_AUDIO = false;
     private static final boolean DEBUG_LOG = false;
+    private int pos1 = 0;
+    private int pos2 = 0;
 
     public interface AudioDataCallback {
         void onAudioDataAvailable(ByteBuffer dataBuffer, int size);
@@ -70,20 +72,29 @@ public class AudioCapture {
                 .build();
     }
 
+    public void startRecording(AudioRecord audioRecorder) {
+        if (AudioRecord.STATE_INITIALIZED == audioRecorder.getState() && AudioRecord.RECORDSTATE_STOPPED == audioRecorder.getRecordingState()) {
+            synchronized (audioRecorder) {
+                audioRecorder.startRecording();
+            }
+            debugLog("Start recording: " + audioRecorder.toString());
+        }
+    }
+
     public void stopRecording(AudioRecord audioRecorder) {
         if (AudioRecord.STATE_INITIALIZED == audioRecorder.getState() && AudioRecord.RECORDSTATE_RECORDING == audioRecorder.getRecordingState()) {
             synchronized (audioRecorder) {
                 audioRecorder.stop();
             }
-            Log.d(TAG, "Recording done…");
+            debugLog("Recording done…");
         }
     }
 
     public void startRecording() {
-        if (AudioRecord.STATE_INITIALIZED == mAudioRecorder.getState() && AudioRecord.RECORDSTATE_STOPPED == mAudioRecorder.getRecordingState()) {
-            mAudioRecorder.startRecording();
-            mAudioRecorder2.startRecording();
-            Log.d(TAG, "Start recording");
+        startRecording(mAudioRecorder);
+        startRecording(mAudioRecorder2);
+        if (AudioRecord.STATE_INITIALIZED == mAudioRecorder.getState() && AudioRecord.RECORDSTATE_RECORDING == mAudioRecorder.getRecordingState()) {
+            Log.d(TAG, "Already recording");
             new Thread() {
                 FileOutputStream testPCMFile = null;
                 FileOutputStream testPCMFile2 = null;
@@ -98,8 +109,8 @@ public class AudioCapture {
                             testPCMFile = new FileOutputStream(Environment.getExternalStorageDirectory().getPath() + "/Download/pcm.raw");
                             testPCMFile2 = new FileOutputStream(Environment.getExternalStorageDirectory().getPath() + "/Download/pcm2.raw");
                             testPCMFile3 = new FileOutputStream(Environment.getExternalStorageDirectory().getPath() + "/Download/pcm3.raw");
-//                            testAACFile = new FileOutputStream(Environment.getExternalStorageDirectory().getPath() + "/Download/adtsAAC.aac");
-//                            testRawAACFile = new FileOutputStream(Environment.getExternalStorageDirectory().getPath() + "/Download/rawAAC.aac");
+                            testAACFile = new FileOutputStream(Environment.getExternalStorageDirectory().getPath() + "/Download/adtsAAC.aac");
+                            testRawAACFile = new FileOutputStream(Environment.getExternalStorageDirectory().getPath() + "/Download/rawAAC.aac");
                         } catch (FileNotFoundException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
@@ -114,14 +125,12 @@ public class AudioCapture {
 
                         Looper.prepare();
                         final AudioRecord audioRecorder = mAudioRecorder;
+                        final Looper looper = Looper.myLooper();
                         final ByteBuffer aacBuffer = ByteBuffer.allocate(512 * 1024);
                         IAacEldEncoder codec = new NativeAacEldEncoder();
                         codec.setCallback(new IAacEldEncoder.Callback() {
                             private byte[] adtsHeader = new byte[7];
                             private int seq = 0;
-                            private int needSize = BUFFER_SIZE;
-                            int pos1 = 0;
-                            int pos2 = 0;
 
                             //   p1      p1n
                             //       p2       p2n
@@ -130,72 +139,98 @@ public class AudioCapture {
                             public void onInputBufferAvailable(@NonNull IAacEldEncoder codec, int index) {
                                 ByteBuffer inputBuffer = codec.getInputBuffer(index);
                                 inputBuffer.clear();
-                                long start = System.currentTimeMillis();
                                 int ret = audioRecorder.read(pcmBuffer, pos1, BUFFER_SIZE - pos1, AudioRecord.READ_NON_BLOCKING);
-                                int ret2 = mAudioRecorder2.read(pcmBuffer2, pos2, BUFFER_SIZE - pos2, AudioRecord.READ_NON_BLOCKING);
-                                Log.d("dddd", "elapse " + (System.currentTimeMillis() - start) + " need " + needSize + " ret " + ret + " ret2 " + ret2);
+                                int ret2 = isMicRecording() ? mAudioRecorder2.read(pcmBuffer2, pos2, BUFFER_SIZE - pos2, AudioRecord.READ_NON_BLOCKING) : 0;
                                 int len = 0;
-                                debugLog("onInputBufferAvailable audioRecorder.read: " + needSize);
-                                if (ret < 0 || ret2 < 0) {
-                                    Log.e("dddd", "onInputBufferAvailable audioRecorder.read failed: " + ret);
-                                } else if (ret > 0 || ret2 >0) {
-
+                                debugLog("onInputBufferAvailable audioRecorder.read: p1,p2 = " + pos1 + "," + pos2 + " ret1 = " + ret + " ret2 = " + ret2);
+                                if (ret < 0) {
+                                    Log.e(TAG, "onInputBufferAvailable audioRecorder.read failed: " + ret);
+                                    looper.quit();
+                                } else if (ret2 < 0) {
+                                    Log.e(TAG, "onInputBufferAvailable audioRecorder.read mic failed: " + ret);
+                                    if (isMicRecording()) {
+                                        Log.d(TAG, "still recording, should not fail");
+                                        looper.quit();
+                                    }
+                                } else if (ret > 0 || ret2 > 0) {
                                     audioRecorder.getTimestamp(audioTimestamp, AudioTimestamp.TIMEBASE_MONOTONIC);
                                     debugLog("onInputBufferAvailable AudioRecord timestamp position: " + audioTimestamp.framePosition + ", delta: " + (System.nanoTime() - audioTimestamp.nanoTime) / 1000000);
-                                    int left = Math.min(pos1,pos2);
-                                    if (testPCMFile != null && ret >0) {
-                                        try {
-                                            testPCMFile.write(pcmBuffer, pos1, ret);
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
+                                    if (isMicRecording()) {
+                                        int left = Math.min(pos1, pos2);
+                                        if (testPCMFile != null && ret > 0) {
+                                            try {
+                                                testPCMFile.write(pcmBuffer, pos1, ret);
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
                                         }
-                                    }
-                                    if (testPCMFile2 != null && ret2 >0) {
-                                        try {
-                                            testPCMFile2.write(pcmBuffer2, pos2, ret2);
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
+                                        if (testPCMFile2 != null && ret2 > 0) {
+                                            try {
+                                                testPCMFile2.write(pcmBuffer2, pos2, ret2);
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
                                         }
-                                    }
-                                    pos1 += ret;
-                                    pos2 += ret2;
-                                    int right = Math.min(pos1,pos2);
-                                    // mixed follow
-                                    // https://gist.github.com/mpuz/78e9e875df646698243affe1870dda58
-                                    len = right - left;
-                                    byte[] pcmBuffer3 = new byte[len];
+                                        pos1 += ret;
+                                        pos2 += ret2;
+                                        int right = Math.min(pos1, pos2);
+                                        // mixed follow
+                                        // https://gist.github.com/mpuz/78e9e875df646698243affe1870dda58
+                                        len = right - left;
+                                        byte[] pcmBuffer3 = new byte[len];
 
-                                    for (int i = left; i < right; i++) {
-                                        float samplef1 = pcmBuffer[i] / 128.0f * 0.3f;      //     2^7=128
-                                        float samplef2 = pcmBuffer2[i] / 128.0f * 2.0f;
-                                        float mixed = samplef1 + samplef2;
-                                        // mixed *= 0.8;
-                                        // hard clipping
-                                        if (mixed > 1.0f) mixed = 1.0f;
+                                        for (int i = left; i < right; i++) {
+                                            float samplef1 = pcmBuffer[i] / 128.0f;
+                                            float samplef2 = pcmBuffer2[i] / 128.0f;
+                                            float mixed = samplef1 + samplef2;
+                                            // mixed *= 0.8;
+                                            // hard clipping
+                                            if (mixed > 1.0f) mixed = 1.0f;
 
-                                        if (mixed < -1.0f) mixed = -1.0f;
+                                            if (mixed < -1.0f) mixed = -1.0f;
 
-                                        byte outputSample = (byte)(mixed * 128.0f);
-                                        pcmBuffer3[i-left] = outputSample;
-                                    }
-//                                    inputBuffer.put(pcmBuffer, 0, ret);
-                                    inputBuffer.put(pcmBuffer3, 0, len);
-                                    if (testPCMFile3 != null) {
-                                        try {
-                                            testPCMFile3.write(pcmBuffer3, 0, len);
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
+                                            byte outputSample = (byte) (mixed * 128.0f);
+                                            pcmBuffer3[i - left] = outputSample;
                                         }
+                                        inputBuffer.put(pcmBuffer3, 0, len);
+                                        if (testPCMFile3 != null) {
+                                            try {
+                                                testPCMFile3.write(pcmBuffer3, 0, len);
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    } else {
+                                        // only media
+                                        int left = pos1;
+                                        len = ret;
+                                        pos1 += len;
+                                        inputBuffer.put(pcmBuffer, left, len);
                                     }
+
                                 } else {
                                     debugLog("onInputBufferAvailable AudioRecord has nothing to read");
                                 }
                                 inputBuffer.rewind();
-                                if (pos1 == BUFFER_SIZE && pos2 == BUFFER_SIZE) {
-                                    codec.queueInputBuffer(index, 0, len, System.nanoTime() / 1000, 0);
-                                    pos1 = 0;
-                                    pos2 = 0;
+
+                                if (pos1 == BUFFER_SIZE) {
+                                    if (isMicRecording()) {
+                                        if (pos2 == BUFFER_SIZE) {
+                                            debugLog("queueInputBuffer full p1,p2 " + len);
+                                            codec.queueInputBuffer(index, 0, len, System.nanoTime() / 1000, 0);
+                                            pos1 = 0;
+                                            pos2 = 0;
+                                        } else {
+                                            debugLog("queueInputBuffer partial p1,p2 " + len);
+                                            codec.queueInputBuffer(index, 0, len, System.nanoTime() / 1000, MediaCodec.BUFFER_FLAG_PARTIAL_FRAME);
+                                        }
+                                    } else {
+                                        debugLog("queueInputBuffer full p1 " + len);
+                                        codec.queueInputBuffer(index, 0, len, System.nanoTime() / 1000, 0);
+                                        pos1 = 0;
+                                    }
                                 } else {
+                                    debugLog("queueInputBuffer partial since p1/p2 < BUFFER_SIZE " + len);
                                     codec.queueInputBuffer(index, 0, len, System.nanoTime() / 1000, MediaCodec.BUFFER_FLAG_PARTIAL_FRAME);
                                 }
                             }
@@ -257,17 +292,9 @@ public class AudioCapture {
                                 debugLog("MediaCodec.onOutputFormatChanged: " + format);
                             }
                         });
-                        audioRecorder.startRecording();
-                        mAudioRecorder2.startRecording();
-                        Log.e("eeee","start");
                         codec.start();
                         Looper.loop();
                         codec.stop();
-                        Log.e("eeee","stop");
-                        audioRecorder.stop();
-                        audioRecorder.release();
-                        mAudioRecorder2.stop();
-                        mAudioRecorder2.release();
                         if (testPCMFile != null) {
                             testPCMFile.close();
                         }
@@ -296,6 +323,8 @@ public class AudioCapture {
     public void release() {
         stopRecording(mAudioRecorder);
         stopRecording(mAudioRecorder2);
+        pos1 = 0;
+        pos2 = 0;
         if (AudioRecord.STATE_INITIALIZED == mAudioRecorder.getState()) {
             mAudioRecorder.release();
             Log.d(TAG, "Release recorder");
@@ -305,6 +334,24 @@ public class AudioCapture {
     private void debugLog(String msg) {
         if (DEBUG_LOG) {
             Log.d(TAG, msg);
+        }
+    }
+
+    public void enableMicRecording() {
+        Log.d(TAG, "enableMicRecording");
+        startRecording(mAudioRecorder2);
+        pos2 = pos1;
+    }
+
+    private boolean isMicRecording() {
+        return AudioRecord.STATE_INITIALIZED == mAudioRecorder2.getState() && AudioRecord.RECORDSTATE_RECORDING == mAudioRecorder2.getRecordingState();
+    }
+
+    public void disableMicRecording() {
+        Log.d(TAG, "disableMicRecording");
+        if (isMicRecording()) {
+            stopRecording(mAudioRecorder2);
+            pos2 = 0;
         }
     }
 }

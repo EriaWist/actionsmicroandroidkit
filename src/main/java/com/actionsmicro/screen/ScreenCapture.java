@@ -440,4 +440,20 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
         context.stopService(signalFloatingWindow);
     }
 
+    public void enableMicRecording(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (mAudioCapture != null) {
+                mAudioCapture.enableMicRecording();
+            }
+        }
+    }
+
+    public void disableMicRecording(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (mAudioCapture != null) {
+                mAudioCapture.disableMicRecording();
+            }
+        }
+    }
+
 }
