@@ -81,9 +81,14 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     private MediaCodec.Callback mediaCallback;
     private DataCallback dataCallback;
     private AudioCapture.AudioDataCallback audioDataCallback;
+    private AudioCapture.RecorderStatusCallback micStatusListener;
 
     public void setDataCallback(DataCallback dataCallback) {
         this.dataCallback = dataCallback;
+    }
+
+    public void setMicStatusListener(AudioCapture.RecorderStatusCallback statusListener){
+        micStatusListener = statusListener;
     }
 
     private VirtualDisplay.Callback virtualDisplayCallback;
@@ -298,6 +303,13 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
                 public void onAudioDataAvailable(ByteBuffer dataBuffer, int size) {
                     if (audioDataCallback != null) {
                         audioDataCallback.onAudioDataAvailable(dataBuffer, size);
+                    }
+                }
+            }, new AudioCapture.RecorderStatusCallback() {
+                @Override
+                public void onStatusChange(boolean status) {
+                    if(micStatusListener != null){
+                        micStatusListener.onStatusChange(status);
                     }
                 }
             });

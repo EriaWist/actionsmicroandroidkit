@@ -3,8 +3,6 @@ package com.actionsmicro.audio
 import android.media.*
 import androidx.annotation.RequiresApi
 import android.media.projection.MediaProjection
-import com.actionsmicro.audio.AudioCapture.AudioDataCallback
-import com.actionsmicro.audio.AudioCapture
 import android.os.Looper
 import com.actionsmicro.airplay.airtunes.IAacEldEncoder
 import com.actionsmicro.airplay.airtunes.NativeAacEldEncoder
@@ -23,7 +21,8 @@ import java.nio.ByteBuffer
 @RequiresApi(api = Build.VERSION_CODES.Q)
 class AudioCapture(
     mediaProjection: MediaProjection?,
-    private val mAudioDataCallBack: AudioDataCallback?
+    private val mAudioDataCallBack: AudioDataCallback?,
+    private val mMicStatusListener: RecorderStatusCallback?
 ) {
     private val BUFFER_SIZE =
         CHANNEL_COUNT * 2 * 480 //AudioRecord.getMinBufferSize(SAMPLING_RATE, CHANNEL_IN_CONFIG, AUDIO_FORMAT);
@@ -37,16 +36,23 @@ class AudioCapture(
         fun onAudioDataAvailable(dataBuffer: ByteBuffer?, size: Int)
     }
 
-    fun startRecording(audioRecorder: AudioRecord) {
+    interface RecorderStatusCallback {
+        fun onStatusChange(status: Boolean)
+    }
+
+    fun startRecording(audioRecorder: AudioRecord, statusListener: RecorderStatusCallback? = null) {
         if (AudioRecord.STATE_INITIALIZED == audioRecorder.state && AudioRecord.RECORDSTATE_STOPPED == audioRecorder.recordingState) {
             synchronized(audioRecorder) { audioRecorder.startRecording() }
+            statusListener?.onStatusChange(true);
             debugLog("Start recording: $audioRecorder")
+
         }
     }
 
-    fun stopRecording(audioRecorder: AudioRecord) {
+    fun stopRecording(audioRecorder: AudioRecord, statusListener: RecorderStatusCallback? = null) {
         if (AudioRecord.STATE_INITIALIZED == audioRecorder.state && AudioRecord.RECORDSTATE_RECORDING == audioRecorder.recordingState) {
             synchronized(audioRecorder) { audioRecorder.stop() }
+            statusListener?.onStatusChange(false);
             debugLog("Recording done…")
         }
     }
@@ -333,7 +339,7 @@ class AudioCapture(
 
     fun release() {
         stopRecording(mAudioRecorder)
-        stopRecording(mAudioRecorder2)
+        stopRecording(mAudioRecorder2, mMicStatusListener)
         pos1 = 0
         pos2 = 0
         if (AudioRecord.STATE_INITIALIZED == mAudioRecorder.state) {
@@ -350,7 +356,7 @@ class AudioCapture(
 
     fun enableMicRecording() {
         Log.d(TAG, "enableMicRecording")
-        startRecording(mAudioRecorder2)
+        startRecording(mAudioRecorder2, mMicStatusListener)
         pos2 = pos1
     }
 
@@ -360,7 +366,7 @@ class AudioCapture(
     fun disableMicRecording() {
         Log.d(TAG, "disableMicRecording")
         if (isMicRecording) {
-            stopRecording(mAudioRecorder2)
+            stopRecording(mAudioRecorder2, mMicStatusListener)
             pos2 = 0
         }
     }
