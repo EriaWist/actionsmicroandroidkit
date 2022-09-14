@@ -53,7 +53,6 @@ class AudioCapture(
 
     fun startRecording() {
         startRecording(mAudioRecorder)
-        startRecording(mAudioRecorder2)
         if (AudioRecord.STATE_INITIALIZED == mAudioRecorder.state && AudioRecord.RECORDSTATE_RECORDING == mAudioRecorder.recordingState) {
             Log.d(TAG, "Already recording")
             object : Thread() {
