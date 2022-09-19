@@ -1,10 +1,12 @@
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
 
 repositories {
     maven {
         url 'http://4thline.org/m2'
         allowInsecureProtocol = true
     }
+    mavenCentral()
 }
 
 android {
@@ -104,5 +106,6 @@ dependencies {
     // Cling
     api 'org.fourthline.cling:cling-support:2.1.2-SNAPSHOT'
     api 'org.fourthline.cling:cling-core:2.1.2-SNAPSHOT'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     //Other dependencies required by Cling
 }

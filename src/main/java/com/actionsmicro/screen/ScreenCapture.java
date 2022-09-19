@@ -81,9 +81,14 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     private MediaCodec.Callback mediaCallback;
     private DataCallback dataCallback;
     private AudioCapture.AudioDataCallback audioDataCallback;
+    private AudioCapture.RecorderStatusCallback micStatusListener;
 
     public void setDataCallback(DataCallback dataCallback) {
         this.dataCallback = dataCallback;
+    }
+
+    public void setMicStatusListener(AudioCapture.RecorderStatusCallback statusListener){
+        micStatusListener = statusListener;
     }
 
     private VirtualDisplay.Callback virtualDisplayCallback;
@@ -300,6 +305,13 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
                         audioDataCallback.onAudioDataAvailable(dataBuffer, size);
                     }
                 }
+            }, new AudioCapture.RecorderStatusCallback() {
+                @Override
+                public void onStatusChange(boolean status) {
+                    if(micStatusListener != null){
+                        micStatusListener.onStatusChange(status);
+                    }
+                }
             });
             mAudioCapture.startRecording();
         }
@@ -438,6 +450,22 @@ public class ScreenCapture implements DisplayManager.DisplayListener {
     public void stopFloatingSignal(Context context) {
         Intent signalFloatingWindow = new Intent(context, FloatSignalWindow.class);
         context.stopService(signalFloatingWindow);
+    }
+
+    public void enableMicRecording(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (mAudioCapture != null) {
+                mAudioCapture.enableMicRecording();
+            }
+        }
+    }
+
+    public void disableMicRecording(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (mAudioCapture != null) {
+                mAudioCapture.disableMicRecording();
+            }
+        }
     }
 
 }
