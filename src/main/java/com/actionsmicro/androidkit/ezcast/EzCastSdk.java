@@ -211,8 +211,8 @@ public class EzCastSdk {
 				"quattro",
 				"chromecast",
 				"airplay",
-				"ezscreen",
-				"dlna"
+				"ezscreen"
+//				"dlna"
 		);
 	}
 	protected static List<String> convertJsonArrayToList(String supportListString)
@@ -411,9 +411,10 @@ public class EzCastSdk {
 		if (supportList.contains("ezscreen")) {
 			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
 		}
-		if (supportList.contains("dlna")) {
-			deviceFinder.addDeviceFinderImp(new DlnaDeviceFinder(deviceFinder));
-		}
+		// Don't discover DLNA device for privacy issue, also we don't support DLNA now
+//		if (supportList.contains("dlna")) {
+//			deviceFinder.addDeviceFinderImp(new DlnaDeviceFinder(deviceFinder));
+//		}
 		setupFinderForEzCastAndPro(supportList, deviceFinder, filter);
 	}
 }
