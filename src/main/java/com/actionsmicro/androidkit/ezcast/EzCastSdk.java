@@ -175,7 +175,7 @@ public class EzCastSdk {
 		}
 		initializing = true;
 		doSetupDeviceFinder(listener, filter);
-		fetchLocationAndLogAppInfo();
+//		fetchLocationAndLogAppInfo();
 		waitUntilInitTaskDone();
 	}
 	private void waitUntilInitTaskDone() {
@@ -211,8 +211,8 @@ public class EzCastSdk {
 				"quattro",
 				"chromecast",
 				"airplay",
-				"ezscreen",
-				"dlna"
+				"ezscreen"
+//				"dlna"
 		);
 	}
 	protected static List<String> convertJsonArrayToList(String supportListString)
@@ -409,9 +409,9 @@ public class EzCastSdk {
 		if (supportList.contains("ezscreen")) {
 			deviceFinder.addDeviceFinderImp(new AndroidRxFinder(deviceFinder));
 		}
-		if (supportList.contains("dlna")) {
-			deviceFinder.addDeviceFinderImp(new DlnaDeviceFinder(deviceFinder));
-		}
+//		if (supportList.contains("dlna")) {
+//			deviceFinder.addDeviceFinderImp(new DlnaDeviceFinder(deviceFinder));
+//		}
 		setupFinderForEzCastAndPro(supportList, deviceFinder, filter);
 	}
 }
