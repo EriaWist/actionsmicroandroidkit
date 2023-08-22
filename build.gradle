@@ -10,7 +10,7 @@ repositories {
 }
 
 android {
-    compileSdkVersion rootProject.compileSdkVersion
+    compileSdk rootProject.compileSdk
     publishNonDefault true
     useLibrary 'org.apache.http.legacy'
 
